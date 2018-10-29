@@ -47,7 +47,7 @@ class Likelihood(object):
 
     '''
     #img_pl,lens_pl,noise,noise_cov
-    def __init__(self, pix_to_rad=0.04, numpix_side = 192):
+    def __init__(self, pix_to_rad = 1., src_res=1., numpix_side = 192):
         '''
         Initialize the object.  Lets have img_pl be the shape we expect to be fed to the network [m,N,N,1]
         and do transposing to reshape things as we need.
@@ -55,6 +55,7 @@ class Likelihood(object):
         
         self.pix_to_rad = pix_to_rad
         self.numpix_side = numpix_side
+        self.src_res     = src_res
 
 
     def get_deflection_angles(self, Xim, Yim, Kappa):
@@ -72,8 +73,8 @@ class Likelihood(object):
         Xconv_kernel = tf.reshape(Xconv_kernel, [self.numpix_side*2, self.numpix_side*2, 1,1])
         Yconv_kernel = tf.reshape(Yconv_kernel, [self.numpix_side*2, self.numpix_side*2, 1,1])
         
-        Xsrc = tf.math.add(tf.reshape(Xim, [1, self.numpix_side, self.numpix_side, 1]), tf.nn.conv2d(Kappa, Xconv_kernel, [1, 1, 1, 1], "SAME"))
-        Ysrc = tf.math.add(tf.reshape(Yim, [1, self.numpix_side, self.numpix_side, 1]), tf.nn.conv2d(Kappa, Yconv_kernel, [1, 1, 1, 1], "SAME"))
+        Xsrc = tf.math.add(tf.reshape(Xim, [1, self.numpix_side, self.numpix_side, 1]), -1.* tf.nn.conv2d(Kappa, Xconv_kernel, [1, 1, 1, 1], "SAME"))
+        Ysrc = tf.math.add(tf.reshape(Yim, [1, self.numpix_side, self.numpix_side, 1]), -1.* tf.nn.conv2d(Kappa, Yconv_kernel, [1, 1, 1, 1], "SAME"))
         
         return Xsrc, Ysrc
     
@@ -83,20 +84,19 @@ class Likelihood(object):
         y = tf.linspace(-1., 1., self.numpix_side)*self.pix_to_rad
         Xim, Yim = tf.meshgrid(x, y)
         
-        if Kappa is None:
-            self.build_kappa()
+        
         Xsrc, Ysrc = self.get_deflection_angles(Xim, Yim, Kappa)
         
         Xsrc = tf.reshape(Xsrc, [-1, self.numpix_side, self.numpix_side, 1])
         Ysrc = tf.reshape(Ysrc, [-1, self.numpix_side, self.numpix_side, 1])
         
-        Xsrc_pix = tf.scalar_mul( self.numpix_side/2, tf.math.add(Xsrc, tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
-        Ysrc_pix = tf.scalar_mul( self.numpix_side/2, tf.math.add(Ysrc, tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
+        Xsrc_pix = tf.scalar_mul( (self.numpix_side-1.)/2., tf.math.add(Xsrc*(1./self.src_res), tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
+        Ysrc_pix = tf.scalar_mul( (self.numpix_side-1.)/2., tf.math.add(Ysrc*(1./self.src_res), tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
         
         wrap = tf.reshape( tf.stack([Xsrc_pix, Ysrc_pix], axis = 3), [1, self.numpix_side, self.numpix_side, 2])
         
         
         IM = tf.contrib.resampler.resampler(Src, wrap)
         
-        return IM
+        return IM, Xsrc, Ysrc
     
