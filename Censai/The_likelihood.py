@@ -58,34 +58,75 @@ class Likelihood(object):
         self.src_res     = src_res
 
 
-    def get_deflection_angles(self, Xim, Yim, Kappa):
+    def get_deflection_angles(self, Xim, Yim, Kappa, kap_cent, kap_side):
         #Calculate the Xsrc, Ysrc from the Xim, Yim for a given kappa map
         
+        kap_numpix = (Kappa.shape.as_list())[1]
+        dx_kap = kap_side/(kap_numpix-1)
         
-        x = tf.linspace(-2., 2., self.numpix_side*2)*self.pix_to_rad
-        y = tf.linspace(-2., 2., self.numpix_side*2)*self.pix_to_rad
+        x = tf.linspace(-1., 1., kap_numpix*2)*kap_side
+        y = tf.linspace(-1., 1., kap_numpix*2)*kap_side
         X_filt, Y_filt = tf.meshgrid(x, y)
         
         kernel_denom = tf.square(X_filt) + tf.square(Y_filt)
         Xconv_kernel = tf.divide(X_filt , kernel_denom) 
         Yconv_kernel = tf.divide(Y_filt , kernel_denom) 
         
-        Xconv_kernel = tf.reshape(Xconv_kernel, [self.numpix_side*2, self.numpix_side*2, 1,1])
-        Yconv_kernel = tf.reshape(Yconv_kernel, [self.numpix_side*2, self.numpix_side*2, 1,1])
+        Xconv_kernel = tf.reshape(Xconv_kernel, [kap_numpix*2, kap_numpix*2, 1,1])
+        Yconv_kernel = tf.reshape(Yconv_kernel, [kap_numpix*2, kap_numpix*2, 1,1])
         
-        Xsrc = tf.math.add(tf.reshape(Xim, [1, self.numpix_side, self.numpix_side, 1]), -1.* tf.nn.conv2d(Kappa, Xconv_kernel, [1, 1, 1, 1], "SAME"))
-        Ysrc = tf.math.add(tf.reshape(Yim, [1, self.numpix_side, self.numpix_side, 1]), -1.* tf.nn.conv2d(Kappa, Yconv_kernel, [1, 1, 1, 1], "SAME"))
+        alpha_x = tf.nn.conv2d(Kappa, Xconv_kernel, [1, 1, 1, 1], "SAME") * (dx_kap**2/np.pi);
+        alpha_y = tf.nn.conv2d(Kappa, Yconv_kernel, [1, 1, 1, 1], "SAME") * (dx_kap**2/np.pi);
+        
+        
+        #X_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side
+        #Y_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side
+        #Xkap, Ykap = tf.meshgrid(X_kap, Y_kap)
+        
+        Xim = tf.reshape(Xim, [-1, self.numpix_side, self.numpix_side, 1])
+        Yim = tf.reshape(Yim, [-1, self.numpix_side, self.numpix_side, 1])
+        
+        
+        x_centshif = -(kap_cent[0]*(1./dx_kap))*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32) 
+        x_centshif = tf.reshape(x_centshif, [-1, self.numpix_side, self.numpix_side, 1])
+        x_resize = tf.scalar_mul( (1./dx_kap), tf.math.add(Xim, 0.5*kap_side*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
+        x_resize = tf.reshape(x_resize, [-1, self.numpix_side, self.numpix_side, 1])
+        
+        Xim_pix = tf.math.add( x_centshif , x_resize )  
+        
+        
+        
+        y_centshif = -(kap_cent[1]*(1./dx_kap))*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32) 
+        y_centshif = tf.reshape(y_centshif, [-1, self.numpix_side, self.numpix_side, 1])
+        y_resize = tf.scalar_mul( (1./dx_kap), tf.math.add(Yim, 0.5*kap_side*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
+        y_resize = tf.reshape(y_resize, [-1, self.numpix_side, self.numpix_side, 1])
+        
+        Yim_pix = tf.math.add( y_centshif , y_resize )  
+        
+        
+        
+        Xim_pix = tf.reshape(Xim_pix ,  [1, self.numpix_side, self.numpix_side, 1])
+        Yim_pix = tf.reshape(Yim_pix ,  [1, self.numpix_side, self.numpix_side, 1])
+        
+        wrap = tf.reshape( tf.stack([Xim_pix, Yim_pix], axis = 3), [1, self.numpix_side, self.numpix_side, 2])
+        
+        
+        X_im_interp = tf.contrib.resampler.resampler(alpha_x, wrap)
+        Y_im_interp = tf.contrib.resampler.resampler(alpha_y, wrap)
+        
+        Xsrc = tf.math.add(tf.reshape(Xim, [1, self.numpix_side, self.numpix_side, 1]),  alpha_x )
+        Ysrc = tf.math.add(tf.reshape(Yim, [1, self.numpix_side, self.numpix_side, 1]),  alpha_y )
         
         return Xsrc, Ysrc
     
-    def get_lensed_image(self, Kappa, Src):
+    def get_lensed_image(self, Kappa, kap_cent, kap_side, Src):
         
         x = tf.linspace(-1., 1., self.numpix_side)*self.pix_to_rad
         y = tf.linspace(-1., 1., self.numpix_side)*self.pix_to_rad
         Xim, Yim = tf.meshgrid(x, y)
         
         
-        Xsrc, Ysrc = self.get_deflection_angles(Xim, Yim, Kappa)
+        Xsrc, Ysrc = self.get_deflection_angles(Xim, Yim, Kappa, kap_cent, kap_side)
         
         Xsrc = tf.reshape(Xsrc, [-1, self.numpix_side, self.numpix_side, 1])
         Ysrc = tf.reshape(Ysrc, [-1, self.numpix_side, self.numpix_side, 1])
@@ -98,5 +139,7 @@ class Likelihood(object):
         
         IM = tf.contrib.resampler.resampler(Src, wrap)
         
-        return IM, Xsrc, Ysrc
+        return IM
     
+
+
