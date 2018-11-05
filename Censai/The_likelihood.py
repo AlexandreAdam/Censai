@@ -2,6 +2,20 @@ import tensorflow as tf
 import numpy as np
 from scipy import interpolate
 
+
+
+def gen_source(x_src = 0, y_src = 0, sigma_src = 1, numpix_side = 192):
+    
+    x = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
+    y = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
+    Xsrc, Ysrc = np.meshgrid(x, y)
+    
+    Im = np.sqrt(((Xsrc-x_src)**2+(Ysrc-y_src)**2) / (2.*sigma_src**2) )
+    
+    return Im
+
+
+
 def Kappa_fun(xlens, ylens, elp, phi, sigma_v, numkappa_side = 193, kap_side_length = 2, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000):
     
     x = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
@@ -47,13 +61,12 @@ class Likelihood(object):
 
     '''
     #img_pl,lens_pl,noise,noise_cov
-    def __init__(self, pix_to_rad = 1., src_res=1., numpix_side = 192):
+    def __init__(self, im_side= 2., src_res=0.016, numpix_side = 192):
         '''
-        Initialize the object.  Lets have img_pl be the shape we expect to be fed to the network [m,N,N,1]
-        and do transposing to reshape things as we need.
+        Initialize the object.
         '''
         
-        self.pix_to_rad = pix_to_rad
+        self.im_side = im_side 
         self.numpix_side = numpix_side
         self.src_res     = src_res
 
@@ -79,8 +92,8 @@ class Likelihood(object):
         alpha_y = tf.nn.conv2d(Kappa, Yconv_kernel, [1, 1, 1, 1], "SAME") * (dx_kap**2/np.pi);
         
         
-        #X_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side
-        #Y_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side
+        #X_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side/1.
+        #Y_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side/1.
         #Xkap, Ykap = tf.meshgrid(X_kap, Y_kap)
         
         Xim = tf.reshape(Xim, [-1, self.numpix_side, self.numpix_side, 1])
@@ -121,8 +134,8 @@ class Likelihood(object):
     
     def get_lensed_image(self, Kappa, kap_cent, kap_side, Src):
         
-        x = tf.linspace(-1., 1., self.numpix_side)*self.pix_to_rad
-        y = tf.linspace(-1., 1., self.numpix_side)*self.pix_to_rad
+        x = tf.linspace(-1., 1., self.numpix_side)*self.im_side/2.
+        y = tf.linspace(-1., 1., self.numpix_side)*self.im_side/2.
         Xim, Yim = tf.meshgrid(x, y)
         
         
@@ -131,15 +144,34 @@ class Likelihood(object):
         Xsrc = tf.reshape(Xsrc, [-1, self.numpix_side, self.numpix_side, 1])
         Ysrc = tf.reshape(Ysrc, [-1, self.numpix_side, self.numpix_side, 1])
         
-        Xsrc_pix = tf.scalar_mul( (self.numpix_side-1.)/2., tf.math.add(Xsrc*(1./self.src_res), tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
-        Ysrc_pix = tf.scalar_mul( (self.numpix_side-1.)/2., tf.math.add(Ysrc*(1./self.src_res), tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
+        #self.src_side = self.src_res *(self.numpix_side-1)
+        
+        #dx = self.src_side/(self.numpix_side-1)
+        
+        
+        #Xsrc_pix = tf.scalar_mul( (1./dx), tf.math.add(Xsrc, self.src_side/2.*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
+        #Ysrc_pix = tf.scalar_mul( (1./dx), tf.math.add(Ysrc, self.src_side/2.*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
+        
+        Xsrc_pix, Ysrc_pix = self.coord_to_pix(Xsrc,Ysrc,0.,0.,self.src_res *(self.numpix_side-1),self.numpix_side)
         
         wrap = tf.reshape( tf.stack([Xsrc_pix, Ysrc_pix], axis = 3), [1, self.numpix_side, self.numpix_side, 2])
         
         
         IM = tf.contrib.resampler.resampler(Src, wrap)
         
-        return IM
+        return IM, Xsrc_pix, Ysrc_pix
     
 
 
+    def coord_to_pix(self,X,Y,Xc,Yc,l,N):
+    
+        xmin = Xc-0.5*l
+        ymin = Yc-0.5*l
+        dx = l/(N-1.)
+
+        j = tf.scalar_mul(1./dx, tf.math.add(X, -1.* xmin))
+        i = tf.scalar_mul(1./dx, tf.math.add(Y, -1.* ymin))
+        
+        return i, j
+        
+        
