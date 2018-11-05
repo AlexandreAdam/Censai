@@ -172,6 +172,6 @@ class Likelihood(object):
         j = tf.scalar_mul(1./dx, tf.math.add(X, -1.* xmin))
         i = tf.scalar_mul(1./dx, tf.math.add(Y, -1.* ymin))
         
-        return i, j
+        return j, i
         
         
