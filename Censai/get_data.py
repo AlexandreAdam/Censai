@@ -42,8 +42,8 @@ class DataGenerator(object):
     
         
     
-        Im = np.sqrt(((Xsrc-x_src)**2+(Ysrc-y_src)**2) / (2.*sigma_src**2) )
-    
+        Im = np.exp( -(((Xsrc-x_src)**2+(Ysrc-y_src)**2) / (2.*sigma_src**2) ))
+                    
         return Im
 
 
@@ -87,9 +87,9 @@ class DataGenerator(object):
         return kappa
     
     
-    def read_data_batch( X , Y , train_or_test, read_or_gen,  max_file_num=None):
+    def read_data_batch(self,X ,source ,train_or_test, read_or_gen,  max_file_num=None):
     
-        batch_size = len(X)
+        batch_size = X.shape[0]
         #mag = np.zeros((batch_size,1))
 
         if read_or_gen == 'read':
@@ -141,10 +141,11 @@ class DataGenerator(object):
                 x_src = np.random.uniform(low=-0.16, high=0.16)
                 y_src = np.random.uniform(low=-0.16, high=0.16)
 
-                self.Y[i,:] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side)
+                self.source[i,:,:,0] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side)
 
-                self.kappa[i,:] = self.Kappa_fun(xlens, ylens, elp, phi, sigma_v, numkappa_side = 193, kap_side_length = 2, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
+                self.kappa[i,:,:,0] = self.Kappa_fun(xlens, ylens, elp, phi, Rein, numkappa_side = 193, kap_side_length = 7.68, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
 
+   
     #    for i in range(batch_size):
     #        
     #        #ARCS=1

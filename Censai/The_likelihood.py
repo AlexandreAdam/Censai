@@ -111,8 +111,8 @@ class Likelihood(object):
         alpha_x = tf.nn.conv2d(Kappa, Xconv_kernel, [1, 1, 1, 1], "SAME") * (dx_kap**2/np.pi);
         alpha_y = tf.nn.conv2d(Kappa, Yconv_kernel, [1, 1, 1, 1], "SAME") * (dx_kap**2/np.pi);
         
-        tf.add_to_collection('alpha_x', alpha_x)
-        tf.add_to_collection('alpha_y', alpha_y)
+#        tf.add_to_collection('alpha_x', alpha_x)
+#        tf.add_to_collection('alpha_y', alpha_y)
         
         #X_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side/1.
         #Y_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side/1.
@@ -140,17 +140,27 @@ class Likelihood(object):
         
         
         
-        Xim_pix = tf.reshape(Xim_pix ,  [1, self.numpix_side, self.numpix_side, 1])
-        Yim_pix = tf.reshape(Yim_pix ,  [1, self.numpix_side, self.numpix_side, 1])
-        
-        wrap = tf.reshape( tf.stack([Xim_pix, Yim_pix], axis = 3), [1, self.numpix_side, self.numpix_side, 2])
+        Xim_pix = tf.reshape(Xim_pix ,  [-1, self.numpix_side, self.numpix_side, 1])
+        Yim_pix = tf.reshape(Yim_pix ,  [-1, self.numpix_side, self.numpix_side, 1])
         
         
-        alphax_interp = tf.contrib.resampler.resampler(alpha_x, wrap)
-        alphay_interp = tf.contrib.resampler.resampler(alpha_y, wrap)
         
-        Xsrc = tf.math.add(tf.reshape(Xim, [1, self.numpix_side, self.numpix_side, 1]),  -alphax_interp )
-        Ysrc = tf.math.add(tf.reshape(Yim, [1, self.numpix_side, self.numpix_side, 1]),  -alphay_interp )
+        wrap = tf.reshape( tf.stack([Xim_pix, Yim_pix], axis = 3), [-1, self.numpix_side, self.numpix_side, 2])
+        
+        
+        
+        A = tf.constant(1)
+        mult = tf.stack([tf.shape(alpha_x)[0], A,A,A])
+        
+        batch_wrap = tf.manip.tile(wrap, mult)
+        
+        
+        
+        alphax_interp = tf.contrib.resampler.resampler(alpha_x, batch_wrap)
+        alphay_interp = tf.contrib.resampler.resampler(alpha_y, batch_wrap)
+        
+        Xsrc = tf.math.add(tf.reshape(Xim, [-1, self.numpix_side, self.numpix_side, 1]),  -alphax_interp )
+        Ysrc = tf.math.add(tf.reshape(Yim, [-1, self.numpix_side, self.numpix_side, 1]),  -alphay_interp )
         
 #         tf.add_to_collection('Xsrc', Xsrc)
 #         tf.add_to_collection('Ysrc', Ysrc)
@@ -178,7 +188,7 @@ class Likelihood(object):
 #        tf.add_to_collection('Xsrc_pix', Xsrc_pix)
 #        tf.add_to_collection('Ysrc_pix', Ysrc_pix)
         
-        wrap = tf.reshape( tf.stack([Xsrc_pix, Ysrc_pix], axis = 3), [1, self.numpix_side, self.numpix_side, 2])
+        wrap = tf.reshape( tf.stack([Xsrc_pix, Ysrc_pix], axis = 3), [-1, self.numpix_side, self.numpix_side, 2])
         
         
         IM = tf.contrib.resampler.resampler(Src, wrap)
