@@ -168,23 +168,15 @@ class Likelihood(object):
         
         Xsrc = tf.reshape(Xsrc, [-1, self.numpix_side, self.numpix_side, 1])
         Ysrc = tf.reshape(Ysrc, [-1, self.numpix_side, self.numpix_side, 1])
-        
-        #self.src_side = self.src_res *(self.numpix_side-1)
-        
-        #dx = self.src_side/(self.numpix_side-1)
-        
-        
-        #Xsrc_pix = tf.scalar_mul( (1./dx), tf.math.add(Xsrc, self.src_side/2.*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
-        #Ysrc_pix = tf.scalar_mul( (1./dx), tf.math.add(Ysrc, self.src_side/2.*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
-        
+                
         Xsrc_pix, Ysrc_pix = self.coord_to_pix(Xsrc,Ysrc,0.,0., self.src_side ,self.numpix_side)
         
-        tf.add_to_collection('Xsrc', Xsrc)
-        tf.add_to_collection('Ysrc', Ysrc)
-
-        
-        tf.add_to_collection('Xsrc_pix', Xsrc_pix)
-        tf.add_to_collection('Ysrc_pix', Ysrc_pix)
+#        tf.add_to_collection('Xsrc', Xsrc)
+#        tf.add_to_collection('Ysrc', Ysrc)
+#
+#        
+#        tf.add_to_collection('Xsrc_pix', Xsrc_pix)
+#        tf.add_to_collection('Ysrc_pix', Ysrc_pix)
         
         wrap = tf.reshape( tf.stack([Xsrc_pix, Ysrc_pix], axis = 3), [1, self.numpix_side, self.numpix_side, 2])
         

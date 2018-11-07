@@ -48,8 +48,10 @@ class DataGenerator(object):
 
 
 
-    def Kappa_fun(self, xlens, ylens, elp, phi, sigma_v, numkappa_side = 193, kap_side_length = 2, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000):
+    def Kappa_fun(self, xlens, ylens, elp, phi, Rein, numkappa_side = 193, kap_side_length = 2, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000):
     
+        sigma_v = np.sqrt( c**2/(4*np.pi)*Rein*np.pi/180/3600  * Ds/Dds )
+        
         x = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
         y = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
         xv, yv = np.meshgrid(x, y)
@@ -131,7 +133,7 @@ class DataGenerator(object):
                 ylens = 0
                 elp = np.random.uniform()
                 phi = np.random.uniform(low=0.0, high=2.*np.pi)
-                sigma_v = 200000
+                Rein = np.random.uniform(low=0.5, high = 3.)
 
                 #parameters for source
                 sigma_src = np.random.uniform(low=0, high=0.5)
