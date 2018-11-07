@@ -61,36 +61,58 @@ class Likelihood(object):
 
     '''
     #img_pl,lens_pl,noise,noise_cov
-    def __init__(self, im_side= 2., src_res=0.016, numpix_side = 192):
+    def __init__(self, im_side= 7.68, src_side=1.5, numpix_side = 192):
         '''
         Initialize the object.
         '''
         
         self.im_side = im_side 
         self.numpix_side = numpix_side
-        self.src_res     = src_res
+        self.src_side     = src_side
 
 
     def get_deflection_angles(self, Xim, Yim, Kappa, kap_cent, kap_side):
         #Calculate the Xsrc, Ysrc from the Xim, Yim for a given kappa map
         
         kap_numpix = (Kappa.shape.as_list())[1]
+        kernel_side_l = kap_numpix*2+1;
+        
+        cond = np.zeros((kernel_side_l,kernel_side_l))
+        cond[kap_numpix,kap_numpix] = True
+
         dx_kap = kap_side/(kap_numpix-1)
         
-        x = tf.linspace(-1., 1., kap_numpix*2)*kap_side
-        y = tf.linspace(-1., 1., kap_numpix*2)*kap_side
+        x = tf.linspace(-1., 1., kernel_side_l)*kap_side
+        y = tf.linspace(-1., 1., kernel_side_l)*kap_side
         X_filt, Y_filt = tf.meshgrid(x, y)
         
-        kernel_denom = tf.square(X_filt) + tf.square(Y_filt)
-        Xconv_kernel = tf.divide(X_filt , kernel_denom) 
-        Yconv_kernel = tf.divide(Y_filt , kernel_denom) 
+#         tf.add_to_collection('xfilt', X_filt)
+#         tf.add_to_collection('yfilt', Y_filt)
         
-        Xconv_kernel = tf.reshape(Xconv_kernel, [kap_numpix*2, kap_numpix*2, 1,1])
-        Yconv_kernel = tf.reshape(Yconv_kernel, [kap_numpix*2, kap_numpix*2, 1,1])
+        kernel_denom = tf.square(X_filt) + tf.square(Y_filt)
+        Xconv_kernel = tf.divide(-X_filt , kernel_denom) 
+        
+        B = tf.zeros_like(Xconv_kernel)
+        Xconv_kernel = tf.where(cond,B,Xconv_kernel)
+
+        Yconv_kernel = tf.divide(-Y_filt , kernel_denom) 
+
+        Yconv_kernel = tf.where(cond,B,Yconv_kernel)
+
+#         tf.add_to_collection('xker', Xconv_kernel)
+#         tf.add_to_collection('yker', Yconv_kernel)
+        
+        Xconv_kernel = tf.reshape(Xconv_kernel, [kernel_side_l, kernel_side_l, 1,1])
+        Yconv_kernel = tf.reshape(Yconv_kernel, [kernel_side_l, kernel_side_l, 1,1])
+        
+#         tf.add_to_collection('xker2', Xconv_kernel)
+#         tf.add_to_collection('yker2', Yconv_kernel)
         
         alpha_x = tf.nn.conv2d(Kappa, Xconv_kernel, [1, 1, 1, 1], "SAME") * (dx_kap**2/np.pi);
         alpha_y = tf.nn.conv2d(Kappa, Yconv_kernel, [1, 1, 1, 1], "SAME") * (dx_kap**2/np.pi);
         
+        tf.add_to_collection('alpha_x', alpha_x)
+        tf.add_to_collection('alpha_y', alpha_y)
         
         #X_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side/1.
         #Y_kap = tf.linspace(-0.5, 0.5, kap_numpix)*kap_side/1.
@@ -124,11 +146,14 @@ class Likelihood(object):
         wrap = tf.reshape( tf.stack([Xim_pix, Yim_pix], axis = 3), [1, self.numpix_side, self.numpix_side, 2])
         
         
-        X_im_interp = tf.contrib.resampler.resampler(alpha_x, wrap)
-        Y_im_interp = tf.contrib.resampler.resampler(alpha_y, wrap)
+        alphax_interp = tf.contrib.resampler.resampler(alpha_x, wrap)
+        alphay_interp = tf.contrib.resampler.resampler(alpha_y, wrap)
         
-        Xsrc = tf.math.add(tf.reshape(Xim, [1, self.numpix_side, self.numpix_side, 1]),  alpha_x )
-        Ysrc = tf.math.add(tf.reshape(Yim, [1, self.numpix_side, self.numpix_side, 1]),  alpha_y )
+        Xsrc = tf.math.add(tf.reshape(Xim, [1, self.numpix_side, self.numpix_side, 1]),  -alphax_interp )
+        Ysrc = tf.math.add(tf.reshape(Yim, [1, self.numpix_side, self.numpix_side, 1]),  -alphay_interp )
+        
+#         tf.add_to_collection('Xsrc', Xsrc)
+#         tf.add_to_collection('Ysrc', Ysrc)
         
         return Xsrc, Ysrc
     
@@ -152,14 +177,21 @@ class Likelihood(object):
         #Xsrc_pix = tf.scalar_mul( (1./dx), tf.math.add(Xsrc, self.src_side/2.*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
         #Ysrc_pix = tf.scalar_mul( (1./dx), tf.math.add(Ysrc, self.src_side/2.*tf.ones([1, self.numpix_side, self.numpix_side, 1], dtype=tf.float32)) )
         
-        Xsrc_pix, Ysrc_pix = self.coord_to_pix(Xsrc,Ysrc,0.,0.,self.src_res *(self.numpix_side-1),self.numpix_side)
+        Xsrc_pix, Ysrc_pix = self.coord_to_pix(Xsrc,Ysrc,0.,0., self.src_side ,self.numpix_side)
+        
+        tf.add_to_collection('Xsrc', Xsrc)
+        tf.add_to_collection('Ysrc', Ysrc)
+
+        
+        tf.add_to_collection('Xsrc_pix', Xsrc_pix)
+        tf.add_to_collection('Ysrc_pix', Ysrc_pix)
         
         wrap = tf.reshape( tf.stack([Xsrc_pix, Ysrc_pix], axis = 3), [1, self.numpix_side, self.numpix_side, 2])
         
         
         IM = tf.contrib.resampler.resampler(Src, wrap)
         
-        return IM, Xsrc_pix, Ysrc_pix
+        return IM
     
 
 
@@ -172,6 +204,6 @@ class Likelihood(object):
         j = tf.scalar_mul(1./dx, tf.math.add(X, -1.* xmin))
         i = tf.scalar_mul(1./dx, tf.math.add(Y, -1.* ymin))
         
-        return j, i
+        return i, j
         
         
