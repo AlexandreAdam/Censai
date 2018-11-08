@@ -160,4 +160,30 @@ class Likelihood(object):
         
         return i, j
         
-    def     
+    def Loglikelihood(self, src, Kappa, kap_cent, kap_side):
+        '''
+        Computes the likelihood of observing an image (img), given a model image for the src
+        (src).  Computes the raytracing over multiple images in a vectorized way.  
+        '''
+
+        img_pred = self.get_lensed_image(self, Kappa, kap_cent, kap_side, src)
+        
+        #xsrc , ysrc = self.raytrace2()
+
+        #xsrc = tf.reshape(xsrc,[-1])
+        #ysrc = tf.reshape(ysrc,[-1])
+
+        #img_pred = self._interpolate(self.src,xsrc,ysrc,[self.numpix_side,self.numpix_side],self.src_res)
+        img_pred = tf.reshape(img_pred,tf.shape(self.img))
+
+#        if self.psf:
+#            img_pred = tf.nn.conv2d(img_pred,self.psf_pl,strides=[1,1,1,1],padding='SAME')
+#
+#        if hasattr(self,'mask_pl'):
+#            img_pred = tf.multiply(img_pred,self.mask_pl)
+        mse = tf.reduce_sum(tf.square(tf.subtract(img_pred,self.img)))
+
+        if hasattr(self,'noise_rms'):
+            mse /= tf.square(self.noise_rms)
+
+        return mse     
