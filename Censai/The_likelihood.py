@@ -4,54 +4,6 @@ from scipy import interpolate
 
 
 
-def gen_source(x_src = 0, y_src = 0, sigma_src = 1, numpix_side = 192):
-    
-    x = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
-    y = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
-    Xsrc, Ysrc = np.meshgrid(x, y)
-    
-    Im = np.sqrt(((Xsrc-x_src)**2+(Ysrc-y_src)**2) / (2.*sigma_src**2) )
-    
-    return Im
-
-
-
-def Kappa_fun(xlens, ylens, elp, phi, sigma_v, numkappa_side = 193, kap_side_length = 2, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000):
-    
-    x = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
-    y = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
-    xv, yv = np.meshgrid(x, y)
-    
-    A = (y[1]-y[0])/2. *(2*np.pi/ (360*3600) )
-    
-    rcord, thetacord = np.sqrt(xv**2 + yv**2) , np.arctan2(xv, yv)
-    thetacord = thetacord - phi
-    Xkap, Ykap = rcord*np.cos(thetacord), rcord*np.sin(thetacord)
-    
-    rlens, thetalens = np.sqrt(xlens**2 + ylens**2) , np.arctan2(xlens, ylens)
-    thetalens = thetalens - phi
-    xlens, ylens = rlens*np.cos(thetalens), rlens*np.sin(thetalens)
-    
-    r = np.sqrt((Xkap-xlens)**2 + ((Ykap-ylens) * (1-elp) )**2) *(2*np.pi/ (360*3600) )
-    
-    Rein = (4*np.pi*sigma_v**2/c**2) * Dds /Ds 
-    
-    kappa = np.divide( np.sqrt(1-elp)* Rein ,  (2* np.sqrt( r**2 + rc**2)))
-    
-    mass_inside_00_pix = 2.*A*(np.log(2.**(1./2.) + 1.) - np.log(2.**(1./2.)*A - A) + np.log(3.*A + 2.*2.**(1./2.)*A))
-    
-    print A
-    print mass_inside_00_pix
-    
-    density_00_pix = np.sqrt(1.-elp) * Rein/(2.) * mass_inside_00_pix/((2.*A)**2.)
-    
-    print density_00_pix
-    
-    ind = np.argmin(r)
-    
-    kappa.flat[ind] = density_00_pix
-    
-    return kappa
 
     
 class Likelihood(object):
