@@ -166,7 +166,7 @@ class Likelihood(object):
         (src).  Computes the raytracing over multiple images in a vectorized way.  
         '''
 
-        img_pred = self.get_lensed_image(self, Kappa, kap_cent, kap_side, src)
+        img_pred = self.get_lensed_image(Kappa, kap_cent, kap_side, src)
         
         #xsrc , ysrc = self.raytrace2()
 
@@ -174,14 +174,14 @@ class Likelihood(object):
         #ysrc = tf.reshape(ysrc,[-1])
 
         #img_pred = self._interpolate(self.src,xsrc,ysrc,[self.numpix_side,self.numpix_side],self.src_res)
-        img_pred = tf.reshape(img_pred,tf.shape(self.img))
+        img_pred = tf.reshape(img_pred,tf.shape(self.trueimage))
 
 #        if self.psf:
 #            img_pred = tf.nn.conv2d(img_pred,self.psf_pl,strides=[1,1,1,1],padding='SAME')
 #
 #        if hasattr(self,'mask_pl'):
 #            img_pred = tf.multiply(img_pred,self.mask_pl)
-        mse = tf.reduce_sum(tf.square(tf.subtract(img_pred,self.img)))
+        mse = tf.reduce_sum(tf.square(tf.subtract(img_pred,self.trueimage)))
 
         if hasattr(self,'noise_rms'):
             mse /= tf.square(self.noise_rms)
