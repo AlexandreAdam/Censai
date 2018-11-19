@@ -5,6 +5,7 @@ Author: Aymeric Damien
 Project: https://github.com/aymericdamien/TensorFlow-Examples/
 '''
 
+
 from time import gmtime, strftime
 from os import path
 import os
@@ -53,7 +54,7 @@ tf.app.flags.DEFINE_integer('depth', 1,
                             """Depth of the network""")
 tf.app.flags.DEFINE_integer('batch_size', 5,
                             """Number of samples per batch.""")
-tf.app.flags.DEFINE_integer('t_max', 10,
+tf.app.flags.DEFINE_integer('t_max', 1,
                             """The number of time steps to train on. """
                             """If -1 it will be drawn randomly from a geometrix distribution.""")
 tf.app.flags.DEFINE_integer('j_min', 6,
@@ -96,11 +97,11 @@ def train():
 
     
     # DEFINE LAURENCE's stuff
-    numpix_side = 192
-    numpix_src  = 192
-    numkappa_side = 192
+    numpix_side = 24
+    numpix_src  = 24
+    numkappa_side = 24
     
-    batch_size = 50
+    batch_size = 1
     n_channel = 1
     
     Raytracer = Celi.Likelihood(numpix_side = numpix_side)
@@ -264,7 +265,7 @@ def train():
         min_test_cost = 2.0
         # Set logs writer into folder /tmp/tensorflow_logs
 
-        for epoch in range(5):
+        for epoch in range(1):
             train_cost = 0.
             train_psnr = 0.
 
@@ -273,16 +274,20 @@ def train():
 
             print "Iterating..."
             # Loop over all batches
-            for i in range(100/batch_size):
+            for i in range(1):
+                print i
                 Datagen.read_data_batch(Datagen.X ,Datagen.source , train_or_test, read_or_gen)
+                print 'generated data batch', i
                 #dataprocessor.load_data_batch(100000,'train')
                 
                 # Fit training using batch data
-                temp_cost, temp_psnr, summary_str,_ = sess.run([loss,psnr,merged_summary_op,minimize],
-                                                               {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})#psf_pl:dataprocessor.psf[0,:], is_training:True})
+                print Datagen.source.shape
+                print Datagen.kappa.shape
+                temp_cost, temp_psnr, summary_str,_ = sess.run([loss,psnr,merged_summary_op,minimize],   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})#psf_pl:dataprocessor.psf[0,:], is_training:True})
+                print 'DONE'
                 # Compute average loss
-                train_cost += temp_cost
-                train_psnr += temp_psnr
+                #train_cost += temp_cost
+                #train_psnr += temp_psnr
 
 
 
@@ -312,9 +317,9 @@ def train():
 #                    # Saving Checkpoint
 #                    if valid_cost < min_test_cost:
 #                        print "Saving Checkpoint"
-#                        saver.save(sess,model_name)
+                #saver.save(sess,model_name)
 #                        min_test_cost = valid_cost * 1.
-
+#
         print "Optimization Finished!"
 
     sess.close()
