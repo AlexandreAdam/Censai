@@ -13,7 +13,7 @@ class Likelihood(object):
 
     '''
     #img_pl,lens_pl,noise,noise_cov
-    def __init__(self, im_side= 7.68, src_side=1.5, numpix_side = 192):
+    def __init__(self, im_side= 7.68, src_side=3.0, numpix_side = 192):
         '''
         Initialize the object.
         '''
@@ -119,7 +119,7 @@ class Likelihood(object):
         
         return Xsrc, Ysrc
     
-    def get_lensed_image(self, Kappa, kap_cent, kap_side, Src):
+    def get_lensed_image(self, Kappa, kap_cent, kap_side, Src, noisy=True, max_noise_rms=0.05):
         
         x = tf.linspace(-1., 1., self.numpix_side)*self.im_side/2.
         y = tf.linspace(-1., 1., self.numpix_side)*self.im_side/2.
@@ -145,6 +145,12 @@ class Likelihood(object):
         
         IM = tf.contrib.resampler.resampler(Src, wrap)
         
+        if noisy == True:
+            noise_rms = max_noise_rms#tf.random_uniform(shape=[1],minval=max_noise_rms/100.,maxval=max_noise_rms)
+            noise = tf.random_normal(tf.shape(IM),mean=0.0,stddev = noise_rms)
+            IM = tf.add(IM,noise)
+            self.noise_rms = noise_rms
+        
         return IM
     
 
@@ -160,13 +166,13 @@ class Likelihood(object):
         
         return i, j
         
-    def Loglikelihood(self, src, Kappa, kap_cent, kap_side):
+    def Loglikelihood(self, src, Kappa, kap_cent, kap_side, noisy=True, max_noise_rms=0.05):
         '''
         Computes the likelihood of observing an image (img), given a model image for the src
         (src).  Computes the raytracing over multiple images in a vectorized way.  
         '''
 
-        img_pred = self.get_lensed_image(Kappa, kap_cent, kap_side, src)
+        img_pred = self.get_lensed_image(Kappa, kap_cent, kap_side, src,noisy=noisy, max_noise_rms=max_noise_rms)
         
         #xsrc , ysrc = self.raytrace2()
 
