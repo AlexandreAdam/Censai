@@ -105,7 +105,7 @@ def train():
     n_channel = 1
     
     Raytracer = Celi.Likelihood(numpix_side = numpix_side, src_side = 3.0)
-    Datagen = Celi.DataGenerator(numpix_side=Raytracer.numpix_side, numkappa_side=numkappa_side, src_side=Raytracer.src_side, im_side = Raytracer.im_side,max_noise_rms=0.0,use_psf=False,lens_model_error=[0.01,0.01,0.01,0.01,0.01,0.01,0.01],binpix=1,mask=False,min_unmasked_flux=1.0)
+    Datagen = Celi.DataGenerator(numpix_side=Raytracer.numpix_side, numkappa_side=numkappa_side, src_side=Raytracer.src_side, im_side = Raytracer.im_side,max_noise_rms=0.05,use_psf=False,lens_model_error=[0.01,0.01,0.01,0.01,0.01,0.01,0.01],binpix=1,mask=False,min_unmasked_flux=1.0)
     
     
     # Numpy arrays to read data
@@ -115,6 +115,8 @@ def train():
     max_file_num=None
     train_or_test = 'train'
     read_or_gen = 'gen'
+    isnoisy=True
+    data_max_noise_rms = 0.05
 
     # Placeholders
     
@@ -127,7 +129,7 @@ def train():
     y_ = tf.reshape(y_image, [-1,Datagen.numpix_side**2])
     x_init = tf.zeros_like(y_image)
 
-    Raytracer.trueimage = Raytracer.get_lensed_image(Kappatest,[0.,0.], 7.68, Srctest)
+    Raytracer.trueimage = Raytracer.get_lensed_image(Kappatest,[0.,0.], 7.68, Srctest, noisy=isnoisy, max_noise_rms=data_max_noise_rms)
     x_image = Raytracer.trueimage
     
     
@@ -166,7 +168,7 @@ def train():
         return x_temp
     
     def error_grad(x_test):
-        return tf.gradients(Raytracer.Loglikelihood(param2image(x_test), Kappatest, [0.,0.], 7.68), x_test)[0]
+        return tf.gradients(Raytracer.Loglikelihood(param2image(x_test), Kappatest, [0.,0.], 7.68, noisy=isnoisy, max_noise_rms=data_max_noise_rms), x_test)[0]
     
     def lossfun(x_est,expand_dim=False):
         temp_data = y_image
@@ -236,7 +238,8 @@ def train():
     tf.add_to_collection('psnr', psnr_x_init)
     
     L_final_source_image = param2image(final_output)
-
+    final_gradient = error_grad(final_output)
+    
     ## Minimizer
     minimize = tf.contrib.layers.optimize_loss(loss_full, global_step, FLAGS.lr, "Adam", clip_gradients=5.0,
                                                learning_rate_decay_fn=lambda lr,s: tf.train.exponential_decay(lr, s,
@@ -286,9 +289,14 @@ def train():
                 print Datagen.source.shape
                 print Datagen.kappa.shape
                 
-                source_image = sess.run([L_final_source_image],   {Srctest: Datagen.source, Kappatest:Datagen.kappa,is_training:True})
+               
+                
+                source_image, true_data , last_grad = sess.run([L_final_source_image, Raytracer.trueimage, final_gradient],   {Srctest: Datagen.source, Kappatest:Datagen.kappa,is_training:True})
+                np.save('last_grad.npy', last_grad)
+                np.save('true_data.npy', true_data)
                 np.save('source_image.npy', source_image)
                 np.save('source_image_true.npy', Datagen.source)
+                np.save('kappa_map.npy', Datagen.kappa)
             #    temp_cost, temp_psnr, summary_str,_ = sess.run([loss,psnr,merged_summary_op,minimize],   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})#psf_pl:dataprocessor.psf[0,:], is_training:True})
                 print 'DONE'
                 # Compute average loss

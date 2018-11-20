@@ -21,7 +21,7 @@ class DataGenerator(object):
     A class to handle processing of data.
     '''
     
-    def __init__(self,datadir=None,numpix_side=192, numkappa_side=193, src_side=2., im_side = 2.,max_noise_rms=0.0,use_psf=False,lens_model_error=[0.01,0.01,0.01,0.01,0.01,0.01,0.01],binpix=1,mask=False,min_unmasked_flux=1.0):
+    def __init__(self,datadir=None,numpix_side=192, numkappa_side=193, src_side=3., im_side = 2.,max_noise_rms=0.0,use_psf=False,lens_model_error=[0.01,0.01,0.01,0.01,0.01,0.01,0.01],binpix=1,mask=False,min_unmasked_flux=1.0):
         '''
         Initialize an instance of the class.  Give it the directory
         of the directories containing training/test data.
@@ -42,7 +42,7 @@ class DataGenerator(object):
     
         
     
-        Im = np.exp( -(((Xsrc-x_src)**2+(Ysrc-y_src)**2) / (2.*sigma_src**2) ))
+        Im = np.exp( -(((Xsrc-x_src)**2 +(Ysrc-y_src)**2) / (2.*sigma_src**2) ))
         
         if norm is True:
             Im = Im/np.max(Im)
@@ -134,15 +134,15 @@ class DataGenerator(object):
                 #parameters for kappa
                 xlens = 0
                 ylens = 0
-                elp = np.random.uniform()
-                phi = np.random.uniform(low=0.0, high=2.*np.pi)
-                Rein = np.random.uniform(low=0.5, high = 3.)
+                elp = 0.4#np.random.uniform()
+                phi = np.pi/4.#np.random.uniform(low=0.0, high=2.*np.pi)
+                Rein = 2.#np.random.uniform(low=0.5, high = 3.)
 
                 #parameters for source
-                sigma_src = np.random.uniform(low=0, high=0.5)
+                sigma_src = 0.1#np.random.uniform(low=0, high=0.5)
                 #np.random.normal(loc=0.0, scale = 0.01)
-                x_src = np.random.uniform(low=-0.16, high=0.16)
-                y_src = np.random.uniform(low=-0.16, high=0.16)
+                x_src = -0.5 #np.random.uniform(low=-0.16, high=0.16)
+                y_src =  0.2 #np.random.uniform(low=-0.16, high=0.16)
 
                 self.source[i,:,:,0] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side, norm = norm_source)
 
