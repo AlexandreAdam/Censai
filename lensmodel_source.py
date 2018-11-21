@@ -101,7 +101,7 @@ def train():
     numpix_src  = 192
     numkappa_side = 192
     
-    batch_size = 1
+    batch_size = 5
     n_channel = 1
     
     Raytracer = Celi.Likelihood(numpix_side = numpix_side, src_side = 3.0)
@@ -280,7 +280,7 @@ def train():
             print "Iterating..."
             # Loop over all batches
             for i in range(1):
-                print i
+                #print i
                 Datagen.read_data_batch(Datagen.X ,Datagen.source , train_or_test, read_or_gen, norm_source = True)
                 print 'generated data batch', i
                 #dataprocessor.load_data_batch(100000,'train')
@@ -289,15 +289,23 @@ def train():
                 print Datagen.source.shape
                 print Datagen.kappa.shape
                 
-               
+                #source_image, true_data , last_grad = sess.run([L_final_source_image, Raytracer.trueimage, final_gradient],   {Srctest: Datagen.source, Kappatest:Datagen.kappa,is_training:True})
+#                np.save('last_grad.npy', last_grad)
+#                np.save('true_data.npy', true_data)
+#                np.save('source_image.npy', source_image)
+#                np.save('source_image_true.npy', Datagen.source)
+#                np.save('kappa_map.npy', Datagen.kappa)
+
+                temp_cost, temp_psnr, summary_str,source_image, true_data , last_grad,_ = sess.run([loss,psnr,merged_summary_op,L_final_source_image, Raytracer.trueimage, final_gradient, minimize],   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                #psf_pl:dataprocessor.psf[0,:], is_training:True})
                 
-                source_image, true_data , last_grad = sess.run([L_final_source_image, Raytracer.trueimage, final_gradient],   {Srctest: Datagen.source, Kappatest:Datagen.kappa,is_training:True})
+                print 'saving...'
                 np.save('last_grad.npy', last_grad)
                 np.save('true_data.npy', true_data)
                 np.save('source_image.npy', source_image)
                 np.save('source_image_true.npy', Datagen.source)
                 np.save('kappa_map.npy', Datagen.kappa)
-            #    temp_cost, temp_psnr, summary_str,_ = sess.run([loss,psnr,merged_summary_op,minimize],   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})#psf_pl:dataprocessor.psf[0,:], is_training:True})
+                
                 print 'DONE'
                 # Compute average loss
                 #train_cost += temp_cost
