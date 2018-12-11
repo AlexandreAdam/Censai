@@ -90,7 +90,7 @@ class DataGenerator(object):
         return kappa
     
     
-    def read_data_batch(self,X ,source ,train_or_test, read_or_gen,  max_file_num=None, norm_source = False):
+    def read_data_batch(self,X ,source , kappa, train_or_test, read_or_gen, max_file_num=None, norm_source = False):
     
         batch_size = X.shape[0]
         #mag = np.zeros((batch_size,1))
@@ -124,31 +124,62 @@ class DataGenerator(object):
 
             #inds = np.zeros((batch_size,),dtype='int')
         else:
-            np.random.seed(seed=136)
-            x = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
-            y = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
-            Xsrc, Ysrc = np.meshgrid(x, y)
+            if train_or_test == 'test':
+                np.random.seed(seed=136)
+                x = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
+                y = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
+                Xsrc, Ysrc = np.meshgrid(x, y)
 
-            for i in range(batch_size):
+                for i in range(batch_size):
 
-                #parameters for kappa
-                xlens = 0
-                ylens = 0
-                elp = np.random.uniform()
-                phi = np.random.uniform(low=0.0, high=2.*np.pi)
-                Rein = np.random.uniform(low=0.5, high = 3.)
+                    #parameters for kappa
+                    xlens = 0
+                    ylens = 0
+                    elp = np.random.uniform()
+                    phi = np.random.uniform(low=0.0, high=2.*np.pi)
+                    Rein = np.random.uniform(low=0.5, high = 3.)
 
-                #parameters for source
-                sigma_src = np.random.uniform(low=0, high=0.5)
-                #np.random.normal(loc=0.0, scale = 0.01)
-                x_src = np.random.uniform(low=-0.16, high=0.16)
-                y_src =  np.random.uniform(low=-0.16, high=0.16)
+                    #parameters for source
+                    sigma_src = np.random.uniform(low=0, high=0.5)
+                    #np.random.normal(loc=0.0, scale = 0.01)
+                    x_src = np.random.uniform(low=-0.16, high=0.16)
+                    y_src =  np.random.uniform(low=-0.16, high=0.16)
 
-                self.source[i,:,:,0] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side, norm = norm_source)
+                    source[i,:,:,0] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side, norm = norm_source)
 
-                self.kappa[i,:,:,0] = self.Kappa_fun(xlens, ylens, elp, phi, Rein, numkappa_side = self.numkappa_side, kap_side_length = 7.68, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
+                    kappa[i,:,:,0] = self.Kappa_fun(xlens, ylens, elp, phi, Rein, numkappa_side = self.numkappa_side, kap_side_length = 7.68, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
+                    
+                    return source, kappa
 
-   
+            else:
+                np.random.seed(None)
+                x = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
+                y = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
+                Xsrc, Ysrc = np.meshgrid(x, y)
+
+                for i in range(batch_size):
+
+                    #parameters for kappa
+                    xlens = 0
+                    ylens = 0
+                    elp = np.random.uniform()
+                    phi = np.random.uniform(low=0.0, high=2.*np.pi)
+                    Rein = np.random.uniform(low=0.5, high = 3.)
+
+                    #parameters for source
+                    sigma_src = np.random.uniform(low=0, high=0.5)
+                    #np.random.normal(loc=0.0, scale = 0.01)
+                    x_src = np.random.uniform(low=-0.16, high=0.16)
+                    y_src =  np.random.uniform(low=-0.16, high=0.16)
+
+                    
+                    self.source[i,:,:,0] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side, norm = norm_source)
+
+                    self.kappa[i,:,:,0] = self.Kappa_fun(xlens, ylens, elp, phi, Rein, numkappa_side = self.numkappa_side, kap_side_length = 7.68, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
+                        
+                    return
+                    
+                    
     #    for i in range(batch_size):
     #        
     #        #ARCS=1
@@ -228,3 +259,4 @@ class DataGenerator(object):
     #
     #        np.random.set_state(rand_state)
     #	#return 0
+
