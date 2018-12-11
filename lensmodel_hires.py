@@ -54,7 +54,7 @@ tf.app.flags.DEFINE_integer('depth', 1,
                             """Depth of the network""")
 tf.app.flags.DEFINE_integer('batch_size', 5,
                             """Number of samples per batch.""")
-tf.app.flags.DEFINE_integer('t_max', 1,
+tf.app.flags.DEFINE_integer('t_max', 10,
                             """The number of time steps to train on. """
                             """If -1 it will be drawn randomly from a geometrix distribution.""")
 tf.app.flags.DEFINE_integer('j_min', 6,
@@ -93,15 +93,16 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = '/trained_weights/RIM_kappa/MagNet_hires_chi2.ckpt'
+    model_name = '/trained_weights/RIM_kappa/Censai_hires.ckpt'
 
     
     # DEFINE LAURENCE's stuff
-    numpix_side = 24
-    numpix_src  = 24
-    numkappa_side = 24
+    numpix_side = 192
+    numpix_src  = 192
+    numkappa_side = 192
     
-    batch_size = 1
+    batch_size = 5
+    test_batch_size = 50
     n_channel = 1
     
     Raytracer = Celi.Likelihood(numpix_side = numpix_side)
@@ -262,9 +263,16 @@ def train():
 
         # Restore session
         #saver.restore(sess,'/trained_weights/RIM_kappa/MagNet_hires_11x11_r3.ckpt')
-        min_test_cost = 2.0
+        min_test_cost = 200000.0
         # Set logs writer into folder /tmp/tensorflow_logs
 
+	    # Generate test set
+        Datagen.Xtest = np.zeros((batch_size, Datagen.numpix_side , Datagen.numpix_side,1 ))
+        Datagen.sourcetest = np.zeros((batch_size, Datagen.numpix_side , Datagen.numpix_side,1 ))
+        Datagen.kappatest = np.zeros((batch_size, Datagen.numkappa_side , Datagen.numkappa_side,1 )) 
+        
+        Datagen.sourcetest, Datagen.kappatest = Datagen.read_data_batch(Datagen.Xtest, Datagen.sourcetest, Datagen.kappatest, 'test', 'gen')
+	imgs = np.zeros((11,batch_size, Datagen.numkappa_side , Datagen.numkappa_side ))
         for epoch in range(1):
             train_cost = 0.
             train_psnr = 0.
@@ -274,9 +282,9 @@ def train():
 
             print "Iterating..."
             # Loop over all batches
-            for i in range(1):
+            for i in range(10000):
                 print i
-                Datagen.read_data_batch(Datagen.X ,Datagen.source , train_or_test, read_or_gen)
+                Datagen.read_data_batch(Datagen.X ,Datagen.source, Datagen.kappa , train_or_test, read_or_gen)
                 print 'generated data batch', i
                 #dataprocessor.load_data_batch(100000,'train')
                 
@@ -284,41 +292,42 @@ def train():
                 print Datagen.source.shape
                 print Datagen.kappa.shape
                 temp_cost, temp_psnr, summary_str,_ = sess.run([loss,psnr,merged_summary_op,minimize],   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})#psf_pl:dataprocessor.psf[0,:], is_training:True})
-                print 'DONE'
+                print 'Done training'
                 # Compute average loss
-                #train_cost += temp_cost
-                #train_psnr += temp_psnr
+                train_cost += temp_cost
+                train_psnr += temp_psnr
 
 
 
-#                if i % 100 == 0:
-#                    valid_cost = 0.
-#                    valid_psnr = 0.
+                if i % 100 == 0:
+                    valid_cost = 0.
+                    valid_psnr = 0.
 #
-#                    for j in range(10):
-#
-#                        dpm = dataprocessor.m
-#                        temp_cost, temp_psnr,imgs[1:,dpm*j:dpm*(j+1),:,:]= sess.run([loss,psnr,alltime_output], {y_:dataprocessor.Ytest[dpm*j:dpm*(j+1),:], lens_model:dataprocessor.test_lens_model[dpm*j:dpm*(j+1),:],psf_pl:dataprocessor.psf_test[dpm*j,:],is_training:False})
-#                        # Compute average loss
-#                        valid_cost += temp_cost
-#                        valid_psnr += temp_psnr
-#                        
-#                    valid_cost /= 10.
-#                    valid_psnr /= 10.
+                    for j in range(10):
+                        print j
+                        dpm = batch_size
+                        temp_cost, temp_psnr,imgs[1:,dpm*j:dpm*(j+1),:,:]= sess.run([loss,psnr,alltime_output], {Srctest: Datagen.source[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappa[dpm*j:dpm*(j+1),:],is_training:False})
+                        # Compute average loss
+                        valid_cost += temp_cost
+                        valid_psnr += temp_psnr
+                        print 'Done with this part of test'
+                        
+                    valid_cost /= 10.
+                    valid_psnr /= 10.
 #
 #                    # Display logs per epoch step
-#                    print "Epoch:", '%04d' % (epoch+1), "batch:", '%04d' % (i+1)
-#                    print "cost=", "{:.9f}".format(train_cost/(i+1))
-#                    print "psnr=", "{:.9f}".format(train_psnr/(i+1))
-#                    print "test cost=", "{:.9f}".format(valid_cost)
-#                    print "test psnr=", "{:.9f}".format(valid_psnr)
+                    print "Epoch:", '%04d' % (epoch+1), "batch:", '%04d' % (i+1)
+                    print "cost=", "{:.9f}".format(train_cost/(i+1))
+                    print "psnr=", "{:.9f}".format(train_psnr/(i+1))
+                    print "test cost=", "{:.9f}".format(valid_cost)
+                    print "test psnr=", "{:.9f}".format(valid_psnr)
 #                    
 #
 #                    # Saving Checkpoint
-#                    if valid_cost < min_test_cost:
-#                        print "Saving Checkpoint"
-                #saver.save(sess,model_name)
-#                        min_test_cost = valid_cost * 1.
+                    if valid_cost < min_test_cost:
+                        print "Saving Checkpoint"
+	                saver.save(sess,model_name)
+                        min_test_cost = valid_cost * 1.
 #
         print "Optimization Finished!"
 

@@ -93,8 +93,8 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = '/Users/llevasseur/Documents/travail/Censai/trained_weights/RIM_source/MagNet_hires_chi2.ckpt'
-
+    model_name = os.environ['CENSAI_PATH']+'/trained_weights/RIM_source/MagNet_hires_chi2_LPL.ckpt'
+    load_model_name = os.environ['CENSAI_PATH']+'/trained_weights/RIM_source/MagNet_hires_chi2.ckpt'
     
     # DEFINE LAURENCE's stuff
     numpix_side = 192
@@ -266,7 +266,7 @@ def train():
         # Keep training until reach max iterations
 
         # Restore session
-        saver.restore(sess,'/Users/llevasseur/Documents/travail/Censai/trained_weights/RIM_source/MagNet_hires_chi2.ckpt')
+        saver.restore(sess,model_name)
         min_test_cost = 2.0
         # Set logs writer into folder /tmp/tensorflow_logs
 
@@ -281,7 +281,7 @@ def train():
             # Loop over all batches
             for i in range(1):
                 #print i
-                Datagen.read_data_batch(Datagen.X ,Datagen.source , train_or_test, read_or_gen, norm_source = True)
+                Datagen.read_data_batch(Datagen.X ,Datagen.source ,Datagen.kappa, train_or_test, read_or_gen, norm_source = True)
                 print 'generated data batch', i
                 #dataprocessor.load_data_batch(100000,'train')
                 
@@ -339,7 +339,7 @@ def train():
 #                    # Saving Checkpoint
 #                    if valid_cost < min_test_cost:
 #                        print "Saving Checkpoint"
-                #saver.save(sess,model_name)
+        #    saver.save(sess,model_name)
 #                        min_test_cost = valid_cost * 1.
 #
         print "Optimization Finished!"
