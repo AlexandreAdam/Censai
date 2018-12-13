@@ -149,7 +149,7 @@ class DataGenerator(object):
 
                     kappa[i,:,:,0] = self.Kappa_fun(xlens, ylens, elp, phi, Rein, numkappa_side = self.numkappa_side, kap_side_length = 7.68, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
                     
-                    return source, kappa
+                return source, kappa
 
             else:
                 np.random.seed(None)
@@ -177,7 +177,7 @@ class DataGenerator(object):
 
                     self.kappa[i,:,:,0] = self.Kappa_fun(xlens, ylens, elp, phi, Rein, numkappa_side = self.numkappa_side, kap_side_length = 7.68, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
                         
-                    return
+                return
                     
                     
     #    for i in range(batch_size):
