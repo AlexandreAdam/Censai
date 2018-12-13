@@ -135,15 +135,15 @@ class DataGenerator(object):
                     #parameters for kappa
                     xlens = 0
                     ylens = 0
-                    elp = np.random.uniform()
+                    elp = 0.4#np.random.uniform()
                     phi = np.random.uniform(low=0.0, high=2.*np.pi)
-                    Rein = np.random.uniform(low=0.5, high = 3.)
+                    Rein = 1.2 #np.random.uniform(low=0.5, high = 3.)
 
                     #parameters for source
-                    sigma_src = np.random.uniform(low=0, high=0.5)
+                    sigma_src = 0.1 # np.random.uniform(low=0, high=0.5)
                     #np.random.normal(loc=0.0, scale = 0.01)
-                    x_src = np.random.uniform(low=-0.16, high=0.16)
-                    y_src =  np.random.uniform(low=-0.16, high=0.16)
+                    x_src = 0. #np.random.uniform(low=-0.16, high=0.16)
+                    y_src =  0. #np.random.uniform(low=-0.16, high=0.16)
 
                     source[i,:,:,0] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side, norm = norm_source)
 
@@ -162,15 +162,15 @@ class DataGenerator(object):
                     #parameters for kappa
                     xlens = 0
                     ylens = 0
-                    elp = np.random.uniform()
+                    elp = 0.4#np.random.uniform()
                     phi = np.random.uniform(low=0.0, high=2.*np.pi)
-                    Rein = np.random.uniform(low=0.5, high = 3.)
+                    Rein = 1.2 #np.random.uniform(low=0.5, high = 3.)
 
                     #parameters for source
-                    sigma_src = np.random.uniform(low=0, high=0.5)
+                    sigma_src = 0.1 # np.random.uniform(low=0, high=0.5)
                     #np.random.normal(loc=0.0, scale = 0.01)
-                    x_src = np.random.uniform(low=-0.16, high=0.16)
-                    y_src =  np.random.uniform(low=-0.16, high=0.16)
+                    x_src = 0. #np.random.uniform(low=-0.16, high=0.16)
+                    y_src =  0. #np.random.uniform(low=-0.16, high=0.16)
 
                     
                     self.source[i,:,:,0] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side, norm = norm_source)

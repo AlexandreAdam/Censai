@@ -54,7 +54,7 @@ tf.app.flags.DEFINE_integer('depth', 1,
                             """Depth of the network""")
 tf.app.flags.DEFINE_integer('batch_size', 5,
                             """Number of samples per batch.""")
-tf.app.flags.DEFINE_integer('t_max', 4,
+tf.app.flags.DEFINE_integer('t_max', 10,
                             """The number of time steps to train on. """
                             """If -1 it will be drawn randomly from a geometrix distribution.""")
 tf.app.flags.DEFINE_integer('j_min', 6,
@@ -93,7 +93,7 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa/Censai_hires_gradclip1000.ckpt'
+    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa/Censai_hires_findangle.ckpt'
 
     
     # DEFINE LAURENCE's stuff
@@ -279,7 +279,7 @@ def train():
         Datagen.kappatest = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side,n_channel  )) 
         
         Datagen.sourcetest, Datagen.kappatest = Datagen.read_data_batch(Datagen.Xtest, Datagen.sourcetest, Datagen.kappatest, 'test', 'gen')
-        imgs = np.zeros((5,test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
+        imgs = np.zeros((11,test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
         true_data = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
         pred_lens_image = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
         last_grad = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
@@ -316,12 +316,12 @@ def train():
                 valid_psnr /= 10.
                 
                 print 'saving...'
-                np.save('last_grad.npy', last_grad)
-                np.save('pred_lens_imageT8.npy', pred_lens_image)
-                np.save('true_dataT8.npy', true_data)
-                np.save('source_imageT8.npy', Datagen.sourcetest )
-                np.save('kappa_recT8.npy', imgs)
-                np.save('kappa_mapT8.npy', Datagen.kappatest)
+                np.save('last_grad_fangle.npy', last_grad)
+                np.save('pred_lens_image_fangle.npy', pred_lens_image)
+                np.save('true_data_fangle.npy', true_data)
+                np.save('source_image_fangle.npy', Datagen.sourcetest )
+                np.save('kappa_rec_fangle.npy', imgs)
+                np.save('kappa_map_fangle.npy', Datagen.kappatest)
   
 #
 #                    # Display logs per epoch step
