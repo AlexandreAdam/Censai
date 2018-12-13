@@ -54,7 +54,7 @@ tf.app.flags.DEFINE_integer('depth', 1,
                             """Depth of the network""")
 tf.app.flags.DEFINE_integer('batch_size', 5,
                             """Number of samples per batch.""")
-tf.app.flags.DEFINE_integer('t_max', 15,
+tf.app.flags.DEFINE_integer('t_max', 4,
                             """The number of time steps to train on. """
                             """If -1 it will be drawn randomly from a geometrix distribution.""")
 tf.app.flags.DEFINE_integer('j_min', 6,
@@ -93,7 +93,7 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa/Censai_hires_gradclip1000_trial2.ckpt'
+    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa/Censai_hires_gradclip1000.ckpt'
 
     
     # DEFINE LAURENCE's stuff
@@ -101,7 +101,7 @@ def train():
     numpix_src  = 48
     numkappa_side = 48
     
-    batch_size = 2
+    batch_size = 1
     test_batch_size = 10
     n_channel = 1
     
@@ -236,8 +236,11 @@ def train():
     tf.add_to_collection('psnr', psnr)
     tf.add_to_collection('psnr', psnr_x_init)
 
+    
+    final_gradient = error_grad(final_output)
+    
     ## Minimizer
-    minimize = tf.contrib.layers.optimize_loss(loss_full, global_step, FLAGS.lr, "Adam", clip_gradients=1000.0,
+    minimize = tf.contrib.layers.optimize_loss(loss_full, global_step, FLAGS.lr, "Adam", clip_gradients=5.0,
                                                learning_rate_decay_fn=lambda lr,s: tf.train.exponential_decay(lr, s,
                                                decay_steps=5000, decay_rate=0.96, staircase=True))
 
@@ -251,6 +254,10 @@ def train():
 
     # Merge all summaries to a single operator
     merged_summary_op = tf.summary.merge_all()
+    
+    # Get the predicted lensed images
+    tens = tf.constant(10.0, shape=[1,numpix_side, numpix_side,1])
+    pred_lens = Raytracer.get_lensed_image(tf.pow(tens, alltime_output[3,:]), [0.,0.], 7.68, Srctest)
 
     saver = tf.train.Saver(max_to_keep=None)
 
@@ -262,8 +269,8 @@ def train():
         # Keep training until reach max iterations
 
         # Restore session
-        #saver.restore(sess,model_name)
-        min_test_cost = 16.67
+        saver.restore(sess,model_name)
+        min_test_cost = 200000.0
         # Set logs writer into folder /tmp/tensorflow_logs
 
 	    # Generate test set
@@ -272,8 +279,11 @@ def train():
         Datagen.kappatest = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side,n_channel  )) 
         
         Datagen.sourcetest, Datagen.kappatest = Datagen.read_data_batch(Datagen.Xtest, Datagen.sourcetest, Datagen.kappatest, 'test', 'gen')
-        imgs = np.zeros((16,test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
-        for epoch in range(100000):
+        imgs = np.zeros((5,test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
+        true_data = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
+        pred_lens_image = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
+        last_grad = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
+        for epoch in range(1):
             train_cost = 0.
             train_psnr = 0.
 
@@ -282,51 +292,52 @@ def train():
 
             print "Iterating..."
             # Loop over all batches
-            for i in range(10000):
-                Datagen.read_data_batch(Datagen.X ,Datagen.source, Datagen.kappa , train_or_test, read_or_gen)
-                #print 'generated data batch', i
-                #dataprocessor.load_data_batch(100000,'train')
-                
-                # Fit training using batch data
-                #print Datagen.source.shape
-                #print Datagen.kappa.shape
-                temp_cost, temp_psnr, summary_str,_ = sess.run([loss,psnr,merged_summary_op,minimize],   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})#psf_pl:dataprocessor.psf[0,:], is_training:True})
-                print i, temp_cost
-                # Compute average loss
-                train_cost += temp_cost
-                train_psnr += temp_psnr
+            for i in range(1):
 
 
 
-                if i % 100 == 0:
-                    valid_cost = 0.
-                    valid_psnr = 0.
+                valid_cost = 0.
+                valid_psnr = 0.
 #
-                    for j in range(10):
-                        dpm = 1
-                        temp_cost, temp_psnr= sess.run([loss,psnr], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
-                        # Compute average loss
-                        valid_cost += temp_cost
-                        valid_psnr += temp_psnr
-                        print 'testcost', i, temp_cost
-                        
-                    valid_cost /= 10.
-                    valid_psnr /= 10.
+                for j in range(10):
+                    dpm = batch_size
+                    temp_cost, temp_psnr,imgs[1:,dpm*j:dpm*(j+1),:],true_data[dpm*j:dpm*(j+1),:] , pred_lens_image[dpm*j:dpm*(j+1),:], last_grad[dpm*j:dpm*(j+1),:] = sess.run([loss,psnr,alltime_output, Raytracer.trueimage, pred_lens, final_gradient], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
+                    
+                    
+                    
+                    #pred_lens = sess.run([], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
+                    
+                    # Compute average loss
+                    valid_cost += temp_cost
+                    valid_psnr += temp_psnr
+                    print 'testcost', i, temp_cost
+
+                valid_cost /= 10.
+                valid_psnr /= 10.
+                
+                print 'saving...'
+                np.save('last_grad.npy', last_grad)
+                np.save('pred_lens_imageT8.npy', pred_lens_image)
+                np.save('true_dataT8.npy', true_data)
+                np.save('source_imageT8.npy', Datagen.sourcetest )
+                np.save('kappa_recT8.npy', imgs)
+                np.save('kappa_mapT8.npy', Datagen.kappatest)
+  
 #
 #                    # Display logs per epoch step
-                    print "Epoch:", '%04d' % (epoch+1), "batch:", '%04d' % (i+1)
-                    print "cost=", "{:.9f}".format(train_cost/(i+1))
-                    print "psnr=", "{:.9f}".format(train_psnr/(i+1))
-                    print "test cost=", "{:.9f}".format(valid_cost)
-                    print "test psnr=", "{:.9f}".format(valid_psnr)
+                print "Epoch:", '%04d' % (epoch+1), "batch:", '%04d' % (i+1)
+                print "cost=", "{:.9f}".format(train_cost/(i+1))
+                print "psnr=", "{:.9f}".format(train_psnr/(i+1))
+                print "test cost=", "{:.9f}".format(valid_cost)
+                print "test psnr=", "{:.9f}".format(valid_psnr)
 #                    
 #
-#                    # Saving Checkpoint
-                    if valid_cost < min_test_cost:
-                        print "Saving Checkpoint"
-                        saver.save(sess,model_name)
-                        min_test_cost = valid_cost * 1.
-#
+##                    # Saving Checkpoint
+#                    if valid_cost < min_test_cost:
+#                        print "Saving Checkpoint"
+#                        saver.save(sess,model_name)
+#                        min_test_cost = valid_cost * 1.
+##
         print "Optimization Finished!"
 
     sess.close()
