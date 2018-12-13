@@ -54,7 +54,7 @@ tf.app.flags.DEFINE_integer('depth', 1,
                             """Depth of the network""")
 tf.app.flags.DEFINE_integer('batch_size', 5,
                             """Number of samples per batch.""")
-tf.app.flags.DEFINE_integer('t_max', 15,
+tf.app.flags.DEFINE_integer('t_max', 10,
                             """The number of time steps to train on. """
                             """If -1 it will be drawn randomly from a geometrix distribution.""")
 tf.app.flags.DEFINE_integer('j_min', 6,
@@ -93,7 +93,7 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa/Censai_hires_gradclip1000_trial2.ckpt'
+    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa/Censai_hires_findangle.ckpt'
 
     
     # DEFINE LAURENCE's stuff
@@ -262,8 +262,8 @@ def train():
         # Keep training until reach max iterations
 
         # Restore session
-        #saver.restore(sess,model_name)
-        min_test_cost = 16.67
+        saver.restore(sess,model_name)
+        min_test_cost = 9.0
         # Set logs writer into folder /tmp/tensorflow_logs
 
 	    # Generate test set
@@ -272,7 +272,7 @@ def train():
         Datagen.kappatest = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side,n_channel  )) 
         
         Datagen.sourcetest, Datagen.kappatest = Datagen.read_data_batch(Datagen.Xtest, Datagen.sourcetest, Datagen.kappatest, 'test', 'gen')
-        imgs = np.zeros((16,test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
+        imgs = np.zeros((11,test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
         for epoch in range(100000):
             train_cost = 0.
             train_psnr = 0.
