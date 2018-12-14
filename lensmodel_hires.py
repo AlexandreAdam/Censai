@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_boolean('use_prior', True,
                             """Flag whether to input the current estimate again.""")
 tf.app.flags.DEFINE_boolean('accumulate_output', True,
                             """Flag whether some teh network outputs over time.""")
-tf.app.flags.DEFINE_float('lr', 1.5e-5,
+tf.app.flags.DEFINE_float('lr', 1.0e-6,
                             """Global learning rate to use""")
 tf.app.flags.DEFINE_integer('n_pseudo', 1,
                             """How many pseudo samples should be used""")
@@ -155,17 +155,18 @@ def train():
 
     ## Define some helper functions
     def param2image(x_param):
-        x_temp = x_param #tf.nn.sigmoid(x_param)
+        tens = tf.constant(10.0)
+        x_temp = tf.pow(tens, x_param) #tf.nn.sigmoid(x_param)
         return x_temp
 
-    def image2param(x):
-        x_temp = x #tf.log(x) - tf.log(1 - x)
-        return x_temp
+#    def image2param(x):
+#        x_temp = x #tf.log(x) - tf.log(1 - x)
+#        return x_temp
 
-    def param2grad(x_param):
-        x_temp = ones_like(x_param) #tf.nn.sigmoid(x_param) * (1. - tf.nn.sigmoid(x_param))
-        return x_temp
-    
+#    def param2grad(x_param):
+#        x_temp = ones_like(x_param) #tf.nn.sigmoid(x_param) * (1. - tf.nn.sigmoid(x_param))
+#        return x_temp
+#    
     def error_grad(x_test):
         return tf.gradients(Raytracer.Loglikelihood(Srctest, param2image(x_test), [0.,0.], 7.68), x_test)[0]
     
@@ -206,7 +207,7 @@ def train():
                                                                   accumulate_output=FLAGS.accumulate_output)
 
     ## This runs the inference
-    x_init_feed = image2param(tf.maximum(tf.minimum(x_init, 1. - 1e-4), 1e-4))
+    x_init_feed = tf.maximum(tf.minimum(x_init, 1.-1e-4), 1e-4) 
     
     print x_init_feed , cell , input_func , output_func , init_func , T
     alltime_output, final_output, final_state, p_t, T_ = \
@@ -216,8 +217,8 @@ def train():
     p_t = tf.identity(p_t, 'p_t')
     T_ = tf.identity(T_, 'T_')
 
-    alltime_output = param2image(output_wrapper(alltime_output, 'mu', 4))
-    final_output = param2image(output_wrapper(final_output, 'mu'))
+    alltime_output = output_wrapper(alltime_output, 'mu', 4)
+    final_output = output_wrapper(final_output, 'mu')
 
     alltime_output = tf.identity(alltime_output,name='alltime_output')
     final_output = tf.identity(final_output, name='final_output')
@@ -237,7 +238,7 @@ def train():
     tf.add_to_collection('psnr', psnr_x_init)
 
     ## Minimizer
-    minimize = tf.contrib.layers.optimize_loss(loss_full, global_step, FLAGS.lr, "Adam", clip_gradients=10.0,
+    minimize = tf.contrib.layers.optimize_loss(loss_full, global_step, FLAGS.lr, "Adam", clip_gradients=100.0,
                                                learning_rate_decay_fn=lambda lr,s: tf.train.exponential_decay(lr, s,
                                                decay_steps=5000, decay_rate=0.96, staircase=True))
 
@@ -263,7 +264,7 @@ def train():
 
         # Restore session
         saver.restore(sess,model_name)
-        min_test_cost = 40.0
+        min_test_cost = 5.0
         # Set logs writer into folder /tmp/tensorflow_logs
 
 	    # Generate test set
