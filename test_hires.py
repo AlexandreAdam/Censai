@@ -154,18 +154,19 @@ def train():
     T = tf.constant(FLAGS.t_max, dtype=tf.int32, name='T')
 
     ## Define some helper functions
-    def param2image(x_param):
-        x_temp = x_param #tf.nn.sigmoid(x_param)
+     def param2image(x_param):
+        tens = tf.constant(10.0)
+        x_temp = tf.pow(tens, x_param) #tf.nn.sigmoid(x_param)
         return x_temp
 
-    def image2param(x):
-        x_temp = x #tf.log(x) - tf.log(1 - x)
-        return x_temp
+#    def image2param(x):
+#        x_temp = x #tf.log(x) - tf.log(1 - x)
+#        return x_temp
 
-    def param2grad(x_param):
-        x_temp = ones_like(x_param) #tf.nn.sigmoid(x_param) * (1. - tf.nn.sigmoid(x_param))
-        return x_temp
-    
+#    def param2grad(x_param):
+#        x_temp = ones_like(x_param) #tf.nn.sigmoid(x_param) * (1. - tf.nn.sigmoid(x_param))
+#        return x_temp
+#     
     def error_grad(x_test):
         return tf.gradients(Raytracer.Loglikelihood(Srctest, param2image(x_test), [0.,0.], 7.68), x_test)[0]
     
@@ -206,7 +207,7 @@ def train():
                                                                   accumulate_output=FLAGS.accumulate_output)
 
     ## This runs the inference
-    x_init_feed = image2param(tf.maximum(tf.minimum(x_init, 1. - 1e-4), 1e-4))
+    x_init_feed = tf.maximum(tf.minimum(x_init, 1.-1e-4), 1e-4) 
     
     print x_init_feed , cell , input_func , output_func , init_func , T
     alltime_output, final_output, final_state, p_t, T_ = \
@@ -216,8 +217,8 @@ def train():
     p_t = tf.identity(p_t, 'p_t')
     T_ = tf.identity(T_, 'T_')
 
-    alltime_output = param2image(output_wrapper(alltime_output, 'mu', 4))
-    final_output = param2image(output_wrapper(final_output, 'mu'))
+    alltime_output = output_wrapper(alltime_output, 'mu', 4)
+    final_output = output_wrapper(final_output, 'mu')
 
     alltime_output = tf.identity(alltime_output,name='alltime_output')
     final_output = tf.identity(final_output, name='final_output')
