@@ -237,7 +237,7 @@ def train():
     tf.add_to_collection('psnr', psnr_x_init)
 
     ## Minimizer
-    minimize = tf.contrib.layers.optimize_loss(loss_full, global_step, FLAGS.lr, "Adam", clip_gradients=1000.0,
+    minimize = tf.contrib.layers.optimize_loss(loss_full, global_step, FLAGS.lr, "Adam", clip_gradients=10.0,
                                                learning_rate_decay_fn=lambda lr,s: tf.train.exponential_decay(lr, s,
                                                decay_steps=5000, decay_rate=0.96, staircase=True))
 
@@ -263,7 +263,7 @@ def train():
 
         # Restore session
         saver.restore(sess,model_name)
-        min_test_cost = 9.0
+        min_test_cost = 40.0
         # Set logs writer into folder /tmp/tensorflow_logs
 
 	    # Generate test set

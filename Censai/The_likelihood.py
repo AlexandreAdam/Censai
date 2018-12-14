@@ -171,9 +171,11 @@ class Likelihood(object):
         Computes the likelihood of observing an image (img), given a model image for the src
         (src).  Computes the raytracing over multiple images in a vectorized way.  
         '''
+        tens = tf.constant(10.0)
+        x_kappa_r = tf.pow(tens, Kappa)
 
-        img_pred = self.get_lensed_image(Kappa, kap_cent, kap_side, src,noisy=noisy, max_noise_rms=max_noise_rms)
-        
+        img_pred = self.get_lensed_image(x_kappa_r, kap_cent, kap_side, src,noisy=noisy, max_noise_rms=max_noise_rms)
+        tf.add_to_collection('mykappa', kap_cent)
         #xsrc , ysrc = self.raytrace2()
 
         #xsrc = tf.reshape(xsrc,[-1])
