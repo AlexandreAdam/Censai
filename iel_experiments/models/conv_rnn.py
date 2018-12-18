@@ -4,30 +4,36 @@ from tensorflow.contrib.layers import l2_regularizer
 
 def gru(k_size=3, features=[64], is_training=True):
 
-    linear_func, linear_pool, linear_unpool, normalizer, output_func = _make_network(k_size, is_training)
+    linear_func1, linear_pool1, linear_unpool1, normalizer1, output_func1 = _make_network(k_size, is_training)
+    linear_func2, linear_pool2, linear_unpool2, normalizer2, output_func2 = _make_network(k_size, is_training)
 
-
-    cell = MultiRNNCellFlex([EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func, inner_function=linear_func),
-                                                  linear_pool, n_features, normalizer) for n_features in features]
-                            + [EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func, inner_function=linear_func),
-                                                    linear_unpool, n_features, normalizer) for n_features in features]
+    cell1 = MultiRNNCellFlex([EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func1, inner_function=linear_func1),
+                                                  linear_pool1, n_features, normalizer1) for n_features in features]
+                            + [EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func1, inner_function=linear_func1),
+                                                    linear_unpool1, n_features, normalizer1) for n_features in features]
                             , state_is_tuple=True)
 
-    return cell, output_func
-
-def relu(k_size=3, features=[64], is_training=True):
-
-    linear_func, linear_pool, linear_unpool, normalizer, output_func = _make_network(k_size, is_training)
-
-    cell = MultiRNNCellFlex([EmbeddingWrapperFlex(FakeRNNCellFlex(4*n_features, tensor_rank=4, function=linear_func,
-                                                                  activation=tf.nn.relu),
-                                                  linear_pool, n_features, normalizer) for n_features in features]
-                            + [EmbeddingWrapperFlex(FakeRNNCellFlex(4*n_features, tensor_rank=4, function=linear_func,
-                                                                    activation=tf.nn.relu),
-                                                    linear_unpool, n_features, normalizer) for n_features in features]
+    cell2 = MultiRNNCellFlex([EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func2, inner_function=linear_func2),
+                                                  linear_pool2, n_features, normalizer2) for n_features in features]
+                            + [EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func2, inner_function=linear_func2),
+                                                    linear_unpool2, n_features, normalizer2) for n_features in features]
                             , state_is_tuple=True)
 
-    return cell, output_func
+    return [cell1 , cell2], [output_func1,output_func2]
+
+# def relu(k_size=3, features=[64], is_training=True):
+#
+#     linear_func, linear_pool, linear_unpool, normalizer, output_func = _make_network(k_size, is_training)
+#
+#     cell = MultiRNNCellFlex([EmbeddingWrapperFlex(FakeRNNCellFlex(4*n_features, tensor_rank=4, function=linear_func,
+#                                                                   activation=tf.nn.relu),
+#                                                   linear_pool, n_features, normalizer) for n_features in features]
+#                             + [EmbeddingWrapperFlex(FakeRNNCellFlex(4*n_features, tensor_rank=4, function=linear_func,
+#                                                                     activation=tf.nn.relu),
+#                                                     linear_unpool, n_features, normalizer) for n_features in features]
+#                             , state_is_tuple=True)
+#
+#     return cell, output_func
 
 
 def _make_network(k_size, is_training):

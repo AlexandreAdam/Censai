@@ -8,9 +8,9 @@ class LoopFunction(object):
     self.output_function = output_function
     self.stopping_function = stopping_function
 
-  def __call__(self, time, cell, old_input, old_output, old_state):
+  def __call__(self, time, cell, old_input, old_output, old_state, other_output):
 
-    new_input = self.input_function(old_input, old_output)
+    new_input = self.input_function(old_input, old_output , other_output)
     cell_output, new_state = cell(new_input, old_state)
     new_output = self.output_function(cell_output, old_output)
     next_finished = self.stopping_function(time, old_output, new_output)
@@ -65,8 +65,6 @@ class OutputFunction(object):
   def __call__(self, x_new, x_old=None):
     x_out = self.func(x_new)
     if self.accum:
-      print "xold is " , x_old
-      print "xout is " , x_out
       x_out = x_old + x_out
 
     return x_out
@@ -87,15 +85,16 @@ class InputFunction(object):
     self.input_funcs = [tf.make_template('input_fun_'+str(i), f) for i, f in enumerate(input_funcs)]
     self.output_funcs = [tf.make_template('output_fun_'+str(i), f) for i, f in enumerate(output_funcs)]
 
-  def __call__(self, old_input, old_output):
+  def __call__(self, old_input, old_output, other_output):
     input_list = []
     sliced_input = multi_slice(self.slice_dim, self.input_slices, old_input)
-    for x, f in zip(sliced_input, self.input_funcs):
+    for x , f in zip(sliced_input, self.input_funcs):
       input_list.append(f(x))
 
     sliced_output = multi_slice(self.slice_dim, self.output_slices, old_output)
-    for x, f in zip(sliced_output, self.output_funcs):
-      input_list.append(f(x))
+    sliced_other = multi_slice(self.slice_dim, self.output_slices, other_output)
+    for x, y , f in zip(sliced_output, sliced_other , self.output_funcs):
+      input_list.append(f(x,y))
 
     return tf.concat( input_list,self.slice_dim)
 

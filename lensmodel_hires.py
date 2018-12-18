@@ -18,7 +18,7 @@ import iterative_inference_learning.layers.iterative_estimation as iterative_est
 import iterative_inference_learning.layers.loopfun as loopfun
 #import iel_experiments.data.bsds300 as bsds
 #from iel_experiments.data.data_helpers import get_image_patches, make_batches
-from iel_experiments.models import superres_rnn, decorate_rnn,conv_rnn
+from iel_experiments.models import decorate_rnn,conv_rnn
 #from iel_experiments.utils.corruption_operators import MatlabBicubicDownsampling
 
 import Censai as Celi
@@ -182,9 +182,6 @@ def train():
     if FLAGS.use_rnn:
         print "Using RNN"
         cell, output_func = conv_rnn.gru(FLAGS.k_size, [FLAGS.features]*FLAGS.depth, is_training=is_training)
-    else:
-        print "Using Relu network"
-        cell, output_func = conv_rnn.relu(FLAGS.k_size, [FLAGS.features]*FLAGS.depth, is_training=is_training)
 
 
     ## Defines how the output dimensions are handled
@@ -209,9 +206,10 @@ def train():
     ## This runs the inference
     x_init_feed = tf.maximum(tf.minimum(x_init, 1.-1e-4), 1e-4) 
     
+    
     print x_init_feed , cell , input_func , output_func , init_func , T
-    alltime_output, final_output, final_state, p_t, T_ = \
-        iterative_estimation.function(x_init_feed, cell, input_func, output_func, init_func, T=T)
+    alltime_output1, alltime_output2, final_output1, final_output2, final_state1, final_state2, p_t, T_ = \
+        iterative_estimation.function(x_init_feed1,x_init_feed2, cell1, cell2, input_func1, input_func2, output_func1, output_func2, init_func1, init_func2, T=T)
 
     final_state = tf.identity(final_state, name='final_state')
     p_t = tf.identity(p_t, 'p_t')
@@ -258,12 +256,12 @@ def train():
     # Launch the graph
     with tf.Session() as sess:
 
-
+        #writer = tf.summary.FileWriter("log/", sess.graph)
         sess.run(init_op)
         # Keep training until reach max iterations
 
         # Restore session
-        saver.restore(sess,model_name)
+        # saver.restore(sess,model_name)
         min_test_cost = 5.0
         # Set logs writer into folder /tmp/tensorflow_logs
 
@@ -274,7 +272,7 @@ def train():
         
         Datagen.sourcetest, Datagen.kappatest = Datagen.read_data_batch(Datagen.Xtest, Datagen.sourcetest, Datagen.kappatest, 'test', 'gen')
         imgs = np.zeros((11,test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
-        for epoch in range(100000):
+        for epoch in range(1):
             train_cost = 0.
             train_psnr = 0.
 
@@ -283,7 +281,7 @@ def train():
 
             print "Iterating..."
             # Loop over all batches
-            for i in range(10000):
+            for i in range(1):
                 Datagen.read_data_batch(Datagen.X ,Datagen.source, Datagen.kappa , train_or_test, read_or_gen)
                 #print 'generated data batch', i
                 #dataprocessor.load_data_batch(100000,'train')
@@ -299,44 +297,44 @@ def train():
 
 
 
-                if i % 100 == 0:
-                    valid_cost = 0.
-                    valid_psnr = 0.
+#                 if i % 100 == 0:
+#                     valid_cost = 0.
+#                     valid_psnr = 0.
+# #
+#                     for j in range(10):
+#                         dpm = 1
+#                         temp_cost, temp_psnr= sess.run([loss,psnr], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
+#                         # Compute average loss
+#                         valid_cost += temp_cost
+#                         valid_psnr += temp_psnr
+#                         print 'testcost', i, temp_cost
 #
-                    for j in range(10):
-                        dpm = 1
-                        temp_cost, temp_psnr= sess.run([loss,psnr], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
-                        # Compute average loss
-                        valid_cost += temp_cost
-                        valid_psnr += temp_psnr
-                        print 'testcost', i, temp_cost
-                        
-                    valid_cost /= 10.
-                    valid_psnr /= 10.
-#
-#                    # Display logs per epoch step
-                    print "Epoch:", '%04d' % (epoch+1), "batch:", '%04d' % (i+1)
-                    print "cost=", "{:.9f}".format(train_cost/(i+1))
-                    print "psnr=", "{:.9f}".format(train_psnr/(i+1))
-                    print "test cost=", "{:.9f}".format(valid_cost)
-                    print "test psnr=", "{:.9f}".format(valid_psnr)
+#                     valid_cost /= 10.
+#                     valid_psnr /= 10.
+# #
+# #                    # Display logs per epoch step
+#                     print "Epoch:", '%04d' % (epoch+1), "batch:", '%04d' % (i+1)
+#                     print "cost=", "{:.9f}".format(train_cost/(i+1))
+#                     print "psnr=", "{:.9f}".format(train_psnr/(i+1))
+#                     print "test cost=", "{:.9f}".format(valid_cost)
+#                     print "test psnr=", "{:.9f}".format(valid_psnr)
 #                    
 #
 #                    # Saving Checkpoint
-                    if valid_cost < min_test_cost:
-                        print "Saving Checkpoint"
-                        saver.save(sess,model_name)
-                        min_test_cost = valid_cost * 1.
+                    # if valid_cost < min_test_cost:
+                    #     print "Saving Checkpoint"
+                    #     saver.save(sess,model_name)
+                    #     min_test_cost = valid_cost * 1.
 #
         print "Optimization Finished!"
 
     sess.close()
 
-def main(argv=None):  # pylint: disable=unused-argument
-    FLAGS.train_dir = path.expanduser(FLAGS.train_dir)
-    tf.gfile.MakeDirs(FLAGS.train_dir)
-    train()
+# def main(argv=None):  # pylint: disable=unused-argument
+FLAGS.train_dir = path.expanduser(FLAGS.train_dir)
+tf.gfile.MakeDirs(FLAGS.train_dir)
+train()
 
 
-if __name__ == '__main__':
-    tf.app.run()
+# if __name__ == '__main__':
+#     tf.app.run()
