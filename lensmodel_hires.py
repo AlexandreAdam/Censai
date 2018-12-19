@@ -13,6 +13,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import control_flow_ops
+from tensorflow.contrib import rnn as rnn_cell
 
 import iterative_inference_learning.layers.iterative_estimation as iterative_estimation
 import iterative_inference_learning.layers.loopfun as loopfun
@@ -124,9 +125,12 @@ def train():
 
 
 
-    y_image = my_tf_log10(Kappatest)
-    y_ = tf.reshape(y_image, [-1,Datagen.numkappa_side**2])
-    x_init = tf.zeros_like(y_image)
+    y_image1 = my_tf_log10(Kappatest)
+    y_image2 = my_tf_log10(Kappatest)
+    y_1 = tf.reshape(y_image1, [-1,Datagen.numkappa_side**2])
+    y_2 = tf.reshape(y_image2, [-1,Datagen.numkappa_side**2])
+    x_init1 = tf.zeros_like(y_image1)
+    x_init2 = tf.zeros_like(y_image2)
 
     Raytracer.trueimage = Raytracer.get_lensed_image(Kappatest,[0.,0.], 7.68, Srctest)
     x_image = Raytracer.trueimage
@@ -167,22 +171,26 @@ def train():
 #        x_temp = ones_like(x_param) #tf.nn.sigmoid(x_param) * (1. - tf.nn.sigmoid(x_param))
 #        return x_temp
 #    
-    def error_grad(x_test):
-        return tf.gradients(Raytracer.Loglikelihood(Srctest, param2image(x_test), [0.,0.], 7.68), x_test)[0]
+    def error_grad1(x_test1 , the_other):
+        return tf.gradients(Raytracer.Loglikelihood(Srctest, param2image(x_test1), [0.,0.], 7.68), x_test1)[0]
+
+    def redundant_identity(x_test1 , the_other):
+        return tf.identity(x_test1)
     
-    def lossfun(x_est,expand_dim=False):
-        temp_data = y_image
+    def lossfun(x_est1,x_est2,expand_dim=False):
+        temp_data1 = y_image1
+        temp_data2 = y_image2
         if expand_dim:
-            temp_data = tf.expand_dims(temp_data,0)
-        return tf.reduce_sum(0.5 * tf.square(x_est - temp_data) , [-3,-2,-1] )
+            temp_data1 = tf.expand_dims(temp_data1,0)
+            temp_data2 = tf.expand_dims(temp_data2,0)
+        return tf.reduce_sum(0.5 * tf.square(x_est1 - temp_data1) , [-3,-2,-1] ) + tf.reduce_sum(0.5 * tf.square(x_est2 - temp_data2) , [-3,-2,-1] )
     ## End helper functions
 
 
     ## Setup RNN
     if FLAGS.use_rnn:
         print "Using RNN"
-        cell, output_func = conv_rnn.gru(FLAGS.k_size, [FLAGS.features]*FLAGS.depth, is_training=is_training)
-
+        cell1, cell2 , output_func1 , output_func2 = conv_rnn.gru(FLAGS.k_size, [FLAGS.features]*FLAGS.depth, is_training=is_training)
 
     ## Defines how the output dimensions are handled
     output_shape_dict = {'mu':n_channel}
@@ -191,47 +199,64 @@ def train():
 
     output_transform_dict = {}
     if FLAGS.use_prior:
-        output_transform_dict.update({'all':[tf.identity]})
+        output_transform_dict.update({'all':[redundant_identity]})
 
     if FLAGS.use_grad:
-        output_transform_dict.update({'mu': [error_grad]})
+        output_transform_dict.update({'mu': [error_grad1]})
         if FLAGS.n_pseudo > 0:
-            output_transform_dict.update({'pseudo':[loopfun.ApplySplitFunction(error_grad, 4 - 1, FLAGS.n_pseudo)]})
+            output_transform_dict.update({'pseudo':[loopfun.ApplySplitFunction(error_grad1, 4 - 1, FLAGS.n_pseudo)]})
 
-    input_func, output_func, init_func, output_wrapper = decorate_rnn.init(rank=4, output_shape_dict=output_shape_dict,
+    
+    input_func1, output_func1, init_func1, output_wrapper1 = decorate_rnn.init(rank=4, output_shape_dict=output_shape_dict,
                                                                   output_transform_dict=output_transform_dict,
-                                                                  init_name='mu', ofunc = output_func,
+                                                                  init_name='mu', ofunc = output_func1,
+                                                                  accumulate_output=FLAGS.accumulate_output)
+    
+    input_func2, output_func2, init_func2, output_wrapper2 = decorate_rnn.init(rank=4, output_shape_dict=output_shape_dict,
+                                                                  output_transform_dict=output_transform_dict,
+                                                                  init_name='mu', ofunc = output_func2,
                                                                   accumulate_output=FLAGS.accumulate_output)
 
     ## This runs the inference
-    x_init_feed = tf.maximum(tf.minimum(x_init, 1.-1e-4), 1e-4) 
+    x_init_feed1 = tf.maximum(tf.minimum(x_init1, 1.-1e-4), 1e-4) 
+    x_init_feed2 = tf.maximum(tf.minimum(x_init2, 1.-1e-4), 1e-4) 
     
     
-    print x_init_feed , cell , input_func , output_func , init_func , T
+    #print x_init_feed , cell , input_func , output_func , init_func , T
+
     alltime_output1, alltime_output2, final_output1, final_output2, final_state1, final_state2, p_t, T_ = \
         iterative_estimation.function(x_init_feed1,x_init_feed2, cell1, cell2, input_func1, input_func2, output_func1, output_func2, init_func1, init_func2, T=T)
 
-    final_state = tf.identity(final_state, name='final_state')
+    return
+    
+    final_state1 = tf.identity(final_state1, name='final_state1')
+    final_state2 = tf.identity(final_state2, name='final_state2')
     p_t = tf.identity(p_t, 'p_t')
     T_ = tf.identity(T_, 'T_')
 
-    alltime_output = output_wrapper(alltime_output, 'mu', 4)
-    final_output = output_wrapper(final_output, 'mu')
+    alltime_output1 = output_wrapper1(alltime_output1, 'mu', 4)
+    alltime_output2 = output_wrapper1(alltime_output2, 'mu', 4)
+    final_output1 = output_wrapper2(final_output1, 'mu')
+    final_output2 = output_wrapper2(final_output2, 'mu')
 
-    alltime_output = tf.identity(alltime_output,name='alltime_output')
-    final_output = tf.identity(final_output, name='final_output')
+    alltime_output1 = tf.identity(alltime_output1,name='alltime_output1')
+    alltime_output2 = tf.identity(alltime_output2,name='alltime_output2')
+    final_output1 = tf.identity(final_output1, name='final_output1')
+    final_output2 = tf.identity(final_output2, name='final_output2')
     
-    tf.add_to_collection('output', alltime_output)
-    tf.add_to_collection('output', final_output)
+    tf.add_to_collection('output1', alltime_output1)
+    tf.add_to_collection('output1', final_output1)
+    tf.add_to_collection('output2', alltime_output2)
+    tf.add_to_collection('output2', final_output2)
 
     ## Define loss functions
-    loss_full = tf.reduce_sum(tf.reduce_mean(p_t * lossfun(alltime_output, True), reduction_indices=[1]))
-    loss = tf.reduce_mean(lossfun(final_output))
+    loss_full = tf.reduce_sum(tf.reduce_mean(p_t * lossfun(alltime_output1,alltime_output2, True), reduction_indices=[1]))
+    loss = tf.reduce_mean(lossfun(final_output1,final_output2))
     tf.add_to_collection('losses', loss_full)
     tf.add_to_collection('losses', loss)
 
-    psnr = tf.reduce_mean(get_psnr(final_output, y_image))
-    psnr_x_init = tf.reduce_mean(get_psnr(x_init, y_image))
+    psnr = tf.reduce_mean(get_psnr(final_output1, y_image1))
+    psnr_x_init = tf.reduce_mean(get_psnr(x_init1, y_image1))
     tf.add_to_collection('psnr', psnr)
     tf.add_to_collection('psnr', psnr_x_init)
 

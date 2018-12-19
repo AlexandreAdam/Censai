@@ -37,11 +37,12 @@ class ApplySplitFunction(object):
     self.split_dim = split_dim
     self.num_splits = num_splits
 
-  def __call__(self, x):
-    print self.split_dim , self.num_splits , x
+  def __call__(self, x , y):
+    print('called ApplySplitFunction')
+    print self.split_dim , self.num_splits , x , y
     #x_split = tf.split(self.split_dim, self.num_splits, x)
     x_split = tf.split(x, self.num_splits,self.split_dim)
-    x_out = [self.func(x_) for x_ in x_split]
+    x_out = [self.func(x_ , y) for x_ in x_split]
     x_concat = tf.concat(x_out,self.split_dim)
 
     return x_concat
@@ -51,8 +52,8 @@ class ApplyMultFunction(object):
     self.funcs = funcs
     self.concat_dim = concat_dim
 
-  def __call__(self, x):
-    x_out = [f_(x) for f_ in self.funcs]
+  def __call__(self, x,y):
+    x_out = [f_(x,y) for f_ in self.funcs]
     x_concat = tf.concat(x_out,self.concat_dim)
 
     return x_concat
@@ -91,6 +92,9 @@ class InputFunction(object):
     for x , f in zip(sliced_input, self.input_funcs):
       input_list.append(f(x))
 
+    print('HERE !!!!')
+    print(old_output.shape)
+    print(other_output.shape)
     sliced_output = multi_slice(self.slice_dim, self.output_slices, old_output)
     sliced_other = multi_slice(self.slice_dim, self.output_slices, other_output)
     for x, y , f in zip(sliced_output, sliced_other , self.output_funcs):
