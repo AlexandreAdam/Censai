@@ -8,15 +8,16 @@ def function(x_init1, x_init2, cell1, cell2, input_func1, input_func2, output_fu
 
     input_shape1 = tf.shape(x_init1)
     input_shape2 = tf.shape(x_init2)
-    batch_size, sx, sy = input_shape[0], input_shape[1], input_shape[2]
+    batch_size1, sx1, sy1 = input_shape1[0], input_shape1[1], input_shape1[2]
+    batch_size2, sx2, sy2 = input_shape2[0], input_shape2[1], input_shape2[2]
 
     # Sample T if necessary
     t = tf.cond(T < 0, lambda: _sample_T(p_prior, t_max), lambda: T)
     # Set the max time for loopfun
-    max_time = tf.ones([batch_size], dtype=tf.int32) * t
+    max_time = tf.ones([batch_size1], dtype=tf.int32) * t
     # Get prior probabilities
-    p_t = tf.cond(T < 0, lambda: _get_p_t_given_T(p_prior, t, batch_size),
-                         lambda: tf.ones([T,batch_size]) / tf.to_float(T))
+    p_t = tf.cond(T < 0, lambda: _get_p_t_given_T(p_prior, t, batch_size1),
+                         lambda: tf.ones([T,batch_size1]) / tf.to_float(T))
 
     # This function returns a bool whether max time has been reached
     stopping_func = loopfun.StoppingFunction(max_time)
@@ -24,7 +25,10 @@ def function(x_init1, x_init2, cell1, cell2, input_func1, input_func2, output_fu
     loop_fn2 = loopfun.LoopFunction(input_func2, output_func2, stopping_func)
 
      # Iterate with the RNN
-    outputs_ta1, outputs_ta2 , final_state1 , final_state2 = flex_rnn(cell1, cell2 , loop_fn1, loop_fn2, init_func1(x_init1, input_shape1, stopping_func), init_func2(x_init2, input_shape2, stopping_func), swap_memory=False)
+    ap_init_fn1 = init_func1(x_init1, x_init2, input_shape1, input_shape2 , stopping_func)
+    ap_init_fn2 = init_func2(x_init2, x_init1 ,input_shape2, input_shape1 , stopping_func)
+    outputs_ta1, outputs_ta2 , final_state1 , final_state2 = flex_rnn(cell1, cell2 , loop_fn1, loop_fn2, ap_init_fn1, ap_init_fn2 , swap_memory=False)
+    return 1, 1, 1, 1, 1, 1, 1, 1
 
     # Turn TensorArray into tensor
     alltime_output1 = tf.TensorArray.stack(outputs_ta1)

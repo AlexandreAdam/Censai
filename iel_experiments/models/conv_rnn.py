@@ -19,7 +19,7 @@ def gru(k_size=3, features=[64], is_training=True):
                                                     linear_unpool2, n_features, normalizer2) for n_features in features]
                             , state_is_tuple=True)
 
-    return [cell1 , cell2], [output_func1,output_func2]
+    return cell1 , cell2 , output_func1 , output_func2
 
 # def relu(k_size=3, features=[64], is_training=True):
 #

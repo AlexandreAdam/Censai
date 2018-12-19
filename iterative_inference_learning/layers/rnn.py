@@ -62,9 +62,10 @@ def flex_rnn(cell1, cell2, loop_fn1, loop_fn2, init_fn1=None, init_fn2=None, dty
 
     # Perform first time step
     time = constant_op.constant(0, dtype=dtypes.int32)
+    return 1, 1, 1, 1
     (elements_finished1, new_input1, current_output1, current_state1) = init_fn1(time, cell1)
     (elements_finished2, new_input2, current_output2, current_state2) = init_fn2(time, cell2)
-
+    return 1, 1, 1, 1
     # Gather some information about the RNN Output
     flat_output_structure1 = nest.flatten(current_output1)
     flat_output_dtypes1 = [emit.dtype for emit in flat_output_structure1]
