@@ -1,18 +1,21 @@
 import tensorflow as tf
 from iterative_inference_learning.layers.rnn_cell import GRUCellFlex, MultiRNNCellFlex, EmbeddingWrapperFlex, FakeRNNCellFlex
 from tensorflow.contrib.layers import l2_regularizer
+from tensorflow.python.ops import variable_scope as vs
 
 def gru(k_size=3, features=[64], is_training=True):
 
-    linear_func1, linear_pool1, linear_unpool1, normalizer1, output_func1 = _make_network(k_size, is_training)
-    linear_func2, linear_pool2, linear_unpool2, normalizer2, output_func2 = _make_network(k_size, is_training)
+    
+    
 
+    linear_func1, linear_pool1, linear_unpool1, normalizer1, output_func1 = _make_network(k_size, is_training)
     cell1 = MultiRNNCellFlex([EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func1, inner_function=linear_func1),
                                                   linear_pool1, n_features, normalizer1) for n_features in features]
                             + [EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func1, inner_function=linear_func1),
                                                     linear_unpool1, n_features, normalizer1) for n_features in features]
                             , state_is_tuple=True)
 
+    linear_func2, linear_pool2, linear_unpool2, normalizer2, output_func2 = _make_network(k_size, is_training)
     cell2 = MultiRNNCellFlex([EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func2, inner_function=linear_func2),
                                                   linear_pool2, n_features, normalizer2) for n_features in features]
                             + [EmbeddingWrapperFlex(GRUCellFlex(4*n_features, tensor_rank=4, function=linear_func2, inner_function=linear_func2),

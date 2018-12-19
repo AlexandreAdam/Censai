@@ -21,14 +21,14 @@ def init(rank, output_shape_dict, output_transform_dict, init_name, ofunc = None
 
     # initialisation function which produces the initial input and state
     def init_func(x_init, x_init_other, input_shape1, input_shape2, stopping_func):
-        def init_fn(time, cell):
+        def init_fn(time, cell , scope=None):
           new_output = tf.zeros(tf.unstack(input_shape1[:split_dim]) + [ospecs.num_dim])
           new_output = ospecs.insert(new_output, init_name, x_init)
           
           new_other = tf.zeros(tf.unstack(input_shape2[:split_dim]) + [ospecs.num_dim])
           new_other = ospecs.insert(new_other, init_name, x_init_other)
           new_input = input_func(x_init, new_output, new_other)
-          _, new_state = cell.init_call(new_input)
+          _, new_state = cell.init_call(new_input , scope=scope)
           elements_finished = stopping_func(time)
 
           return (elements_finished, new_input, new_output, new_state)

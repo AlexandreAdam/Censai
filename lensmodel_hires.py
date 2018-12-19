@@ -227,7 +227,6 @@ def train():
     alltime_output1, alltime_output2, final_output1, final_output2, final_state1, final_state2, p_t, T_ = \
         iterative_estimation.function(x_init_feed1,x_init_feed2, cell1, cell2, input_func1, input_func2, output_func1, output_func2, init_func1, init_func2, T=T)
 
-    return
     
     final_state1 = tf.identity(final_state1, name='final_state1')
     final_state2 = tf.identity(final_state2, name='final_state2')
