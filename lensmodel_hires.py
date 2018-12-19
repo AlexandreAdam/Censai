@@ -174,6 +174,9 @@ def train():
     def error_grad1(x_test1 , the_other):
         return tf.gradients(Raytracer.Loglikelihood(Srctest, param2image(x_test1), [0.,0.], 7.68), x_test1)[0]
 
+    def error_grad2(x_test1 , the_other):
+        return tf.gradients(Raytracer.Loglikelihood(Srctest, param2image(x_test1), [0.,0.], 7.68), x_test1)[0]
+
     def redundant_identity(x_test1 , the_other):
         return tf.identity(x_test1)
     
@@ -197,23 +200,27 @@ def train():
     if FLAGS.n_pseudo > 0:
         output_shape_dict.update({'pseudo': n_channel*FLAGS.n_pseudo})
 
-    output_transform_dict = {}
+    output_transform_dict_1 = {}
+    output_transform_dict_2 = {}
     if FLAGS.use_prior:
-        output_transform_dict.update({'all':[redundant_identity]})
+        output_transform_dict_1.update({'all':[redundant_identity]})
+        output_transform_dict_2.update({'all':[redundant_identity]})
 
     if FLAGS.use_grad:
-        output_transform_dict.update({'mu': [error_grad1]})
+        output_transform_dict_1.update({'mu': [error_grad1]})
+        output_transform_dict_2.update({'mu': [error_grad2]})
         if FLAGS.n_pseudo > 0:
-            output_transform_dict.update({'pseudo':[loopfun.ApplySplitFunction(error_grad1, 4 - 1, FLAGS.n_pseudo)]})
+            output_transform_dict_1.update({'pseudo':[loopfun.ApplySplitFunction(error_grad1, 4 - 1, FLAGS.n_pseudo)]})
+            output_transform_dict_2.update({'pseudo':[loopfun.ApplySplitFunction(error_grad2, 4 - 1, FLAGS.n_pseudo)]})
 
     
     input_func1, output_func1, init_func1, output_wrapper1 = decorate_rnn.init(rank=4, output_shape_dict=output_shape_dict,
-                                                                  output_transform_dict=output_transform_dict,
+                                                                  output_transform_dict=output_transform_dict_1,
                                                                   init_name='mu', ofunc = output_func1,
                                                                   accumulate_output=FLAGS.accumulate_output)
     
     input_func2, output_func2, init_func2, output_wrapper2 = decorate_rnn.init(rank=4, output_shape_dict=output_shape_dict,
-                                                                  output_transform_dict=output_transform_dict,
+                                                                  output_transform_dict=output_transform_dict_2,
                                                                   init_name='mu', ofunc = output_func2,
                                                                   accumulate_output=FLAGS.accumulate_output)
 
