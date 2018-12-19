@@ -28,7 +28,7 @@ def function(x_init1, x_init2, cell1, cell2, input_func1, input_func2, output_fu
     ap_init_fn1 = init_func1(x_init1, x_init2, input_shape1, input_shape2 , stopping_func)
     ap_init_fn2 = init_func2(x_init2, x_init1 ,input_shape2, input_shape1 , stopping_func)
     outputs_ta1, outputs_ta2 , final_state1 , final_state2 = flex_rnn(cell1, cell2 , loop_fn1, loop_fn2, ap_init_fn1, ap_init_fn2 , swap_memory=False)
-    return 1, 1, 1, 1, 1, 1, 1, 1
+    
 
     # Turn TensorArray into tensor
     alltime_output1 = tf.TensorArray.stack(outputs_ta1)
