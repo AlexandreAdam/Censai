@@ -126,9 +126,9 @@ def train():
 
 
     y_image1 = tf.identity(my_tf_log10(Kappatest))
-    y_image2 = tf.identity(my_tf_log10(Kappatest))
+    y_image2 = tf.identity(Srctest)
     y_1 = tf.reshape(y_image1, [-1,Datagen.numkappa_side**2])
-    y_2 = tf.reshape(y_image2, [-1,Datagen.numkappa_side**2])
+    y_2 = tf.reshape(y_image2, [-1,Datagen.numpix_side**2])
     x_init1 = tf.zeros_like(y_image1)
     x_init2 = tf.zeros_like(y_image2)
 
@@ -163,19 +163,24 @@ def train():
         x_temp = tf.pow(tens, x_param) #tf.nn.sigmoid(x_param)
         return x_temp
 
-#    def image2param(x):
-#        x_temp = x #tf.log(x) - tf.log(1 - x)
-#        return x_temp
+    def param2image_src(x_param):
+        x_temp = tf.nn.sigmoid(x_param)
+        return x_temp
+
+
+   def image2param_src(x):
+       x_temp = tf.log(x) - tf.log(1 - x)
+       return x_temp
 
 #    def param2grad(x_param):
 #        x_temp = ones_like(x_param) #tf.nn.sigmoid(x_param) * (1. - tf.nn.sigmoid(x_param))
 #        return x_temp
 #    
     def error_grad1(x_test , the_other):
-        return tf.gradients(Raytracer.Loglikelihood(Srctest, param2image(x_test), [0.,0.], 7.68), x_test)[0]
+        return tf.gradients(Raytracer.Loglikelihood( param2image_src(the_other) , param2image(x_test), [0.,0.], 7.68), x_test)[0]
 
     def error_grad2(x_test , the_other):
-        return tf.gradients(Raytracer.Loglikelihood(Srctest, param2image(x_test), [0.,0.], 7.68), x_test)[0]
+        return tf.gradients(Raytracer.Loglikelihood( param2image_src(x_test) , param2image(the_other), [0.,0.], 7.68), x_test)[0]
 
 
     def redundant_identity(x_test , the_other):
@@ -238,8 +243,8 @@ def train():
                                                                   accumulate_output=FLAGS.accumulate_output)
 
     ## This runs the inference
-    x_init_feed1 = tf.maximum(tf.minimum(x_init1, 1.-1e-4), 1e-4) 
-    x_init_feed2 = tf.maximum(tf.minimum(x_init2, 1.-1e-4), 1e-4) 
+    x_init_feed1 = tf.maximum(tf.minimum( x_init1 , 1.-1e-4), 1e-4) 
+    x_init_feed2 = param2image_src( tf.maximum(tf.minimum( x_init2 , 1.-1e-4), 1e-4) )
     
     
     #print x_init_feed , cell , input_func , output_func , init_func , T
