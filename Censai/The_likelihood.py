@@ -173,7 +173,7 @@ class Likelihood(object):
         '''
 
         img_pred = self.get_lensed_image(Kappa, kap_cent, kap_side, src,noisy=noisy, max_noise_rms=max_noise_rms)
-        tf.add_to_collection('mykappa', kap_cent)
+        #tf.add_to_collection('mykappa', kap_cent)
         #xsrc , ysrc = self.raytrace2()
 
         #xsrc = tf.reshape(xsrc,[-1])
