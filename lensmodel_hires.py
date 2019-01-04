@@ -39,9 +39,9 @@ tf.app.flags.DEFINE_boolean('use_prior', True,
                             """Flag whether to input the current estimate again.""")
 tf.app.flags.DEFINE_boolean('accumulate_output', True,
                             """Flag whether some teh network outputs over time.""")
-tf.app.flags.DEFINE_float('lr_kap', 2.0e-6,
+tf.app.flags.DEFINE_float('lr_kap', 1.0e-4,
                             """Global learning rate to use""")
-tf.app.flags.DEFINE_float('lr_src', 4.0e-6,
+tf.app.flags.DEFINE_float('lr_src', 1.0e-4,
                             """Global learning rate to use""")
 tf.app.flags.DEFINE_integer('n_pseudo', 1,
                             """How many pseudo samples should be used""")
@@ -96,7 +96,7 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa_7/Censai_hires.ckpt'
+    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_testscope.ckpt'
 
     
     # DEFINE LAURENCE's stuff
@@ -137,20 +137,7 @@ def train():
     Raytracer.trueimage = Raytracer.get_lensed_image(Kappatest,[0.,0.], 7.68, Srctest)
     x_image = Raytracer.trueimage
     
-    
-#    y_ = tf.placeholder(dtype=tf.float32,shape=[None,numpix_src**2])
-#    y_image = tf.reshape(y_,[-1,numpix_src,numpix_src,1])
-#    x_init = tf.zeros_like(y_image)
-#    lens_model = tf.placeholder(dtype=tf.float32,shape=[None,7])
-#    psf_pl = tf.placeholder(dtype=tf.float32,shape=[numpix_side/4+1,numpix_side/4+1,1,1])
-#
-#    
-#    likelihoodobj = mn.SrcLikelihood(lens_model,None,numpix_side,0.04,numpix_src,0.014150943396226415,psf=True,psf_pl=psf_pl)
-#    likelihoodobj.Add_predicted_lens_model(lens_model)
-#    likelihoodobj.build_image(y_image,noisy=True,max_noise_rms=0.1)
-#
-#    x_image = likelihoodobj.img
-#    
+        
 
     # Needed for Optimization purposes
     global_step = tf.Variable(0, trainable=False, dtype=tf.int32)
@@ -161,9 +148,9 @@ def train():
 
     ## Define some helper functions
     def param2image(x_param):
-        #tens = tf.constant(10.0)
-        #x_temp = tf.pow(tens, x_param) #tf.nn.sigmoid(x_param)
-        x_temp = tf.nn.leaky_relu(x_param) #tf.nn.sigmoid(x_param)
+        tens = tf.constant(10.0)
+        x_temp = tf.pow(tens, x_param) #tf.nn.sigmoid(x_param)
+        #x_temp = tf.nn.leaky_relu(x_param) #tf.nn.sigmoid(x_param)
         return x_temp
 
     def param2image_src(x_param):
@@ -174,44 +161,44 @@ def train():
 
 
     def image2param_src(x):
-       x_temp = tf.log(x) - tf.log(1 - x)
-       return x_temp
+        x_temp = tf.log(x) - tf.log(1 - x)
+        return x_temp
 
 #    def param2grad(x_param):
 #        x_temp = ones_like(x_param) #tf.nn.sigmoid(x_param) * (1. - tf.nn.sigmoid(x_param))
 #        return x_temp
 #    
     def error_grad1(x_test , the_other):
-        return tf.gradients(Raytracer.Loglikelihood( tf.nn.relu(the_other) , param2image(x_test), [0.,0.], 7.68), x_test)[0]
+        return tf.gradients(Raytracer.Loglikelihood( param2image_src(the_other) , param2image(x_test), [0.,0.], 7.68), x_test)[0]
 
     def error_grad1_true_src(x_test , the_other):
-        return tf.gradients(Raytracer.Loglikelihood( tf.nn.relu(Srctest) , param2image(x_test), [0.,0.], 7.68), x_test)[0]
+        return tf.gradients(Raytracer.Loglikelihood( Srctest, param2image(x_test), [0.,0.], 7.68), x_test)[0]
 
     def error_grad2(x_test , the_other):
-        return tf.gradients(Raytracer.Loglikelihood( tf.nn.relu(x_test) , param2image(the_other), [0.,0.], 7.68), x_test)[0]
+        return tf.gradients(Raytracer.Loglikelihood( param2image_src(x_test) , param2image(the_other), [0.,0.], 7.68), x_test)[0]
 
     def error_grad2_true_kappa(x_test , the_other):
-        return tf.gradients(Raytracer.Loglikelihood( tf.nn.relu(x_test) , Kappatest , [0.,0.], 7.68), x_test)[0]
+        return tf.gradients(Raytracer.Loglikelihood( param2image_src(x_test) , Kappatest , [0.,0.], 7.68), x_test)[0]
 
     def redundant_identity(x_test , the_other):
         return tf.identity(x_test)
 
     def lossfun_1(x_est1,expand_dim=False):
         temp_data1 = y_image1
-	tens = tf.constant(10.0)
-	temp_data1 = tf.pow(tens, temp_data1)
+	#tens = tf.constant(10.0)
+	#temp_data1 = tf.pow(tens, temp_data1)
         if expand_dim:
             print('DIMS ARE ... ')
             print(temp_data1.shape)
             temp_data1 = tf.expand_dims(temp_data1,0)
             print(temp_data1.shape)
-        return tf.reduce_sum(0.5 * tf.square(x_est1 - temp_data1) , [-3,-2,-1] ) 
+        return tf.reduce_mean(0.5 * tf.square(x_est1 - temp_data1) , [-3,-2,-1] ) 
 
     def lossfun_2(x_est2,expand_dim=False):
         temp_data2 = y_image2
         if expand_dim:
             temp_data2 = tf.expand_dims(temp_data2,0)
-        return tf.reduce_sum(0.5 * tf.square(x_est2 - temp_data2) , [-3,-2,-1] ) 
+        return tf.reduce_mean(0.5 * tf.square(x_est2 - temp_data2) , [-3,-2,-1] ) 
 
     def lossfun(x_est1,x_est2,expand_dim=False):
         temp_data1 = y_image1
@@ -219,7 +206,7 @@ def train():
         if expand_dim:
             temp_data1 = tf.expand_dims(temp_data1,0)
             temp_data2 = tf.expand_dims(temp_data2,0)
-        return tf.reduce_sum(0.5 * tf.square(x_est1 - temp_data1) , [-3,-2,-1] ) + tf.reduce_sum(0.5 * tf.square(x_est2 - temp_data2) , [-3,-2,-1] )
+        return tf.reduce_mean(0.5 * tf.square(x_est1 - temp_data1) , [-3,-2,-1] ) + tf.reduce_sum(0.5 * tf.square(x_est2 - temp_data2) , [-3,-2,-1] )
     ## End helper functions
 
 
@@ -240,10 +227,10 @@ def train():
         output_transform_dict_2.update({'all':[redundant_identity]})
 
     if FLAGS.use_grad:
-        output_transform_dict_1.update({'mu': [error_grad1_true_src]})
+        output_transform_dict_1.update({'mu': [error_grad1]})
         output_transform_dict_2.update({'mu': [error_grad2_true_kappa]})
         if FLAGS.n_pseudo > 0:
-            output_transform_dict_1.update({'pseudo':[loopfun.ApplySplitFunction(error_grad1_true_src, 4 - 1, FLAGS.n_pseudo)]})
+            output_transform_dict_1.update({'pseudo':[loopfun.ApplySplitFunction(error_grad1, 4 - 1, FLAGS.n_pseudo)]})
             output_transform_dict_2.update({'pseudo':[loopfun.ApplySplitFunction(error_grad2_true_kappa, 4 - 1, FLAGS.n_pseudo)]})
 
     
@@ -276,7 +263,7 @@ def train():
     #alltime_output2 = param2image_src(alltime_output2)
     #final_output2 = param2image_src(final_output2)
 
-    alltime_output1 = param2image ( output_wrapper1(alltime_output1, 'mu', 4) )
+    alltime_output1 = output_wrapper1(alltime_output1, 'mu', 4)
     alltime_output2 = param2image_src( output_wrapper1(alltime_output2, 'mu', 4) )
     #alltime_output2 = tf.layers.conv2d(alltime_output2 , 1 , 1 , activation=tf.nn.relu)
     #alltime_output2_sig = tf.nn.sigmoid( output_wrapper1(alltime_output2, 'mu', 4) )
@@ -335,18 +322,27 @@ def train():
     # Merge all summaries to a single operator
     merged_summary_op = tf.summary.merge_all()
 
-    saver = tf.train.Saver(max_to_keep=None)
+#    saver = tf.train.Saver(max_to_keep=None)
 
     # Launch the graph
     with tf.Session() as sess:
-
+        fisrttime = 1;
         #writer = tf.summary.FileWriter("log/", sess.graph)
         sess.run(init_op)
         # Keep training until reach max iterations
 
         # Restore session
-        saver.restore(sess,model_name)
-        min_test_cost = 1000.0
+        all_vars = tf.global_variables()
+        Adam_pars = []
+        for tvar in all_vars:
+            if "Adam" in tvar.op.name:
+                Adam_pars = Adam_pars + [tvar]
+        vars_to_save = set(tf.global_variables()) - set(Adam_pars)
+        restorer = tf.train.Saver(vars_to_save,  max_to_keep=None)
+        
+        
+        restorer.restore(sess,model_name)
+        min_test_cost = 20000.0
         # Set logs writer into folder /tmp/tensorflow_logs
 
 	    # Generate test set
@@ -386,14 +382,14 @@ def train():
                 # Fit training using batch data
                 #print Datagen.source.shape
                 #print Datagen.kappa.shape
-		if (np.random.uniform()<1.0):
-                        temp_cost_1 = 0
-                        temp_cost_2 = 0
-                	temp_cost_1,_  = sess.run( [ loss_full_1 , minimize_1 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
-                	#temp_cost_2,_  = sess.run( [ loss_full_2 , minimize_2 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                if (np.random.uniform()<1.0):
+                    temp_cost_1 = 0
+                    temp_cost_2 = 0
+                    temp_cost_1,_  = sess.run( [ loss_full_1 , minimize_1 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                    temp_cost_2,_  = sess.run( [ loss_full_2 , minimize_2 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
                 else:
-                        temp_cost_2,_ , AL1 , AL2= sess.run( [ loss_2 , minimize_2 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
-                        temp_cost_1,_ , AL1 , AL2= sess.run( [ loss_1 , minimize_1 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                    temp_cost_2,_ , AL1 , AL2= sess.run( [ loss_full_2 , minimize_2 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                    temp_cost_1,_ , AL1 , AL2= sess.run( [ loss_full_1 , minimize_1 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
 
                 temp_cost = temp_cost_1 + temp_cost_2
                 #temp_cost, summary_str,_ = sess.run([loss,merged_summary_op,minimize],   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
@@ -404,51 +400,63 @@ def train():
 
                 #np.save('kappa_true_fangle' + str(i) + '.npy', Datagen.kappa )
                 #np.save('source_true_fangle_train' + str(i) + '.npy', Datagen.source )
-                #np.save('kappa_rec_train_fangle_1' + str(i) + '.npy', AL1)
-                #np.save('source_rec_train_fangle_2' + str(i) + '.npy', AL2)
+                #np.save('kappa_rec_train' + str(i) + '.npy', AL1)
+                #np.save('source_rec_train' + str(i) + '.npy', AL2)
                 #np.save('TMP_S' + str(i) + '.npy' , TMP_S)
 
-                if (i+1) % 40 == 0:
-                     valid_cost = 0.
-                     #valid_psnr = 0.
+                if (i+1) % 10 == 0:
+                    valid_cost = 0.
+                    #valid_psnr = 0.
 # #
-                     for j in range(10):
-                         dpm = 1
-                         #temp_cost, temp_psnr= sess.run([loss,psnr], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
-                         temp_cost_1 , temp_cost_2 , imgs_1[1:,dpm*j:dpm*(j+1),:], imgs_2[1:,dpm*j:dpm*(j+1),:] , true_data[dpm*j:dpm*(j+1),:]  = sess.run([ loss_full_1 , loss_full_2 , alltime_output1,alltime_output2, Raytracer.trueimage ], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
-                         # Compute average loss
-                         valid_cost += temp_cost_1 + temp_cost_2
-                         #valid_psnr += temp_psnr
-                         print 'testcost', i, (temp_cost_1 + temp_cost_2)
+                    for j in range(10):
+                        dpm = 1
+                        #temp_cost, temp_psnr= sess.run([loss,psnr], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
+                        temp_cost_1 , temp_cost_2 , imgs_1[1:,dpm*j:dpm*(j+1),:], imgs_2[1:,dpm*j:dpm*(j+1),:] , true_data[dpm*j:dpm*(j+1),:]  = sess.run([ loss_full_1 , loss_full_2 , alltime_output1,alltime_output2, Raytracer.trueimage ], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
+                        # Compute average loss
+                        valid_cost += (temp_cost_1 + temp_cost_2)
+                        #valid_psnr += temp_psnr
+                        print 'testcost', i, (temp_cost_1 + temp_cost_2)
 
-                     valid_cost /= 10.
+                    valid_cost /= 10.
                      #valid_psnr /= 10.
 # #
 # #                    # Display logs per epoch step
-                     print "Epoch:", '%04d' % (epoch+1), "batch:", '%04d' % (i+1)
-                     print "cost=", "{:.9f}".format(train_cost/(i+1))
-                     #print "psnr=", "{:.9f}".format(train_psnr/(i+1))
-                     print "test cost=", "{:.9f}".format(valid_cost)
-                     #print "test psnr=", "{:.9f}".format(valid_psnr)
-                     #print 'saving numpy arrays ...'
-                     #np.save('last_grad_1_fangle.npy', last_grad_1)
-                     #np.save('last_grad_2_fangle.npy', last_grad_2)
-                     #np.save('pred_lens_image_fangle.npy', pred_lens_image)
-                     #np.save('true_data_fangle.npy', true_data)
-                     if (1==0):
-                     	np.save('source_image_fangle.npy', Datagen.sourcetest )
-                     	np.save('source_image_fangle_train.npy', Datagen.source )
-                     	np.save('kappa_rec_fangle_1.npy', imgs_1)
+                    print "Epoch:", '%04d' % (epoch+1), "batch:", '%04d' % (i+1)
+                    print "cost=", "{:.9f}".format(train_cost/(i+1))
+                    #print "psnr=", "{:.9f}".format(train_psnr/(i+1))
+                    print "test cost=", "{:.9f}".format(valid_cost)
+                    #print "test psnr=", "{:.9f}".format(valid_psnr)
+                    #print 'saving numpy arrays ...'
+                    #np.save('last_grad_1_fangle.npy', last_grad_1)
+                    #np.save('last_grad_2_fangle.npy', last_grad_2)
+                    #np.save('pred_lens_image_fangle.npy', pred_lens_image)
+                    #np.save('true_data_fangle.npy', true_data)
+                    if (1==0):
+                        np.save('source_image_fangle.npy', Datagen.sourcetest )
+                        np.save('source_image_fangle_train.npy', Datagen.source )
+                        np.save('kappa_rec_fangle_1.npy', imgs_1)
                      	np.save('kappa_rec_fangle_2.npy', imgs_2)
                      	np.save('kappa_map_fangle.npy', Datagen.kappatest)
 
 #                    
 #
-                     # Saving Checkpoint
-                     if valid_cost < min_test_cost:
-                         print "Saving Checkpoint"
-                         saver.save(sess,model_name)
-                         min_test_cost = valid_cost * 1.
+                    # Saving Checkpoint
+                    if valid_cost < min_test_cost:
+                        print "Saving Checkpoint"
+                        if (fisrttime==1):
+                            all_vars = tf.global_variables()
+                            Adam_pars = []
+                            for tvar in all_vars:
+                                if "Adam" in tvar.op.name:
+                                    Adam_pars = Adam_pars + [tvar]
+                                    #print(tvar.op.name)
+                            vars_to_save = set(tf.global_variables()) - set(Adam_pars)
+                            #print(tf.global_variables())
+                            saver = tf.train.Saver(vars_to_save,  max_to_keep=None)
+                            fisrttime=0
+                        
+                        saver.save(sess,model_name)
+                        min_test_cost = valid_cost * 1.
 
         print "Optimization Finished!"
 
