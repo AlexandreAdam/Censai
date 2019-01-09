@@ -39,9 +39,9 @@ tf.app.flags.DEFINE_boolean('use_prior', True,
                             """Flag whether to input the current estimate again.""")
 tf.app.flags.DEFINE_boolean('accumulate_output', True,
                             """Flag whether some teh network outputs over time.""")
-tf.app.flags.DEFINE_float('lr_kap', 1.0e-4,
+tf.app.flags.DEFINE_float('lr_kap', 1.0e-6,
                             """Global learning rate to use""")
-tf.app.flags.DEFINE_float('lr_src', 1.0e-4,
+tf.app.flags.DEFINE_float('lr_src', 3.0e-7,
                             """Global learning rate to use""")
 tf.app.flags.DEFINE_integer('n_pseudo', 1,
                             """How many pseudo samples should be used""")
@@ -96,7 +96,7 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_testscope.ckpt'
+    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_full_src.ckpt'
 
     
     # DEFINE LAURENCE's stuff
@@ -228,10 +228,10 @@ def train():
 
     if FLAGS.use_grad:
         output_transform_dict_1.update({'mu': [error_grad1]})
-        output_transform_dict_2.update({'mu': [error_grad2_true_kappa]})
+        output_transform_dict_2.update({'mu': [error_grad2]})
         if FLAGS.n_pseudo > 0:
             output_transform_dict_1.update({'pseudo':[loopfun.ApplySplitFunction(error_grad1, 4 - 1, FLAGS.n_pseudo)]})
-            output_transform_dict_2.update({'pseudo':[loopfun.ApplySplitFunction(error_grad2_true_kappa, 4 - 1, FLAGS.n_pseudo)]})
+            output_transform_dict_2.update({'pseudo':[loopfun.ApplySplitFunction(error_grad2, 4 - 1, FLAGS.n_pseudo)]})
 
     
     input_func1, output_func1, init_func1, output_wrapper1 = decorate_rnn.init(rank=4, output_shape_dict=output_shape_dict,
@@ -322,27 +322,28 @@ def train():
     # Merge all summaries to a single operator
     merged_summary_op = tf.summary.merge_all()
 
-#    saver = tf.train.Saver(max_to_keep=None)
+    saver = tf.train.Saver(max_to_keep=None)
 
     # Launch the graph
     with tf.Session() as sess:
-        fisrttime = 1;
+#        fisrttime = 1;
         #writer = tf.summary.FileWriter("log/", sess.graph)
         sess.run(init_op)
         # Keep training until reach max iterations
 
         # Restore session
-        all_vars = tf.global_variables()
-        Adam_pars = []
-        for tvar in all_vars:
-            if "Adam" in tvar.op.name:
-                Adam_pars = Adam_pars + [tvar]
-        vars_to_save = set(tf.global_variables()) - set(Adam_pars)
-        restorer = tf.train.Saver(vars_to_save,  max_to_keep=None)
+#        all_vars = tf.global_variables()
+#        Adam_pars = []
+#        for tvar in all_vars:
+#            if "Adam" in tvar.op.name:
+#                Adam_pars = Adam_pars + [tvar]
+#        vars_to_save = set(tf.global_variables()) - set(Adam_pars)
+#        restorer = tf.train.Saver(vars_to_save,  max_to_keep=None)
         
         
-        restorer.restore(sess,model_name)
-        min_test_cost = 20000.0
+#        restorer.restore(sess,model_name)
+        saver.restore(sess,model_name)
+        min_test_cost = 0.007
         # Set logs writer into folder /tmp/tensorflow_logs
 
 	    # Generate test set
@@ -382,13 +383,13 @@ def train():
                 # Fit training using batch data
                 #print Datagen.source.shape
                 #print Datagen.kappa.shape
-                if (np.random.uniform()<1.0):
-                    temp_cost_1 = 0
-                    temp_cost_2 = 0
+                temp_cost_1 = 0
+                temp_cost_2 = 0
+		if (np.random.uniform() < 1.0):
                     temp_cost_1,_  = sess.run( [ loss_full_1 , minimize_1 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
-                    temp_cost_2,_  = sess.run( [ loss_full_2 , minimize_2 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                    #temp_cost_2,_  = sess.run( [ loss_full_2 , minimize_2 ] ,   {Srctest: Datagen.source, Kappatest: #Datagen.kappa,is_training:True})
                 else:
-                    temp_cost_2,_ , AL1 , AL2= sess.run( [ loss_full_2 , minimize_2 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                    #temp_cost_2,_ , AL1 , AL2= sess.run( [ loss_full_2 , minimize_2 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
                     temp_cost_1,_ , AL1 , AL2= sess.run( [ loss_full_1 , minimize_1 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
 
                 temp_cost = temp_cost_1 + temp_cost_2
@@ -404,7 +405,7 @@ def train():
                 #np.save('source_rec_train' + str(i) + '.npy', AL2)
                 #np.save('TMP_S' + str(i) + '.npy' , TMP_S)
 
-                if (i+1) % 10 == 0:
+                if (i+1) % 100 == 0:
                     valid_cost = 0.
                     #valid_psnr = 0.
 # #
@@ -418,6 +419,7 @@ def train():
                         print 'testcost', i, (temp_cost_1 + temp_cost_2)
 
                     valid_cost /= 10.
+                    temp_cost_1 /= 10.
                      #valid_psnr /= 10.
 # #
 # #                    # Display logs per epoch step
@@ -441,22 +443,23 @@ def train():
 #                    
 #
                     # Saving Checkpoint
-                    if valid_cost < min_test_cost:
+                    if temp_cost_1 < min_test_cost:
                         print "Saving Checkpoint"
-                        if (fisrttime==1):
-                            all_vars = tf.global_variables()
-                            Adam_pars = []
-                            for tvar in all_vars:
-                                if "Adam" in tvar.op.name:
-                                    Adam_pars = Adam_pars + [tvar]
-                                    #print(tvar.op.name)
-                            vars_to_save = set(tf.global_variables()) - set(Adam_pars)
+#                        if (fisrttime==1):
+#                            all_vars = tf.global_variables()
+#                            Adam_pars = []
+#                            for tvar in all_vars:
+#                                if "Adam" in tvar.op.name:
+#                                    Adam_pars = Adam_pars + [tvar]
+#                                    #print(tvar.op.name)
+#                            vars_to_save = set(tf.global_variables()) - set(Adam_pars)
                             #print(tf.global_variables())
-                            saver = tf.train.Saver(vars_to_save,  max_to_keep=None)
-                            fisrttime=0
+#
+#                            saver = tf.train.Saver(vars_to_save,  max_to_keep=None)
+#                            fisrttime=0
                         
-                        saver.save(sess,model_name)
-                        min_test_cost = valid_cost * 1.
+                        saver.save(sess,os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_fullsrckap.ckpt')
+                        min_test_cost = temp_cost_2 * 1.
 
         print "Optimization Finished!"
 
