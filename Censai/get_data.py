@@ -167,7 +167,7 @@ class DataGenerator(object):
                     Rein = np.random.uniform(low=0.5, high = 2.5)
 
                     #parameters for source
-                    sigma_src = np.random.uniform(low=0.12, high=0.3)
+                    sigma_src = np.random.uniform(low=0.1, high=0.3)
                     #np.random.normal(loc=0.0, scale = 0.01)
                     x_src = np.random.uniform(low=-0.3, high=0.3)
                     y_src = np.random.uniform(low=-0.3, high=0.3)
@@ -178,7 +178,68 @@ class DataGenerator(object):
                     self.kappa[i,:,:,0] = self.Kappa_fun(xlens, ylens, elp, phi, Rein, numkappa_side = self.numkappa_side, kap_side_length = 7.68, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
                         
                 return
+    def read_data_batch_fixedsrc(self,X ,source , kappa, train_or_test, read_or_gen, max_file_num=None, norm_source = False):
+    
+        batch_size = X.shape[0]
+        #mag = np.zeros((batch_size,1))
+
+        if read_or_gen == 'read':
+    
+        else:
+            if train_or_test == 'test':
+                np.random.seed(seed=136)
+                x = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
+                y = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
+                Xsrc, Ysrc = np.meshgrid(x, y)
+
+                for i in range(batch_size):
+
+                    #parameters for kappa
+                    xlens = 0
+                    ylens = 0
+                    elp = 0.4#np.random.uniform()
+                    phi = np.random.uniform(low=0.0, high=2.*np.pi)
+                    Rein = np.random.uniform(low=0.5, high = 2.5)
+
+                    #parameters for source
+                    sigma_src = 0.1
+                    #np.random.normal(loc=0.0, scale = 0.01)
+                    x_src = 0.
+                    y_src = 0.
+
+                    source[i,:,:,0] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side, norm = norm_source)
+
+                    kappa[i,:,:,0] = self.Kappa_fun(xlens, ylens, elp, phi, Rein, numkappa_side = self.numkappa_side, kap_side_length = 7.68, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
                     
+                return source, kappa
+
+            else:
+                np.random.seed(None)
+                x = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
+                y = np.linspace(-1, 1, self.numpix_side) * self.src_side/2
+                Xsrc, Ysrc = np.meshgrid(x, y)
+
+                for i in range(batch_size):
+
+                    #parameters for kappa
+                    xlens = 0
+                    ylens = 0
+                    elp = 0.4#np.random.uniform()
+                    phi = np.random.uniform(low=0.0, high=2.*np.pi)
+                    Rein = np.random.uniform(low=0.5, high = 2.5)
+
+                    #parameters for source
+                    sigma_src = 0.1
+                    #np.random.normal(loc=0.0, scale = 0.01)
+                    x_src = 0.
+                    y_src = 0.
+
+                    
+                    self.source[i,:,:,0] = self.gen_source(Xsrc, Ysrc, x_src = x_src, y_src = y_src, sigma_src = sigma_src, numpix_side = self.numpix_side, norm = norm_source)
+
+                    self.kappa[i,:,:,0] = self.Kappa_fun(xlens, ylens, elp, phi, Rein, numkappa_side = self.numkappa_side, kap_side_length = 7.68, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000)
+                        
+                return                   
                     
     #    for i in range(batch_size):
     #        
