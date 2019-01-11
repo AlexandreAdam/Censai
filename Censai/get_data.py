@@ -137,10 +137,10 @@ class DataGenerator(object):
                     ylens = 0
                     elp = 0.4#np.random.uniform()
                     phi = np.random.uniform(low=0.0, high=2.*np.pi)
-                    Rein = 1.2 #np.random.uniform(low=0.5, high = 3.)
+                    Rein = np.random.uniform(low=0.5, high = 2.5)
 
                     #parameters for source
-                    sigma_src = np.random.uniform(low=0, high=0.3)
+                    sigma_src = np.random.uniform(low=0.12, high=0.3)
                     #np.random.normal(loc=0.0, scale = 0.01)
                     x_src = np.random.uniform(low=-0.3, high=0.3)
                     y_src = np.random.uniform(low=-0.3, high=0.3)
@@ -164,10 +164,10 @@ class DataGenerator(object):
                     ylens = 0
                     elp = 0.4#np.random.uniform()
                     phi = np.random.uniform(low=0.0, high=2.*np.pi)
-                    Rein = 1.2 #np.random.uniform(low=0.5, high = 3.)
+                    Rein = np.random.uniform(low=0.5, high = 2.5)
 
                     #parameters for source
-                    sigma_src = np.random.uniform(low=0, high=0.3)
+                    sigma_src = np.random.uniform(low=0.12, high=0.3)
                     #np.random.normal(loc=0.0, scale = 0.01)
                     x_src = np.random.uniform(low=-0.3, high=0.3)
                     y_src = np.random.uniform(low=-0.3, high=0.3)
