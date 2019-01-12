@@ -1,6 +1,6 @@
-cd /mnt/home/yhezaveh/Illustris
+cd /mnt/home/llevasseur/Censai/Illustris
 basePath = '/mnt/ceph/users/sgenel/PUBLIC/Illustris-3/';
-addpath(genpath('/mnt/home/yhezaveh/Illustris'));
+addpath(genpath('/mnt/home/llevasseur/Censai/Illustris'));
 
 subhalos = illustris.groupcat.loadSubhalos(basePath,135,fields);
 
@@ -16,9 +16,9 @@ box_size = header_data.BoxSize;
 dm_p = illustris.snapshot.loadHalo( basePath , 135 , Cat_Stuff.GroupFirstSub(fof_id) , 'dm' , 'Coordinates' );
 dm_p = dm_p.';
 
-gas_p = illustris.snapshot.loadHalo( basePath , 135 , Cat_Stuff.GroupFirstSub(fof_id) , 'gas' , {'Coordinates','Density'} );
-stars_p = illustris.snapshot.loadHalo( basePath , 135 , Cat_Stuff.GroupFirstSub(fof_id) , 'stars' , {'Coordinates','Masses'} );
-BH_p = illustris.snapshot.loadHalo( basePath , 135 , Cat_Stuff.GroupFirstSub(fof_id) , 'stars' , {'Coordinates','Masses'} );
+%gas_p = illustris.snapshot.loadHalo( basePath , 135 , Cat_Stuff.GroupFirstSub(fof_id) , 'gas' , {'Coordinates','Density'} );
+%stars_p = illustris.snapshot.loadHalo( basePath , 135 , Cat_Stuff.GroupFirstSub(fof_id) , 'stars' , {'Coordinates','Masses'} );
+%BH_p = illustris.snapshot.loadHalo( basePath , 135 , Cat_Stuff.GroupFirstSub(fof_id) , 'stars' , {'Coordinates','Masses'} );
 
 Cent = (Cat_Stuff.GroupCM).';
 
@@ -40,7 +40,7 @@ y_max = max(y);
 z_min = min(z);
 z_max = max(z);
 [X,Y] = meshgrid(linspace(x_min,x_max,1000),linspace(y_min,y_max,1000));
-[X,Y,Z] = meshgrid(linspace(x_min,x_max,500),linspace(y_min,y_max,500),linspace(z_min,z_max,500));
+%[X,Y,Z] = meshgrid(linspace(x_min,x_max,500),linspace(y_min,y_max,500),linspace(z_min,z_max,500));
 
 I = 0;
 for i=1:numel(x)

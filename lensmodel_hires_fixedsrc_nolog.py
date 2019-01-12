@@ -96,7 +96,7 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_trueFIXEDsrc_Reinkap.ckpt'
+    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_trueFIXEDsrc_Reinkap_nolog.ckpt'
 
     
     # DEFINE LAURENCE's stuff
@@ -127,7 +127,7 @@ def train():
 
 
 
-    y_image1 = tf.identity(my_tf_log10(Kappatest))
+    y_image1 = tf.identity(Kappatest)
     y_image2 = tf.identity(Srctest)
     #y_1 = tf.reshape(y_image1, [-1,Datagen.numkappa_side**2])
     #y_2 = tf.reshape(y_image2, [-1,Datagen.numpix_side**2])
@@ -149,7 +149,7 @@ def train():
     ## Define some helper functions
     def param2image(x_param):
         tens = tf.constant(10.0)
-        x_temp = tf.pow(tens, x_param) #tf.nn.sigmoid(x_param)
+        x_temp =  x_param#tf.pow(tens, x_param) #tf.nn.sigmoid(x_param)
         #x_temp = tf.nn.leaky_relu(x_param) #tf.nn.sigmoid(x_param)
         return x_temp
 
@@ -161,7 +161,7 @@ def train():
 
 
     def image2param_src(x):
-        x_temp = tf.log(x) - tf.log(1 - x)
+        x_temp = x#tf.log(x) - tf.log(1 - x)
         return x_temp
 
 #    def param2grad(x_param):
@@ -342,8 +342,8 @@ def train():
         
         
 #        restorer.restore(sess,model_name)
-        saver.restore(sess,model_name)
-        min_test_cost = 0.0953
+        #saver.restore(sess,model_name)
+        min_test_cost = 0.153253
         # Set logs writer into folder /tmp/tensorflow_logs
 
 	    # Generate test set
@@ -362,9 +362,10 @@ def train():
         last_grad_1 = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
         last_grad_2 = np.zeros((test_batch_size, Datagen.numkappa_side , Datagen.numkappa_side, n_channel ))
 
+	print('dims of alltime_output1 are')
+	print(alltime_output1.shape)
 
-
-        for epoch in range(20):
+        for epoch in range(10):
             train_cost = 0.
             train_psnr = 0.
 
@@ -460,7 +461,7 @@ def train():
 #                            saver = tf.train.Saver(vars_to_save,  max_to_keep=None)
 #                            fisrttime=0
                         
-                        saver.save(sess,os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_trueFIXEDsrc_Reinkapelp_mvsrc.ckpt')
+                        saver.save(sess,os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_trueFIXEDsrc_Reinkap_nolog.ckpt')
                         min_test_cost = Ttemp_cost_1 * 1.
 
         print "Optimization Finished!"
