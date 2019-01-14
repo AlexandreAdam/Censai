@@ -203,7 +203,7 @@ class DataGenerator(object):
                     Rein = np.random.uniform(low=0.5, high = 2.5)
 
                     #parameters for source
-                    sigma_src = 0.1
+                    sigma_src = np.random.uniform(low=0.1, high=0.3)#0.1
                     #np.random.normal(loc=0.0, scale = 0.01)
                     x_src = np.random.uniform(low=-0.1, high=0.1)
                     y_src = np.random.uniform(low=-0.1, high=0.1)
@@ -230,7 +230,7 @@ class DataGenerator(object):
                     Rein = np.random.uniform(low=0.5, high = 2.5)
 
                     #parameters for source
-                    sigma_src = 0.1
+                    sigma_src = np.random.uniform(low=0.1, high=0.3)#0.1
                     #np.random.normal(loc=0.0, scale = 0.01)
                     x_src = np.random.uniform(low=-0.1, high=0.1)
                     y_src = np.random.uniform(low=-0.1, high=0.1)
