@@ -96,7 +96,7 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_trueFIXEDsrc_Reinkapelp_mvsrc.ckpt'
+    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_trueFIXEDsrc_Reinkapelp_fullsrc.ckpt'
 
     
     # DEFINE LAURENCE's stuff
@@ -439,7 +439,7 @@ def train():
                     #np.save('last_grad_2_fangle.npy', last_grad_2)
                     #np.save('pred_lens_image_fangle.npy', pred_lens_image)
                     #np.save('true_data_fangle.npy', true_data)
-                    if (1==0):
+                    if (1==1):
                         np.save('kappa_true_fangle' + str(0) + '.npy', Datagen.kappatest )
                         np.save('source_true_fangle_train' + str(0) + '.npy', Datagen.sourcetest )
                         np.save('kappa_rec_train' + str(0) + '.npy', imgs_1)
@@ -469,7 +469,7 @@ def train():
 #                            saver = tf.train.Saver(vars_to_save,  max_to_keep=None)
 #                            fisrttime=0
                         
-                        saver.save(sess,os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_trueFIXEDsrc_Reinkapelp_fullsrc.ckpt')
+                        #saver.save(sess,os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_trueFIXEDsrc_Reinkapelp_fullsrc.ckpt')
                         min_test_cost = Ttemp_cost_1 * 1.
 
         print "Optimization Finished!"
