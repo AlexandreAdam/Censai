@@ -96,7 +96,7 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_fullsrc_Reinkap_2.ckpt'
+    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_fullsrc_Reinkap_3.ckpt'
 
     
     # DEFINE LAURENCE's stuff
@@ -344,7 +344,7 @@ def train():
         
 #        restorer.restore(sess,model_name)
         saver.restore(sess,model_name)
-        min_test_cost = 0.006869
+        min_test_cost = 0.009
         # Set logs writer into folder /tmp/tensorflow_logs
 
 	    # Generate test set
@@ -389,7 +389,7 @@ def train():
                 temp_cost_2 = 0
                 if (np.random.uniform() < 1.0):
                     temp_cost_1,_  = sess.run( [ loss_full_1 , minimize_1 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
-                    #temp_cost_2,_  = sess.run( [ loss_full_2 , minimize_2 ] ,   {Srctest: Datagen.source, Kappatest: #Datagen.kappa,is_training:True})
+                    #temp_cost_2,_  = sess.run( [ loss_full_2 , minimize_2 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
                 else:
                     #temp_cost_2,_ , AL1 , AL2= sess.run( [ loss_full_2 , minimize_2 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
                     temp_cost_1,_ , AL1 , AL2= sess.run( [ loss_full_1 , minimize_1 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
@@ -410,6 +410,7 @@ def train():
                 if (i+1) % 100 == 0:
                     valid_cost = 0.
                     Ttemp_cost_1 = 0.
+                    Ttemp_cost_2 = 0.
                     #valid_psnr = 0.
 # #
                     for j in range(10):
@@ -419,6 +420,7 @@ def train():
                         # Compute average loss
                         valid_cost += (temp_cost_1 + temp_cost_2)
                         Ttemp_cost_1 += temp_cost_1
+                        Ttemp_cost_2 += temp_cost_2
                         #valid_psnr += temp_psnr
                         print 'testcost', i, (temp_cost_1 + temp_cost_2)
 
@@ -464,7 +466,7 @@ def train():
 #                            saver = tf.train.Saver(vars_to_save,  max_to_keep=None)
 #                            fisrttime=0
                         
-                        saver.save(sess,os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_fullsrc_Reinkap_2.ckpt')
+                        saver.save(sess,os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_fullsrc_Reinkap_4.ckpt')
                         min_test_cost = Ttemp_cost_1 * 1.
 
         print "Optimization Finished!"
