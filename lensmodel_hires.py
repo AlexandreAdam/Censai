@@ -192,7 +192,9 @@ def train():
             print(temp_data1.shape)
             temp_data1 = tf.expand_dims(temp_data1,0)
             print(temp_data1.shape)
-        return tf.reduce_mean(0.5 * tf.square(x_est1 - temp_data1) , [-3,-2,-1] ) 
+        lab_core = tf.slice(temp_data1, [0,0,numkappa_side/2-3, numkappa_side/2-3,0], [-1,-1, numkappa_side/2+3, numkappa_side/2+3,-1])
+        pred_core = tf.slice(x_est1, [0,0,numkappa_side/2-3, numkappa_side/2-3,0], [-1,-1, numkappa_side/2+3, numkappa_side/2+3,-1])
+        return tf.reduce_mean(0.5 * tf.square(x_est1 - temp_data1) , [-3,-2,-1] ) + 10.*tf.reduce_mean(0.5 * tf.square(pred_core - lab_core) , [-3,-2,-1] )
 
     def lossfun_2(x_est2,expand_dim=False):
         temp_data2 = y_image2
