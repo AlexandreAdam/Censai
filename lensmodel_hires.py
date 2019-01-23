@@ -39,7 +39,7 @@ tf.app.flags.DEFINE_boolean('use_prior', True,
                             """Flag whether to input the current estimate again.""")
 tf.app.flags.DEFINE_boolean('accumulate_output', True,
                             """Flag whether some teh network outputs over time.""")
-tf.app.flags.DEFINE_float('lr_kap', 1.0e-6,
+tf.app.flags.DEFINE_float('lr_kap', 3.0e-7,
                             """Global learning rate to use""")
 tf.app.flags.DEFINE_float('lr_src', 3.0e-7,
                             """Global learning rate to use""")
@@ -96,7 +96,7 @@ def get_psnr(x_est, x_true):
 def train():
 
     # This is the file that we will save the model to.
-    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_fullsrc_Reinkap_4.ckpt'
+    model_name = os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_fullsrc_Reinkap_6.ckpt'
 
     
     # DEFINE LAURENCE's stuff
@@ -105,7 +105,7 @@ def train():
     numkappa_side = 48
     
     batch_size = 20
-    test_batch_size = 10
+    test_batch_size = 100
     n_channel = 1
     
     Raytracer = Celi.Likelihood(numpix_side = numpix_side)
@@ -344,7 +344,7 @@ def train():
         
 #        restorer.restore(sess,model_name)
         saver.restore(sess,model_name)
-        min_test_cost = 0.009
+        min_test_cost = 0.007
         # Set logs writer into folder /tmp/tensorflow_logs
 
 	    # Generate test set
@@ -388,11 +388,11 @@ def train():
                 temp_cost_1 = 0
                 temp_cost_2 = 0
                 if (np.random.uniform() < 1.0):
-                    #temp_cost_1,_  = sess.run( [ loss_full_1 , minimize_1 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                    temp_cost_1,_  = sess.run( [ loss_full_1 , minimize_1 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
                     temp_cost_2,_  = sess.run( [ loss_full_2 , minimize_2 ] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
                 else:
-                    temp_cost_2,_ , AL1 , AL2= sess.run( [ loss_full_2 , minimize_2 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
-                    #temp_cost_1,_ , AL1 , AL2= sess.run( [ loss_full_1 , minimize_1 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                    #temp_cost_2,_ , AL1 , AL2= sess.run( [ loss_full_2 , minimize_2 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
+                    temp_cost_1,_ , AL1 , AL2= sess.run( [ loss_full_1 , minimize_1 , alltime_output1 , alltime_output2] ,   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
 
                 temp_cost = temp_cost_1 + temp_cost_2
                 #temp_cost, summary_str,_ = sess.run([loss,merged_summary_op,minimize],   {Srctest: Datagen.source, Kappatest: Datagen.kappa,is_training:True})
@@ -414,7 +414,9 @@ def train():
                     #valid_psnr = 0.
 # #
                     for j in range(10):
-                        dpm = 1
+                        dpm = 10
+                        temp_cost_1 = 0.
+                        temp_cost_2 = 0.
                         #temp_cost, temp_psnr= sess.run([loss,psnr], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
                         temp_cost_1 , temp_cost_2 , imgs_1[1:,dpm*j:dpm*(j+1),:], imgs_2[1:,dpm*j:dpm*(j+1),:] , true_data[dpm*j:dpm*(j+1),:] , models[dpm*j:dpm*(j+1),:] = sess.run([ loss_full_1 , loss_full_2 , alltime_output1,alltime_output2, Raytracer.trueimage , model_images], {Srctest: Datagen.sourcetest[dpm*j:dpm*(j+1),:], Kappatest: Datagen.kappatest[dpm*j:dpm*(j+1),:],is_training:False})
                         # Compute average loss
@@ -425,7 +427,7 @@ def train():
                         print 'testcost', i, (temp_cost_1 + temp_cost_2)
 
                     valid_cost /= 10.
-                    Ttemp_cost_2 /= 10.
+                    Ttemp_cost_1 /= 10.
                      #valid_psnr /= 10.
 # #
 # #                    # Display logs per epoch step
@@ -439,7 +441,7 @@ def train():
                     #np.save('last_grad_2_fangle.npy', last_grad_2)
                     #np.save('pred_lens_image_fangle.npy', pred_lens_image)
                     #np.save('true_data_fangle.npy', true_data)
-                    if (1==0):
+                    if (1==1):
                         np.save('kappa_true_s+k' + str(0) + '.npy', Datagen.kappatest )
                         np.save('source_true_s+k' + str(0) + '.npy', Datagen.sourcetest )
                         np.save('kappa_rec_test_s+k' + str(0) + '.npy', imgs_1)
@@ -451,7 +453,7 @@ def train():
 #
                     # Saving Checkpoint
                     print 'are we saving?', Ttemp_cost_1, min_test_cost
-                    if Ttemp_cost_2 < min_test_cost:
+                    if valid_cost < min_test_cost:
                         print "Saving Checkpoint"
 #                        if (fisrttime==1):
 #                            all_vars = tf.global_variables()
@@ -466,8 +468,8 @@ def train():
 #                            saver = tf.train.Saver(vars_to_save,  max_to_keep=None)
 #                            fisrttime=0
                         
-                        saver.save(sess,os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_fullsrc_Reinkap_5.ckpt')
-                        min_test_cost = Ttemp_cost_2 * 1.
+                        saver.save(sess,os.environ['CENSAI_PATH']+ '/trained_weights/RIM_kappa-source/Censai_lowres_2_fullsrc_Reinkap_7.ckpt')
+                        min_test_cost = valid_cost * 1.
 
         print "Optimization Finished!"
 
