@@ -87,57 +87,53 @@ class VAE(tf.keras.Model):
         
 
 
-initializer = tf.initializers.random_normal( stddev=0.06)
-kernal_reg_amp = 0.0
-bias_reg_amp = 0.0
-kernel_size = 5
 
 class RayTracer(tf.keras.Model):
-    def __init__(self):
+    def __init__(self,trainable=True):
         super(RayTracer, self).__init__()
 
-        self.Lc11 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same') 
-        self.Lc12 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same') 
-        self.Lp13 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', strides=(2, 2), padding='same') 
+        self.Lc11 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same',trainable=trainable) 
+        self.Lc12 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same') 
+        self.Lp13 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', strides=(2, 2), padding='same') 
 
-        self.Lc21 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lc22 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lp23 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', strides=(2, 2), padding='same')
+        self.Lc21 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lc22 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lp23 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', strides=(2, 2), padding='same')
 
-        self.Lc31 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lc32 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lp33 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', strides=(2, 2), padding='same')
+        self.Lc31 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lc32 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lp33 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', strides=(2, 2), padding='same')
 
-        self.Lc41 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lc42 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lp43 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', strides=(2, 2), padding='same')
+        self.Lc41 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lc42 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lp43 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', strides=(2, 2), padding='same')
 
-        self.Lc51 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lc52 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lp53 = tf.keras.layers.Conv2D(16, (6, 6), activation='linear', strides=(4, 4), padding='same')
+        self.Lc51 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lc52 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lp53 = tf.keras.layers.Conv2D(32, (6, 6), activation='linear', strides=(4, 4), padding='same')
 
-        self.LcZ1 = tf.keras.layers.Conv2D(16, (16, 16), activation='linear', padding='same')
-        self.LcZ2 = tf.keras.layers.Conv2D(16, (16, 16), activation='linear', padding='same')
+        self.LcZ1 = tf.keras.layers.Conv2D(32, (16, 16), activation='linear', padding='same')
+        self.LcZ2 = tf.keras.layers.Conv2D(32, (16, 16), activation='linear', padding='same')
 
-        self.Lu61 = tf.keras.layers.Conv2DTranspose(16, (6, 6), activation='linear', strides=(4, 4), padding='same')
-        self.Lc62 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lc63 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
+        self.Lu61 = tf.keras.layers.Conv2DTranspose(32, (6, 6), activation='linear', strides=(4, 4), padding='same')
+        self.Lc62 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lc63 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
 
-        self.Lu71 = tf.keras.layers.Conv2DTranspose(16, (2, 2), activation='linear', strides=(2, 2), padding='same')
-        self.Lc72 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lc73 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
+        self.Lu71 = tf.keras.layers.Conv2DTranspose(32, (2, 2), activation='linear', strides=(2, 2), padding='same')
+        self.Lc72 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lc73 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
 
-        self.Lu81 = tf.keras.layers.Conv2DTranspose(16, (2, 2), activation='linear', strides=(2, 2), padding='same')
-        self.Lc82 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lc83 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
+        self.Lu81 = tf.keras.layers.Conv2DTranspose(32, (2, 2), activation='linear', strides=(2, 2), padding='same')
+        self.Lc82 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lc83 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
 
-        self.Lu91 = tf.keras.layers.Conv2DTranspose(16, (2, 2), activation='linear', strides=(2, 2), padding='same')
-        self.Lc92 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lc93 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
+        self.Lu91 = tf.keras.layers.Conv2DTranspose(32, (2, 2), activation='linear', strides=(2, 2), padding='same')
+        self.Lc92 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lc93 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
 
-        self.Lu101 = tf.keras.layers.Conv2DTranspose(16, (2, 2), activation='linear', strides=(2, 2), padding='same')
-        self.Lc102 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
-        self.Lc103 = tf.keras.layers.Conv2D(16, (3, 3), activation='linear', padding='same')
+        self.Lu101 = tf.keras.layers.Conv2DTranspose(32, (2, 2), activation='linear', strides=(2, 2), padding='same')
+        self.Lc102 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lc103 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
 
         self.Loutputs = tf.keras.layers.Conv2D(2, (1, 1), activation='linear')
 
@@ -264,6 +260,7 @@ class RayTracer(tf.keras.Model):
 #         return tf.reduce_mean( ( alpha - x_a_label)**2 )
 
 
+kernel_size = 5
 
 class Conv_GRU(tf.keras.Model):
     def __init__(self , num_features):
@@ -282,6 +279,10 @@ class Conv_GRU(tf.keras.Model):
         new_state = tf.multiply( 1-z , state) + tf.multiply(z , update_info)
         return new_state , new_state
 
+initializer = tf.initializers.random_normal( stddev=0.06)
+kernal_reg_amp = 0.0
+bias_reg_amp = 0.0
+kernel_size = 6
 
 class Model(tf.keras.Model):
     def __init__(self,num_cell_features):
@@ -292,29 +293,241 @@ class Model(tf.keras.Model):
         num_filt_emb2 = self.num_gru_features
         num_filt_emb3_1 = self.num_gru_features
         num_filt_emb3_2 = self.num_gru_features
-        self.conv1_1 = tf.keras.layers.Conv2D(filters = num_filt_emb1_1, kernel_size=[kernel_size,kernel_size], strides=2, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv1_2 = tf.keras.layers.Conv2D(filters = num_filt_emb1_2, kernel_size=[kernel_size,kernel_size], strides=2, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv2 = tf.keras.layers.Conv2D(filters = num_filt_emb2, kernel_size=[2,2], strides=1, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv3_1 = tf.keras.layers.Conv2DTranspose(filters = num_filt_emb3_1, kernel_size=[kernel_size,kernel_size], strides=2, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv3_2 = tf.keras.layers.Conv2DTranspose(filters = num_filt_emb3_2, kernel_size=[kernel_size,kernel_size], strides=2, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv4 = tf.keras.layers.Conv2D(filters = 1, kernel_size=[2,2], strides=1, activation='linear',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
+        self.conv1_1 = tf.keras.layers.Conv2D(filters = num_filt_emb1_1, kernel_size=[kernel_size,kernel_size], strides=4, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
+        self.conv1_2 = tf.keras.layers.Conv2D(filters = num_filt_emb1_2, kernel_size=[kernel_size,kernel_size], strides=4, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
+        self.conv1_3 = tf.keras.layers.Conv2D(filters = num_filt_emb1_2, kernel_size=[kernel_size,kernel_size], strides=2, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
+        self.conv2 = tf.keras.layers.Conv2D(filters = num_filt_emb2, kernel_size=[5,5], strides=1, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
+        self.conv3_1 = tf.keras.layers.Conv2DTranspose(filters = num_filt_emb3_1, kernel_size=[kernel_size,kernel_size], strides=4, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
+        self.conv3_2 = tf.keras.layers.Conv2DTranspose(filters = num_filt_emb3_2, kernel_size=[kernel_size,kernel_size], strides=4, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
+        self.conv3_3 = tf.keras.layers.Conv2DTranspose(filters = num_filt_emb3_2, kernel_size=[kernel_size,kernel_size], strides=2, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
+        self.conv4 = tf.keras.layers.Conv2D(filters = 1, kernel_size=[5,5], strides=1, activation='linear',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
         self.gru1 = Conv_GRU(self.num_gru_features)
         self.gru2 = Conv_GRU(self.num_gru_features)
     def call(self, inputs, state, grad):
         stacked_input = tf.concat([inputs , grad], axis=3)
         xt_1E = self.conv1_1(stacked_input)
         xt_1E = self.conv1_2(xt_1E)
+        xt_1E = self.conv1_3(xt_1E)
         ht_11 , ht_12 = tf.split(state, 2, axis=3)
         gru_1_out,_ = self.gru1( xt_1E ,ht_11)
         gru_1_outE = self.conv2(gru_1_out)
         gru_2_out,_ = self.gru2( gru_1_outE ,ht_12)
         delta_xt_1 = self.conv3_1(gru_2_out)
         delta_xt_1 = self.conv3_2(delta_xt_1)
+        delta_xt_1 = self.conv3_3(delta_xt_1)
         delta_xt = self.conv4(delta_xt_1)
         xt = delta_xt + inputs
         ht = tf.concat([gru_1_out , gru_2_out], axis=3)
         return xt, ht
 
+    
+    
+class GRU_COMPONENT(tf.keras.Model):
+    def __init__(self,num_cell_features):
+        super(GRU_COMPONENT, self).__init__()
+        self.kernel_size = 5
+        self.num_gru_features = num_cell_features/2
+        self.conv1 = tf.keras.layers.Conv2D(filters = self.num_gru_features, kernel_size=self.kernel_size, strides=1, activation='relu',padding='same')
+        self.gru1 = Conv_GRU(self.num_gru_features)
+        self.gru2 = Conv_GRU(self.num_gru_features)
+    def call(self, inputs, state):
+        ht_11 , ht_12 = tf.split(state, 2, axis=3)
+        gru_1_out,_ = self.gru1( inputs ,ht_11)
+        gru_1_outE = self.conv1(gru_1_out)
+        gru_2_out,_ = self.gru2( gru_1_outE ,ht_12)
+        ht = tf.concat([gru_1_out , gru_2_out], axis=3)
+        xt = gru_2_out
+        return xt, ht
+
+def lrelu4p(x, alpha=0.04):
+    return tf.maximum(x, tf.multiply(x, alpha))
+
+class RIM_UNET(tf.keras.Model):
+    def __init__(self,num_cell_features):
+        super(RIM_UNET, self).__init__()
+        numfeat_1 , numfeat_2 , numfeat_3 , numfeat_4 = num_cell_features
+        
+        activation = lrelu4p
+        self.STRIDE = 4
+        self.Lc11 = tf.keras.layers.Conv2D(numfeat_1/2, (3, 3), activation=activation, padding='same') 
+        self.Lp13 = tf.keras.layers.Conv2D(numfeat_1/2, (7, 7), activation=activation, strides=self.STRIDE, padding='same') 
+
+        self.Lc21 = tf.keras.layers.Conv2D(numfeat_2/2, (3, 3), activation=activation, padding='same')
+        self.Lc22 = tf.keras.layers.Conv2D(numfeat_2/2, (3, 3), activation=activation, padding='same')
+        self.Lp23 = tf.keras.layers.Conv2D(numfeat_2/2, (7, 7), activation=activation, strides=self.STRIDE, padding='same')
+
+        self.Lc31 = tf.keras.layers.Conv2D(numfeat_3/2, (3, 3), activation=activation, padding='same')
+        self.Lc32 = tf.keras.layers.Conv2D(numfeat_3/2, (3, 3), activation=activation, padding='same')
+        self.Lp33 = tf.keras.layers.Conv2D(numfeat_3/2, (7, 7), activation=activation, strides=self.STRIDE, padding='same')
+
+        self.LcZ1 = tf.keras.layers.Conv2D(numfeat_4/2, (8, 8), activation=activation, padding='same')
+        self.LcZ2 = tf.keras.layers.Conv2D(numfeat_4/2, (8, 8), activation=activation, padding='same')
+
+        self.Lu61 = tf.keras.layers.Conv2DTranspose(numfeat_3/2, (6, 6), activation=activation, strides=self.STRIDE, padding='same')
+        self.Lc62 = tf.keras.layers.Conv2D(numfeat_3/2, (3, 3), activation=activation, padding='same')
+        self.Lc63 = tf.keras.layers.Conv2D(numfeat_3/2, (3, 3), activation=activation, padding='same')
+
+        self.Lu71 = tf.keras.layers.Conv2DTranspose(numfeat_2/2, (6, 6), activation=activation, strides=self.STRIDE, padding='same')
+        self.Lc72 = tf.keras.layers.Conv2D(numfeat_2/2, (3, 3), activation=activation, padding='same')
+        self.Lc73 = tf.keras.layers.Conv2D(numfeat_2/2, (3, 3), activation=activation, padding='same')
+
+        self.Lu81 = tf.keras.layers.Conv2DTranspose(numfeat_1/2, (6, 6), activation=activation, strides=self.STRIDE, padding='same')
+        self.Lc82 = tf.keras.layers.Conv2D(numfeat_1/2, (3, 3), activation=activation, padding='same')
+        self.Lc83 = tf.keras.layers.Conv2D(numfeat_1/2, (3, 3), activation=activation, padding='same')
+
+        self.Loutputs = tf.keras.layers.Conv2D(1, (2, 2), activation='linear', padding='same')
+
+        self.GRU_COMP1 = GRU_COMPONENT(numfeat_1)
+        self.GRU_COMP2 = GRU_COMPONENT(numfeat_2)
+        self.GRU_COMP3 = GRU_COMPONENT(numfeat_3)
+        self.GRU_COMP4 = GRU_COMPONENT(numfeat_4)
+        
+    def call(self, inputs, state, grad):
+        
+        stacked_input = tf.concat([inputs , grad], axis=3)
+        ht_1 , ht_2 , ht_3 , ht_4 = state
+        
+        c1 = self.Lc11 (stacked_input)
+        c1_gru , c1_gru_state = self.GRU_COMP1(c1 , ht_1)
+        
+        p1 = self.Lp13 (c1)
+        c2 = self.Lc21 (p1)
+        c2 = self.Lc22 (c2)
+        c2_gru , c2_gru_state = self.GRU_COMP2(c2 , ht_2)
+        
+        p2 = self.Lp23 (c2)
+        c3 = self.Lc31 (p2)
+        c3 = self.Lc32 (c3)
+        c3_gru , c3_gru_state = self.GRU_COMP3(c3 , ht_3)
+
+        p3 = self.Lp33(c3)
+        
+        z1 = self.LcZ1 (p3)
+        z1 = self.LcZ2 (z1)
+        c4_gru , c4_gru_state = self.GRU_COMP4(z1 , ht_4)
+
+        u6 = self.Lu61 (c4_gru)
+        u6 = tf.concat([u6, c3_gru], axis=3)
+        c6 = self.Lc62 (u6)
+        c6 = self.Lc63 (c6)
+
+        u7 = self.Lu71 (c6)
+        u7 = tf.concat([u7, c2_gru], axis=3)
+        c7 = self.Lc72 (u7)
+        c7 = self.Lc73 (c7)
+
+        u8 = self.Lu81 (c7)
+        u8 = tf.concat([u8, c1_gru], axis=3)
+        c8 = self.Lc82 (u8)
+        c8 = self.Lc83 (c8)
+
+        delta_xt = self.Loutputs(c8)
+        xt = inputs + delta_xt
+        ht = [c1_gru_state , c2_gru_state , c3_gru_state , c4_gru_state]
+
+        return xt, ht
+
+
+
+class RIM_UNET_CELL(tf.nn.rnn_cell.RNNCell):
+    def __init__(self, batch_size, num_steps ,num_pixels, state_size , input_size=None, activation=tf.tanh,cond1= None, cond2= None):
+        self.num_pixels = num_pixels
+        self.num_steps = num_steps
+        self._num_units = state_size
+        self.double_RIM_state_size = state_size
+        self.single_RIM_state_size = state_size/2
+        self.gru_state_size = state_size/4
+        self.gru_state_pixel_downsampled = 16*2
+        self._activation = activation
+        self.state_size_list = [8 , 16 , 32 , 64]
+        self.model_1 = RIM_UNET(self.state_size_list)
+        self.model_2 = RIM_UNET(self.state_size_list)
+        self.batch_size = batch_size
+        self.initial_condition(cond1, cond2)
+        self.initial_output_state()
+
+    def initial_condition(self, cond1, cond2):
+        if cond1 is None:
+            self.inputs_1 = tf.zeros(shape=(self.batch_size , self.num_pixels , self.num_pixels , 1))
+        else:
+            self.inputs_1 = tf.identity(cond1)
+            
+        if cond2 is None:
+            self.inputs_2 = tf.zeros(shape=(self.batch_size , self.num_pixels , self.num_pixels , 1))
+        else:
+            self.inputs_2 = tf.identity(cond2)
+            
+        return
+            
+        
+    def initial_output_state(self):
+
+        STRIDE = self.model_1.STRIDE
+        numfeat_1 , numfeat_2 , numfeat_3 , numfeat_4 = self.state_size_list
+        state_11 = tf.zeros(shape=(self.batch_size,  self.num_pixels, self.num_pixels , numfeat_1 ))
+        state_12 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**1, self.num_pixels/STRIDE**1 , numfeat_2 ))
+        state_13 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**2, self.num_pixels/STRIDE**2 , numfeat_3 ))
+        state_14 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**3, self.num_pixels/STRIDE**3 , numfeat_4 ))
+        self.state_1 = [state_11 , state_12 , state_13 , state_14]
+
+        STRIDE = self.model_2.STRIDE
+        state_21 = tf.zeros(shape=(self.batch_size,  self.num_pixels, self.num_pixels , numfeat_1 ))
+        state_22 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**1, self.num_pixels/STRIDE**1 , numfeat_2 ))
+        state_23 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**2, self.num_pixels/STRIDE**2 , numfeat_3 ))
+        state_24 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**3, self.num_pixels/STRIDE**3 , numfeat_4 ))
+        self.state_2 = [state_21 , state_22 , state_23 , state_24]
+
+        
+
+
+    @property
+    def state_size(self):
+        return self._num_units
+
+    @property
+    def output_size(self):
+        return self._num_units
+
+    def __call__(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2 , scope=None):
+        xt_1, ht_1 = self.model_1(inputs_1, state_1 , grad_1)
+        xt_2, ht_2 = self.model_2(inputs_2, state_2 , grad_2)
+        return xt_1, ht_1, xt_2, ht_2
+
+    def forward_pass(self, data):
+
+        output_series_1 = []
+        output_series_2 = []
+
+        with tf.GradientTape() as g:
+            g.watch(self.inputs_1)
+            g.watch(self.inputs_2)
+            y = log_likelihood(data,physical_model(self.inputs_1,self.inputs_2),noise_rms)
+        grads = g.gradient(y, [self.inputs_1 , self.inputs_2])
+
+        output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1 , grads[0] , self.inputs_2 , self.state_2 , grads[1])
+        output_series_1.append(output_1)
+        output_series_2.append(output_2)
+
+        for current_step in range(self.num_steps-1):
+            with tf.GradientTape() as g:
+                g.watch(output_1)
+                g.watch(output_2)
+                y = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
+            grads = g.gradient(y, [output_1 , output_2])
+
+
+            output_1, state_1 , output_2 , state_2 = self.__call__(output_1, state_1 , grads[0] , output_2 , state_2 , grads[1])
+            output_series_1.append(output_1)
+            output_series_2.append(output_2)
+        final_log_L = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
+        return output_series_1 , output_series_2 , final_log_L
+
+    def cost_function( self, data,labels_x_1,labels_x_2):
+        output_series_1 , output_series_2 , final_log_L = self.forward_pass(data)
+        return tf.reduce_mean(tf.square(output_series_1 - labels_x_1)) + tf.reduce_mean(tf.square(output_series_2 - labels_x_2)), output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
+
+    
+    
 class RIM_CELL(tf.nn.rnn_cell.RNNCell):
     def __init__(self, batch_size, num_steps ,num_pixels, state_size , input_size=None, activation=tf.tanh):
 	self.num_pixels = num_pixels
@@ -323,7 +536,7 @@ class RIM_CELL(tf.nn.rnn_cell.RNNCell):
         self.double_RIM_state_size = state_size
         self.single_RIM_state_size = state_size/2
         self.gru_state_size = state_size/4
-	self.gru_state_pixel_downsampled = 4
+	self.gru_state_pixel_downsampled = 16*2
         self._activation = activation
         self.model_1 = Model(self.single_RIM_state_size)
         self.model_2 = Model(self.single_RIM_state_size)
@@ -386,7 +599,7 @@ class RIM_CELL(tf.nn.rnn_cell.RNNCell):
 
     def cost_function( self, data,labels_x_1,labels_x_2):
         output_series_1 , output_series_2 , final_log_L = self.forward_pass(data)
-        return tf.reduce_mean(tf.square(output_series_1 - labels_x_1)) + tf.reduce_mean(tf.square(output_series_2 - labels_x_2)), output_series_1 , output_series_2
+        return tf.reduce_mean(tf.square(output_series_1 - labels_x_1)) + tf.reduce_mean(tf.square(output_series_2 - labels_x_2)), output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
 
 class SRC_KAPPA_Generator(object):
 
@@ -448,16 +661,17 @@ class SRC_KAPPA_Generator(object):
         
         for i in range(num_samples):
             #parameters for kappa
+            #np.random.seed(seed=155)
             xlens = np.random.uniform(low=-1.0, high=1.)
             ylens = np.random.uniform(low=-1.0, high=1.)
             elp = np.random.uniform(low=0.01, high=0.6)
             phi = np.random.uniform(low=0.0, high=2.*np.pi)
-            Rein = np.random.uniform(low=0.5, high = 2.5)
+            Rein = np.random.uniform(low=2.0, high = 4.0)
 
             #parameters for source
-            sigma_src = np.random.uniform(low=0.1, high=0.3)
-            x_src = np.random.uniform(low=-0.3, high=0.3)
-            y_src = np.random.uniform(low=-0.3, high=0.3)
+            sigma_src = np.random.uniform(low=0.5, high=1.0)
+            x_src = np.random.uniform(low=-0.5, high=0.5)
+            y_src = np.random.uniform(low=-0.5, high=0.5)
             norm_source = True
             
             if (train_or_test=="train"):
@@ -467,6 +681,15 @@ class SRC_KAPPA_Generator(object):
                 self.Source_ts[i,:,:,0] = self.gen_source(x_src = x_src, y_src = y_src, sigma_src = sigma_src, norm = norm_source)
                 self.Kappa_ts[i,:,:,0]  = self.Kappa_fun(xlens, ylens, elp, phi, Rein)
         return
+    def draw_average_k_s(self):
+        src = self.gen_source(x_src = 0., y_src = 0., sigma_src = 0.5, norm = True)
+        kappa = self.Kappa_fun( 0., 0. , 0.02, 0., 3.0)
+        src = src.reshape(1, self.num_src_side,self.num_src_side, 1)
+        kappa = kappa.reshape(1, self.num_kappa_side , self.num_kappa_side , 1)
+        
+        src=np.repeat(src,self.train_batch_size,axis=0)
+        kappa=np.repeat(kappa,self.train_batch_size,axis=0)
+        return src, kappa
 
 
 
@@ -477,8 +700,8 @@ class lens_util(object):
         self.numpix_side = numpix_side
         self.src_side     = src_side
         self.kap_numpix = numpix_side
-        self.RT = RayTracer()
-        checkpoint_path = "checkpoints/model_Unet2"
+        self.RT = RayTracer(trainable=False)
+        checkpoint_path = "checkpoints/model_Unet_test"
         self.RT.load_weights(checkpoint_path)
         self.method = method
         self.set_deflection_angles_vars(kap_side)
@@ -517,10 +740,11 @@ class lens_util(object):
         if (self.method=="Unet"):
             alpha = self.RT (tf.identity(Kappa))
             alpha_x , alpha_y = tf.split(alpha,2,axis=3)
-            Xsrc = tf.add(tf.reshape(self.Xim, [-1, self.numpix_side, self.numpix_side, 1]),   alpha_x )
-            Ysrc = tf.add(tf.reshape(self.Yim, [-1, self.numpix_side, self.numpix_side, 1]),   alpha_y )
-
-
+            #alpha = tf.identity(Kappa)
+            #alpha_x  = alpha * 0.
+            #alpha_y  = alpha * 0.
+            Xsrc = tf.add(tf.reshape(self.Xim, [-1, self.numpix_side, self.numpix_side, 1]),  - alpha_x )
+            Ysrc = tf.add(tf.reshape(self.Yim, [-1, self.numpix_side, self.numpix_side, 1]),  - alpha_y )
 
         return Xsrc, Ysrc , alpha_x , alpha_y
 
@@ -562,14 +786,72 @@ class lens_util(object):
         xmin = Xc-0.5*l
         ymin = Yc-0.5*l
         dx = l/(N-1.)
-        j = tf.scalar_mul(1./dx, tf.math.add(X, -1.* xmin))
-        i = tf.scalar_mul(1./dx, tf.math.add(Y, -1.* ymin))
+        i = tf.scalar_mul(1./dx, tf.math.add(X, -1.* xmin))
+        j = tf.scalar_mul(1./dx, tf.math.add(Y, -1.* ymin))
         return i, j
 
 
 def log_likelihood(Data,Model,noise_rms):
-    logL = 0.5 * tf.reduce_mean(tf.reduce_mean((Data - Model)**2, axis=2 ), axis=1 )
-    #logL = 0.5 * tf.math.reduce_mean(tf.square(D - M), axis=1 )/ noise_sig**2
+    #logL = 0.5 * tf.reduce_mean(tf.reduce_mean((Data - Model)**2, axis=2 ), axis=1 )
+    logL = 0.5 * tf.reduce_mean(tf.reduce_mean((Data - Model)**2, axis=2 ), axis=1 ) / noise_rms**2
     return logL
 
+
+
+
+def lrelu4p(x, alpha=0.04):
+    return tf.maximum(x, tf.multiply(x, alpha))
+
+
+class AUTOENCODER(tf.keras.Model):
+    def __init__(self):
+        super(AUTOENCODER, self).__init__()
+
+        activation = lrelu4p
+        D01 = tf.keras.layers.Conv2D(32 , (6, 6), activation=activation, strides=2 , padding='same') 
+        D02 = tf.keras.layers.Conv2D(32 , (6, 6), activation=activation, strides=2 , padding='same') 
+        D03 = tf.keras.layers.Conv2D(16, (3, 3), activation=activation, strides=2 , padding='same') 
+        D04 = tf.keras.layers.Conv2D(1, (3, 3), activation=activation, strides=1 , padding='same') 
+        self.encode_layers = [D01, D02, D03, D04]
+
+        U01 = tf.keras.layers.Conv2DTranspose(16, (6, 6), activation=activation, strides=2, padding='same') 
+        U02 = tf.keras.layers.Conv2DTranspose(32, (6, 6), activation=activation, strides=2, padding='same') 
+        U03 = tf.keras.layers.Conv2DTranspose(16, (2, 2), activation=activation, strides=2, padding='same') 
+        U04 = tf.keras.layers.Conv2DTranspose(1, (2, 2), activation=activation, strides=1, padding='same') 
+        self.decode_layers = [U01, U02, U03, U04]
+        self.AE_checkpoint_path = "checkpoints/AE_weights"
+        
+    def encode(self, X):
+        for layer in self.encode_layers:
+            X = layer(X)
+        return X
+
+    def decode(self, X):
+        for layer in self.decode_layers:
+            X = layer(X)
+        return X
+    
+    def forward_pass(self,X):
+        return self.decode(self.encode(X))
+    
+    def cost_function(self , X):
+        prediction = self.forward_pass(X)
+        cost = tf.reduce_mean((prediction - X)**2)
+        return cost
+        
+    def train(self , X , optimizer):
+        with tf.GradientTape() as tape:
+            tape.watch(self.variables)
+            cost_value = self.cost_function(X)
+        weight_grads = tape.gradient(cost_value, self.variables  )
+
+        optimizer.apply_gradients(zip(weight_grads, self.variables), global_step=tf.train.get_or_create_global_step())
+        return
+    
+    def Save(self):
+        self.save_weights(self.AE_checkpoint_path)
+
+    def Load(self):
+        self.load_weights(self.AE_checkpoint_path)
+        
 
