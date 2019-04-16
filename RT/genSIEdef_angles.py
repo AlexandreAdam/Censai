@@ -56,14 +56,14 @@ def raytrace(xim,yim,pars):
     ximage,yimage = pol2cart(r,theta-(angle * np.pi /180))
     phi = np.arctan2(yimage,ximage)
 
-    dxs = -(Xi0/Dd)*(np.sqrt(f)/fprime)*np.arcsinh(np.cos(phi)*fprime/f)
-    dys = -(Xi0/Dd)*(np.sqrt(f)/fprime)*np.arcsin(np.sin(phi)*fprime)
+    dxs = (Xi0/Dd)*(np.sqrt(f)/fprime)*np.arcsinh(np.cos(phi)*fprime/f)
+    dys = (Xi0/Dd)*(np.sqrt(f)/fprime)*np.arcsin(np.sin(phi)*fprime)
 
     r,theta = cart2pol(dxs,dys)
     alphax,alphay = pol2cart(r,theta+(angle*np.pi/180))
     
-    xsr = xim + alphax
-    ysr = yim + alphay
+    xsr = xim - alphax
+    ysr = yim - alphay
 
     return alphax , alphay
 
