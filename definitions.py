@@ -855,3 +855,17 @@ class AUTOENCODER(tf.keras.Model):
         self.load_weights(self.AE_checkpoint_path)
         
 
+def plot(samples):
+    fig = plt.figure(figsize=(2*3, 3*3))
+    gs = gridspec.GridSpec(3, 2)
+    gs.update(wspace=None, hspace=None)
+
+    for i, sample in enumerate(samples):
+        ax = plt.subplot(gs[i])
+        plt.axis('off')
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_aspect('equal')
+        plt.imshow(sample)
+        # plt.title(str(np.max(sample)))
+    return fig
