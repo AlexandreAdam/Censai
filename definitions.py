@@ -14,6 +14,13 @@ def m_softplus(x):
 def xsquared(x):
     return (x/4)**2
 
+def logKap_normalization(logkappa , dir="code"):
+    if dir=="code":
+        return tf.nn.relu(logkappa + 4.0) / 7.0
+    else:
+        return (logkappa * 7.0 - 4.0)
+    
+
 
 datatype = tf.float32
 class VAE(tf.keras.Model):
@@ -751,6 +758,8 @@ class lens_util(object):
 
     def physical_model(self, Src , Kappa):
 
+        #logKappa = logKap_normalization( logKappa , dir="decode")
+        #Kappa = 10.0 ** logKappa
         Xsrc, Ysrc , _ , _ = self.get_deflection_angles(Kappa)
         
         IM = self.lens_source(Xsrc, Ysrc, Src)
