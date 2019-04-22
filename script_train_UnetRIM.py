@@ -20,13 +20,15 @@ tf.enable_eager_execution()
 
 
 train_batch_size = 1
-num_steps = 4
+num_steps = 10
 num_features = 512
 state_size = 128
 
-checkpoint_path_1 = "checkpoints/model1_512"
-checkpoint_path_2 = "checkpoints/model2_512"
-
+load_checkpoint_path_1 = "checkpoints/model1_512"
+load_checkpoint_path_2 = "checkpoints/model2_512"
+RESTORE=False
+save_checkpoint_path_1 = "checkpoints/model1_512_meanstart_N10"
+save_checkpoint_path_2 = "checkpoints/model2_512_meanstart_N10"
 
 import matplotlib
 matplotlib.use('Agg')
@@ -45,7 +47,8 @@ im_side = 20.48
 with tf.device('/gpu:0'):
     sk_gen = SRC_KAPPA_Generator(train_batch_size=train_batch_size,test_batch_size=train_batch_size,kap_side_length=im_side, num_src_side=num_features,num_kappa_side=num_features,src_side=src_side)
     src_in , kap_in = sk_gen.draw_average_k_s()
-
+    src_in = src_in * 0.
+    kap_in = kap_in * 0.
     RIM = RIM_UNET_CELL(train_batch_size , num_steps , num_features , state_size , cond1 = src_in , cond2 = kap_in)
     lens_util_obj = lens_util(im_side= im_side, src_side=src_side, numpix_side = num_features ,kap_side=im_side,  method = "Unet")
 
@@ -54,12 +57,12 @@ with tf.device('/gpu:0'):
     noise_rms = 0.01
     sk_gen.draw_k_s("test")
 
-    RESTORE=False
+    
     if (RESTORE):
-        RIM.model_1.load_weights(checkpoint_path_1)
-        RIM.model_2.load_weights(checkpoint_path_2)
+        RIM.model_1.load_weights(load_checkpoint_path_1)
+        RIM.model_2.load_weights(load_checkpoint_path_2)
 
-    optimizer = tf.train.AdamOptimizer(4e-4)
+    optimizer = tf.train.AdamOptimizer(1e-4)
 
 
 
@@ -86,7 +89,7 @@ with tf.device('/gpu:0'):
             model_im = lens_util_obj.physical_model(OS_src , OS_kap)
             ims = [OS_src[0,:,:,0] , np.log10(OS_kap[0,:,:,0]) , tf_source[0,:,:,0] , np.log10(tf_kappa[0,:,:,0]) , noisy_data[0,:,:,0] , model_im.numpy()[0,:,:,0] ]
             fig = plot(ims)
-            plt.savefig('output_images/{}.png'.format(str(train_iter).zfill(3)), bbox_inches='tight')
+            plt.savefig('output_images_4/{}.png'.format(str(train_iter).zfill(3)), bbox_inches='tight')
             plt.close(fig)            
             # pl.clf()
             # fig, ax = pl.subplots(3, 2, figsize = (10, 15))
@@ -104,6 +107,6 @@ with tf.device('/gpu:0'):
             # display.display(pl.gcf())
             print( train_iter , cost_value.numpy() )
         if (((train_iter+1)%200)==0):
-            RIM.model_1.save_weights(checkpoint_path_1)
-            RIM.model_2.save_weights(checkpoint_path_2)
+            RIM.model_1.save_weights(save_checkpoint_path_1)
+            RIM.model_2.save_weights(save_checkpoint_path_2)
             print('saved weights.')
