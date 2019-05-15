@@ -47,8 +47,8 @@ im_side = 20.48
 with tf.device('/gpu:0'):
     sk_gen = SRC_KAPPA_Generator(train_batch_size=train_batch_size,test_batch_size=train_batch_size,kap_side_length=im_side, num_src_side=num_features,num_kappa_side=num_features,src_side=src_side)
     src_in , kap_in = sk_gen.draw_average_k_s()
-    src_in = src_in * 0.
-    kap_in = kap_in * 0.
+    #src_in = src_in * 0.
+    kap_in = np.log10(kap_in)
     RIM = RIM_UNET_CELL(train_batch_size , num_steps , num_features , state_size , cond1 = src_in , cond2 = kap_in)
     lens_util_obj = lens_util(im_side= im_side, src_side=src_side, numpix_side = num_features ,kap_side=im_side,  method = "Unet")
 
@@ -70,14 +70,14 @@ with tf.device('/gpu:0'):
         #if ((train_iter%1)==0):
         print train_iter
         sk_gen.draw_k_s("train")
-        noisy_data = lens_util_obj.simulate_noisy_lensed_image(  sk_gen.Source_tr[:,:,:,:],sk_gen.Kappa_tr[:,:,:,:],noise_rms)
+        noisy_data = lens_util_obj.simulate_noisy_lensed_image(  sk_gen.Source_tr[:,:,:,:],np.log10(sk_gen.Kappa_tr[:,:,:,:]),noise_rms)
         tf_source =  tf.identity(sk_gen.Source_tr[:,:,:,:])
-        tf_kappa  = tf.identity(sk_gen.Kappa_tr[:,:,:,:] )
+        tf_logkappa  = log10(tf.identity(sk_gen.Kappa_tr[:,:,:,:]) )
 
         with tf.GradientTape() as tape:
             tape.watch(RIM.model_1.variables)
             tape.watch(RIM.model_2.variables)
-            cost_value, _ , _ , OS_src , OS_kap = RIM.cost_function(noisy_data, tf_source , tf_kappa)
+            cost_value, _ , _ , OS_src , OS_kap = RIM.cost_function(noisy_data, tf_source , tf_logkappa)
         weight_grads = tape.gradient(cost_value, [RIM.model_1.variables , RIM.model_2.variables] )
 
         clipped_grads_1 = [tf.clip_by_value(grads_i,-10,10) for grads_i in weight_grads[0]]
@@ -85,11 +85,11 @@ with tf.device('/gpu:0'):
         clipped_grads_2 = [tf.clip_by_value(grads_i,-10,10) for grads_i in weight_grads[1]]
         optimizer.apply_gradients(zip(clipped_grads_2, RIM.model_2.variables), global_step=tf.train.get_or_create_global_step())
         print( train_iter , cost_value.numpy() )
-        if (((train_iter+1)%200)==0):
+        if (((train_iter+1)%100)==0):
             model_im = lens_util_obj.physical_model(OS_src , OS_kap)
-            ims = [OS_src[0,:,:,0] , np.log10(OS_kap[0,:,:,0]) , tf_source[0,:,:,0] , np.log10(tf_kappa[0,:,:,0]) , noisy_data[0,:,:,0] , model_im.numpy()[0,:,:,0] ]
+            ims = [OS_src[0,:,:,0] , OS_kap[0,:,:,0] , tf_source[0,:,:,0] , tf_logkappa[0,:,:,0] , noisy_data[0,:,:,0] , model_im.numpy()[0,:,:,0] ]
             fig = plot(ims)
-            plt.savefig('output_images_4/{}.png'.format(str(train_iter).zfill(3)), bbox_inches='tight')
+            plt.savefig('output_images_5/{}.png'.format(str(train_iter).zfill(3)), bbox_inches='tight')
             plt.close(fig)            
             # pl.clf()
             # fig, ax = pl.subplots(3, 2, figsize = (10, 15))
@@ -106,7 +106,7 @@ with tf.device('/gpu:0'):
             # display.clear_output(wait=True)
             # display.display(pl.gcf())
             print( train_iter , cost_value.numpy() )
-        if (((train_iter+1)%200)==0):
+        if (((train_iter+1)%100)==0):
             RIM.model_1.save_weights(save_checkpoint_path_1)
             RIM.model_2.save_weights(save_checkpoint_path_2)
             print('saved weights.')

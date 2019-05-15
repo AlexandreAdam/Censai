@@ -20,6 +20,10 @@ def logKap_normalization(logkappa , dir="code"):
     else:
         return (logkappa * 7.0 - 4.0)
     
+def log10(x):
+  numerator = tf.log(x)
+  denominator = tf.log(tf.constant(10, dtype=numerator.dtype))
+  return numerator / denominator
 
 
 datatype = tf.float32
@@ -446,7 +450,7 @@ class RIM_UNET_CELL(tf.nn.rnn_cell.RNNCell):
         self.gru_state_size = state_size/4
         self.gru_state_pixel_downsampled = 16*2
         self._activation = activation
-        self.state_size_list = [8 , 16 , 32 , 64]
+        self.state_size_list = [32 , 32 , 128 , 512]
         self.model_1 = RIM_UNET(self.state_size_list)
         self.model_2 = RIM_UNET(self.state_size_list)
         self.batch_size = batch_size
@@ -700,6 +704,10 @@ class SRC_KAPPA_Generator(object):
 
 
 
+
+
+
+
 class lens_util(object):
 
     def __init__(self, im_side= 7.68, src_side=3.0, numpix_side = 192 , kap_side=7.68 , method = "conv2d"):
@@ -756,10 +764,10 @@ class lens_util(object):
         return Xsrc, Ysrc , alpha_x , alpha_y
 
 
-    def physical_model(self, Src , Kappa):
+    def physical_model(self, Src , logKappa):
 
         #logKappa = logKap_normalization( logKappa , dir="decode")
-        #Kappa = 10.0 ** logKappa
+        Kappa = 10.0 ** logKappa
         Xsrc, Ysrc , _ , _ = self.get_deflection_angles(Kappa)
         
         IM = self.lens_source(Xsrc, Ysrc, Src)
