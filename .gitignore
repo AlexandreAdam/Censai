@@ -2,3 +2,4 @@
 *.npy
 checkpoints
 output_images
+.ipynb_checkpoints*
