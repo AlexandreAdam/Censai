@@ -188,7 +188,7 @@ class VAE(tf.keras.Model):
         #x = self.l6(x)
         x = tf.contrib.layers.flatten(x)
         mn = self.l_mn(x)
-        sd       = 0.5 * self.l_sd(x)
+        sd = 0.5 * self.l_sd(x)
         epsilon = tf.random_normal(tf.stack([tf.shape(x)[0], self.n_latent]) , dtype=datatype ) 
         z  = mn + tf.multiply(epsilon, tf.exp(sd))  
         return z, mn, sd
@@ -1195,6 +1195,164 @@ class KAPPA_RIM_UNET_CELL(tf.nn.rnn_cell.RNNCell):
 
     
 
-    
+class SRC_VAE(tf.keras.Model):
+    def __init__(self , n_latent = 50 , npix_side = 256, output_activation=tf.nn.sigmoid):
+        super(SRC_VAE, self).__init__()
+        activation = lrelu
+        activation2 = lrelu2
+        self.npix_side = npix_side
+        self.n_latent = n_latent
+        n_downsample = 5
+        self.l0 = tf.keras.layers.Conv2D(16, (4,4), strides=2, padding='same', activation=activation)
+        self.l1 = tf.keras.layers.Conv2D(16, (4,4), strides=2, padding='same', activation=activation)
+        self.l2 = tf.keras.layers.Conv2D(16, (6,6), strides=2, padding='same', activation=activation)
+        self.l3 = tf.keras.layers.Conv2D(16, (6,6), strides=2, padding='same', activation=activation)
+        self.l4 = tf.keras.layers.Conv2D(16, (6,6), strides=2, padding='same', activation=activation)
+        self.l5 =   tf.keras.layers.Conv2D(16, (4,4), strides=1, padding='same', activation=activation)
+        self.l6 =   tf.keras.layers.Conv2D(4 , (4,4), strides=1, padding='same', activation=activation)
+        self.l7 =   tf.keras.layers.Conv2D(1 , (4,4), strides=1, padding='same', activation=activation)
+        self.l8 =   tf.keras.layers.Conv2D(1 , (4,4), strides=1, padding='same', activation=activation)
+        #self.l_mn = tf.keras.layers.Conv2D(1 , (2,2), strides=1, padding='same', activation='linear')
+        #self.l_sd = tf.keras.layers.Conv2D(1 , (2,2), strides=1, padding='same', activation='linear')
+        self.l_mn = tf.keras.layers.Dense(n_latent)
+        self.l_sd = tf.keras.layers.Dense(n_latent)
+        
+        inputs_decoder = 256
+        self.d1 = tf.keras.layers.Dense( 256 , activation=activation)
+        #self.d2 = tf.keras.layers.Dense(inputs_decoder  , activation=activation)
+        self.d3 = tf.keras.layers.Conv2DTranspose(128, (6,6), strides=2, padding='same', activation=activation2)
+        self.d4 = tf.keras.layers.Conv2DTranspose(64, (6,6), strides=2, padding='same', activation=activation2)
+        self.d5 = tf.keras.layers.Conv2DTranspose(64, (6,6), strides=2, padding='same', activation=activation2)
+        self.d6 = tf.keras.layers.Conv2DTranspose(16, (4,4), strides=2, padding='same', activation=activation2)
+        self.d7 = tf.keras.layers.Conv2DTranspose(16, (4,4), strides=2, padding='same', activation=activation2)
+        self.d8 = tf.keras.layers.Conv2DTranspose(8, (2,2), strides=1, padding='same', activation=activation2)
+        self.d9 = tf.keras.layers.Conv2DTranspose(1, (2,2), strides=1, padding='same', activation=output_activation)
+        self.reshaped_dim = [-1, 16, 16, 1]
+    def encoder(self, X_in):
+        x = tf.reshape(X_in, shape=[-1, self.npix_side, self.npix_side, 1])
+        x = self.l0(x)
+        x = self.l1(x)
+        x = self.l2(x)
+        x = self.l3(x)
+        x = self.l4(x)
+        x = self.l5(x)
+        XC = x
+        x = tf.contrib.layers.flatten(x)
+        mn = self.l_mn(x)
+        sd       = 0.5 * self.l_sd(x)  * 0. + 1e-10
+        epsilon = tf.random_normal(tf.stack([tf.shape(x)[0], self.n_latent]) , dtype=datatype ) 
+        z  = mn + tf.multiply(epsilon, tf.exp(sd))  
+        
+        XC = self.l6(XC)
+        XC_mn = self.l7(XC)
+        XC_sd = self.l8(XC) * 0. + 1e-10
+        epsilonC = tf.random_normal( XC_mn.shape , dtype=datatype ) 
+        zC  = XC_mn + tf.multiply(epsilonC, tf.exp(XC_sd))  
+        return z, mn, sd , zC , XC_mn , XC_sd
+
+    def decoder(self, sampled_z1, sampled_z2 ):            
+        x = self.d1(sampled_z1)
+        #x = self.d2(x)
+        x = tf.reshape(x, self.reshaped_dim)
+        x = tf.concat((x,sampled_z2),axis=3)
+        x = self.d3(x)
+        x = self.d4(x)
+        x = self.d5(x)
+        x = self.d6(x)
+        x = self.d7(x)
+        x = self.d8(x)
+        x = self.d9(x)
+        img = tf.reshape(x, shape=[-1, self.npix_side, self.npix_side])
+        return img
+    def cost(self, X_in):
+        sampled_code1, mn1, sd1 , sampled_code2, mn2, sd2 = self.encoder(X_in)
+        decoded_im = self.decoder(sampled_code1,sampled_code2)
+        img_cost = tf.reduce_sum( (decoded_im - X_in)**2 , [1,2] )
+        #latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * sd1 - tf.square(mn1) - tf.exp(2.0 * sd1), 1 ) + -0.5 * tf.reduce_sum(1.0 + 2.0 * sd2 - tf.square(mn2) - tf.exp(2.0 * sd2), 1 )
+        latent_cost = 0.
+        cost = tf.reduce_mean(img_cost + latent_cost)
+        return cost , decoded_im
+    def draw_image(self, N):
+        randoms1 = tf.random_normal(  (N , self.n_latent ) , dtype=datatype)
+        randoms2 = tf.random_normal(  (N , 16 , 16 , 1 ) , dtype=datatype)
+        simulated_im = self.decoder(randoms1,randoms2)
+        return simulated_im
+        
+
+class SRC_VAE2(tf.keras.Model):
+    def __init__(self , n_latent = 50 , npix_side = 256, output_activation=tf.nn.sigmoid):
+        super(SRC_VAE2, self).__init__()
+        activation = lrelu
+        activation2 = lrelu2
+        self.npix_side = npix_side
+        self.n_latent = n_latent
+        n_downsample = 5
+        self.l0 = tf.keras.layers.Conv2D(16, (4,4), strides=2, padding='same', activation=activation)
+        self.l1 = tf.keras.layers.Conv2D(16, (4,4), strides=2, padding='same', activation=activation)
+        self.l2 = tf.keras.layers.Conv2D(16, (6,6), strides=2, padding='same', activation=activation)
+        self.l3 = tf.keras.layers.Conv2D(16, (6,6), strides=2, padding='same', activation=activation)
+        self.l4 = tf.keras.layers.Conv2D(16, (6,6), strides=2, padding='same', activation=activation)
+        self.l5 =   tf.keras.layers.Conv2D(16, (4,4), strides=1, padding='same', activation=activation)
+        #self.l6 =   tf.keras.layers.Conv2D(4 , (4,4), strides=1, padding='same', activation=activation)
+        #self.l_mn = tf.keras.layers.Conv2D(1 , (2,2), strides=1, padding='same', activation='linear')
+        #self.l_sd = tf.keras.layers.Conv2D(1 , (2,2), strides=1, padding='same', activation='linear')
+        self.l_mn = tf.keras.layers.Dense(n_latent)
+        self.l_sd = tf.keras.layers.Dense(n_latent)
+        
+        inputs_decoder = 256
+        self.d1 = tf.keras.layers.Dense( 256 , activation=activation)
+        #self.d2 = tf.keras.layers.Dense(inputs_decoder  , activation=activation)
+        self.d3 = tf.keras.layers.Conv2DTranspose(128, (6,6), strides=2, padding='same', activation=activation2)
+        self.d4 = tf.keras.layers.Conv2DTranspose(64, (6,6), strides=2, padding='same', activation=activation2)
+        self.d5 = tf.keras.layers.Conv2DTranspose(64, (6,6), strides=2, padding='same', activation=activation2)
+        self.d6 = tf.keras.layers.Conv2DTranspose(16, (4,4), strides=2, padding='same', activation=activation2)
+        self.d7 = tf.keras.layers.Conv2DTranspose(16, (4,4), strides=2, padding='same', activation=activation2)
+        self.d8 = tf.keras.layers.Conv2DTranspose(8, (2,2), strides=1, padding='same', activation=activation2)
+        self.d9 = tf.keras.layers.Conv2DTranspose(1, (2,2), strides=1, padding='same', activation=output_activation)
+        self.reshaped_dim = [-1, 16, 16, 1]
+    def encoder(self, X_in):
+        x = tf.reshape(X_in, shape=[-1, self.npix_side, self.npix_side, 1])
+        x = self.l0(x)
+        x = self.l1(x)
+        x = self.l2(x)
+        x = self.l3(x)
+        x = self.l4(x)
+        x = self.l5(x)
+        #x = self.l6(x)
+        x = tf.contrib.layers.flatten(x)
+        mn = self.l_mn(x)
+        sd       = 0.5 * self.l_sd(x) * 1e-20 + 1e-10
+        epsilon = tf.random_normal(tf.stack([tf.shape(x)[0], self.n_latent]) , dtype=datatype ) 
+        z  = mn + tf.multiply(epsilon, tf.exp(sd))  
+        return z, mn, sd
+
+    def decoder(self, sampled_z):            
+        x = self.d1(sampled_z)
+        #x = self.d2(x)
+        x = tf.reshape(x, self.reshaped_dim)
+        x = self.d3(x)
+        x = self.d4(x)
+        x = self.d5(x)
+        x = self.d6(x)
+        x = self.d7(x)
+        x = self.d8(x)
+        x = self.d9(x)
+        img = tf.reshape(x, shape=[-1, self.npix_side, self.npix_side])
+        return img
+    def cost(self, X_in):
+        sampled_code, mn, sd = self.encoder(X_in)
+        decoded_im = self.decoder(sampled_code)
+        img_cost = tf.reduce_sum( (decoded_im - X_in)**2 , [1,2] )
+        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * sd - tf.square(mn) - tf.exp(2.0 * sd), 1 )
+        latent_cost = latent_cost * 1e-10
+        cost = tf.reduce_mean(img_cost + latent_cost)
+        return cost , decoded_im
+    def draw_image(self, N):
+        randoms = tf.random_normal(  (N , self.n_latent ) , dtype=datatype)
+        simulated_im = self.decoder(randoms)
+        return simulated_im
+        
+
+
     
     
