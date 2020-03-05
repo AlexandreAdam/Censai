@@ -878,7 +878,17 @@ class lens_util(object):
 #        IM = tf.contrib.resampler.resampler(Src, wrap)
 
         return IM
-    
+
+    def physical_model_RT(self, Src , logKappa):
+
+        Kappa = tf.math.exp( logKappa )
+        #Xsrc, Ysrc , _ , _ = self.get_deflection_angles(Kappa)
+        
+        #IM = Xsrc
+        IM = tf.nn.conv2d(Kappa, self.Xconv_kernel, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi);
+        return IM
+
+
     def lens_source(self, Xsrc, Ysrc, Src):
         
         Xsrc = tf.reshape(Xsrc, [-1, self.numpix_side, self.numpix_side, 1])
@@ -891,12 +901,21 @@ class lens_util(object):
         
 
     def simulate_noisy_lensed_image(self, Src , Kappa , noise_rms):
+        scaling = np.random.uniform(low=0.4, high=0.8)
+        xrandshift = np.random.normal(loc=0.0, scale=50.0)
+        yrandshift = np.random.normal(loc=0.0, scale=50.0)
+
+        xshift =  (512/2-(1/scaling * 512/2)) + xrandshift
+        yshift =  (512/2-(1/scaling * 512/2)) + yrandshift
+        Src = tf.contrib.image.transform(Src,   [1/scaling,0, xshift ,0,1/scaling,yshift,0.,0.])
+
+        
         IM = self.physical_model(Src , Kappa)
         #noise_rms = max_noise_rms#tf.random_uniform(shape=[1],minval=max_noise_rms/100.,maxval=max_noise_rms)
         noise = tf.random_normal(tf.shape(IM),mean=0.0,stddev = noise_rms)
         IM = IM + noise
         self.noise_rms = noise_rms
-        return IM
+        return IM , Src
 
     def coord_to_pix(self,X,Y,Xc,Yc,l,N):
         xmin = Xc-0.5*l
