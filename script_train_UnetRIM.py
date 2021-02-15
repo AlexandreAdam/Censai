@@ -110,3 +110,5 @@ with tf.device('/gpu:0'):
             RIM.model_1.save_weights(save_checkpoint_path_1)
             RIM.model_2.save_weights(save_checkpoint_path_2)
             print('saved weights.')
+
+            test

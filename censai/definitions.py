@@ -1,12 +1,11 @@
-from tensorflow.python.keras.layers.merge import concatenate
 from astropy.cosmology import Planck15 as cosmo
+import tensorflow as tf
 
 def lrelu(x, alpha=0.3):
     return tf.maximum(x, tf.multiply(x, alpha))
 
 def endlrelu(x, alpha=0.06):
     return tf.maximum(x, tf.multiply(x, alpha))
-
 
 def m_softplus(x):
     return tf.keras.activations.softplus(x) - tf.keras.activations.softplus( -x -5.0 ) 
@@ -19,7 +18,7 @@ def logKap_normalization(logkappa , dir="code"):
         return tf.nn.relu(logkappa + 4.0) / 7.0
     else:
         return (logkappa * 7.0 - 4.0)
-    
+
 def log10(x):
   numerator = tf.log(x)
   denominator = tf.log(tf.constant(10, dtype=numerator.dtype))
@@ -94,9 +93,7 @@ class VAE(tf.keras.Model):
     def draw_image(self, N):
         randoms = tf.random_normal(  (N , 8,8,16) , dtype=datatype)
         simulated_im = self.decoder(randoms)
-	return simulated_im
-        
-
+        return simulated_im
 
 
 class RayTracer(tf.keras.Model):
@@ -541,18 +538,18 @@ class RIM_UNET_CELL(tf.nn.rnn_cell.RNNCell):
     
 class RIM_CELL(tf.nn.rnn_cell.RNNCell):
     def __init__(self, batch_size, num_steps ,num_pixels, state_size , input_size=None, activation=tf.tanh):
-	self.num_pixels = num_pixels
+        self.num_pixels = num_pixels
         self.num_steps = num_steps
         self._num_units = state_size
         self.double_RIM_state_size = state_size
         self.single_RIM_state_size = state_size/2
         self.gru_state_size = state_size/4
-	self.gru_state_pixel_downsampled = 16*2
+        self.gru_state_pixel_downsampled = 16*2
         self._activation = activation
         self.model_1 = Model(self.single_RIM_state_size)
         self.model_2 = Model(self.single_RIM_state_size)
-	self.batch_size = batch_size
-	self.initial_output_state()
+        self.batch_size = batch_size
+        self.initial_output_state()
 
     def initial_output_state(self):
         self.inputs_1 = tf.zeros(shape=(self.batch_size , self.num_pixels , self.num_pixels , 1))
@@ -575,38 +572,37 @@ class RIM_CELL(tf.nn.rnn_cell.RNNCell):
         return xt_1, ht_1, xt_2, ht_2
 
     def forward_pass(self, data):
+        if (data.shape[0] != self.batch_size):
+            self.batch_size = data.shape[0]
+            self.initial_output_state()
 
-	if (data.shape[0] != self.batch_size):
-	    self.batch_size = data.shape[0]
-	    self.initial_output_state()
 
+            output_series_1 = []
+            output_series_2 = []
 
-        output_series_1 = []
-        output_series_2 = []
-
-        with tf.GradientTape() as g:
-            g.watch(self.inputs_1)
-            g.watch(self.inputs_2)
-            y = log_likelihood(data,physical_model(self.inputs_1,self.inputs_2),noise_rms)
-        grads = g.gradient(y, [self.inputs_1 , self.inputs_2])
-
-        output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1 , grads[0] , self.inputs_2 , self.state_2 , grads[1])
-        output_series_1.append(output_1)
-        output_series_2.append(output_2)
-
-        for current_step in range(self.num_steps-1):
             with tf.GradientTape() as g:
-                g.watch(output_1)
-                g.watch(output_2)
-                y = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
-            grads = g.gradient(y, [output_1 , output_2])
+                g.watch(self.inputs_1)
+                g.watch(self.inputs_2)
+                y = log_likelihood(data,physical_model(self.inputs_1,self.inputs_2),noise_rms)
+            grads = g.gradient(y, [self.inputs_1 , self.inputs_2])
 
-
-            output_1, state_1 , output_2 , state_2 = self.__call__(output_1, state_1 , grads[0] , output_2 , state_2 , grads[1])
+            output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1 , grads[0] , self.inputs_2 , self.state_2 , grads[1])
             output_series_1.append(output_1)
             output_series_2.append(output_2)
-        final_log_L = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
-        return output_series_1 , output_series_2 , final_log_L
+
+            for current_step in range(self.num_steps-1):
+                with tf.GradientTape() as g:
+                    g.watch(output_1)
+                    g.watch(output_2)
+                    y = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
+                grads = g.gradient(y, [output_1 , output_2])
+
+
+                output_1, state_1 , output_2 , state_2 = self.__call__(output_1, state_1 , grads[0] , output_2 , state_2 , grads[1])
+                output_series_1.append(output_1)
+                output_series_2.append(output_2)
+            final_log_L = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
+            return output_series_1 , output_series_2 , final_log_L
 
     def cost_function( self, data,labels_x_1,labels_x_2):
         output_series_1 , output_series_2 , final_log_L = self.forward_pass(data)
