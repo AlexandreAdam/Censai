@@ -5,3 +5,5 @@ output_images
 .ipynb_checkpoints*
 .coverage
 *.egg-info
+__pycache__
+.idea

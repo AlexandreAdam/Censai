@@ -1,5 +1,6 @@
 from astropy.cosmology import Planck15 as cosmo
 import tensorflow as tf
+import numpy as np
 
 def lrelu(x, alpha=0.3):
     return tf.maximum(x, tf.multiply(x, alpha))
@@ -27,11 +28,11 @@ def log10(x):
 
 datatype = tf.float32
 class VAE(tf.keras.Model):
-    def __init__(self , npix_side = 256):
-        super(VAE, self).__init__()
+    def __init__(self , npix_side=256, channels=1, **kwargs):
+        super(VAE, self).__init__(**kwargs)
         activation = lrelu
         self.npix_side = npix_side
-        # self.n_latent = n_latent
+        self.channels = 1
         n_downsample = 5
         self.l0 = tf.keras.layers.Conv2D(16, (4,4), strides=2, padding='same', activation=activation)
         self.l1 = tf.keras.layers.Conv2D(16*2, (4,4), strides=2, padding='same', activation=activation)
@@ -39,10 +40,8 @@ class VAE(tf.keras.Model):
         self.l3 = tf.keras.layers.Conv2D(16*2, (4,4), strides=2, padding='same', activation=activation)
         self.l4 = tf.keras.layers.Conv2D(16*2, (4,4), strides=2, padding='same', activation=activation)
         self.l5 = tf.keras.layers.Conv2D(16*1, (4,4), strides=1, padding='same', activation=activation)
-        self.l_mn = tf.keras.layers.Conv2D(16, (2,2), strides=1, padding='same', activation=activation)
-        self.l_sd = tf.keras.layers.Conv2D(16, (2,2), strides=1, padding='same', activation=activation)
-        # self.l6 = tf.keras.layers.Dense(n_latent)
-        # self.l7 = tf.keras.layers.Dense(n_latent)
+        self.l_mean = tf.keras.layers.Conv2D(16, (2,2), strides=1, padding='same', activation=activation)
+        self.l_logvar = tf.keras.layers.Conv2D(16, (2,2), strides=1, padding='same', activation=activation)
         
         # inputs_decoder = 6**2 * 2
         #self.d1 = tf.keras.layers.Dense(inputs_decoder, activation=activation)
@@ -54,6 +53,8 @@ class VAE(tf.keras.Model):
         self.d7 = tf.keras.layers.Conv2DTranspose(16*1, (4,4), strides=2, padding='same', activation=activation)
         self.d8 = tf.keras.layers.Conv2DTranspose(16, (4,4), strides=1, padding='same', activation=activation)
         self.d9 = tf.keras.layers.Conv2DTranspose(1, (4,4), strides=1, padding='same', activation=m_softplus)
+
+
     def encoder(self, X_in):
         x = tf.reshape(X_in, shape=[-1, self.npix_side, self.npix_side, 1])
         x = self.l0(x)
@@ -62,12 +63,11 @@ class VAE(tf.keras.Model):
         x = self.l3(x)
         x = self.l4(x)
         x = self.l5(x)
-        # x = tf.contrib.layers.flatten(x)
-        mn = self.l_mn(x)
-        sd       = 0.5 * self.l_sd(x)
-        epsilon = tf.random_normal(tf.stack([tf.shape(x)[0], 8 ,8 , 16]) , dtype=datatype ) 
-        z  = mn + tf.multiply(epsilon, tf.exp(sd))        
-        return z, mn, sd
+        mean = self.l_mean(x)
+        logvar = 0.5 * self.l_logvar(x)
+        epsilon = tf.random.normal([x.shape[0], 8, 8, 16], dtype=datatype)
+        z  = mean + tf.multiply(epsilon, tf.exp(logvar))
+        return z, mean, logvar
 
     def decoder(self, sampled_z):            
         # reshaped_dim = [-1, 6, 6, 2]
@@ -81,17 +81,19 @@ class VAE(tf.keras.Model):
         x = self.d7(x)
         x = self.d8(x)
         x = self.d9(x)
-        img = tf.reshape(x, shape=[-1, self.npix_side, self.npix_side])
+        img = tf.reshape(x, shape=[-1, self.npix_side, self.npix_side]) 
         return img
+
     def cost(self, X_in):
-        sampled_code, mn, sd = self.encoder(X_in)
+        sampled_code, mean, logvar = self.encoder(X_in)
         decoded_im = self.decoder(sampled_code)
-        img_cost = tf.reduce_sum( (decoded_im - X_in)**2 , [1,2] )
-        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * sd - tf.square(mn) - tf.exp(2.0 * sd), (1,2,3))
+        img_cost = tf.reduce_sum((decoded_im - X_in)**2, [1,2])
+        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=(1,2,3))
         cost = tf.reduce_mean(img_cost + latent_cost)
         return cost , decoded_im
+
     def draw_image(self, N):
-        randoms = tf.random_normal(  (N , 8,8,16) , dtype=datatype)
+        randoms = tf.random.normal( (N, 8, 8, 16) , dtype=datatype)
         simulated_im = self.decoder(randoms)
         return simulated_im
 
@@ -146,62 +148,62 @@ class RayTracer(tf.keras.Model):
         self.Loutputs = tf.keras.layers.Conv2D(2, (1, 1), activation='linear')
 
     def call(self, kappa):
-        c1 = self.Lc11 (kappa)
-        c1 = self.Lc12 (c1)
-        p1 = self.Lp13 (c1)
+        c1 = self.Lc11(kappa)
+        c1 = self.Lc12(c1)
+        p1 = self.Lp13(c1)
 
-        c2 = self.Lc21 (p1)
-        c2 = self.Lc22 (c2)
-        p2 = self.Lp23 (c2)
+        c2 = self.Lc21(p1)
+        c2 = self.Lc22(c2)
+        p2 = self.Lp23(c2)
 
-        c3 = self.Lc31 (p2)
-        c3 = self.Lc32 (c3)
-        p3 = self.Lp33 (c3)
+        c3 = self.Lc31(p2)
+        c3 = self.Lc32(c3)
+        p3 = self.Lp33(c3)
 
-        c4 = self.Lc41 (p3)
-        c4 = self.Lc42 (c4)
-        p4 = self.Lp43 (c4)
+        c4 = self.Lc41(p3)
+        c4 = self.Lc42(c4)
+        p4 = self.Lp43(c4)
 
-        c5 = self.Lc51 (p4)
-        c5 = self.Lc52 (c5)
-        p5 = self.Lp53 (c5)
+        c5 = self.Lc51(p4)
+        c5 = self.Lc52(c5)
+        p5 = self.Lp53(c5)
 
-        z1 = self.LcZ1 (p5)
-        z1 = self.LcZ2 (z1)
+        z1 = self.LcZ1(p5)
+        z1 = self.LcZ2(z1)
 
-        u6 = self.Lu61 (z1)
+        u6 = self.Lu61(z1)
         u6 = tf.concat([u6, c5], axis=3)
-        c6 = self.Lc62 (u6)
-        c6 = self.Lc63 (c6)
+        c6 = self.Lc62(u6)
+        c6 = self.Lc63(c6)
 
-        u7 = self.Lu71 (c6)
+        u7 = self.Lu71(c6)
         u7 = tf.concat([u7, c4], axis=3)
-        c7 = self.Lc72 (u7)
-        c7 = self.Lc73 (c7)
+        c7 = self.Lc72(u7)
+        c7 = self.Lc73(c7)
 
-        u8 = self.Lu81 (c7)
+        u8 = self.Lu81(c7)
         u8 = tf.concat([u8, c3], axis=3)
-        c8 = self.Lc82 (u8)
-        c8 = self.Lc83 (c8)
+        c8 = self.Lc82(u8)
+        c8 = self.Lc83(c8)
 
-        u9 = self.Lu91 (c8)
+        u9 = self.Lu91(c8)
         u9 = tf.concat([u9, c2], axis=3)
-        c9 = self.Lc92 (u9)
-        c9 = self.Lc93 (c9)
+        c9 = self.Lc92(u9)
+        c9 = self.Lc93(c9)
 
-        u10 = self.Lu101 (c9)
+        u10 = self.Lu101(c9)
         u10 = tf.concat([u10, c1], axis=3)
-        c10 = self.Lc102 (u10)
-        c10 = self.Lc103 (c10)
+        c10 = self.Lc102(u10)
+        c10 = self.Lc103(c10)
 
-        outputs = self.Loutputs (c10)
+        outputs = self.Loutputs(c10)
         
         return outputs
 
-    def cost_function( self, kappa , x_a_label , y_a_label):
+    def cost(self, kappa, x_a_label, y_a_label):
         alpha = self.call(kappa)
-        alpha_label = tf.concat([x_a_label , y_a_label] , axis=3)
-        return tf.reduce_mean( ( alpha - alpha_label)**2 ) , alpha
+        alpha_label = tf.concat([x_a_label, y_a_label] , axis=3)
+        return tf.reduce_mean((alpha - alpha_label)**2), alpha
 
 
 # class RayTracer(tf.keras.Model):
@@ -269,7 +271,6 @@ class RayTracer(tf.keras.Model):
 
 
 kernel_size = 5
-
 class Conv_GRU(tf.keras.Model):
     def __init__(self , num_features):
         super(Conv_GRU, self).__init__()
@@ -277,21 +278,21 @@ class Conv_GRU(tf.keras.Model):
         self.conv_1 = tf.keras.layers.Conv2D(filters = num_filters, kernel_size=[kernel_size,kernel_size], strides=1, activation='sigmoid',padding='same')
         self.conv_2 = tf.keras.layers.Conv2D(filters = num_filters, kernel_size=[kernel_size,kernel_size], strides=1, activation='sigmoid',padding='same')
         self.conv_3 = tf.keras.layers.Conv2D(filters = num_filters, kernel_size=[kernel_size,kernel_size], strides=1, activation='tanh',padding='same')
+
     def call(self, inputs, state):
-        stacked_input = tf.concat([inputs , state], axis=3)
+        stacked_input = tf.concat([inputs, state], axis=3)
         z = self.conv_1(stacked_input)
         r = self.conv_2(stacked_input)
-        r_state = tf.multiply(r , state)
-        stacked_r_state = tf.concat([inputs , r_state], axis=3)
+        r_state = tf.multiply(r, state)
+        stacked_r_state = tf.concat([inputs, r_state], axis=3)
         update_info = self.conv_3(stacked_r_state)
-        new_state = tf.multiply( 1-z , state) + tf.multiply(z , update_info)
-        return new_state , new_state
+        new_state = tf.multiply(1-z, state) + tf.multiply(z, update_info)
+        return new_state, new_state
 
 initializer = tf.initializers.random_normal( stddev=0.06)
 kernal_reg_amp = 0.0
 bias_reg_amp = 0.0
 kernel_size = 6
-
 class Model(tf.keras.Model):
     def __init__(self,num_cell_features):
         super(Model, self).__init__()
@@ -301,16 +302,89 @@ class Model(tf.keras.Model):
         num_filt_emb2 = self.num_gru_features
         num_filt_emb3_1 = self.num_gru_features
         num_filt_emb3_2 = self.num_gru_features
-        self.conv1_1 = tf.keras.layers.Conv2D(filters = num_filt_emb1_1, kernel_size=[kernel_size,kernel_size], strides=4, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv1_2 = tf.keras.layers.Conv2D(filters = num_filt_emb1_2, kernel_size=[kernel_size,kernel_size], strides=4, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv1_3 = tf.keras.layers.Conv2D(filters = num_filt_emb1_2, kernel_size=[kernel_size,kernel_size], strides=2, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv2 = tf.keras.layers.Conv2D(filters = num_filt_emb2, kernel_size=[5,5], strides=1, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv3_1 = tf.keras.layers.Conv2DTranspose(filters = num_filt_emb3_1, kernel_size=[kernel_size,kernel_size], strides=4, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv3_2 = tf.keras.layers.Conv2DTranspose(filters = num_filt_emb3_2, kernel_size=[kernel_size,kernel_size], strides=4, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv3_3 = tf.keras.layers.Conv2DTranspose(filters = num_filt_emb3_2, kernel_size=[kernel_size,kernel_size], strides=2, activation='relu',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
-        self.conv4 = tf.keras.layers.Conv2D(filters = 1, kernel_size=[5,5], strides=1, activation='linear',padding='same',kernel_regularizer= tf.keras.regularizers.l2(l=kernal_reg_amp), bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), kernel_initializer = initializer)
+        self.conv1_1 = tf.keras.layers.Conv2D(
+                filters=num_filt_emb1_1, 
+                kernel_size=[kernel_size,kernel_size], 
+                strides=4, 
+                activation='relu',
+                padding='same',
+                kernel_regularizer=tf.keras.regularizers.l2(l=kernal_reg_amp), 
+                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), 
+                kernel_initializer=initializer
+                )
+        self.conv1_2 = tf.keras.layers.Conv2D(
+                filters = num_filt_emb1_2, 
+                kernel_size=[kernel_size,kernel_size], 
+                strides=4, 
+                activation='relu',
+                padding='same',
+                kernel_regularizer=tf.keras.regularizers.l2(l=kernal_reg_amp), 
+                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), 
+                kernel_initializer = initializer
+                )
+        self.conv1_3 = tf.keras.layers.Conv2D(
+                filters = num_filt_emb1_2, 
+                kernel_size=[kernel_size,kernel_size], 
+                strides=2, 
+                activation='relu',
+                padding='same',
+                kernel_regularizer=tf.keras.regularizers.l2(l=kernal_reg_amp), 
+                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), 
+                kernel_initializer = initializer
+                )
+        self.conv2 = tf.keras.layers.Conv2D(
+                filters=num_filt_emb2, 
+                kernel_size=[5,5], 
+                strides=1, 
+                activation='relu',
+                padding='same',
+                kernel_regularizer=tf.keras.regularizers.l2(l=kernal_reg_amp), 
+                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), 
+                kernel_initializer=initializer
+                )
+        self.conv3_1 = tf.keras.layers.Conv2DTranspose(
+                filters=num_filt_emb3_1,
+                kernel_size=[kernel_size,kernel_size], 
+                strides=4, 
+                activation='relu',
+                padding='same',
+                kernel_regularizer=tf.keras.regularizers.l2(l=kernal_reg_amp), 
+                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), 
+                kernel_initializer=initializer
+                )
+        self.conv3_2 = tf.keras.layers.Conv2DTranspose(
+                filters=num_filt_emb3_2, 
+                kernel_size=[kernel_size,kernel_size], 
+                strides=4, 
+                activation='relu',
+                padding='same',
+                kernel_regularizer=tf.keras.regularizers.l2(l=kernal_reg_amp), 
+                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), 
+                kernel_initializer=initializer
+                )
+        self.conv3_3 = tf.keras.layers.Conv2DTranspose(
+                filters=num_filt_emb3_2, 
+                kernel_size=[kernel_size,kernel_size], 
+                strides=2, 
+                activation='relu',
+                padding='same',
+                kernel_regularizer=tf.keras.regularizers.l2(l=kernal_reg_amp), 
+                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), 
+                kernel_initializer = initializer
+                )
+        self.conv4 = tf.keras.layers.Conv2D(
+                filters=1, 
+                kernel_size=[5,5], 
+                strides=1, 
+                activation='linear',
+                padding='same',
+                kernel_regularizer=tf.keras.regularizers.l2(l=kernal_reg_amp), 
+                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp), 
+                kernel_initializer=initializer
+                )
         self.gru1 = Conv_GRU(self.num_gru_features)
         self.gru2 = Conv_GRU(self.num_gru_features)
+
     def call(self, inputs, state, grad):
         stacked_input = tf.concat([inputs , grad], axis=3)
         xt_1E = self.conv1_1(stacked_input)
@@ -328,22 +402,21 @@ class Model(tf.keras.Model):
         ht = tf.concat([gru_1_out , gru_2_out], axis=3)
         return xt, ht
 
-    
-    
 class GRU_COMPONENT(tf.keras.Model):
     def __init__(self,num_cell_features):
         super(GRU_COMPONENT, self).__init__()
         self.kernel_size = 5
         self.num_gru_features = num_cell_features/2
-        self.conv1 = tf.keras.layers.Conv2D(filters = self.num_gru_features, kernel_size=self.kernel_size, strides=1, activation='relu',padding='same')
+        self.conv1 = tf.keras.layers.Conv2D(filters=self.num_gru_features, kernel_size=self.kernel_size, strides=1, activation='relu', padding='same')
         self.gru1 = Conv_GRU(self.num_gru_features)
         self.gru2 = Conv_GRU(self.num_gru_features)
+
     def call(self, inputs, state):
         ht_11 , ht_12 = tf.split(state, 2, axis=3)
-        gru_1_out,_ = self.gru1( inputs ,ht_11)
+        gru_1_out,_ = self.gru1(inputs, ht_11)
         gru_1_outE = self.conv1(gru_1_out)
-        gru_2_out,_ = self.gru2( gru_1_outE ,ht_12)
-        ht = tf.concat([gru_1_out , gru_2_out], axis=3)
+        gru_2_out,_ = self.gru2(gru_1_outE, ht_12)
+        ht = tf.concat([gru_1_out, gru_2_out], axis=3)
         xt = gru_2_out
         return xt, ht
 
@@ -395,39 +468,39 @@ class RIM_UNET(tf.keras.Model):
         stacked_input = tf.concat([inputs , grad], axis=3)
         ht_1 , ht_2 , ht_3 , ht_4 = state
         
-        c1 = self.Lc11 (stacked_input)
+        c1 = self.Lc11(stacked_input)
         c1_gru , c1_gru_state = self.GRU_COMP1(c1 , ht_1)
         
-        p1 = self.Lp13 (c1)
-        c2 = self.Lc21 (p1)
-        c2 = self.Lc22 (c2)
+        p1 = self.Lp13(c1)
+        c2 = self.Lc21(p1)
+        c2 = self.Lc22(c2)
         c2_gru , c2_gru_state = self.GRU_COMP2(c2 , ht_2)
         
-        p2 = self.Lp23 (c2)
-        c3 = self.Lc31 (p2)
-        c3 = self.Lc32 (c3)
+        p2 = self.Lp23(c2)
+        c3 = self.Lc31(p2)
+        c3 = self.Lc32(c3)
         c3_gru , c3_gru_state = self.GRU_COMP3(c3 , ht_3)
 
         p3 = self.Lp33(c3)
         
-        z1 = self.LcZ1 (p3)
-        z1 = self.LcZ2 (z1)
+        z1 = self.LcZ1(p3)
+        z1 = self.LcZ2(z1)
         c4_gru , c4_gru_state = self.GRU_COMP4(z1 , ht_4)
 
-        u6 = self.Lu61 (c4_gru)
+        u6 = self.Lu61(c4_gru)
         u6 = tf.concat([u6, c3_gru], axis=3)
-        c6 = self.Lc62 (u6)
-        c6 = self.Lc63 (c6)
+        c6 = self.Lc62(u6)
+        c6 = self.Lc63(c6)
 
-        u7 = self.Lu71 (c6)
+        u7 = self.Lu71(c6)
         u7 = tf.concat([u7, c2_gru], axis=3)
-        c7 = self.Lc72 (u7)
-        c7 = self.Lc73 (c7)
+        c7 = self.Lc72(u7)
+        c7 = self.Lc73(c7)
 
-        u8 = self.Lu81 (c7)
+        u8 = self.Lu81(c7)
         u8 = tf.concat([u8, c1_gru], axis=3)
-        c8 = self.Lc82 (u8)
-        c8 = self.Lc83 (c8)
+        c8 = self.Lc82(u8)
+        c8 = self.Lc83(c8)
 
         delta_xt = self.Loutputs(c8)
         xt = inputs + delta_xt
@@ -438,17 +511,17 @@ class RIM_UNET(tf.keras.Model):
 
 
 class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
-    def __init__(self, batch_size, num_steps ,num_pixels, state_size , input_size=None, activation=tf.tanh,cond1= None, cond2= None, **kwargs):
-        super(RIM_CELL, self).__init__(**kwargs)
-        self.num_pixels = num_pixels
+    def __init__(self, batch_size, num_steps, num_pixels, state_size, input_size=None, activation=tf.tanh, cond1=None, cond2=None, **kwargs):
+        super(RIM_UNET_CELL, self).__init__(**kwargs)
+        self.num_pixels = num_pixels #state size is not used, fixed in self.state_size_list
         self.num_steps = num_steps
         self._num_units = state_size
-        self.double_RIM_state_size = state_size
-        self.single_RIM_state_size = state_size/2
-        self.gru_state_size = state_size/4
+        self.double_RIM_state_size = state_size #Not used
+        self.single_RIM_state_size = state_size//2 # Not used
+        self.gru_state_size = state_size//4
         self.gru_state_pixel_downsampled = 16*2
         self._activation = activation
-        self.state_size_list = [32 , 32 , 128 , 512]
+        self.state_size_list = [32, 32, 128, 512]
         self.model_1 = RIM_UNET(self.state_size_list)
         self.model_2 = RIM_UNET(self.state_size_list)
         self.batch_size = batch_size
@@ -457,37 +530,30 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
 
     def initial_condition(self, cond1, cond2):
         if cond1 is None:
-            self.inputs_1 = tf.zeros(shape=(self.batch_size , self.num_pixels , self.num_pixels , 1))
+            self.inputs_1 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, 1))
         else:
             self.inputs_1 = tf.identity(cond1)
-            
         if cond2 is None:
-            self.inputs_2 = tf.zeros(shape=(self.batch_size , self.num_pixels , self.num_pixels , 1))
+            self.inputs_2 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, 1))
         else:
             self.inputs_2 = tf.identity(cond2)
-            
-        return
-            
-        
-    def initial_output_state(self):
 
+
+    def initial_output_state(self):
         STRIDE = self.model_1.STRIDE
         numfeat_1 , numfeat_2 , numfeat_3 , numfeat_4 = self.state_size_list
-        state_11 = tf.zeros(shape=(self.batch_size,  self.num_pixels, self.num_pixels , numfeat_1 ))
-        state_12 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**1, self.num_pixels/STRIDE**1 , numfeat_2 ))
-        state_13 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**2, self.num_pixels/STRIDE**2 , numfeat_3 ))
-        state_14 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**3, self.num_pixels/STRIDE**3 , numfeat_4 ))
+        state_11 = tf.zeros(shape=(self.batch_size,  self.num_pixels, self.num_pixels , numfeat_1))
+        state_12 = tf.zeros(shape=(self.batch_size,  self.num_pixels//STRIDE**1, self.num_pixels//STRIDE**1, numfeat_2))
+        state_13 = tf.zeros(shape=(self.batch_size,  self.num_pixels//STRIDE**2, self.num_pixels//STRIDE**2, numfeat_3))
+        state_14 = tf.zeros(shape=(self.batch_size,  self.num_pixels//STRIDE**3, self.num_pixels//STRIDE**3, numfeat_4))
         self.state_1 = [state_11 , state_12 , state_13 , state_14]
 
         STRIDE = self.model_2.STRIDE
-        state_21 = tf.zeros(shape=(self.batch_size,  self.num_pixels, self.num_pixels , numfeat_1 ))
-        state_22 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**1, self.num_pixels/STRIDE**1 , numfeat_2 ))
-        state_23 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**2, self.num_pixels/STRIDE**2 , numfeat_3 ))
-        state_24 = tf.zeros(shape=(self.batch_size,  self.num_pixels/STRIDE**3, self.num_pixels/STRIDE**3 , numfeat_4 ))
-        self.state_2 = [state_21 , state_22 , state_23 , state_24]
-
-        
-
+        state_21 = tf.zeros(shape=(self.batch_size,  self.num_pixels, self.num_pixels, numfeat_1))
+        state_22 = tf.zeros(shape=(self.batch_size,  self.num_pixels//STRIDE**1, self.num_pixels//STRIDE**1, numfeat_2))
+        state_23 = tf.zeros(shape=(self.batch_size,  self.num_pixels//STRIDE**2, self.num_pixels//STRIDE**2, numfeat_3))
+        state_24 = tf.zeros(shape=(self.batch_size,  self.num_pixels//STRIDE**3, self.num_pixels//STRIDE**3, numfeat_4))
+        self.state_2 = [state_21, state_22, state_23, state_24]
 
     @property
     def state_size(self):
@@ -497,23 +563,21 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
     def output_size(self):
         return self._num_units
 
-    def __call__(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2 , scope=None):
+    def __call__(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2, scope=None):
         xt_1, ht_1 = self.model_1(inputs_1, state_1 , grad_1)
         xt_2, ht_2 = self.model_2(inputs_2, state_2 , grad_2)
         return xt_1, ht_1, xt_2, ht_2
 
     def forward_pass(self, data):
-
         output_series_1 = []
         output_series_2 = []
-
         with tf.GradientTape() as g:
             g.watch(self.inputs_1)
             g.watch(self.inputs_2)
-            y = log_likelihood(data,physical_model(self.inputs_1,self.inputs_2),noise_rms)
+            y = log_likelihood(data, physical_model(self.inputs_1, self.inputs_2), noise_rms) # TODO physical model and rms must be in init, also log_likelihood 
         grads = g.gradient(y, [self.inputs_1 , self.inputs_2])
 
-        output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1 , grads[0] , self.inputs_2 , self.state_2 , grads[1])
+        output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1, grads[0], self.inputs_2, self.state_2, grads[1])
         output_series_1.append(output_1)
         output_series_2.append(output_2)
 
@@ -521,7 +585,7 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
             with tf.GradientTape() as g:
                 g.watch(output_1)
                 g.watch(output_2)
-                y = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
+                y = log_likelihood(data, physical_model(output_1,output_2), noise_rms)
             grads = g.gradient(y, [output_1 , output_2])
 
 
@@ -535,6 +599,8 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
         output_series_1 , output_series_2 , final_log_L = self.forward_pass(data)
         return tf.reduce_mean(tf.square(output_series_1 - labels_x_1)) + tf.reduce_mean(tf.square(output_series_2 - labels_x_2)), output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
 
+
+
 class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
     def __init__(self, batch_size, num_steps ,num_pixels, state_size, input_size=None, activation=tf.tanh, **kwargs):
         super(RIM_CELL, self).__init__(**kwargs)
@@ -542,8 +608,8 @@ class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
         self.num_steps = num_steps
         self._num_units = state_size
         self.double_RIM_state_size = state_size
-        self.single_RIM_state_size = state_size/2
-        self.gru_state_size = state_size/4
+        self.single_RIM_state_size = state_size//2
+        self.gru_state_size = state_size//4
         self.gru_state_pixel_downsampled = 16*2
         self._activation = activation
         self.model_1 = Model(self.single_RIM_state_size)
@@ -552,11 +618,10 @@ class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
         self.initial_output_state()
 
     def initial_output_state(self):
-        self.inputs_1 = tf.zeros(shape=(self.batch_size , self.num_pixels , self.num_pixels , 1))
-        self.state_1 = tf.zeros(shape=(self.batch_size,  self.num_pixels/self.gru_state_pixel_downsampled, self.num_pixels/self.gru_state_pixel_downsampled , self.single_RIM_state_size ))
-        self.inputs_2 = tf.zeros(shape=(self.batch_size , self.num_pixels , self.num_pixels , 1))
-        self.state_2 = tf.zeros(shape=(self.batch_size,  self.num_pixels/self.gru_state_pixel_downsampled, self.num_pixels/self.gru_state_pixel_downsampled , self.single_RIM_state_size ))
-
+        self.inputs_1 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, 1))
+        self.state_1 = tf.zeros(shape=(self.batch_size,  self.num_pixels//self.gru_state_pixel_downsampled, self.num_pixels//self.gru_state_pixel_downsampled, self.single_RIM_state_size))
+        self.inputs_2 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, 1))
+        self.state_2 = tf.zeros(shape=(self.batch_size,  self.num_pixels//self.gru_state_pixel_downsampled, self.num_pixels//self.gru_state_pixel_downsampled, self.single_RIM_state_size))
 
     @property
     def state_size(self):
@@ -566,7 +631,7 @@ class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
     def output_size(self):
         return self._num_units
 
-    def __call__(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2 , scope=None):
+    def __call__(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2):
         xt_1, ht_1 = self.model_1(inputs_1, state_1 , grad_1)
         xt_2, ht_2 = self.model_2(inputs_2, state_2 , grad_2)
         return xt_1, ht_1, xt_2, ht_2
@@ -583,7 +648,7 @@ class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
             with tf.GradientTape() as g:
                 g.watch(self.inputs_1)
                 g.watch(self.inputs_2)
-                y = log_likelihood(data,physical_model(self.inputs_1,self.inputs_2),noise_rms)
+                y = log_likelihood(data,physical_model(self.inputs_1,self.inputs_2),noise_rms) #TODO input log_likelihood and physical model in init
             grads = g.gradient(y, [self.inputs_1 , self.inputs_2])
 
             output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1 , grads[0] , self.inputs_2 , self.state_2 , grads[1])
@@ -608,8 +673,9 @@ class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
         output_series_1 , output_series_2 , final_log_L = self.forward_pass(data)
         return tf.reduce_mean(tf.square(output_series_1 - labels_x_1)) + tf.reduce_mean(tf.square(output_series_2 - labels_x_2)), output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
 
-class SRC_KAPPA_Generator(object):
 
+
+class SRC_KAPPA_Generator(object):
     def __init__(self,train_batch_size=1,test_batch_size=1,kap_side_length=7.68,src_side=3.0,num_src_side=48,num_kappa_side=48):
         self.src_side = src_side
         self.kap_side_length = kap_side_length
@@ -640,7 +706,7 @@ class SRC_KAPPA_Generator(object):
         Xkap, Ykap = rcord*np.cos(thetacord), rcord*np.sin(thetacord)
         rlens, thetalens = np.sqrt(xlens**2 + ylens**2) , np.arctan2(ylens, xlens)
         thetalens = thetalens - phi
-        xlens, ylens = rlens*np.cos(thetalens), rlens*np.sin(thetalens)
+        xlens, ylens = rlens*np.cos(thetalens), rlens*np.sin(thetalens) 
         r = np.sqrt((Xkap-xlens)**2 + ((Ykap-ylens) * (1-elp) )**2) *(2*np.pi/ (360*3600) )
         Rein = (4*np.pi*sigma_v**2/c**2) * Dds /Ds
         kappa = np.divide( np.sqrt(1-elp)* Rein ,  (2* np.sqrt( r**2 + rc**2)))
@@ -700,16 +766,11 @@ class SRC_KAPPA_Generator(object):
 
 
 
-
-
-
-
-class lens_util(object):
-
-    def __init__(self, im_side= 7.68, src_side=3.0, numpix_side = 192 , kap_side=7.68 , method = "conv2d"):
+class LensUtil:
+    def __init__(self, im_side=7.68, src_side=3.0, numpix_side=256 , kap_side=7.68 , method="conv2d"):
         self.im_side = im_side
         self.numpix_side = numpix_side
-        self.src_side     = src_side
+        self.src_side = src_side
         self.kap_numpix = numpix_side
         self.RT = RayTracer(trainable=False)
         checkpoint_path = "checkpoints/model_Unet_test"
@@ -808,8 +869,6 @@ def log_likelihood(Data,Model,noise_rms):
     #logL = 0.5 * tf.reduce_mean(tf.reduce_mean((Data - Model)**2, axis=2 ), axis=1 )
     logL = 0.5 * tf.reduce_mean(tf.reduce_mean((Data - Model)**2, axis=2 ), axis=1 ) / noise_rms**2
     return logL
-
-
 
 
 def lrelu4p(x, alpha=0.04):
