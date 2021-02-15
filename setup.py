@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-	name="Censai",
+	name="censai",
 	version="0.2",
 	description="",
 	packages=find_packages(),

@@ -3,3 +3,5 @@
 checkpoints
 output_images
 .ipynb_checkpoints*
+.coverage
+*.egg-info
