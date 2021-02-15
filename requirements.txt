@@ -6,3 +6,5 @@ jupyter
 Pillow
 scipy
 astropy
+scikit-learn
+sickit-image
