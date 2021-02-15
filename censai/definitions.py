@@ -437,8 +437,9 @@ class RIM_UNET(tf.keras.Model):
 
 
 
-class RIM_UNET_CELL(tf.nn.rnn_cell.RNNCell):
-    def __init__(self, batch_size, num_steps ,num_pixels, state_size , input_size=None, activation=tf.tanh,cond1= None, cond2= None):
+class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
+    def __init__(self, batch_size, num_steps ,num_pixels, state_size , input_size=None, activation=tf.tanh,cond1= None, cond2= None, **kwargs):
+        super(RIM_CELL, self).__init__(**kwargs)
         self.num_pixels = num_pixels
         self.num_steps = num_steps
         self._num_units = state_size
@@ -534,10 +535,9 @@ class RIM_UNET_CELL(tf.nn.rnn_cell.RNNCell):
         output_series_1 , output_series_2 , final_log_L = self.forward_pass(data)
         return tf.reduce_mean(tf.square(output_series_1 - labels_x_1)) + tf.reduce_mean(tf.square(output_series_2 - labels_x_2)), output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
 
-    
-    
-class RIM_CELL(tf.nn.rnn_cell.RNNCell):
-    def __init__(self, batch_size, num_steps ,num_pixels, state_size , input_size=None, activation=tf.tanh):
+class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
+    def __init__(self, batch_size, num_steps ,num_pixels, state_size, input_size=None, activation=tf.tanh, **kwargs):
+        super(RIM_CELL, self).__init__(**kwargs)
         self.num_pixels = num_pixels
         self.num_steps = num_steps
         self._num_units = state_size
