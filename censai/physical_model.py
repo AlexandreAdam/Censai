@@ -14,7 +14,7 @@ class PhysicalModel:
         self.pixels = pixels
         self.kappa_side = kappa_side
         self.method = method
-        if metho == "unet":
+        if method == "unet":
             self.RT = RayTracer(trainable=False)
             self.RT.load_weights(checkpoint_path)
         self.set_deflection_angle_vars()
@@ -46,13 +46,13 @@ class PhysicalModel:
         return im
 
     def noisy_forward(self, source, kappa, noise_rms, logkappa=True):
-        im = self.forwad(source, kappa, logkappa)
+        im = self.forward(source, kappa, logkappa)
         noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
         return im + noise
 
     def lens_source(self, x_src, y_src, source):
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
-        wrap = tf.concat([x_src_pix, y_src_pix], axis=3) # stack along channel dimension
+        wrap = tf.stack([x_src_pix, y_src_pix], axis=4) # stack create new dimension
         im = tfa.image.resampler(source, wrap) # bilinear interpolation of source on wrap grid
         return im
 
@@ -74,10 +74,8 @@ class PhysicalModel:
         x = np.linspace(-1, 1, 2 * self.pixels + 1) # padding
         xx, yy = np.meshgrid(x, x)
         rho = xx**2 + yy**2
-        xconv_kernel = -xx/rho * self.kappa_side
-        yconv_kernel = -yy/rho * self.kappa_side
-        xconv_kernel[self.pixels, self.pixels] = 0 # avoid exploding contribution of the center
-        yconv_kernel[self.pixels, self.pixels] = 0
+        xconv_kernel = -self._safe_divide(xx, rho) * self.kappa_side
+        yconv_kernel = -self._safe_divide(yy, rho) * self.kappa_side
         # reshape to [filter_height, filter_width, in_channels, out_channels]
         self.xconv_kernel = tf.constant(xconv_kernel[..., np.newaxis, np.newaxis], dtype=tf.float32)
         self.yconv_kernel = tf.constant(yconv_kernel[..., np.newaxis, np.newaxis], dtype=tf.float32)
@@ -88,4 +86,10 @@ class PhysicalModel:
         # reshape for broadcast to [batch_size, pixels, pixels, 1]
         self.ximage = tf.constant(xx[np.newaxis, ..., np.newaxis], dtype=np.float32)
         self.yimage = tf.constant(yy[np.newaxis, ..., np.newaxis], dtype=tf.float32)
+
+    @staticmethod
+    def _safe_divide(num, denominator):
+        out = np.zeros_like(num)
+        out[denominator != 0] = num[denominator != 0] / denominator[denominator != 0]
+        return out
 
