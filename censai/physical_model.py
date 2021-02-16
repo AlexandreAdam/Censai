@@ -50,6 +50,8 @@ class PhysicalModel:
         noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
         return im + noise
 
+
+    # TODO might be best to tile x_src and y_src here if needed
     def lens_source(self, x_src, y_src, source):
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
         wrap = tf.stack([x_src_pix, y_src_pix], axis=4) # stack create new dimension
