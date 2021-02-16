@@ -675,6 +675,7 @@ class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
 
 
 
+# moved to data_generator
 class SRC_KAPPA_Generator(object):
     def __init__(self,train_batch_size=1,test_batch_size=1,kap_side_length=7.68,src_side=3.0,num_src_side=48,num_kappa_side=48):
         self.src_side = src_side
@@ -754,6 +755,7 @@ class SRC_KAPPA_Generator(object):
                 self.Source_ts[i,:,:,0] = self.gen_source(x_src = x_src, y_src = y_src, sigma_src = sigma_src, norm = norm_source)
                 self.Kappa_ts[i,:,:,0]  = self.Kappa_fun(xlens, ylens, elp, phi, Rein)
         return
+
     def draw_average_k_s(self):
         src = self.gen_source(x_src = 0., y_src = 0., sigma_src = 0.5, norm = True)
         kappa = self.Kappa_fun( 0., 0. , 0.02, 0., 3.0)
@@ -810,7 +812,7 @@ class LensUtil:
             Ysrc = tf.add(tf.reshape(self.Yim, [-1, self.numpix_side, self.numpix_side, 1]),  - alpha_y )
             
         if (self.method=="Unet"):
-            alpha = self.RT (tf.identity(Kappa))
+            alpha = self.RT(tf.identity(Kappa))
             alpha_x , alpha_y = tf.split(alpha,2,axis=3)
             #alpha = tf.identity(Kappa)
             #alpha_x  = alpha * 0.
