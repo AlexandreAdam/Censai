@@ -1,4 +1,5 @@
 tensorflow>=2.4.1
+tensorflow-addons
 numpy
 matplotlib
 jupyter
@@ -7,4 +8,4 @@ Pillow
 scipy
 astropy
 scikit-learn
-sickit-image
+scikit-image

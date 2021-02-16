@@ -15,17 +15,15 @@ import scipy.io
 
 
 
-
 class DataGenerator(object):
-    '''
+    """
     A class to handle processing of data.
-    '''
-    
+    """
     def __init__(self,datadir=None,numpix_side=192, numkappa_side=193, src_side=3., im_side = 2.,max_noise_rms=0.0,use_psf=False,lens_model_error=[0.01,0.01,0.01,0.01,0.01,0.01,0.01],binpix=1,mask=False,min_unmasked_flux=1.0):
-        '''
+        """
         Initialize an instance of the class.  Give it the directory
         of the directories containing training/test data.
-        '''
+        """
         self.datadir = datadir
         if datadir is not None:
             self.num_datadir = len(datadir)
@@ -33,60 +31,33 @@ class DataGenerator(object):
         self.numpix_side = numpix_side
         self.im_side = im_side
         self.numkappa_side = numkappa_side
-        
         self.num_out = 7
-        
-        
-        
+
     def gen_source(self,Xsrc, Ysrc, x_src = 0, y_src = 0, sigma_src = 1, numpix_side = 192, norm = False):
-    
-        
-    
         Im = np.exp( -(((Xsrc-x_src)**2 +(Ysrc-y_src)**2) / (2.*sigma_src**2) ))
-        
         if norm is True:
             Im = Im/np.max(Im)
-                    
         return Im
 
-
-
     def Kappa_fun(self, xlens, ylens, elp, phi, Rein, numkappa_side = 193, kap_side_length = 2, rc=0, Ds = 1753486987.8422, Dds = 1125770220.58881, c = 299800000):
-    
         sigma_v = np.sqrt( c**2/(4*np.pi)*Rein*np.pi/180/3600  * Ds/Dds )
-        
         x = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
         y = np.linspace(-1, 1, numkappa_side) * kap_side_length/2
         xv, yv = np.meshgrid(x, y)
-        
         A = (y[1]-y[0])/2. *(2*np.pi/ (360*3600) )
-        
         rcord, thetacord = np.sqrt(xv**2 + yv**2) , np.arctan2(xv, yv)
         thetacord = thetacord - phi
         Xkap, Ykap = rcord*np.cos(thetacord), rcord*np.sin(thetacord)
-        
         rlens, thetalens = np.sqrt(xlens**2 + ylens**2) , np.arctan2(xlens, ylens)
         thetalens = thetalens - phi
         xlens, ylens = rlens*np.cos(thetalens), rlens*np.sin(thetalens)
-    
         r = np.sqrt((Xkap-xlens)**2 + ((Ykap-ylens) * (1-elp) )**2) *(2*np.pi/ (360*3600) )
-    
         Rein = (4*np.pi*sigma_v**2/c**2) * Dds /Ds 
-    
         kappa = np.divide( np.sqrt(1-elp)* Rein ,  (2* np.sqrt( r**2 + rc**2)))
-    
         mass_inside_00_pix = 2.*A*(np.log(2.**(1./2.) + 1.) - np.log(2.**(1./2.)*A - A) + np.log(3.*A + 2.*2.**(1./2.)*A))
-    
-        
-    
         density_00_pix = np.sqrt(1.-elp) * Rein/(2.) * mass_inside_00_pix/((2.*A)**2.)
-    
-    
-    
         ind = np.argmin(r)
-    
         kappa.flat[ind] = density_00_pix
-    
         return kappa
     
     
