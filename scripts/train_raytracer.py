@@ -1,20 +1,83 @@
 import tensorflow as tf
 from censai.definitions import RayTracer
 from censai.data_generator import NISGenerator
+from censai.utilities import nullwriter
+import os
+from datetime import datetime
 try:
     import wandb
-    wandb.init(project="censai", sync_tensorboard=True)
+    wndb = True
+    wandb.init(project="censai", entity="adam-alexandre01123", sync_tensorboard=True)
 except ImportError:
+    wndb = False
     print("wandb not installed, package ignored")
 
-# if logdir is not None:
-    # if not os.path.isdir(os.path.join(logdir, "train")):
-        # os.mkdir(os.path.join(logdir, "train"))
-    # if not os.path.isdir(os.path.join(logdir, "test")):
-        # os.mkdir(os.path.join(logdir, "test"))
-    # train_writer = tf.summary.create_file_writer(os.path.join(logdir, "train"))
-    # test_writer = tf.summary.create_file_writer(os.path.join(logdir, "test"))
-# else:
-    # test_writer = nullwriter()
-    # train_writer = nullwriter()
+def main(args):
+    if wndb:
+        config = wandb.config
+        config.learning_rate = args.lr
+        config.batch_size = args.batch_size
+        config.epochs = args.epochs
+        config.architecture="RayTracer UNET"
+    gen = NISGenerator(args.total_items, args.batch_size)
+    gen_test = NISGenerator(args.validation, args.validation, train=False)
+    ray_tracer = RayTracer()
+    optim = tf.optimizers.Adam(lr=args.lr)
+
+    # setup tensorboard writer (nullwriter in case we do not want to sync)
+    if args.logdir.lower() != "none":
+        logdir = os.path.join(args.logdir, args.logname)
+        traindir = os.path.join(logdir, "train")
+        testdir = os.path.join(logdir, "test")
+        if not os.path.isdir(logdir):
+            os.mkdir(logdir)
+        if not os.path.isdir(traindir):
+            os.mkdir(traindir)
+        if not os.path.isdir(testdir):
+            os.mkdir(testdir)
+        train_writer = tf.summary.create_file_writer(traindir)
+        test_writer = tf.summary.create_file_writer(testdir)
+    else:
+        test_writer = nullwriter()
+        train_writer = nullwriter()
+
+    epoch_loss = tf.metrics.Mean()
+    step = 1
+    for epoch in range(1, args.epochs + 1):
+        with train_writer.as_default():
+            for batch, (kappa, alpha) in enumerate(gen):
+                with tf.GradientTape() as tape:
+                    tape.watch(ray_tracer.trainable_variables)
+                    cost = ray_tracer.cost(kappa, alpha) # call + MSE loss function
+                    cost += tf.reduce_sum(ray_tracer.losses) # add regularizer loss
+                gradient = tape.gradient(cost, ray_tracer.trainable_variables)
+                clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
+                optim.apply_gradients(zip(clipped_gradient, ray_tracer.trainable_variables)) # backprop
+
+                #========== Summary and logs ==========
+                epoch_loss.update_state([cost])
+                tf.summary.scalar("MSE", cost, step=step)
+                step += 1
+                
+        with test_writer.as_default():
+            for (kappa, alpha) in gen_test:
+                test_cost = ray_tracer.cost(kappa, alpha)
+            tf.summary.scalar("MSE", test_cost, step=step)
+        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.numpy():.3e}")
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+    date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+    parser = ArgumentParser()
+    parser.add_argument("-t", "--total_items", default=100, type=int, required=False, help="Total images in an epoch")
+    parser.add_argument("-b", "--batch_size", default=10, type=int, required=False, help="Number of images in a batch")
+    parser.add_argument("--validation", required=False, default=20, type=int, help="Number of images in the validation set")
+    parser.add_argument("--logdir", required=False, default="logs", help="Path of logs directory. Default assumes script is" \
+            "run from the base directory of censai. For no logs, use None")
+    parser.add_argument("--logname", required=False, default=date, help="Name of the logs, default is the local date + time")
+    parser.add_argument("-e", "--epochs", required=False, default=10, type=int, help="Number of epochs for training")
+    parser.add_argument("--lr", required=False, default=1e-3, type=float, help="Learning rate")
+    args = parser.parse_args()
+    main(args)
+
 

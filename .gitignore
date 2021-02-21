@@ -7,3 +7,5 @@ output_images
 *.egg-info
 __pycache__
 .idea
+wandb
+logs

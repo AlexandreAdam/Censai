@@ -125,7 +125,7 @@ class NISGenerator(tf.keras.utils.Sequence):
     Generate pairs of kappa field and deflection angles of pseudo-elliptical lensing potential 
     of a Non-Singular Isothermal Sphere density profile lens.
     """
-    def __init__(self, total_items=1, batch_size=1, kappa_side_length=7.68, src_side_length=3., kappa_side_pixels=48, src_side_pixels=48, z_source=2., z_lens=0.5, train=True, norm=True):
+    def __init__(self, total_items=1, batch_size=1, kappa_side_length=7.68, src_side_length=3., kappa_side_pixels=48, src_side_pixels=128, z_source=2., z_lens=0.5, train=True, norm=True):
         """
         :param kappa_side_length: Angular FOV of lens plane field (in mas)
         :param src_side_length: Angular FOV of source plane (in mas) -> should be much smaller than kappa FOV
@@ -168,15 +168,15 @@ class NISGenerator(tf.keras.utils.Sequence):
         x_c = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=1e-4, maxval=0.1)
 
         kappa = self.kappa_field(xlens, ylens, elp, phi, Rein, x_c)
-        alpha = self.deflection_angles(xlens, ylens, elp, Rein, x_c)
-        return kappa
+        alpha = self.deflection_angles(xlens, ylens, elp, phi, Rein, x_c)
+        return kappa, alpha #(X, Y)
 
     def angular_diameter_distances(self, z_source, z_lens):
         self.Dls = tf.constant(cosmo.angular_diameter_distance_z1z2(z_lens, z_source).value * 1e6, dtype=tf.float32) # value in parsec
         self.Ds = tf.constant(cosmo.angular_diameter_distance(z_source).value * 1e6, dtype=tf.float32)
         self.Dl = tf.constant(cosmo.angular_diameter_distance(z_lens).value * 1e6, dtype=tf.float32)
 
-    def kappa_field(self, xlens, ylens, elp, Rein, x_c):
+    def kappa_field(self, xlens, ylens, elp, phi, Rein, x_c):
         """
         :param xlens: Horizontal position of the lens  (in mas)
         :param ylens: Vertical position of the lens (in mas)
@@ -185,9 +185,10 @@ class NISGenerator(tf.keras.utils.Sequence):
         xk, yk = self.rotate(self.X_k, self.Y_k, phi)
         xs, ys = self.rotate(xlens, ylens, phi)
         r = self.elliptical_radius(xk - xs, yk - ys, elp)
-        return Rein * (r**2 + 2 * x_c**2) / 2 / (r**2 + x_c**2)**(3/2)
+        kappa = Rein * (r**2 + 2 * x_c**2) / 2 / (r**2 + x_c**2)**(3/2)
+        return tf.reshape(kappa, [*kappa.shape, 1]) # add channel dimension
 
-    def deflection_angles(self, xlens, ylens, elp, Rein, x_c):
+    def deflection_angles(self, xlens, ylens, elp, phi, Rein, x_c):
         xk, yk = self.rotate(self.X_k, self.Y_k, phi)
         xs, ys = self.rotate(xlens, ylens, phi)
         r = self.elliptical_radius(xk - xs, yk - ys, elp)
