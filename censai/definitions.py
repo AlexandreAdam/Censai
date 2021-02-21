@@ -200,10 +200,10 @@ class RayTracer(tf.keras.Model):
         
         return outputs
 
-    def cost(self, kappa, x_a_label, y_a_label):
-        alpha = self.call(kappa)
-        alpha_label = tf.concat([x_a_label, y_a_label] , axis=3)
-        return tf.reduce_mean((alpha - alpha_label)**2), alpha
+    def cost(self, kappa, alpha_true):
+        alpha_pred = self.call(kappa)
+        # alpha_label = tf.concat([x_a_label, y_a_label] , axis=3)
+        return tf.reduce_mean((alpha_pred - alpha_true)**2)#, alpha
 
 
 # class RayTracer(tf.keras.Model):
