@@ -15,7 +15,7 @@ def test_RayTracer():
     ray_tracer = RayTracer()
     a = tf.random.normal(shape=[1, 256, 256, 1])
     out = ray_tracer.call(a)
-    out  = ray_tracer.cost(a, a, a)
+    out  = ray_tracer.cost(a, a)
 
 def test_Conv_GRU():
     conv_gru = Conv_GRU(6)

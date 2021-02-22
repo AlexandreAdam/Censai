@@ -99,51 +99,52 @@ class VAE(tf.keras.Model):
 
 
 class RayTracer(tf.keras.Model):
-    def __init__(self,trainable=True):
+    def __init__(self,initializer="random_uniform", trainable=True):
         super(RayTracer, self).__init__()
+        common_params = {"activation":"linear", "padding":"same", "kernel_initializer":initializer}
 
-        self.Lc11 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same',trainable=trainable) 
-        self.Lc12 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same') 
-        self.Lp13 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', strides=(2, 2), padding='same') 
+        self.Lc11 = tf.keras.layers.Conv2D(32, (3, 3), trainable=trainable, **common_params) 
+        self.Lc12 = tf.keras.layers.Conv2D(32, (3, 3), **common_params) 
+        self.Lp13 = tf.keras.layers.Conv2D(32, (3, 3), strides=(2, 2), **common_params) 
 
-        self.Lc21 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lc22 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lp23 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', strides=(2, 2), padding='same')
+        self.Lc21 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lc22 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lp23 = tf.keras.layers.Conv2D(32, (3, 3), strides=(2, 2), **common_params)
 
-        self.Lc31 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lc32 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lp33 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', strides=(2, 2), padding='same')
+        self.Lc31 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lc32 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lp33 = tf.keras.layers.Conv2D(32, (3, 3), strides=(2, 2), **common_params)
 
-        self.Lc41 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lc42 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lp43 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', strides=(2, 2), padding='same')
+        self.Lc41 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lc42 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lp43 = tf.keras.layers.Conv2D(32, (3, 3), strides=(2, 2), **common_params)
 
-        self.Lc51 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lc52 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lp53 = tf.keras.layers.Conv2D(32, (6, 6), activation='linear', strides=(4, 4), padding='same')
+        self.Lc51 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lc52 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lp53 = tf.keras.layers.Conv2D(32, (6, 6), strides=(4, 4), **common_params)
 
-        self.LcZ1 = tf.keras.layers.Conv2D(32, (16, 16), activation='linear', padding='same')
-        self.LcZ2 = tf.keras.layers.Conv2D(32, (16, 16), activation='linear', padding='same')
+        self.LcZ1 = tf.keras.layers.Conv2D(32, (16, 16), **common_params)
+        self.LcZ2 = tf.keras.layers.Conv2D(32, (16, 16), **common_params)
 
-        self.Lu61 = tf.keras.layers.Conv2DTranspose(32, (6, 6), activation='linear', strides=(4, 4), padding='same')
-        self.Lc62 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lc63 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lu61 = tf.keras.layers.Conv2DTranspose(32, (6, 6), strides=(4, 4), **common_params)
+        self.Lc62 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lc63 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
 
-        self.Lu71 = tf.keras.layers.Conv2DTranspose(32, (2, 2), activation='linear', strides=(2, 2), padding='same')
-        self.Lc72 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lc73 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lu71 = tf.keras.layers.Conv2DTranspose(32, (2, 2), strides=(2, 2), **common_params)
+        self.Lc72 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lc73 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
 
-        self.Lu81 = tf.keras.layers.Conv2DTranspose(32, (2, 2), activation='linear', strides=(2, 2), padding='same')
-        self.Lc82 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lc83 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lu81 = tf.keras.layers.Conv2DTranspose(32, (2, 2), strides=(2, 2), **common_params)
+        self.Lc82 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lc83 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
 
-        self.Lu91 = tf.keras.layers.Conv2DTranspose(32, (2, 2), activation='linear', strides=(2, 2), padding='same')
-        self.Lc92 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lc93 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lu91 = tf.keras.layers.Conv2DTranspose(32, (2, 2), strides=(2, 2), **common_params)
+        self.Lc92 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lc93 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
 
-        self.Lu101 = tf.keras.layers.Conv2DTranspose(32, (2, 2), activation='linear', strides=(2, 2), padding='same')
-        self.Lc102 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
-        self.Lc103 = tf.keras.layers.Conv2D(32, (3, 3), activation='linear', padding='same')
+        self.Lu101 = tf.keras.layers.Conv2DTranspose(32, (2, 2), strides=(2, 2), **common_params)
+        self.Lc102 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
+        self.Lc103 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
 
         self.Loutputs = tf.keras.layers.Conv2D(2, (1, 1), activation='linear')
 
