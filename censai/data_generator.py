@@ -135,6 +135,7 @@ class NISGenerator(tf.keras.utils.Sequence):
         self.train = train
         self.norm = norm
         self.src_side_pixels = src_side_pixels
+        self.src_side_length = src_side_length
 
         # instantiate coordinate grids
         x = tf.linspace(-1, 1, src_side_pixels)
