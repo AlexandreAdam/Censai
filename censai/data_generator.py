@@ -200,6 +200,8 @@ class NISGenerator(tf.keras.utils.Sequence):
         alpha_hat = tf.sqrt(alpha1**2 + alpha2**2)
         alpha1 = xk / (1 - elp) / r * alpha_hat
         alpha2 = yk * (1 - elp) / r * alpha_hat
+        out = tf.stack([alpha1, alpha2], axis=-1)
+        out = tf.clip_by_value(out, clip_value_min=-self.src_side_length, clip_value_max=self.src_side_length)
         return tf.stack([alpha1, alpha2], axis=-1) # stack alphas into tensor of shape [batch_size, pix, pix, 2]
 
     @staticmethod
