@@ -164,9 +164,9 @@ class NISGenerator(tf.keras.utils.Sequence):
         ylens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-1, maxval=1)
         elp = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0.01, maxval=0.3)
         phi = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0, maxval=2*pi)
-        Rein = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=1, maxval=4)
+        Rein = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=1, maxval=2.5)
         # x_c = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=1e-4, maxval=0.1)
-        x_c = tf.constant(0.05, dtype=tf.float32)
+        x_c = tf.constant(1, dtype=tf.float32)
 
         kappa = self.kappa_field(xlens, ylens, elp, phi, Rein, x_c)
         alpha = self.deflection_angles(xlens, ylens, elp, phi, Rein, x_c)
