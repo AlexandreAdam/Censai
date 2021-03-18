@@ -2,18 +2,21 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 import numpy as np
 from censai.definitions import RayTracer
+import tensorflow_addons as tfa
 
 
 class PhysicalModel:
     """
     Physical model to be passed to RIM class at instantiation
     """
-    def __init__(self, image_side=7.68, src_side=3.0, pixels=256, kappa_side=7.68, method="conv2d", checkpoint_path=None):
+    def __init__(self, image_side=7.68, src_side=3.0, pixels=256, kappa_side=7.68, method="conv2d", noise_rms=1, logkappa=False, checkpoint_path=None):
         self.image_side = image_side
         self.src_side = src_side
         self.pixels = pixels
         self.kappa_side = kappa_side
         self.method = method
+        self.noise_rms = noise_rms
+        self.logkappa = logkappa
         if method == "unet":
             self.RT = RayTracer(trainable=False)
             self.RT.load_weights(checkpoint_path)
@@ -34,24 +37,22 @@ class PhysicalModel:
             raise ValueError(f"{self.method} is not in [conv2d, unet]")
         return x_src, y_src, alpha_x, alpha_y
 
-    @staticmethod # TODO verify this has the correct form
-    def log_likelihood(predictions, labels, noise_rms):
-        return 0.5 * tf.reduce_mean((predictions - labels)**2/noise_rms**2)
+    def log_likelihood(self, source_pred, kappa_pred, y_true):
+        y_pred = self.forward(source_pred, kappa_pred)
+        return 0.5 * tf.reduce_mean((y_pred - y_true)**2/self.noise_rms**2)
 
-    def forward(self, source, kappa, logkappa=True):
-        if logkappa:
+    def forward(self, source, kappa):
+        if self.logkappa:
             kappa = 10**kappa
         x_src, y_src, _, _ = self.deflection_angle(kappa)
         im = self.lens_source(x_src, y_src, source)
         return im
 
-    def noisy_forward(self, source, kappa, noise_rms, logkappa=True):
-        im = self.forward(source, kappa, logkappa)
+    def noisy_forward(self, source, kappa, noise_rms):
+        im = self.forward(source, kappa)
         noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
         return im + noise
 
-
-    # TODO might be best to tile x_src and y_src here if needed
     def lens_source(self, x_src, y_src, source):
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
         wrap = tf.stack([x_src_pix, y_src_pix], axis=4) # stack create new dimension
@@ -59,9 +60,6 @@ class PhysicalModel:
         return im
 
     def src_coord_to_pix(self, x, y):
-        """
-        Assume the coordinate center to be 0
-        """
         dx = self.src_side/(self.pixels - 1)
         xmin = -0.5 * self.src_side
         ymin = -0.5 * self.src_side
@@ -75,7 +73,7 @@ class PhysicalModel:
         # coordinate grid for kappa
         x = np.linspace(-1, 1, 2 * self.pixels + 1) # padding
         xx, yy = np.meshgrid(x, x)
-        rho = xx**2 + yy**2
+        rho = np.sqrt(xx**2 + yy**2)
         xconv_kernel = -self._safe_divide(xx, rho) * self.kappa_side
         yconv_kernel = -self._safe_divide(yy, rho) * self.kappa_side
         # reshape to [filter_height, filter_width, in_channels, out_channels]
@@ -94,4 +92,82 @@ class PhysicalModel:
         out = np.zeros_like(num)
         out[denominator != 0] = num[denominator != 0] / denominator[denominator != 0]
         return out
+
+
+
+class AnalyticalPhysicalModel: # not very usefull yet, think about deleting this
+    def __init__(self, src_side=3.0, pixels=256, kappa_side=7.68, theta_c=0.1):
+        self.src_side = src_side
+        self.pixels = pixels
+        self.kappa_side = kappa_side
+        self.theta_c = tf.constant(theta_c, dtype=tf.float32)
+
+        # coordinates for image
+        x = np.linspace(-1, 1, self.pixels) * self.kappa_side/2
+        xx, yy = np.meshgrid(x, x) 
+        # reshape for broadcast to [batch_size, pixels, pixels, channels]
+        self.theta1 = tf.constant(xx[np.newaxis, ..., np.newaxis], dtype=tf.float32)
+        self.theta2 = tf.constant(yy[np.newaxis, ..., np.newaxis], dtype=tf.float32)
+
+    def kappa_field(self, r_ein, e, phi, x0, y0):
+        theta1, theta2 = self.rotated_and_shifted_coords(phi, x0, y0)
+        return 0.5 * r_ein / tf.sqrt(theta1**2/(1-e) + (1-e)*theta2**2 + self.theta_c**2)
+
+    def lens_source(self, source, r_ein, e, phi, x0, y0, gamma_ext, phi_ext):
+        alpha1, alpha2 = self.deflection_angles(r_ein, e, phi, x0, y0)
+        alpha1_ext, alpha2_ext = self.external_shear_deflection(gamma_ext, phi_ext)
+        beta1 = self.theta1 - alpha1 - alpha1_ext # lens equation
+        beta2 = self.theta2 - alpha2 - alpha2_ext
+        x_src_pix, y_src_pix = self.src_coord_to_pix(beta1, beta2)
+        wrap = tf.stack([x_src_pix, y_src_pix], axis=4) 
+        im = tfa.image.resampler(source, wrap) # bilinear interpolation 
+        return im
+
+    def noisy_lens_source(self, source, noise_rms, r_ein, e, phi, x0, y0, gamma_ext, phi_ext):
+        im = self.lens_source(source, r_ein, e, phi, x0, y0, gamma_ext, phi_ext)
+        im += tf.random.normal(shape=im.shape)
+        return im
+
+    def src_coord_to_pix(self, x, y):
+        dx = self.src_side/(self.pixels - 1)
+        xmin = -0.5 * self.src_side
+        ymin = -0.5 * self.src_side
+        i_coord = (x - xmin) / dx
+        j_coord = (y - ymin) / dx
+        return i_coord, j_coord
+
+    def external_shear_potential(self, gamma_ext, phi_ext):
+        rho = tf.sqrt(self.theta1**2 +self.theta2**2)
+        varphi = tf.atan2(self.theta2**2 + self.theta1**2)
+        return 0.5 * gamma_ext * rho**2 * tf.cos(2 * (varphi - phi_ext))
+
+    def external_shear_deflection(self, gamma_ext, phi_ext):
+        # see Meneghetti Lecture Scripts equation 3.83 (constant shear equation)
+        alpha1 = gamma_ext * (self.theta1 * tf.cos(phi_ext) + self.theta2 * tf.sin(phi_ext))
+        alpha2 = gamma_ext * (-self.theta1 * tf.sin(phi_ext) + self.theta2 * tf.cos(phi_ext))
+        return alpha1, alpha2
+
+    def rotated_and_shifted_coords(self, phi, x0, y0):
+        ###
+        # Important to shift then rotate, we move to the point of view of the
+        # lens before rotating the lens (rotation and translation are not commutative).
+        ###
+        theta1 = self.theta1 - x0
+        theta2 = self.theta2 - y0
+        rho = tf.sqrt(theta1**2 + theta2**2)
+        varphi = tf.atan2(theta2, theta1) - phi
+        theta1 = rho * tf.cos(varphi)
+        theta2 = rho * tf.sin(varphi)
+        return theta1, theta2
+
+    def potential(self, r_ein, e, phi, x0, y0): # arcsec^2
+        theta1, theta2 = self.rotated_and_shifted_coords(phi, x0, y0)
+        return r_ein * tf.sqrt(theta1**2/(1-e) + (1-e)*theta2**2 + self.theta_c**2)
+
+    def deflection_angles(self, r_ein, e, phi, x0, y0): # arcsec
+        theta1, theta2 = self.rotated_and_shifted_coords(phi, x0, y0)
+        psi = tf.sqrt(theta1**2/(1-e) + (1-e)*theta2**2 + self.theta_c**2)
+        alpha1 = r_ein * (theta1 / psi) / (1 - e)
+        alpha2 = r_ein * (1 - e) * (theta2 / psi)
+        return alpha1, alpha2
 

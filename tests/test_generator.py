@@ -1,4 +1,4 @@
-from censai.data_generator import Generator
+from censai.data_generator import Generator, NISGenerator
 
 def test_generator():
     gen = Generator()
@@ -12,3 +12,17 @@ def test_generator():
     gen = Generator(total_items=99, batch_size=10)
     for i, (x, y) in enumerate(gen):
         print(i)
+
+
+def test_generator_NISGen_rim():
+    gen = NISGenerator(model="rim")
+    for i, (kap, source, Y) in enumerate(gen):
+        print(i)
+    return kap, source, Y
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    k, s, y = test_generator_NISGen_rim()
+    plt.imshow(y.numpy()[0, ..., 0])
+    plt.show()
+
