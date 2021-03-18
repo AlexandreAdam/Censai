@@ -49,7 +49,7 @@ def test_RIM_UNET():
 
 def test_RIM_UNET_CELL():
     phys = PhysicalModel()
-    rim = RIM_UNET_CELL(phys, batch_size=11, num_steps=12, num_pixels=256, state_size=6) # State size is not used by the model
+    rim = RIM_UNET_CELL(phys, batch_size=11, num_steps=12, num_pixels=256) # State size is not used by the model
     a = tf.random.normal([1, 256, 256, 1])
     size = [256, 64, 16, 4] # strides of 4
     state_size = rim.state_size_list
