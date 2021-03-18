@@ -421,8 +421,10 @@ class GRU_COMPONENT(tf.keras.Model):
         xt = gru_2_out
         return xt, ht
 
+
 def lrelu4p(x, alpha=0.04):
     return tf.maximum(x, tf.multiply(x, alpha))
+
 
 class RIM_UNET(tf.keras.Model):
     def __init__(self,num_cell_features):
@@ -510,17 +512,17 @@ class RIM_UNET(tf.keras.Model):
         return xt, ht
 
 
-
 class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
-    def __init__(self, batch_size, num_steps, num_pixels, state_size, input_size=None, activation=tf.tanh, cond1=None, cond2=None, **kwargs):
+    def __init__(self, physical_model, batch_size, num_steps, num_pixels, input_size=None, activation=tf.tanh, cond1=None, cond2=None, **kwargs):
         super(RIM_UNET_CELL, self).__init__(**kwargs)
+        self.physical_model = physical_model
         self.num_pixels = num_pixels #state size is not used, fixed in self.state_size_list
         self.num_steps = num_steps
-        self._num_units = state_size
-        self.double_RIM_state_size = state_size #Not used
-        self.single_RIM_state_size = state_size//2 # Not used
-        self.gru_state_size = state_size//4
-        self.gru_state_pixel_downsampled = 16*2
+        self._num_units = 32
+        # self.double_RIM_state_size = state_size #Not used
+        # self.single_RIM_state_size = state_size//2 # Not used
+        # self.gru_state_size = state_size//4
+        # self.gru_state_pixel_downsampled = 16*2
         self._activation = activation
         self.state_size_list = [32, 32, 128, 512]
         self.model_1 = RIM_UNET(self.state_size_list)
@@ -538,7 +540,6 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
             self.inputs_2 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, 1))
         else:
             self.inputs_2 = tf.identity(cond2)
-
 
     def initial_output_state(self):
         STRIDE = self.model_1.STRIDE
@@ -575,8 +576,8 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
         with tf.GradientTape() as g:
             g.watch(self.inputs_1)
             g.watch(self.inputs_2)
-            y = log_likelihood(data, physical_model(self.inputs_1, self.inputs_2), noise_rms) # TODO physical model and rms must be in init, also log_likelihood 
-        grads = g.gradient(y, [self.inputs_1 , self.inputs_2])
+            cost = self.physical_model.log_likelihood(data, self.inputs_1, self.inputs_2) 
+        grads = g.gradient(cost, [self.inputs_1, self.inputs_2])
 
         output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1, grads[0], self.inputs_2, self.state_2, grads[1])
         output_series_1.append(output_1)
@@ -586,24 +587,22 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
             with tf.GradientTape() as g:
                 g.watch(output_1)
                 g.watch(output_2)
-                y = log_likelihood(data, physical_model(output_1,output_2), noise_rms)
-            grads = g.gradient(y, [output_1 , output_2])
-
-
-            output_1, state_1 , output_2 , state_2 = self.__call__(output_1, state_1 , grads[0] , output_2 , state_2 , grads[1])
+                cost = self.physical_model.log_likelihood(data, output_1, output_2)
+            grads = g.gradient(cost, [output_1 , output_2])
+            output_1, state_1, output_2, state_2 = self.__call__(output_1, state_1, grads[0], output_2, state_2, grads[1])
             output_series_1.append(output_1)
             output_series_2.append(output_2)
-        final_log_L = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
-        return output_series_1 , output_series_2 , final_log_L
+        return output_series_1 , output_series_2 , cost
 
-    def cost_function( self, data,labels_x_1,labels_x_2):
-        output_series_1 , output_series_2 , final_log_L = self.forward_pass(data)
-        return tf.reduce_mean(tf.square(output_series_1 - labels_x_1)) + tf.reduce_mean(tf.square(output_series_2 - labels_x_2)), output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
-
+    def cost_function(self, data, labels_x_1, labels_x_2):
+        output_series_1, output_series_2, final_log_L = self.forward_pass(data)
+        chi1 = sum([tf.square(output_series_1[i] - labels_x_1) for i in range(self.num_steps)]) / self.num_steps
+        chi2 = sum([tf.square(output_series_2[i] - labels_x_2) for i in range(self.num_steps)]) / self.num_steps
+        return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)  # , output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
 
 
 class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
-    def __init__(self, batch_size, num_steps ,num_pixels, state_size, input_size=None, activation=tf.tanh, **kwargs):
+    def __init__(self, batch_size, num_steps, num_pixels, state_size, input_size=None, activation=tf.tanh, **kwargs):
         super(RIM_CELL, self).__init__(**kwargs)
         self.num_pixels = num_pixels
         self.num_steps = num_steps
@@ -649,7 +648,7 @@ class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
             with tf.GradientTape() as g:
                 g.watch(self.inputs_1)
                 g.watch(self.inputs_2)
-                y = log_likelihood(data,physical_model(self.inputs_1,self.inputs_2),noise_rms) #TODO input log_likelihood and physical model in init
+                y = log_likelihood(data,physical_model(self.inputs_1, self.inputs_2), noise_rms) #TODO input log_likelihood and physical model in init
             grads = g.gradient(y, [self.inputs_1 , self.inputs_2])
 
             output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1 , grads[0] , self.inputs_2 , self.state_2 , grads[1])
@@ -660,19 +659,21 @@ class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
                 with tf.GradientTape() as g:
                     g.watch(output_1)
                     g.watch(output_2)
-                    y = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
+                    y = log_likelihood(data, self.physical_model(output_1,output_2),noise_rms)
                 grads = g.gradient(y, [output_1 , output_2])
 
 
                 output_1, state_1 , output_2 , state_2 = self.__call__(output_1, state_1 , grads[0] , output_2 , state_2 , grads[1])
                 output_series_1.append(output_1)
                 output_series_2.append(output_2)
-            final_log_L = log_likelihood(data,physical_model(output_1,output_2),noise_rms)
+            final_log_L = log_likelihood(data, self.physical_model(output_1,output_2), noise_rms)
             return output_series_1 , output_series_2 , final_log_L
 
-    def cost_function( self, data,labels_x_1,labels_x_2):
+    def cost_function(self, data, labels_x_1, labels_x_2):
         output_series_1 , output_series_2 , final_log_L = self.forward_pass(data)
-        return tf.reduce_mean(tf.square(output_series_1 - labels_x_1)) + tf.reduce_mean(tf.square(output_series_2 - labels_x_2)), output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
+        chi1 = sum([tf.square(output_series_1[i] - labels_x_1) for i in range(self.num_steps)]) / self.num_steps
+        chi2 = sum([tf.square(output_series_2[i] - labels_x_2) for i in range(self.num_steps)]) / self.num_steps
+        return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)#, output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
 
 
 
@@ -832,11 +833,11 @@ class LensUtil:
         
         IM = self.lens_source(Xsrc, Ysrc, Src)
         
-#        Xsrc = tf.reshape(Xsrc, [-1, self.numpix_side, self.numpix_side, 1])
-#        Ysrc = tf.reshape(Ysrc, [-1, self.numpix_side, self.numpix_side, 1])
-#        Xsrc_pix, Ysrc_pix = self.coord_to_pix(Xsrc,Ysrc,0.,0., self.src_side ,self.numpix_side)
-#        wrap = tf.reshape( tf.stack([Xsrc_pix, Ysrc_pix], axis = 3), [-1, self.numpix_side, self.numpix_side, 2])
-#        IM = tf.contrib.resampler.resampler(Src, wrap)
+        Xsrc = tf.reshape(Xsrc, [-1, self.numpix_side, self.numpix_side, 1])
+        Ysrc = tf.reshape(Ysrc, [-1, self.numpix_side, self.numpix_side, 1])
+        Xsrc_pix, Ysrc_pix = self.coord_to_pix(Xsrc,Ysrc,0.,0., self.src_side ,self.numpix_side)
+        wrap = tf.reshape( tf.stack([Xsrc_pix, Ysrc_pix], axis = 3), [-1, self.numpix_side, self.numpix_side, 2])
+        IM = tf.contrib.resampler.resampler(Src, wrap)
 
         return IM
     
