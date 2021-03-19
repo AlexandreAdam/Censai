@@ -49,11 +49,11 @@ def main(args):
     step = 1
     for epoch in range(args.epochs):
         with train_writer.as_default():
-            for batch, (kappa, source, Y) in enumerate(gen):
+            for batch, (X, kappa, source) in enumerate(gen):
                 with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
                     tape.watch(rim.model_1.trainable_variables)
                     tape.watch(rim.model_2.trainable_variables)
-                    cost = rim.cost_function(Y, kappa, source)
+                    cost = rim.cost_function(X, source, kappa)
                 gradient1 = tape.gradient(cost, rim.model_1.trainable_variables)
                 gradient2 = tape.gradient(cost, rim.model_2.trainable_variables)
                 # clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
@@ -68,9 +68,9 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     parser = ArgumentParser()
-    parser.add_argument("-t", "--total_items", default=10, type=int, required=False, help="Total images in an epoch")
+    parser.add_argument("-t", "--total_items", default=1, type=int, required=False, help="Total images in an epoch")
     parser.add_argument("-b", "--batch_size", default=1, type=int, required=False, help="Number of images in a batch")
-    parser.add_argument("--validation", required=False, default=20, type=int, help="Number of images in the validation set")
+    parser.add_argument("--validation", required=False, default=1, type=int, help="Number of images in the validation set")
     parser.add_argument("--logdir", required=False, default="logs", help="Path of logs directory. Default assumes script is" \
             "run from the base directory of censai. For no logs, use None")
     parser.add_argument("--logname", required=False, default=date, help="Name of the logs, default is the local date + time")
