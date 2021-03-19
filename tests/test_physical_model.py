@@ -1,10 +1,12 @@
 from censai.physical_model import PhysicalModel, AnalyticalPhysicalModel
 import tensorflow as tf
 
+
 def test_deflection_angle_conv2():
     phys = PhysicalModel(pixels=64)
     kappa = tf.random.normal([1, 64, 64, 1])
     phys.deflection_angle(kappa)
+
 
 def test_lens_source_conv2():
     phys = PhysicalModel(pixels=64)
@@ -19,6 +21,7 @@ def test_lens_source_conv2():
     yy = tf.tile(yy, (2, 1, 1, 1))
     phys.lens_source(xx, yy, source)
 
+
 def test_noisy_forward_conv2():
     phys = PhysicalModel(pixels=64)
     source = tf.random.normal([2, 64, 64, 1])
@@ -26,6 +29,14 @@ def test_noisy_forward_conv2():
     noise_rms = 0.1
     phys.noisy_forward(source, kappa, noise_rms)
 
+
+def test_log_likelihood():
+    phys = PhysicalModel(pixels=64)
+    kappa = tf.random.normal([1, 64, 64, 1])
+    source = tf.random.normal([1, 64, 64, 1])
+    im_lensed = phys.forward(source, kappa)
+    assert im_lensed.shape == [1, 64, 64, 1]
+    cost = phys.log_likelihood(source, kappa, im_lensed)
 
 def test_analytical_lensing():
     phys = AnalyticalPhysicalModel()
@@ -43,7 +54,7 @@ def test_analytical_lensing():
     return im.numpy()[0, ..., 0]
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt 
+    import matplotlib.pyplot as plt
     im = test_analytical_lensing()
     plt.imshow(im)
     plt.show()

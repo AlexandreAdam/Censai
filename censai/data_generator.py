@@ -198,20 +198,20 @@ class NISGenerator(tf.keras.utils.Sequence):
 
         xlens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-1, maxval=1)
         ylens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-1, maxval=1)
-        elp = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0., maxval=0.2)
-        phi = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
+        elp   = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0., maxval=0.2)
+        phi   = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
         r_ein = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=1, maxval=2.5)
 
-        xs = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=xlens-0.5, maxval=xlens+0.5)
-        ys = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=ylens-0.5, maxval=ylens+0.5)
-        e = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0, maxval=0.3)
-        phi = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
-        w = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0.01, maxval=0.5)
+        xs    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=xlens-0.5, maxval=xlens+0.5)
+        ys    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=ylens-0.5, maxval=ylens+0.5)
+        e     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0, maxval=0.3)
+        phi_s   = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
+        w     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0.01, maxval=0.5)
 
         kappa = self.kappa_field(xlens, ylens, elp, phi, r_ein)
-        source = self.source_model(xs, ys, e, phi, w)
+        source = self.source_model(xs, ys, e, phi_s, w)
         lensed_image = self.lens_source(source, r_ein, elp, phi, xlens, ylens)
-        return kappa, source, lensed_image #(X1, X2, Y)
+        return lensed_image, source, kappa #(X, Y1, Y2)
 
     def lens_source(self, source, r_ein, e, phi, x0, y0):
         alpha = self.deflection_angles(x0, y0, e, phi, r_ein)

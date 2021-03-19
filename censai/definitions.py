@@ -593,12 +593,12 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
             output_1, state_1, output_2, state_2 = self.__call__(output_1, state_1, grads[0], output_2, state_2, grads[1])
             output_series_1.append(output_1)
             output_series_2.append(output_2)
-        return output_series_1 , output_series_2 , cost
+        return output_series_1, output_series_2, cost
 
-    def cost_function(self, data, labels_x_1, labels_x_2):
+    def cost_function(self, data, source, kappa):
         output_series_1, output_series_2, final_log_L = self.forward_pass(data)
-        chi1 = sum([tf.square(output_series_1[i] - labels_x_1) for i in range(self.num_steps)]) / self.num_steps
-        chi2 = sum([tf.square(output_series_2[i] - labels_x_2) for i in range(self.num_steps)]) / self.num_steps
+        chi1 = sum([tf.square(output_series_1[i] - source) for i in range(self.num_steps)]) / self.num_steps
+        chi2 = sum([tf.square(output_series_2[i] - kappa ) for i in range(self.num_steps)]) / self.num_steps
         return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)  # , output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
 
 

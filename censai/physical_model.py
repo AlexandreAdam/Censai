@@ -32,7 +32,8 @@ class PhysicalModel:
         elif self.method == "unet":
             alpha = self.RT(kappa)
             alpha_x, alpha_y = tf.split(alpha, axis=3)
-
+            x_src = self.ximage - alpha_x
+            y_src = self.yimage - alpha_y
         else:
             raise ValueError(f"{self.method} is not in [conv2d, unet]")
         return x_src, y_src, alpha_x, alpha_y
@@ -55,7 +56,7 @@ class PhysicalModel:
 
     def lens_source(self, x_src, y_src, source):
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
-        wrap = tf.stack([x_src_pix, y_src_pix], axis=4) # stack create new dimension
+        wrap = tf.concat([x_src_pix, y_src_pix], axis=-1) # stack create new dimension
         im = tfa.image.resampler(source, wrap) # bilinear interpolation of source on wrap grid
         return im
 

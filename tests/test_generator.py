@@ -15,9 +15,13 @@ def test_generator():
 
 
 def test_generator_NISGen_rim():
-    gen = NISGenerator(model="rim")
+    gen = NISGenerator(model="rim", batch_size=2)
     for i, (kap, source, Y) in enumerate(gen):
         print(i)
+
+    print(kap.shape)
+    print(source.shape)
+    print(Y.shape)
     return kap, source, Y
 
 if __name__ == "__main__":
