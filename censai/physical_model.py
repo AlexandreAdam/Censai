@@ -37,8 +37,8 @@ class PhysicalModel:
             raise ValueError(f"{self.method} is not in [conv2d, unet]")
         return x_src, y_src, alpha_x, alpha_y
 
-    def log_likelihood(self, source_pred, kappa_pred, y_true):
-        y_pred = self.forward(source_pred, kappa_pred)
+    def log_likelihood(self, source, kappa, y_true):
+        y_pred = self.forward(source, kappa)
         return 0.5 * tf.reduce_mean((y_pred - y_true)**2/self.noise_rms**2)
 
     def forward(self, source, kappa):

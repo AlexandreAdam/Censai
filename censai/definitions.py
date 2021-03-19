@@ -571,12 +571,13 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
         return xt_1, ht_1, xt_2, ht_2
 
     def forward_pass(self, data):
+        # 1=source, 2=kappa
         output_series_1 = []
         output_series_2 = []
         with tf.GradientTape() as g:
             g.watch(self.inputs_1)
             g.watch(self.inputs_2)
-            cost = self.physical_model.log_likelihood(data, self.inputs_1, self.inputs_2) 
+            cost = self.physical_model.log_likelihood(y_true=data, source=self.inputs_1, kappa=self.inputs_2) 
         grads = g.gradient(cost, [self.inputs_1, self.inputs_2])
 
         output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1, grads[0], self.inputs_2, self.state_2, grads[1])
@@ -587,7 +588,7 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
             with tf.GradientTape() as g:
                 g.watch(output_1)
                 g.watch(output_2)
-                cost = self.physical_model.log_likelihood(data, output_1, output_2)
+                cost = self.physical_model.log_likelihood(y_true=data, source=output_1, kappa=output_2)
             grads = g.gradient(cost, [output_1 , output_2])
             output_1, state_1, output_2, state_2 = self.__call__(output_1, state_1, grads[0], output_2, state_2, grads[1])
             output_series_1.append(output_1)
