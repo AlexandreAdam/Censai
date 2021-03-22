@@ -202,11 +202,11 @@ class NISGenerator(tf.keras.utils.Sequence):
         phi   = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
         r_ein = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=1, maxval=2.5)
 
-        xs    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=xlens-0.5, maxval=xlens+0.5)
-        ys    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=ylens-0.5, maxval=ylens+0.5)
+        xs    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-0.5, maxval=0.5)
+        ys    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=ylens-0.1, maxval=ylens+0.1)
         e     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0, maxval=0.3)
-        phi_s   = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
-        w     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0.01, maxval=0.5)
+        phi_s = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
+        w     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0.01, maxval=0.2)
 
         kappa = self.kappa_field(xlens, ylens, elp, phi, r_ein)
         source = self.source_model(xs, ys, e, phi_s, w)
@@ -214,12 +214,13 @@ class NISGenerator(tf.keras.utils.Sequence):
         return lensed_image, source, kappa #(X, Y1, Y2)
 
     def lens_source(self, source, r_ein, e, phi, x0, y0):
+        theta1, theta2 = self.rotated_and_shifted_coords(phi, x0, y0)
         alpha = self.deflection_angles(x0, y0, e, phi, r_ein)
-        beta1 = self.theta1 - alpha[..., 0]  # lens equation
-        beta2 = self.theta2 - alpha[..., 1] 
+        beta1 = theta1 - alpha[..., 0]  # lens equation
+        beta2 = theta2 - alpha[..., 1]
         x_src_pix, y_src_pix = self.src_coord_to_pix(beta1, beta2)
-        wrap = tf.stack([x_src_pix, y_src_pix], axis=-1) 
-        im = tfa.image.resampler(source, wrap) # bilinear interpolation 
+        wrap = tf.stack([x_src_pix, y_src_pix], axis=-1)
+        im = tfa.image.resampler(source, wrap) # bilinear interpolation
         return im
 
     def src_coord_to_pix(self, x, y):
