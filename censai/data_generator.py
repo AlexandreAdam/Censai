@@ -203,7 +203,7 @@ class NISGenerator(tf.keras.utils.Sequence):
         r_ein = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=1, maxval=2.5)
 
         xs    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-0.5, maxval=0.5)
-        ys    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=ylens-0.1, maxval=ylens+0.1)
+        ys    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-0.5, maxval=0.5)
         e     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0, maxval=0.3)
         phi_s = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
         w     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0.01, maxval=0.2)
