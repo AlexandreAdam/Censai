@@ -96,7 +96,7 @@ class PhysicalModel:
 
 
 
-class AnalyticalPhysicalModel: # not very usefull yet, think about deleting this
+class AnalyticalPhysicalModel: 
     def __init__(self, src_side=3.0, pixels=256, kappa_side=7.68, theta_c=0.1):
         self.src_side = src_side
         self.pixels = pixels
