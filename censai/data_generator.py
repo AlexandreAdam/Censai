@@ -72,7 +72,6 @@ class Generator(tf.keras.utils.Sequence):
         source = self.gaussian_source(x_src, y_src, sigma_src)
         return source, kappa
  
-
     def kappa_field(self, xlens, ylens, elp, phi, Rein):
         """
         variables must have shape [batch_size, 1, 1] to be broadcastable
@@ -137,7 +136,7 @@ class NISGenerator(tf.keras.utils.Sequence):
             kappa_side_length=7.68, 
             src_side_length=3., 
             pixels=128, 
-            x_c=0.05, # arcsec
+            x_c=0.001, # arcsec
             z_source=2., 
             z_lens=0.5, 
             train=True, 
@@ -196,17 +195,17 @@ class NISGenerator(tf.keras.utils.Sequence):
         else:
             tf.random.set_seed(42)
 
-        xlens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-1, maxval=1)
-        ylens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-1, maxval=1)
+        xlens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-.5, maxval=.5)
+        ylens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-.5, maxval=.5)
         elp   = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0., maxval=0.2)
         phi   = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
-        r_ein = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=1, maxval=2.5)
+        r_ein = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=1, maxval=2.)
 
-        xs    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-0.5, maxval=0.5)
-        ys    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-0.5, maxval=0.5)
+        xs    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-0.1, maxval=0.1)
+        ys    = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-0.1, maxval=0.1)
         e     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0, maxval=0.3)
         phi_s = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-pi, maxval=pi)
-        w     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0.01, maxval=0.2)
+        w     = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0.1, maxval=0.2)
 
         kappa = self.kappa_field(xlens, ylens, elp, phi, r_ein)
         source = self.source_model(xs, ys, e, phi_s, w)
@@ -237,7 +236,7 @@ class NISGenerator(tf.keras.utils.Sequence):
         _beta1 = beta1 * np.cos(phi) + beta2 * np.sin(phi)
         _beta2 = -beta1 * np.sin(phi) + beta2 * np.cos(phi) 
         rho_sq = _beta1**2/(1-elp) + _beta2**2 * (1 - elp)
-        source = np.exp(-0.5 * rho_sq / w**2) / 2 / np.pi / w**2
+        source = np.exp(-0.5 * rho_sq / w**2) #/ 2 / np.pi / w**2
         return source[..., tf.newaxis] # add channel dimension
 
     def kappa_field(self, xlens, ylens, elp, phi, r_ein):
