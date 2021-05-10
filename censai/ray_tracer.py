@@ -46,35 +46,35 @@ class RayTracer512(tf.keras.Model):
         self.LcZ2 = tf.keras.layers.Conv2D(filters, (16, 16), **common_params)
 
         if upsampling_interpolation:
-            self.Lu61 = tf.keras.layers.UpSampling2D(size=bottle_stride, data_format=common_params["data_format"], interpolation="linear")
+            self.Lu61 = tf.keras.layers.UpSampling2D(size=bottle_stride, data_format=common_params["data_format"], interpolation="bilinear")
         else:
             self.Lu61 = tf.keras.layers.Conv2DTranspose(filters, pre_bottle_kernel, strides=bottleneck_strides, **common_params)  # 8 -> 32
         self.Lc62 = tf.keras.layers.Conv2D(filters, main_kernel, **common_params)
         self.Lc63 = tf.keras.layers.Conv2D(filters, main_kernel, **common_params)
 
         if upsampling_interpolation:
-            self.Lu71 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="linear")
+            self.Lu71 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="bilinear")
         else:
             self.Lu71 = tf.keras.layers.Conv2DTranspose(filters, (2, 2), strides=(2, 2), **common_params)  # 32 -> 64
         self.Lc72 = tf.keras.layers.Conv2D(filters, main_kernel, **common_params)
         self.Lc73 = tf.keras.layers.Conv2D(filters, main_kernel, **common_params)
 
         if upsampling_interpolation:
-            self.Lu81 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="linear")
+            self.Lu81 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="bilinear")
         else:
             self.Lu81 = tf.keras.layers.Conv2DTranspose(filters, (2, 2), strides=(2, 2), **common_params)  # 64 -> 128
         self.Lc82 = tf.keras.layers.Conv2D(filters, main_kernel, **common_params)
         self.Lc83 = tf.keras.layers.Conv2D(filters, main_kernel, **common_params)
 
         if upsampling_interpolation:
-            self.Lu91 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="linear")
+            self.Lu91 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="bilinear")
         else:
             self.Lu91 = tf.keras.layers.Conv2DTranspose(filters, (2, 2), strides=(2, 2), **common_params)  # 128 -> 256
         self.Lc92 = tf.keras.layers.Conv2D(filters, main_kernel, **common_params)
         self.Lc93 = tf.keras.layers.Conv2D(filters, main_kernel, **common_params)
 
         if upsampling_interpolation:
-            self.Lu101 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="linear")
+            self.Lu101 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="bilinear")
         else:
             self.Lu101 = tf.keras.layers.Conv2DTranspose(filters, (2, 2), strides=(2, 2), **common_params)  # 256 -> 512
         self.Lc102 = tf.keras.layers.Conv2D(filters, main_kernel, **common_params)
