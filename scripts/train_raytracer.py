@@ -1,14 +1,15 @@
 import tensorflow as tf
-from censai.definitions import RayTracer
+from censai import RayTracer512 as RayTracer
 from censai.data_generator import NISGenerator
 from censai.utilities import nullwriter
 import os
 from datetime import datetime
-try:
-    import wandb
-    wandb.init(project="censai", entity="adam-alexandre01123", sync_tensorboard=True)
-except ImportError:
-    print("wandb not installed, package ignored")
+# try:
+#     import wandb
+#     wandb.init(project="censai", entity="adam-alexandre01123", sync_tensorboard=True)
+# except ImportError:
+#     print("wandb not installed, package ignored")
+
 
 def main(args):
     gen = NISGenerator(args.total_items, args.batch_size)
