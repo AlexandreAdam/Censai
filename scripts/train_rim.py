@@ -24,8 +24,15 @@ except ImportError:
 
 
 def main(args):
-    gen = NISGenerator(args.total_items, args.batch_size, model="rim") #TODO add noise to observed lens
-    gen_test = NISGenerator(args.validation, args.validation, train=False, model="rim")
+    if wndb:
+          config = wandb.config
+          config.learning_rate = args.lr
+          config.batch_size = args.batch_size
+          config.epochs = args.epochs
+          config.architecture="Double RIM Unet"
+          config.update(args)
+    gen = NISGenerator(args.total_items, args.batch_size, model="rim", pixels=args.pixels) #TODO add noise to observed lens
+    gen_test = NISGenerator(args.validation, args.validation, train=False, model="rim", pixels=args.pixels)
     phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms)
     rim = RIM_UNET_CELL(phys, args.batch_size, args.time_steps, args.pixels)
     optim = tf.optimizers.Adam(args.lr)
@@ -46,14 +53,25 @@ def main(args):
         test_writer = nullwriter()
         train_writer = nullwriter()
 
+    epoch_loss = tf.metrics.Mean()
+    best_loss = np.inf
+    patience = args.patience
+    step = 1
+    # if args.kappalog:
+    #     link = lambda x: tf.math.log(x + 1e-16) / np.log(10.)
+    #     invlink = lambda x: 10.**(x)
+    # else:
+    #     link = lambda x: x
+    #     invlink = lambda x: x
     step = 1
     for epoch in range(args.epochs):
+        epoch_loss.reset_states()
         with train_writer.as_default():
-            for batch, (X, kappa, source) in enumerate(gen):
+            for batch, (X, source, kappa) in enumerate(gen):
                 with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
                     tape.watch(rim.model_1.trainable_variables)
                     tape.watch(rim.model_2.trainable_variables)
-                    cost = rim.cost_function(X, source, kappa)
+                    cost = rim.cost_function(X, source, tf.math.log(kappa + 1e-10) / tf.math.log(10.))
                 gradient1 = tape.gradient(cost, rim.model_1.trainable_variables)
                 gradient2 = tape.gradient(cost, rim.model_2.trainable_variables)
                 # clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
@@ -61,8 +79,23 @@ def main(args):
                 optim.apply_gradients(zip(gradient2, rim.model_2.trainable_variables))
 
                 #========== Summary and logs ==========
+                epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
+            # tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
+        with test_writer.as_default():
+            for (X, source, kappa) in gen_test:
+                test_cost = rim.cost_function(X, source,  tf.math.log(kappa + 1e-10) / tf.math.log(10.))
+            tf.summary.scalar("MSE", test_cost, step=step)
+        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.numpy():.3e}") #| learning rate {optim.lr(step).numpy():.2e}")
+        if test_cost < best_loss - args.tolerance:
+            best_loss = test_cost
+            patience = args.patience
+        else:
+            patience -= 1
+        if patience == 0:
+            print("Reached patience")
+            break
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
