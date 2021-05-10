@@ -12,10 +12,17 @@ class RayTracer512(tf.keras.Model):
             decoder_encoder_kernel_size=3,
             decoder_encoder_filters=32,
             upsampling_interpolation=False,  # use strided transposed convolution if false
+            kernel_regularizer_amp=1e-4,
+            bias_regularizer_amp=1e-4,  # if bias is used
+            use_bias=False,
             trainable=True,
     ):
         super(RayTracer512, self).__init__(name=name)
-        common_params = {"activation": "linear", "padding": "same", "kernel_initializer": initializer, "data_format": "channels_last"}
+        common_params = {"activation": "linear", "padding": "same", "kernel_initializer": initializer,
+                         "data_format": "channels_last", "use_bias": use_bias,
+                         "kernel_regularizer": tf.keras.regularizers.L2(l2=kernel_regularizer_amp)}
+        if use_bias:
+            common_params.update({"bias_regularizer": tf.keras.regularizers.L2(l2=bias_regularizer_amp)})
         main_kernel = tuple([decoder_encoder_kernel_size]*2)
         pre_bottle_kernel = tuple([pre_bottleneck_kernel_size]*2)
         filters = decoder_encoder_filters
