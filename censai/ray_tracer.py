@@ -49,7 +49,7 @@ class RayTracer512(tf.keras.Model):
         self.Lc102 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
         self.Lc103 = tf.keras.layers.Conv2D(32, (3, 3), **common_params)
 
-        self.Loutputs = tf.keras.layers.Conv2D(2, (1, 1), **common_params)  # single one by one convolution for output scaling
+        # self.Loutputs = tf.keras.layers.Conv2D(2, (1, 1), **common_params)  # single one by one convolution for output scaling
 
     def call(self, kappa):
         # make sure to not introduce too much variable here, this is a memory heavy call so we want to use it efficiently
@@ -101,7 +101,7 @@ class RayTracer512(tf.keras.Model):
         z = self.Lc102(z)
         z = self.Lc103(z)
 
-        z = self.Loutputs(z)
+        # z = self.Loutputs(z)
 
         return z
 
