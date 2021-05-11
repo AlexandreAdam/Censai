@@ -102,7 +102,7 @@ class RayTracer512(tf.keras.Model):
         self.Lc102 = tf.keras.layers.Conv2D(filters, main_kernel, activation=activation, **common_params)
         self.Lc103 = tf.keras.layers.Conv2D(filters, main_kernel, activation=activation, **common_params)
 
-        self.Loutputs = tf.keras.layers.Conv2D(2, main_kernel, activation="linear", **common_params)
+        self.Loutputs = tf.keras.layers.Conv2D(2, (1, 1), activation="linear", **common_params) # rescaling of ouptut
 
     def call(self, kappa):
         if self.batch_norm:
