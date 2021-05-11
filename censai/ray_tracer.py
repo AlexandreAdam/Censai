@@ -20,6 +20,7 @@ class RayTracer512(tf.keras.Model):
             trainable=True,
             scaling=1,
             bottle_scaling=1,
+            skip_connections=True
     ):
         super(RayTracer512, self).__init__(name=name)
         common_params = {"padding": "same", "kernel_initializer": initializer,
@@ -145,35 +146,40 @@ class RayTracer512(tf.keras.Model):
         z = self.LcZ2(z)
 
         z = self.Lu61(z)  # upsampling
-        z = tf.concat([z, c5], axis=3)  # skip connection
+        is skip_connections:
+            z = tf.concat([z, c5], axis=3)  # skip connection
         if self.batch_norm:
             z = self.batch_norm_layers[6](z)
         z = self.Lc62(z)
         z = self.Lc63(z)
 
         z = self.Lu71(z)
-        z = tf.concat([z, c4], axis=3)
+        if skip_connections:
+            z = tf.concat([z, c4], axis=3)
         if self.batch_norm:
             z = self.batch_norm_layers[7](z)
         z = self.Lc72(z)
         z = self.Lc73(z)
 
         z = self.Lu81(z)
-        z = tf.concat([z, c3], axis=3)
+        if skip_connections:
+            z = tf.concat([z, c3], axis=3)
         if self.batch_norm:
             z = self.batch_norm_layers[8](z)
         z = self.Lc82(z)
         z = self.Lc83(z)
 
         z = self.Lu91(z)
-        z = tf.concat([z, c2], axis=3)
+        if skip_connections:
+            z = tf.concat([z, c2], axis=3)
         if self.batch_norm:
             z = self.batch_norm_layers[9](z)
         z = self.Lc92(z)
         z = self.Lc93(z)
 
         z = self.Lu101(z)
-        z = tf.concat([z, c1], axis=3)
+        if skip_connections:
+            z = tf.concat([z, c1], axis=3)
         if self.batch_norm:
             z = self.batch_norm_layers[10](z)
         z = self.Lc102(z)
