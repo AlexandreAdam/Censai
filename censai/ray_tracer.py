@@ -34,6 +34,7 @@ class RayTracer512(tf.keras.Model):
         bottle_stride = tuple([bottleneck_strides]*2)
         self.trainable = trainable
         self.batch_norm = batch_norm
+        self.skip_connections = skip_connections
         if self.batch_norm:
             self.batch_norm_layers = []
             for i in range(11):
@@ -50,70 +51,60 @@ class RayTracer512(tf.keras.Model):
         self.Lc11 = tf.keras.layers.Conv2D(filters, main_kernel, activation=activation, **common_params)
         self.Lc12 = tf.keras.layers.Conv2D(filters, main_kernel, activation=activation, **common_params)
         self.Lp13 = tf.keras.layers.Conv2D(filters, main_kernel, activation=activation, strides=(2, 2), **common_params)  # 512 -> 256
-        self.Lp14 = tf.keras.layers.Conv2D(filters, (1, 1), activation="linear", **common_params)
 
-        self.Lc21 = tf.keras.layers.Conv2D(int(scaling*filters), main_kernel, activation=activation, **common_params)
-        self.Lc22 = tf.keras.layers.Conv2D(int(scaling*filters), main_kernel, activation=activation, **common_params)
-        self.Lp23 = tf.keras.layers.Conv2D(int(scaling*filters), main_kernel, activation=activation, strides=(2, 2), **common_params)  # 256 -> 128
-        self.Lp24 = tf.keras.layers.Conv2D(int(scaling*filters), (1, 1), activation="linear", **common_params)
+        self.Lc21 = tf.keras.layers.Conv2D(scaling*filters, main_kernel, activation=activation, **common_params)
+        self.Lc22 = tf.keras.layers.Conv2D(scaling*filters, main_kernel, activation=activation, **common_params)
+        self.Lp23 = tf.keras.layers.Conv2D(scaling*filters, main_kernel, activation=activation, strides=(2, 2), **common_params)  # 256 -> 128
 
-        self.Lc31 = tf.keras.layers.Conv2D(int(scaling**2*filters), main_kernel, activation=activation, **common_params)
-        self.Lc32 = tf.keras.layers.Conv2D(int(scaling**2*filters), main_kernel, activation=activation, **common_params)
-        self.Lp33 = tf.keras.layers.Conv2D(int(scaling**2*filters), main_kernel, activation=activation, strides=(2, 2), **common_params)  # 128 -> 64
-        self.Lp34 = tf.keras.layers.Conv2D(int(scaling**2*filters), (1, 1), activation="linear", **common_params)
+        self.Lc31 = tf.keras.layers.Conv2D(int(scaling**2)*filters, main_kernel, activation=activation, **common_params)
+        self.Lc32 = tf.keras.layers.Conv2D(int(scaling**2)*filters, main_kernel, activation=activation, **common_params)
+        self.Lp33 = tf.keras.layers.Conv2D(int(scaling**2)*filters, main_kernel, activation=activation, strides=(2, 2), **common_params)  # 128 -> 64
 
-        self.Lc41 = tf.keras.layers.Conv2D(int(scaling**3*filters), main_kernel, activation=activation, **common_params)
-        self.Lc42 = tf.keras.layers.Conv2D(int(scaling**3*filters), main_kernel, activation=activation, **common_params)
-        self.Lp43 = tf.keras.layers.Conv2D(int(scaling**3*filters), main_kernel, activation=activation, strides=(2, 2), **common_params)  # 64 -> 32
-        self.Lp44 = tf.keras.layers.Conv2D(int(scaling**3*filters), (1, 1), activation="linear", **common_params)
+        self.Lc41 = tf.keras.layers.Conv2D(int(scaling**4)*filters, main_kernel, activation=activation, **common_params)
+        self.Lc42 = tf.keras.layers.Conv2D(int(scaling**4)*filters, main_kernel, activation=activation, **common_params)
+        self.Lp43 = tf.keras.layers.Conv2D(int(scaling**4)*filters, main_kernel, activation=activation, strides=(2, 2), **common_params)  # 64 -> 32
 
-        self.Lc51 = tf.keras.layers.Conv2D(int(scaling**4*filters), main_kernel, activation=activation, **common_params)
-        self.Lc52 = tf.keras.layers.Conv2D(int(scaling**4*filters), main_kernel, activation=activation, **common_params)
-        self.Lp53 = tf.keras.layers.Conv2D(int(scaling**4*filters), pre_bottle_kernel, activation=activation, strides=bottle_stride, **common_params)  # 32 -> 8
-        self.Lp54 = tf.keras.layers.Conv2D(int(scaling**4*filters), (1, 1), activation="linear", **common_params)
+        self.Lc51 = tf.keras.layers.Conv2D(int(scaling**5)*filters, main_kernel, activation=activation, **common_params)
+        self.Lc52 = tf.keras.layers.Conv2D(int(scaling**5)*filters, main_kernel, activation=activation, **common_params)
+        self.Lp53 = tf.keras.layers.Conv2D(int(scaling**5)*filters, pre_bottle_kernel, activation=activation, strides=bottle_stride, **common_params)  # 32 -> 8
 
-        self.LcZ1 = tf.keras.layers.Conv2D(int(bottle_scaling*filters), (16, 16), activation="linear", **common_params)  # Actual convolution at this stage (kernel size twice the image size)
-        self.LcZ2 = tf.keras.layers.Conv2D(int(bottle_scaling*filters), (16, 16), activation="linear", **common_params)
+        self.LcZ1 = tf.keras.layers.Conv2D(bottle_scaling*filters, (16, 16), activation="linear", **common_params)  # Actual convolution at this stage (kernel size twice the image size)
+        self.LcZ2 = tf.keras.layers.Conv2D(bottle_scaling*filters, (16, 16), activation="linear", **common_params)
 
-        self.Lu60 = tf.keras.layers.Conv2D(int(scaling**4*filters), (1, 1), activation="linear", **common_params)
         if upsampling_interpolation:
             self.Lu61 = tf.keras.layers.UpSampling2D(size=bottle_stride, data_format=common_params["data_format"], interpolation="bilinear")
         else:
-            self.Lu61 = tf.keras.layers.Conv2DTranspose(int(scaling**4*filters), pre_bottle_kernel, strides=bottleneck_strides, activation="linear", **common_params)  # 8 -> 32
-        self.Lc62 = tf.keras.layers.Conv2D(int(scaling**4*filters), main_kernel, activation=activation, **common_params)
-        self.Lc63 = tf.keras.layers.Conv2D(int(scaling**4*filters), main_kernel, activation=activation, **common_params)
+            self.Lu61 = tf.keras.layers.Conv2DTranspose(int(scaling**5)*filters, pre_bottle_kernel, strides=bottleneck_strides, activation="linear", **common_params)  # 8 -> 32
+        self.Lc62 = tf.keras.layers.Conv2D(int(scaling**5)*filters, main_kernel, activation=activation, **common_params)
+        self.Lc63 = tf.keras.layers.Conv2D(int(scaling**5)*filters, main_kernel, activation=activation, **common_params)
 
-        self.Lu70 = tf.keras.layers.Conv2D(int(scaling**3*filters), (1, 1), activation="linear", **common_params)
         if upsampling_interpolation:
             self.Lu71 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="bilinear")
         else:
-            self.Lu71 = tf.keras.layers.Conv2DTranspose(int(scaling**3*filters), (2, 2), activation="linear", strides=(2, 2), **common_params)  # 32 -> 64
-        self.Lc72 = tf.keras.layers.Conv2D(int(scaling**3*filters), main_kernel, activation=activation, **common_params)
-        self.Lc73 = tf.keras.layers.Conv2D(int(scaling**3*filters), main_kernel, activation=activation, **common_params)
+            self.Lu71 = tf.keras.layers.Conv2DTranspose(int(scaling**4)*filters, (2, 2), activation="linear", strides=(2, 2), **common_params)  # 32 -> 64
+        self.Lc72 = tf.keras.layers.Conv2D(int(scaling**4)*filters, main_kernel, activation=activation, **common_params)
+        self.Lc73 = tf.keras.layers.Conv2D(int(scaling**4)*filters, main_kernel, activation=activation, **common_params)
 
-        self.Lu80 = tf.keras.layers.Conv2D(int*(scaling**2*filters), (1, 1), activation="linear", **common_params)
         if upsampling_interpolation:
             self.Lu81 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="bilinear")
         else:
-            self.Lu81 = tf.keras.layers.Conv2DTranspose(int(scaling**2*filters), (2, 2), activation="linear", strides=(2, 2), **common_params)  # 64 -> 128
-        self.Lc82 = tf.keras.layers.Conv2D(int(scaling**2*filters), main_kernel, activation=activation, **common_params)
-        self.Lc83 = tf.keras.layers.Conv2D(int(scaling**2*filters), main_kernel, activation=activation, **common_params)
+            self.Lu81 = tf.keras.layers.Conv2DTranspose(int(scaling**3)*filters, (2, 2), activation="linear", strides=(2, 2), **common_params)  # 64 -> 128
+        self.Lc82 = tf.keras.layers.Conv2D(int(scaling**3)*filters, main_kernel, activation=activation, **common_params)
+        self.Lc83 = tf.keras.layers.Conv2D(int(scaling**3)*filters, main_kernel, activation=activation, **common_params)
 
-        self.Lu90 = tf.keras.layers.Conv2D(int(scaling*filters), (1, 1), activation="linear", **common_params)
         if upsampling_interpolation:
             self.Lu91 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="bilinear")
         else:
-            self.Lu91 = tf.keras.layers.Conv2DTranspose(int(scaling*filters), (2, 2), activation="linear", strides=(2, 2), **common_params)  # 128 -> 256
-        self.Lc92 = tf.keras.layers.Conv2D(int(scaling*filters), main_kernel, activation=activation, **common_params)
-        self.Lc93 = tf.keras.layers.Conv2D(int(scaling*filters), main_kernel, activation=activation, **common_params)
+            self.Lu91 = tf.keras.layers.Conv2DTranspose(int(scaling**2)*filters, (2, 2), activation="linear", strides=(2, 2), **common_params)  # 128 -> 256
+        self.Lc92 = tf.keras.layers.Conv2D(int(scaling**2)*filters, main_kernel, activation=activation, **common_params)
+        self.Lc93 = tf.keras.layers.Conv2D(int(scaling**2)*filters, main_kernel, activation=activation, **common_params)
 
-        self.Lu100 = tf.keras.layers.Conv2D(filters, (1, 1), activation="linear", **common_params)
         if upsampling_interpolation:
             self.Lu101 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="bilinear")
         else:
-            self.Lu101 = tf.keras.layers.Conv2DTranspose(filters, (2, 2), activation="linear", strides=(2, 2), **common_params)  # 256 -> 512
-        self.Lc102 = tf.keras.layers.Conv2D(filters, main_kernel, activation=activation, **common_params)
-        self.Lc103 = tf.keras.layers.Conv2D(filters, main_kernel, activation=activation, **common_params)
+            self.Lu101 = tf.keras.layers.Conv2DTranspose(scaling*filters, (2, 2), activation="linear", strides=(2, 2), **common_params)  # 256 -> 512
+        self.Lc102 = tf.keras.layers.Conv2D(scaling*filters, main_kernel, activation=activation, **common_params)
+        self.Lc103 = tf.keras.layers.Conv2D(scaling*filters, main_kernel, activation=activation, **common_params)
 
         self.Loutputs = tf.keras.layers.Conv2D(2, (1, 1), activation="linear", **common_params) # rescaling of ouptut
 
@@ -155,16 +146,14 @@ class RayTracer512(tf.keras.Model):
         z = self.LcZ1(z)
         z = self.LcZ2(z)
 
-        z = self.Lu60(z)
         z = self.Lu61(z)  # upsampling
-        is self.skip_connections:
+        if self.skip_connections:
             z = tf.concat([z, c5], axis=3)  # skip connection
         if self.batch_norm:
             z = self.batch_norm_layers[6](z)
         z = self.Lc62(z)
         z = self.Lc63(z)
 
-        z = self.Lu70(z)
         z = self.Lu71(z)
         if self.skip_connections:
             z = tf.concat([z, c4], axis=3)
@@ -173,7 +162,6 @@ class RayTracer512(tf.keras.Model):
         z = self.Lc72(z)
         z = self.Lc73(z)
 
-        z = self.Lu80(z) 
         z = self.Lu81(z)
         if self.skip_connections:
             z = tf.concat([z, c3], axis=3)
@@ -182,7 +170,6 @@ class RayTracer512(tf.keras.Model):
         z = self.Lc82(z)
         z = self.Lc83(z)
 
-        z = self.Lu90(z)
         z = self.Lu91(z)
         if self.skip_connections:
             z = tf.concat([z, c2], axis=3)
@@ -191,7 +178,6 @@ class RayTracer512(tf.keras.Model):
         z = self.Lc92(z)
         z = self.Lc93(z)
 
-        z = self.Lu100(z)
         z = self.Lu101(z)
         if self.skip_connections:
             z = tf.concat([z, c1], axis=3)
