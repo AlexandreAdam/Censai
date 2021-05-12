@@ -102,7 +102,7 @@ class RayTracer512(tf.keras.Model):
         self.Lc73 = tf.keras.layers.Conv2D(int(scaling**3*filters), main_kernel, activation=activation, **common_params)
 
         if self.one_by_one_convs:
-            self.Lu80 = tf.keras.layers.Conv2D(int*(scaling**2*filters), (1, 1), activation="linear", **common_params)
+            self.Lu80 = tf.keras.layers.Conv2D(int(scaling**2*filters), (1, 1), activation="linear", **common_params)
         if upsampling_interpolation:
             self.Lu81 = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=common_params["data_format"], interpolation="bilinear")
         else:

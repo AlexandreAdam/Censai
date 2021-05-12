@@ -64,11 +64,11 @@ if __name__ == "__main__":
     axs[1, 2].imshow(alc[0, ..., 1], cmap="hot")
     axs[2, 2].imshow(alap[0, ..., 1], cmap="hot")
 
-    __im = axs[0, 3].imshow(np.abs(al[0, ..., 0] - alap[0, ..., 0]), cmap="jet")
+    __im = axs[0, 3].imshow(np.abs(al[0, ..., 0] - alc[0, ..., 0]), cmap="jet")
     divider = make_axes_locatable(axs[0, 3])
     cax     = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(__im, cax=cax)
-    __im = axs[1, 3].imshow(np.abs(al[0, ..., 1] - alap[0, ..., 1]), cmap="jet")
+    __im = axs[1, 3].imshow(np.abs(al[0, ..., 1] - alc[0, ..., 1]), cmap="jet")
     divider = make_axes_locatable(axs[1, 3])
     cax     = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(__im, cax=cax)
