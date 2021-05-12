@@ -31,6 +31,7 @@ class RayTracer512(tf.keras.Model):
             common_params.update({"bias_regularizer": tf.keras.regularizers.L2(l2=bias_regularizer_amp)})
         main_kernel = tuple([decoder_encoder_kernel_size]*2)
         pre_bottle_kernel = tuple([pre_bottleneck_kernel_size]*2)
+        bottle_kernel = tuple([bottleneck_kernel_size]*2)
         filters = decoder_encoder_filters
         bottle_stride = tuple([bottleneck_strides]*2)
         self.trainable = trainable
@@ -59,7 +60,7 @@ class RayTracer512(tf.keras.Model):
         self.Lc21 = tf.keras.layers.Conv2D(int(scaling*filters), main_kernel, activation=activation, **common_params)
         self.Lc22 = tf.keras.layers.Conv2D(int(scaling*filters), main_kernel, activation=activation, **common_params)
         self.Lp23 = tf.keras.layers.Conv2D(int(scaling*filters), main_kernel, activation=activation, strides=(2, 2), **common_params)  # 256 -> 128
-        if self.one_by_on_convs:
+        if self.one_by_one_convs:
             self.Lp24 = tf.keras.layers.Conv2D(int(scaling*filters), (1, 1), activation="linear", **common_params)
 
         self.Lc31 = tf.keras.layers.Conv2D(int(scaling**2*filters), main_kernel, activation=activation, **common_params)
@@ -80,8 +81,8 @@ class RayTracer512(tf.keras.Model):
         if self.one_by_one_convs:
             self.Lp54 = tf.keras.layers.Conv2D(int(scaling**4*filters), (1, 1), activation="linear", **common_params)
 
-        self.LcZ1 = tf.keras.layers.Conv2D(int(bottle_scaling*filters), (16, 16), activation="linear", **common_params)  # Actual convolution at this stage (kernel size twice the image size)
-        self.LcZ2 = tf.keras.layers.Conv2D(int(bottle_scaling*filters), (16, 16), activation="linear", **common_params)
+        self.LcZ1 = tf.keras.layers.Conv2D(int(bottle_scaling*filters), bottle_kernel, activation="linear", **common_params)  # Actual convolution at this stage (kernel size twice the image size)
+        self.LcZ2 = tf.keras.layers.Conv2D(int(bottle_scaling*filters), bottle_kernel, activation="linear", **common_params)
         
         if self.one_by_one_convs:
             self.Lu60 = tf.keras.layers.Conv2D(int(scaling**4*filters), (1, 1), activation="linear", **common_params)
