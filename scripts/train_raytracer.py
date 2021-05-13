@@ -1,7 +1,7 @@
 import tensorflow as tf
 from censai import RayTracer512 as RayTracer
 from censai.data_generator import NISGenerator
-from censai.utilities import nullwriter
+from censai.utils import nullwriter
 import os
 from datetime import datetime
 # try:

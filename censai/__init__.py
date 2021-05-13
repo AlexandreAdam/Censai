@@ -1,1 +1,1 @@
-from .ray_tracer import RayTracer512
+from censai.models.ray_tracer512 import RayTracer512
