@@ -1,5 +1,3 @@
-import tensorflow as tf
-import numpy as np
 try:
     from contextlib import nullcontext  # python > 3.7 needed for this
 except ImportError:
@@ -9,6 +7,7 @@ except ImportError:
             pass
         def __exit__(self, exc_type, exc_val, exc_tb):
             pass
+
 
 class nullwriter:
     @staticmethod
