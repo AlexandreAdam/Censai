@@ -126,6 +126,7 @@ def load_subhalo(subhalo_id, particle_type, offsets, subhalo_offsets, snapshot_d
     if particle_type == 1:
         mass = np.ones(coords.shape[0]) * 1e-2  # each DM particle is 10^{8} solar mass
         return coords, mass
+    mass = np.concatenate(mass)
     return coords, mass
 
 
