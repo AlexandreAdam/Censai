@@ -169,6 +169,7 @@ with h5py.File(args.offsets, "r") as f:
 def distributed_strategy():
     for i in range(this_worker, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
+        print(subhalo_id)
 
         coords = []
         mass = []
@@ -202,6 +203,7 @@ def distributed_strategy():
         kappa /= sigma_crit
 
         date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        print(date)
 
         header = fits.Header()
         header["subhalo_id"] = args.subhalo_id
@@ -226,6 +228,7 @@ def distributed_strategy():
         hdul = fits.HDUList([hdu])
         hdul.writeto(os.path.join(args.output_dir,
                                   args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
+        print("Finished")
 
 
 if __name__ == '__main__':
