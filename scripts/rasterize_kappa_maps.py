@@ -153,6 +153,7 @@ subhalo_ids = np.load(args.subhalo_id)
 if args.smoke_test:
     print("smoke_test")
     subhalo_ids = np.array([10])  # should be an easy halo to try out
+    print(subhalo_ids.size)
 dims = projection(args.projection)
 
 zd = args.z_lens
@@ -168,7 +169,7 @@ with h5py.File(args.offsets, "r") as f:
 
 
 def distributed_strategy():
-    for i in range(this_worker, subhalo_ids.size, N_WORKERS):
+    for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
         print(subhalo_id)
 
@@ -233,5 +234,5 @@ def distributed_strategy():
 
 
 if __name__ == '__main__':
-    print(this_worker)
+    print(this_worker-1)
     distributed_strategy()
