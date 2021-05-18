@@ -37,8 +37,6 @@ def lrelu4p(x, alpha=0.04):
     return tf.maximum(x, tf.multiply(x, alpha))
 
 
-
-
 class LensUtil:
     def __init__(self, im_side=7.68, src_side=3.0, numpix_side=256 , kap_side=7.68 , method="conv2d"):
         self.im_side = im_side
