@@ -151,6 +151,7 @@ args = parser.parse_args()
 
 subhalo_ids = np.load(args.subhalo_id)
 if args.smoke_test:
+    print("smoke_test")
     subhalo_ids = np.array([10])  # should be an easy halo to try out
 dims = projection(args.projection)
 
@@ -232,4 +233,5 @@ def distributed_strategy():
 
 
 if __name__ == '__main__':
+    print(this_worker)
     distributed_strategy()
