@@ -135,7 +135,7 @@ parser.add_argument("--output_dir", required=True, type=str, help="Directory whe
 parser.add_argument("--subhalo_id", required=True, type=str,
                     help="npy file that contains array of int32 index of subhalos to rasterize")
 parser.add_argument("--projection", required=True, type=str, help="2 characters, a combination of x, y and z (e.g. 'xy')")
-parser.add_argument("--base_filenames", default="image")
+parser.add_argument("--base_filenames", default="kappa")
 parser.add_argument("--pixels", default=512, help="Number of pixels in the raster image")
 parser.add_argument("--n_neighbors", default=10, help="Number of neighbors used to compute kernel length")
 parser.add_argument("--offsets", default="/home/aadam/scratch/data/TNG300-1/offsets/offsets_099.hdf5")
@@ -211,8 +211,8 @@ def distributed_strategy():
         header["FOV"] = (args.fov, "Field of view in Mpc")
         header["projection x"] = dims[0]
         header["projection y"] = dims[1]
-        header["center x"] = (center[0], "Mpc")
-        header["center y"] = (center[1], "Mpc")
+        header["center x"] = (center[0], "Mpc, Comoving coordinate in the simulation")
+        header["center y"] = (center[1], "Mpc, Comoving coordinate in the simulation")
         header["N_Particles"] = (coords.shape[0], "Total number of particles")
         title = ["Gas", "Dark matter", "Stars", "Black holes"]
         for part_type in [0, 1, 4, 5]:
