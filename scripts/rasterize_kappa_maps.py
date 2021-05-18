@@ -209,7 +209,7 @@ def distributed_strategy():
         print(f"Finished subhalo {subhalo_id} at {date}")
 
         header = fits.Header()
-        header["SUBID"] = args.subhalo_id
+        header["SUBID"] = subhalo_id
         header["CREATED"] = date
         for part_type in [0, 1, 4, 5]:
             header[f"OFFSET{part_type:d}"] = subhalo_offsets[subhalo_id, part_type]
