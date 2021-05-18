@@ -192,6 +192,7 @@ def distributed_strategy():
         centroid = np.average(coords, axis=0)
         coords = fixed_boundary_coordinates(coords, centroid, args.box_size)
 
+        print(dims[0])
         x = coords[:, dims[0]]  # projection
         y = coords[:, dims[1]]
 
