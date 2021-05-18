@@ -56,7 +56,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     """
     Rasterize particle cloud over the 2 dimensions, the output is a projected density
     """
-    # Smooth particle mass over a region of size equal to the mean distance btw its 10 nearest neighbors in 3D
+    # Smooth particle mass over a region of size equal to the mean distance btw its n nearest neighbors in 3D
     nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='kd_tree').fit(coords)
     distances, _ = nbrs.kneighbors(coords)
     distances = distances[:, 1:]  # the first column is 0 since the nearest neighbor of each point is the point itself, at a distance of zero.
