@@ -209,24 +209,24 @@ def distributed_strategy():
         print(f"Finished subhalo {subhalo_id} at {date}")
 
         header = fits.Header()
-        header["subhalo_id"] = args.subhalo_id
-        header["created"] = date
+        header["SUBHALOID"] = args.subhalo_id
+        header["CREATED"] = date
         for part_type in [0, 1, 4, 5]:
             header[f"subhalo_offset{part_type:d}"] = subhalo_offsets[subhalo_id, part_type]
         header["FOV"] = (args.fov, "Field of view in Mpc")
-        header["projection x"] = dims[0]
-        header["projection y"] = dims[1]
-        header["center x"] = (center[0], "Mpc, Comoving coordinate in the simulation")
-        header["center y"] = (center[1], "Mpc, Comoving coordinate in the simulation")
-        header["N_Particles"] = (coords.shape[0], "Total number of particles")
-        title = ["Gas", "Dark matter", "Stars", "Black holes"]
-        for part_type in [0, 1, 4, 5]:
-            header[f"N_{title[part_type]}"] = _len[part_type]
-        header["z_source"] = args.z_source
-        header["z_lens"] = args.z_lens
-        header["n_neighbors"] = args.n_neighbors
-        header["Sigma_crit"] = sigma_crit
-        header["cosmology"]  = "Planck18"
+        header["XDIM"] = dims[0]
+        header["YDIM"] = dims[1]
+        header["XCENTER"] = (center[0], "Mpc, Comoving coordinate in the simulation")
+        header["YCENTER"] = (center[1], "Mpc, Comoving coordinate in the simulation")
+        header["NPART"] = (coords.shape[0], "Total number of particles")
+        title = ["GAS", "DM", "STARS", "BH"]
+        for j, _ in enumerate([0, 1, 4, 5]):
+            header[f"N{title[j]}"] = _len[j]
+        header["ZSOURCE"] = args.z_source
+        header["ZLENS"] = args.z_lens
+        header["NNEIGH"] = args.n_neighbors
+        header["SIGCRIT"] = sigma_crit
+        header["COSMO"]  = "Planck18"
         hdu = fits.PrimaryHDU(kappa, header=header)
         hdul = fits.HDUList([hdu])
         hdul.writeto(os.path.join(args.output_dir,
