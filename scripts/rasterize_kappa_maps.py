@@ -182,7 +182,7 @@ def distributed_strategy():
             if coords_ is None:
                 _len.append(0)
                 continue
-            _len.append(coords.shape[0])
+            _len.append(coords[-1].shape[0])
             coords.append(coords_)
             mass.append(mass_)
         coords = np.concatenate(coords)
