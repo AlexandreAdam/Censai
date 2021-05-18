@@ -172,7 +172,7 @@ with h5py.File(args.offsets, "r") as f:
 def distributed_strategy():
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
-        print(subhalo_id)
+        print(f"Started subhalo {subhalo_id} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
 
         coords = []
         mass = []
@@ -206,7 +206,7 @@ def distributed_strategy():
         kappa /= sigma_crit
 
         date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
-        print(date)
+        print(f"Finished subhalo {subhalo_id} at {date}")
 
         header = fits.Header()
         header["subhalo_id"] = args.subhalo_id
@@ -235,5 +235,4 @@ def distributed_strategy():
 
 
 if __name__ == '__main__':
-    print(this_worker-1)
     distributed_strategy()
