@@ -13,7 +13,7 @@ if gpus:
 from censai.physical_model import PhysicalModel
 from censai.data_generator import NISGenerator
 from censai.definitions import RIM_UNET_CELL
-from censai.utilities import nullwriter
+from censai.utils import nullwriter
 import os
 from datetime import datetime
 try:

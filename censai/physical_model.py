@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
 import numpy as np
-from censai.definitions import RayTracer
+from censai.models.ray_tracer import RayTracer
 import tensorflow_addons as tfa
 
 
