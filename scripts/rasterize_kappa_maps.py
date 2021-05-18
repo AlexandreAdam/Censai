@@ -56,12 +56,15 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     """
     Rasterize particle cloud over the 2 dimensions, the output is a projected density
     """
-    num_particle = coords.shape[0]
     # Smooth particle mass over a region of size equal to the mean distance btw its 10 nearest neighbors in 3D
     nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='kd_tree').fit(coords)
     distances, _ = nbrs.kneighbors(coords)
     distances = distances[:, 1:]  # the first column is 0 since the nearest neighbor of each point is the point itself, at a distance of zero.
-    D = distances.mean(axis=1)  # characteristic distance used in kernel
+    D = distances.mean(axis=1)  # characteristic distance used in kernel, correspond to FWHM of the kernel
+    ell_hat = D / 2 / np.sqrt(2 * np.log(2))
+
+    # ell_hat = D * np.sqrt(103 / 1120)  is used by Rau, S., Vegetti, S., & White, S. D. M. (2013). MNRAS, 430(3), 2232–2248. https://doi.org/10.1093/mnras/stt043
+    # this corresponds D=(FW at 2/3 maximum), so the kernel is very sharp. We use FWHM so the kernel are more large but this drowns better the particle noise
 
     # pixel grid encompass the full scene, but variable pixel size depending on the scene
     #     xmin = coord[:, dims[0]].min()
@@ -72,7 +75,6 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     #     y = np.linspace(ymin, ymax, pixels)
     #     x, y = np.meshgrid(x, y)
 
-    # fixed FOV scene -> here we use Mpc scale but with fixed cosmology and redshift this is equivalent to fixed angular size, should use arcsec instead so we can vary redshift?
     xmin = center[0] - fov / 2
     xmax = center[0] + fov / 2
     ymin = center[1] - fov / 2
@@ -82,17 +84,12 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     x, y = np.meshgrid(x, y)
     pixel_grid = np.stack([x, y], axis=-1)
 
-    def rasterize(coord, mass, pixel_grid, D):
-        num_particle = coord.shape[0]
-        I = np.zeros(shape=pixel_grid.shape[:2], dtype=np.float32)
-        ell_hat = D * np.sqrt(103 / 1120)  # see Rau, S., Vegetti, S., & White, S. D. M. (2013). MNRAS, 430(3), 2232–2248. https://doi.org/10.1093/mnras/stt043
-        for i in range(num_particle):
-            xi = coord[i][np.newaxis, np.newaxis, :] - pixel_grid
-            r_squared = xi[..., 0]**2 + xi[..., 1]**2
-            I += mass[i] * np.exp(-0.5 * r_squared / ell_hat[i] ** 2) / (2 * np.pi * ell_hat[i] ** 2)  # gaussian kernel
-        return I
-
-    Sigma = rasterize(coords[:, dims], mass, pixel_grid, D)
+    num_particle = coords.shape[0]
+    Sigma = np.zeros(shape=pixel_grid.shape[:2], dtype=np.float32)
+    for i in range(num_particle):
+        xi = coords[i, dims][np.newaxis, np.newaxis, :] - pixel_grid
+        r_squared = xi[..., 0]**2 + xi[..., 1]**2
+        Sigma += mass[i] * np.exp(-0.5 * r_squared / ell_hat[i] ** 2) / (2 * np.pi * ell_hat[i] ** 2)  # gaussian kernel
     return Sigma
 
 
@@ -202,7 +199,15 @@ def distributed_strategy():
         cm_x = (xedges[cm_i] + xedges[cm_i + 1]) / 2  # find the position of the peak
         cm_y = (yedges[cm_j] + yedges[cm_j + 1]) / 2
         center = np.array([cm_x, cm_y])
-        kappa = gaussian_kernel_rasterize(coords, mass, center, args.fov, dims=dims, pixels=args.pixels, n_neighbors=args.n_neighbors)
+        # select particles that will be in the cutout
+        xmax = cm_x + args.fov/2
+        xmin = cm_x - args.fov/2
+        ymax = cm_y + args.fov/2
+        ymin = cm_y - args.fov/2
+        margin = args.fov / args.pixels # allow for particle near the margin to be counted in
+        select = (x < xmax + margin) & (x > xmin - margin) & (y < ymax + margin) & (y > ymin - margin)
+        kappa = gaussian_kernel_rasterize(coords[select], mass[select], center, args.fov, dims=dims, pixels=args.pixels,
+                                          n_neighbors=args.n_neighbors)
         kappa /= sigma_crit
 
         date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
@@ -210,10 +215,19 @@ def distributed_strategy():
 
         header = fits.Header()
         header["SUBID"] = subhalo_id
+        header["MASS"] = (mass.sum(), "Total mass in the subhalo, in 10^{10} solar mass units")
+        header["CUTMASS"] = (mass[select].sum(), "Total mass in the cutout in 10^{10} solar mass units")
         header["CREATED"] = date
         for part_type in [0, 1, 4, 5]:
             header[f"OFFSET{part_type:d}"] = subhalo_offsets[subhalo_id, part_type]
         header["FOV"] = (args.fov, "Field of view in Mpc")
+        header["CD1_1"] = (((args.fov / args.pixels)*u.Mpc / cosmo.angular_diameter_distance(args.z_lens) * 180 / np.pi * 3600 * cosmo.h),
+                           "Pixel scale in arcsec for x dimension")
+        header["CD2_2"] = (((args.fov / args.pixels)*u.Mpc / cosmo.angular_diameter_distance(args.z_lens) * 180 / np.pi * 3600 * cosmo.h),
+                           "Pixel scale in arcsec for x dimension")
+        header["CD1_2"] = 0.
+        header["CD2_1"] = 0.
+
         header["XDIM"] = dims[0]
         header["YDIM"] = dims[1]
         header["XCENTER"] = (center[0], "Mpc, Comoving coordinate in the simulation")
@@ -222,6 +236,7 @@ def distributed_strategy():
         title = ["GAS", "DM", "STARS", "BH"]
         for j, _ in enumerate([0, 1, 4, 5]):
             header[f"N{title[j]}"] = _len[j]
+        header["NSELECT"] = (select.sum(), "Number of particles in the cutout")
         header["ZSOURCE"] = args.z_source
         header["ZLENS"] = args.z_lens
         header["NNEIGH"] = args.n_neighbors
@@ -230,7 +245,7 @@ def distributed_strategy():
         hdu = fits.PrimaryHDU(kappa, header=header)
         hdul = fits.HDUList([hdu])
         hdul.writeto(os.path.join(args.output_dir,
-                                  args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
+                                  args.base_filenames + f"_{subhalo_id:06d}_{args.projection}_{args.fov*1000:.0f}.fits"))
         print("Finished")
 
 
