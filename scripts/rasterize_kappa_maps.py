@@ -188,16 +188,17 @@ def distributed_strategy():
             mass.append(mass_)
         coords = np.concatenate(coords)
         mass = np.concatenate(mass)
-        print(coords.shape)
-        print(mass.shape)
 
         centroid = np.average(coords, axis=0)
         coords = fixed_boundary_coordinates(coords, centroid, args.box_size)
-        print(coords.shape)
 
         x = coords[:, dims[0]]  # projection
         y = coords[:, dims[1]]
 
+        print(x.shape)
+        print(y.shape)
+        print(mass.shape)
+        print(args.pixels)
         ###  figure out maximum coordinate where kappa is at a maximum
         heatmap, xedges, yedges = np.histogram2d(x, y, bins=args.pixels, range=[[x.min(), x.max()], [y.min(), y.max()]],
                                                  weights=mass, density=False)  # global view of the subhalo
