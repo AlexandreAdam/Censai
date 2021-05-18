@@ -209,10 +209,10 @@ def distributed_strategy():
         print(f"Finished subhalo {subhalo_id} at {date}")
 
         header = fits.Header()
-        header["SUBHALOID"] = args.subhalo_id
+        header["SUBID"] = args.subhalo_id
         header["CREATED"] = date
         for part_type in [0, 1, 4, 5]:
-            header[f"subhalo_offset{part_type:d}"] = subhalo_offsets[subhalo_id, part_type]
+            header[f"OFFSET{part_type:d}"] = subhalo_offsets[subhalo_id, part_type]
         header["FOV"] = (args.fov, "Field of view in Mpc")
         header["XDIM"] = dims[0]
         header["YDIM"] = dims[1]
