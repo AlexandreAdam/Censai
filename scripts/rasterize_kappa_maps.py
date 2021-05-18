@@ -188,9 +188,12 @@ def distributed_strategy():
             mass.append(mass_)
         coords = np.concatenate(coords)
         mass = np.concatenate(mass)
+        print(coords.shape)
+        print(mass.shape)
 
         centroid = np.average(coords, axis=0)
         coords = fixed_boundary_coordinates(coords, centroid, args.box_size)
+        print(coords.shape)
 
         x = coords[:, dims[0]]  # projection
         y = coords[:, dims[1]]
