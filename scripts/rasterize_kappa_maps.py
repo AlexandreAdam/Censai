@@ -202,7 +202,7 @@ def distributed_strategy():
         cm_x = (xedges[cm_i] + xedges[cm_i + 1]) / 2  # find the position of the peak
         cm_y = (yedges[cm_j] + yedges[cm_j + 1]) / 2
         center = np.array([cm_x, cm_y])
-        kappa = gaussian_kernel_rasterize(coords, center, args.fov, dims=dims, pixels=args.pixels, n_neighbors=args.n_neighbors)
+        kappa = gaussian_kernel_rasterize(coords, mass, center, args.fov, dims=dims, pixels=args.pixels, n_neighbors=args.n_neighbors)
         kappa /= sigma_crit
 
         date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
