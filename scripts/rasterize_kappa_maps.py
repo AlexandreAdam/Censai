@@ -22,11 +22,11 @@ def projection(proj):
     out = []
     for i in range(2):
         if proj[i] == "x":
-            out.append([0])
+            out.append(0)
         elif proj[i] == "y":
-            out.append([1])
+            out.append(1)
         elif proj[i] == "z":
-            out.append([2])
+            out.append(2)
         else:
             raise ValueError
     return out
@@ -181,7 +181,7 @@ def distributed_strategy():
         for part_type in [0, 1, 4, 5]:
             coords_, mass_ = load_subhalo(subhalo_id, part_type, offsets, subhalo_offsets, args.snapshot_dir, args.snapshot_id)
             if coords_ is None:
-                _len.append([0])
+                _len.append(0)
                 continue
             _len.append(coords_.shape[0])
             coords.append(coords_)
@@ -192,14 +192,9 @@ def distributed_strategy():
         centroid = np.average(coords, axis=0)
         coords = fixed_boundary_coordinates(coords, centroid, args.box_size)
 
-        print(dims[0])
         x = coords[:, dims[0]]  # projection
         y = coords[:, dims[1]]
 
-        print(x.shape)
-        print(y.shape)
-        print(mass.shape)
-        print(args.pixels)
         ###  figure out maximum coordinate where kappa is at a maximum
         heatmap, xedges, yedges = np.histogram2d(x, y, bins=args.pixels, range=[[x.min(), x.max()], [y.min(), y.max()]],
                                                  weights=mass, density=False)  # global view of the subhalo
