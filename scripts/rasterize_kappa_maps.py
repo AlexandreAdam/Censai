@@ -139,7 +139,7 @@ parser.add_argument("--base_filenames", default="kappa")
 parser.add_argument("--pixels", default=512, help="Number of pixels in the raster image")
 parser.add_argument("--n_neighbors", default=10, help="Number of neighbors used to compute kernel length")
 parser.add_argument("--offsets", default="/home/aadam/scratch/data/TNG300-1/offsets/offsets_099.hdf5")
-parser.add_argument("--snapshot", default="/home/aadam/scratch/data/TNG300-1/snapshot99/")
+parser.add_argument("--snapshot_dir", default="/home/aadam/scratch/data/TNG300-1/snapshot99/", help="Root directory of the snapshot")
 parser.add_argument("--snapshot_id", default=99, type=int,
                     help="Should match id of snapshot given in snapshot argument")
 parser.add_argument("--fov", default=1, type=float, help="Field of view of a scene in comoving Mpc")
