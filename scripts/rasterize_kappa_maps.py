@@ -121,7 +121,9 @@ def load_subhalo(subhalo_id, particle_type, offsets, subhalo_offsets, snapshot_d
 
     coords = np.concatenate(coords)
     if particle_type == 1:
-        mass = np.ones(coords.shape[0]) * 1e-2  # each DM particle is 10^{8} solar mass
+        with h5py.File(snapshot_datapath, "r") as f:
+            mass = dict(f['Header'].attrs.items())["MassTable"][1]  # get dm particle mass from simulation meta data
+        mass = np.ones(coords.shape[0]) * mass
         return coords, mass
     mass = np.concatenate(mass)
     return coords, mass
