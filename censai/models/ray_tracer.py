@@ -2,7 +2,6 @@ import tensorflow as tf
 from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer
 from .utils import get_activation
 
-
 class RayTracer(tf.keras.Model):
     def __init__(
             self,
