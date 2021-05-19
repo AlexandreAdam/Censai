@@ -221,10 +221,10 @@ def distributed_strategy():
         for part_type in [0, 1, 4, 5]:
             header[f"OFFSET{part_type:d}"] = subhalo_offsets[subhalo_id, part_type]
         header["FOV"] = (args.fov, "Field of view in Mpc")
-        header["CD1_1"] = (((args.fov / args.pixels)*u.Mpc / cosmo.angular_diameter_distance(args.z_lens) * 180 / np.pi * 3600 * cosmo.h),
+        header["CD1_1"] = (((args.fov / args.pixels)*u.Mpc / cosmo.angular_diameter_distance(args.z_lens) * 180 / np.pi * 3600 * cosmo.h).value,
                            "Pixel scale in arcsec for x dimension")
-        header["CD2_2"] = (((args.fov / args.pixels)*u.Mpc / cosmo.angular_diameter_distance(args.z_lens) * 180 / np.pi * 3600 * cosmo.h),
-                           "Pixel scale in arcsec for x dimension")
+        header["CD2_2"] = (((args.fov / args.pixels)*u.Mpc / cosmo.angular_diameter_distance(args.z_lens) * 180 / np.pi * 3600 * cosmo.h).value,
+                           "Pixel scale in arcsec for y dimension")
         header["CD1_2"] = 0.
         header["CD2_1"] = 0.
 
