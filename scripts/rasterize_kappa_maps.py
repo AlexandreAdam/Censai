@@ -139,6 +139,7 @@ parser.add_argument("--base_filenames", default="kappa")
 parser.add_argument("--pixels", default=512, type=int, help="Number of pixels in the raster image")
 parser.add_argument("--n_neighbors", default=10, type=int, help="Number of neighbors used to compute kernel length")
 parser.add_argument("--offsets", default="/home/aadam/scratch/data/TNG300-1/offsets/offsets_099.hdf5")
+parser.add_argument("--groupcat_dir", default="/home/aadam/projects/rrg-lplevass/aadam/illustrisTNG300-1_snapshot99_groupcat/")
 parser.add_argument("--snapshot_dir", default="/home/aadam/scratch/data/TNG300-1/snapshot99/", help="Root directory of the snapshot")
 parser.add_argument("--snapshot_id", default=99, type=int,
                     help="Should match id of snapshot given in snapshot argument")
@@ -166,6 +167,7 @@ sigma_crit = (c ** 2 * Ds / (4 * np.pi * G * Dd * Dds) / (1e10 * M_sun)).to(u.Mp
 with h5py.File(args.offsets, "r") as f:
     offsets = f["FileOffsets"]["SnapByType"][:]  # global particle number at the beginning of a chunk
     subhalo_offsets = f["Subhalo"]["SnapByType"][:]
+    subhalo_fileoffsets = f["FileOffsets"]["Subhalo"][:]
 
 
 def distributed_strategy():
@@ -188,19 +190,30 @@ def distributed_strategy():
         coords = np.concatenate(coords)
         mass = np.concatenate(mass)
 
-        centroid = np.average(coords, axis=0)
-        coords = fixed_boundary_coordinates(coords, centroid, args.box_size)
+        # load subhalo position for fixed_boundary_coordinates
+        chunk = max(0, (subhalo_id > subhalo_fileoffsets).sum() - 1)  # first chunk
+        subhalo_index = subhalo_id - subhalo_fileoffsets[chunk]
+        chunk_length = subhalo_fileoffsets[min(599, chunk + 1)] - subhalo_fileoffsets[min(598, chunk)]
+        while subhalo_index > chunk_length:
+            chunk += 1
+            subhalo_index -= chunk_length
+            chunk_length = subhalo_fileoffsets[min(599, chunk + 1)] - subhalo_fileoffsets[min(598, chunk)]
+        fof_datapath = os.path.join(args.groupcat_dir, f"fof_subhalo_tab_099.{chunk}.hdf5")
+        with h5py.File(fof_datapath, "r") as f:
+            centroid = f["Subhalo"]["SubhaloCM"][subhalo_index] / 1e3
 
+        coords = fixed_boundary_coordinates(coords, centroid, args.box_size)
         x = coords[:, dims[0]]  # projection
         y = coords[:, dims[1]]
 
-        ###  figure out maximum coordinate where kappa is at a maximum
+        #  figure out coordinate where kappa is at a maximum, this is so kappa maps are nicely centered
         heatmap, xedges, yedges = np.histogram2d(x, y, bins=args.pixels, range=[[x.min(), x.max()], [y.min(), y.max()]],
                                                  weights=mass, density=False)  # global view of the subhalo
         cm_i, cm_j = np.unravel_index(np.argmax(heatmap), shape=heatmap.shape)
         cm_x = (xedges[cm_i] + xedges[cm_i + 1]) / 2  # find the position of the peak
         cm_y = (yedges[cm_j] + yedges[cm_j + 1]) / 2
         center = np.array([cm_x, cm_y])
+
         # select particles that will be in the cutout
         xmax = cm_x + args.fov/2
         xmin = cm_x - args.fov/2
@@ -212,6 +225,7 @@ def distributed_strategy():
                                           n_neighbors=args.n_neighbors)
         kappa /= sigma_crit
 
+        # create fits file and its header, than save result
         date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
         print(f"Finished subhalo {subhalo_id} at {date}")
 
