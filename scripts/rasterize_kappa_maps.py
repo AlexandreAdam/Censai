@@ -261,7 +261,7 @@ def distributed_strategy():
         hdu = fits.PrimaryHDU(kappa, header=header)
         hdul = fits.HDUList([hdu])
         hdul.writeto(os.path.join(args.output_dir,
-                                  args.base_filenames + f"_{subhalo_id:06d}_{args.projection}_{args.fov*1000:.0f}.fits"))
+                                  args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
         print("Finished")
 
 
