@@ -52,7 +52,7 @@ def fixed_boundary_coordinates(coords, centroid, box_size):
     return new_coords
 
 
-def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512, n_neighbors=10):
+def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512, n_neighbors=64, fw_param=3):
     """
     Rasterize particle cloud over the 2 dimensions, the output is a projected density
     """
@@ -61,10 +61,11 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     distances, _ = nbrs.kneighbors(coords)
     distances = distances[:, 1:]  # the first column is 0 since the nearest neighbor of each point is the point itself, at a distance of zero.
     D = distances.mean(axis=1)  # characteristic distance used in kernel, correspond to FWHM of the kernel
-    ell_hat = D / 2 / np.sqrt(2 * np.log(2))
+    ell_hat = D / 2 / np.sqrt(2 * np.log(fw_param))  # ell_hat is now the standard deviation
 
     # ell_hat = D * np.sqrt(103 / 1120)  is used by Rau, S., Vegetti, S., & White, S. D. M. (2013). MNRAS, 430(3), 2232–2248. https://doi.org/10.1093/mnras/stt043
-    # this corresponds D=(FW at 2/3 maximum), so the kernel is very sharp. We use FWHM so the kernel are more large but this drowns better the particle noise
+    # this corresponds D=(FW at 1/3 maximum), so the kernel is very sharp. We use FWHM so the kernel are more large but this drowns better the particle noise
+    # we note that they use 64 neighbors for their calculation, instead of 20 like us.
 
     # pixel grid encompass the full scene, but variable pixel size depending on the scene
     #     xmin = coord[:, dims[0]].min()
@@ -134,13 +135,18 @@ parser = ArgumentParser()
 parser.add_argument("--output_dir", required=True, type=str, help="Directory where to save raster images (fits file)")
 parser.add_argument("--subhalo_id", required=True, type=str,
                     help="npy file that contains array of int32 index of subhalos to rasterize")
-parser.add_argument("--projection", required=True, type=str, help="2 characters, a combination of x, y and z (e.g. 'xy')")
+parser.add_argument("--projection", required=True, type=str,
+                    help="2 characters, a combination of x, y and z (e.g. 'xy')")
 parser.add_argument("--base_filenames", default="kappa")
 parser.add_argument("--pixels", default=512, type=int, help="Number of pixels in the raster image")
 parser.add_argument("--n_neighbors", default=10, type=int, help="Number of neighbors used to compute kernel length")
+parser.add_argument("--fw_param", default=2, type=float,
+                help="Mean distance of neighbors is interpreted as FW at (1/fw_param) of the maximum of the gaussian")
 parser.add_argument("--offsets", default="/home/aadam/scratch/data/TNG300-1/offsets/offsets_099.hdf5")
-parser.add_argument("--groupcat_dir", default="/home/aadam/projects/rrg-lplevass/aadam/illustrisTNG300-1_snapshot99_groupcat/")
-parser.add_argument("--snapshot_dir", default="/home/aadam/scratch/data/TNG300-1/snapshot99/", help="Root directory of the snapshot")
+parser.add_argument("--groupcat_dir",
+                    default="/home/aadam/projects/rrg-lplevass/aadam/illustrisTNG300-1_snapshot99_groupcat/")
+parser.add_argument("--snapshot_dir",
+                    default="/home/aadam/scratch/data/TNG300-1/snapshot99/", help="Root directory of the snapshot")
 parser.add_argument("--snapshot_id", default=99, type=int,
                     help="Should match id of snapshot given in snapshot argument")
 parser.add_argument("--fov", default=1, type=float, help="Field of view of a scene in comoving Mpc")
@@ -157,8 +163,13 @@ if args.smoke_test:
     print(subhalo_ids.size)
 if "done.txt" in os.listdir(args.output_dir):   # for checkpointing
     done = np.loadtxt(os.path.join(args.output_dir, "done.txt"))
+    done_dim0 = done[:, 1]
+    done_dim1 = done[:, 2]
+    done = done[:, 0]
 else:
     done = []
+    done_dim0 = [] # we don't need them but create them just in case of a bug
+    done_dim1 = []
 dims = projection(args.projection)
 
 zd = args.z_lens
@@ -178,7 +189,9 @@ def distributed_strategy():
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
         if subhalo_id in done:
-            continue
+            if dims[0] == done_dim0[done == subhalo_id]:
+                if dims[1] == done_dim1[done == subhalo_id]:
+                    continue
 
         print(f"Started subhalo {subhalo_id} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
 
@@ -229,7 +242,7 @@ def distributed_strategy():
         margin = args.fov / args.pixels # allow for particle near the margin to be counted in
         select = (x < xmax + margin) & (x > xmin - margin) & (y < ymax + margin) & (y > ymin - margin)
         kappa = gaussian_kernel_rasterize(coords[select], mass[select], center, args.fov, dims=dims, pixels=args.pixels,
-                                          n_neighbors=args.n_neighbors)
+                                          n_neighbors=args.n_neighbors, fw_param=args.fw_param)
         kappa /= sigma_crit
 
         # create fits file and its header, than save result
@@ -263,6 +276,7 @@ def distributed_strategy():
         header["ZSOURCE"] = args.z_source
         header["ZLENS"] = args.z_lens
         header["NNEIGH"] = args.n_neighbors
+        header["FWPARAM"] = (args.fw_param, "FW at (1/x) maximum for smoothing")
         header["SIGCRIT"] = sigma_crit
         header["COSMO"]  = "Planck18"
         hdu = fits.PrimaryHDU(kappa, header=header)
