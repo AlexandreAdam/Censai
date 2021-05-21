@@ -194,7 +194,7 @@ def distributed_strategy():
         chunk = max(0, (subhalo_id > subhalo_fileoffsets).sum() - 1)  # first chunk
         subhalo_index = subhalo_id - subhalo_fileoffsets[chunk]
         chunk_length = subhalo_fileoffsets[min(599, chunk + 1)] - subhalo_fileoffsets[min(598, chunk)]
-        while subhalo_index > chunk_length:
+        while subhalo_index >= chunk_length:
             chunk += 1
             subhalo_index -= chunk_length
             chunk_length = subhalo_fileoffsets[min(599, chunk + 1)] - subhalo_fileoffsets[min(598, chunk)]
