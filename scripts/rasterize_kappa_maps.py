@@ -155,6 +155,10 @@ if args.smoke_test:
     print("smoke_test")
     subhalo_ids = np.array([10])  # should be an easy halo to try out
     print(subhalo_ids.size)
+if "done.txt" in os.listdir(args.output_dir):   # for checkpointing
+    done = np.loadtxt(os.path.join(args.output_dir, "done.txt"))
+else:
+    done = []
 dims = projection(args.projection)
 
 zd = args.z_lens
@@ -173,6 +177,9 @@ with h5py.File(args.offsets, "r") as f:
 def distributed_strategy():
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
+        if subhalo_id in done:
+            continue
+
         print(f"Started subhalo {subhalo_id} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
 
         coords = []
