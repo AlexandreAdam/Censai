@@ -16,7 +16,7 @@ class ConvGRUBlock(tf.keras.Model):
             **kwargs
     ):
         if gru_filters is None:
-            gru_filters = 2 * conv_filters
+            gru_filters = conv_filters/2
         super(ConvGRUBlock, self).__init__()
         self.conv1 = tf.keras.layers.Conv2D(
             filters=conv_filters,
