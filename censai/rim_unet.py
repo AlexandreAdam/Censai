@@ -1,6 +1,8 @@
 import tensorflow as tf
 from .models.rim_unet_model import UnetModel
 
+LOG10 = tf.math.log(10.)
+
 
 class RIM:
     def __init__(
@@ -10,6 +12,7 @@ class RIM:
             steps,
             pixels,
             adam=True,
+            kappalog=True,
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
@@ -23,12 +26,16 @@ class RIM:
         self.model_2 = UnetModel(self.state_size_list, **models_kwargs)
         self.batch_size = batch_size
         self.adam = adam
+        self.kappalog = kappalog
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
 
-        self.inputs_1 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, 1))
-        self.inputs_2 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, 1))
+        self.inputs_1 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, 1))  # source
+        if self.kappalog:
+            self.inputs_2 = -tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1)) # kappa
+        else:
+            self.inputs_2 = tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1))/10
 
         strides = self.model_1.strides
         numfeat_1, numfeat_2, numfeat_3, numfeat_4 = self.state_size_list
@@ -58,6 +65,20 @@ class RIM:
     @property
     def output_size(self):
         return self._num_units
+
+    @tf.function
+    def kappa_link(self, kappa):
+        if self.kappalog:
+            return tf.math.log(kappa + 1e-10) / LOG10
+        else:
+            return kappa
+
+    @tf.function
+    def kappa_inverse_link(self, eta):
+        if self.kappalog:
+            return 10**(eta)
+        else:
+            return eta
 
     def grad_update(self, grad1, grad2, time_step):
         if self.adam:
@@ -91,7 +112,7 @@ class RIM:
         with tf.GradientTape() as g:
             g.watch(self.inputs_1)
             g.watch(self.inputs_2)
-            cost = self.physical_model.log_likelihood(y_true=data, source=self.inputs_1, kappa=self.inputs_2)
+            cost = self.physical_model.log_likelihood(y_true=data, source=self.inputs_1, kappa=self.kappa_inverse_link(self.inputs_2))
         grads = g.gradient(cost, [self.inputs_1, self.inputs_2])
         grads = self.grad_update(*grads, 0)
 
@@ -104,7 +125,7 @@ class RIM:
             with tf.GradientTape() as g:
                 g.watch(output_1)
                 g.watch(output_2)
-                cost = self.physical_model.log_likelihood(y_true=data, source=output_1, kappa=output_2)
+                cost = self.physical_model.log_likelihood(y_true=data, source=output_1, kappa=self.kappa_inverse_link(output_2))
             grads = g.gradient(cost, [output_1, output_2])
             grads = self.grad_update(*grads, current_step)
             output_1, state_1, output_2, state_2 = self.__call__(output_1, state_1, grads[0], output_2, state_2,
@@ -116,5 +137,5 @@ class RIM:
     def cost_function(self, data, source, kappa):
         output_series_1, output_series_2, final_log_L = self.forward_pass(data)
         chi1 = sum([tf.square(output_series_1[i] - source) for i in range(self.steps)]) / self.steps
-        chi2 = sum([tf.square(output_series_2[i] - kappa) for i in range(self.steps)]) / self.steps
+        chi2 = sum([tf.square(output_series_2[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
         return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)

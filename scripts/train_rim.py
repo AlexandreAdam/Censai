@@ -50,11 +50,7 @@ def main(args):
     epoch_loss = tf.metrics.Mean()
     best_loss = np.inf
     patience = args.patience
-    if args.kappalog:
-        link = lambda x: tf.math.log(x + 1e-10) / np.log(10.)
-    else:
-        link = lambda x: x
-    step = 1
+    step = 0
     for epoch in range(args.epochs):
         epoch_loss.reset_states()
         with train_writer.as_default():
@@ -62,7 +58,7 @@ def main(args):
                 with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
                     tape.watch(rim.model_1.trainable_variables)
                     tape.watch(rim.model_2.trainable_variables)
-                    cost = rim.cost_function(X, source, link(kappa))
+                    cost = rim.cost_function(X, source, kappa)
                 gradient1 = tape.gradient(cost, rim.model_1.trainable_variables)
                 gradient2 = tape.gradient(cost, rim.model_2.trainable_variables)
                 # clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
@@ -93,17 +89,23 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     parser = ArgumentParser()
+    # training params
     parser.add_argument("-t", "--total_items", default=1, type=int, required=False, help="Total images in an epoch")
     parser.add_argument("-b", "--batch_size", default=1, type=int, required=False, help="Number of images in a batch")
     parser.add_argument("--validation", required=False, default=1, type=int, help="Number of images in the validation set")
-    parser.add_argument("--logdir", required=False, default="logs", help="Path of logs directory. Default assumes script is" \
-            "run from the base directory of censai. For no logs, use None")
-    parser.add_argument("--logname", required=False, default=date, help="Name of the logs, default is the local date + time")
     parser.add_argument("-e", "--epochs", required=False, default=1, help="Number of epochs for training")
-    parser.add_argument("--lr", required=False, default=1e-3, type=float, help="Learning rate")
+    # hyperparameters
+    parser.add_argument("--lr", required=False, default=1e-4, type=float, help="Learning rate")
     parser.add_argument("--pixels", required=False, default=128, type=int, help="Number of pixels on a side") # cannot change that for the moment
     parser.add_argument("--noise_rms", required=False, default=1e-3, type=float, help="Pixel value rms of lensed image")
-    parser.add_argument("--time_steps", required=False, default=8, type=int, help="Number of time steps of RIM")
+    parser.add_argument("--time_steps", required=False, default=16, type=int, help="Number of time steps of RIM")
+    parser.add_argument("--kappalog", required=False, default=True, type=bool)
+
+    parser.add_argument("--logdir", required=False, default="logs",
+                        help="Path of logs directory. Default assumes script is" \
+                             "run from the base directory of censai. For no logs, use None")
+    parser.add_argument("--logname", required=False, default=date,
+                        help="Name of the logs, default is the local date + time")
     args = parser.parse_args()
     # ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=opt, net=rim.model)
     # manager = tf.train.CheckpointManager(ckpt, models_dir, max_to_keep=3)
