@@ -19,9 +19,9 @@ class ConvGRUBlock(tf.keras.Model):
 
     def call(self, inputs, state):
         ht_11, ht_12 = tf.split(state, 2, axis=3)
-        gru_1_out, _ = self.gru1(inputs, ht_11)
+        gru_1_out  = self.gru1(inputs, ht_11)
         gru_1_outE = self.conv1(gru_1_out)
-        gru_2_out, _ = self.gru2(gru_1_outE, ht_12)
+        gru_2_out  = self.gru2(gru_1_outE, ht_12)
         ht = tf.concat([gru_1_out, gru_2_out], axis=3)
         xt = gru_2_out
         return xt, ht
