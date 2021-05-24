@@ -99,5 +99,5 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
         output_series_1, output_series_2, final_log_L = self.forward_pass(data)
         chi1 = sum([tf.square(output_series_1[i] - source) for i in range(self.num_steps)]) / self.num_steps
         chi2 = sum([tf.square(output_series_2[i] - kappa) for i in range(self.num_steps)]) / self.num_steps
-        return tf.reduce_mean(chi1) + tf.reduce_mean(
-            chi2)  # , output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
+        return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)
+        # , output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
