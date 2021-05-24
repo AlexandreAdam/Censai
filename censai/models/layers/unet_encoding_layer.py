@@ -17,7 +17,7 @@ class UnetEncodingLayer(tf.keras.layers.Layer):
             name=None,
             strides=2,  # for final layer
             record=False, # eventually record output of layer
-            **common_params
+            **kwargs
     ):
         super(UnetEncodingLayer, self).__init__(name=name, dtype=DTYPE)
         self.kernel_size = tuple([kernel_size]*2)
@@ -33,7 +33,7 @@ class UnetEncodingLayer(tf.keras.layers.Layer):
                     filters=self.filters,
                     kernel_size=self.kernel_size,
                     activation=self.activation,
-                    **common_params
+                    **kwargs
                 )
             )
         self.downsampling_layer = tf.keras.layers.Conv2D(
@@ -41,7 +41,7 @@ class UnetEncodingLayer(tf.keras.layers.Layer):
             kernel_size=self.kernel_size,
             strides=self.strides,
             activation=self.activation,
-            **common_params
+            **kwargs
         )
 
     def call(self, x):

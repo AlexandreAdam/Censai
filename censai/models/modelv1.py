@@ -1,7 +1,7 @@
 import tensorflow as tf
 from censai.definitions import DTYPE
 from censai.models.layers.conv_gru import ConvGRU
-from censail.models.utils import global_step, summary_histograms
+from censai.models.utils import global_step, summary_histograms
 
 
 class Model(tf.keras.models.Model):
