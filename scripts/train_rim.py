@@ -46,8 +46,12 @@ def main(args):
     )
     optim = tf.optimizers.Adam(learning_rate=learning_rate_schedule)
     # setup tensorboard writer (nullwriter in case we do not want to sync)
+    if args.model_id.lower() != "none":
+        logname = args.model_id
+    else:
+        logname = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     if args.logdir.lower() != "none":
-        logdir = os.path.join(args.logdir, args.logname)
+        logdir = os.path.join(args.logdir, logname)
         traindir = os.path.join(logdir, "train")
         testdir = os.path.join(logdir, "test")
         if not os.path.isdir(logdir):
@@ -62,7 +66,7 @@ def main(args):
         test_writer = nullwriter()
         train_writer = nullwriter()
     if args.model_dir.lower() != "none":
-        models_dir = os.path.join(args.model_dir, args.logname)
+        models_dir = os.path.join(args.model_dir, logname)
         if not os.path.isdir(models_dir):
             os.mkdir(models_dir)
         source_checkpoints_dir = os.path.join(models_dir, "source_checkpoints")
@@ -81,8 +85,6 @@ def main(args):
             source_checkpoint_manager.checkpoint.restore(source_checkpoint_manager.latest_checkpoint)
     else:
         save_checkpoint = False
-
-
 
     epoch_loss = tf.metrics.Mean()
     best_loss = np.inf
@@ -133,7 +135,6 @@ def main(args):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     parser = ArgumentParser()
     parser.add_argument("--model_id", type=str, default="None",
                         help="Start from this model id checkpoint. None means start from scratch")
@@ -166,8 +167,6 @@ if __name__ == "__main__":
     # logs
     parser.add_argument("--logdir", required=False, default="None",
                         help="Path of logs directory. Default if None, no logs recorded")
-    parser.add_argument("--logname", required=False, default=date,
-                        help="Name of the logs, default is the local date + time")
     parser.add_argument("--model_dir", required=False, default="None",
                         help="Path to the directory where to save models checkpoints")
     parser.add_argument("--checkpoints", required=False, default=10, type=int,
