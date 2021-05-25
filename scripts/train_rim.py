@@ -41,7 +41,8 @@ def main(args):
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.learning_rate,
         decay_rate=args.decay_rate,
-        decay_steps=args.decay_steps
+        decay_steps=args.decay_steps,
+        staircase=args.staircase
     )
     optim = tf.optimizers.Adam(learning_rate=learning_rate_schedule)
     # setup tensorboard writer (nullwriter in case we do not want to sync)
@@ -75,8 +76,13 @@ def main(args):
         kappa_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.kappa_model)
         kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, kappa_checkpoints_dir, max_to_keep=3)
         save_checkpoint = True
+        if args.model_id.lower() != "none":
+            kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint_manager.latest_checkpoint)
+            source_checkpoint_manager.restore(source_checkpoint_manager.latest_checkpoint)
     else:
         save_checkpoint = False
+
+
 
     epoch_loss = tf.metrics.Mean()
     best_loss = np.inf
@@ -149,6 +155,8 @@ if __name__ == "__main__":
     parser.add_argument("--decay_rate", type=float, default=1,
                         help="Decay rate of the exponential decay schedule of the learning rate. 1=no decay")
     parser.add_argument("--decay_steps", type=int, default=100)
+    parser.add_argument("--staircase", action="store_true", help="Learning schedule is a staircase "
+                                                                 "function if added to arguments")
     parser.add_argument("--noise_rms", required=False, default=1e-3, type=float, help="Pixel value rms of lensed image")
     parser.add_argument("--time_steps", required=False, default=16, type=int, help="Number of time steps of RIM")
     parser.add_argument("--kappalog", required=False, default=True, type=bool)
