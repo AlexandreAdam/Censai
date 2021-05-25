@@ -1,6 +1,13 @@
 import tensorflow as tf
 import numpy as np
-from tensorflow.python.training.checkpoint_management import CheckpointManager
+
+# that won't work, network needs a few Gb of memory to lead its weight in the GPU
+# from tensorflow.compat.v1 import ConfigProto
+# from tensorflow.compat.v1 import InteractiveSession
+#
+# config = ConfigProto()
+# config.gpu_options.allow_growth = True
+# session = InteractiveSession(config=config)
 
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
@@ -30,7 +37,7 @@ def main(args):
     gen = NISGenerator(args.total_items, args.batch_size, model="rim", pixels=args.pixels)
     gen_test = NISGenerator(args.validation, args.validation, train=False, model="rim", pixels=args.pixels)
     phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms)
-    rim = RIM(phys, args.batch_size, args.time_steps, args.pixels, )
+    rim = RIM(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam, strides=args.strides)
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.learning_rate,
         decay_rate=args.decay_rate,
@@ -124,13 +131,13 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model_id", type=str, default="None",
                         help="Start from this model id checkpoint. None means start from scratch")
-    parser.add_argument("--pixels", required=False, default=68, type=int, help="Number of pixels on a side")
+    parser.add_argument("--pixels", required=False, default=64, type=int, help="Number of pixels on a side")
 
     # training params
     parser.add_argument("-t", "--total_items", default=100, type=int, required=False, help="Total images in an epoch")
     parser.add_argument("-b", "--batch_size", default=10, type=int, required=False, help="Number of images in a batch")
     parser.add_argument("--validation", required=False, default=10, type=int, help="Number of images in the validation set")
-    parser.add_argument("-e", "--epochs", required=False, default=10, type=int, help="Number of epochs for training")
+    parser.add_argument("-e", "--epochs", required=False, default=1, type=int, help="Number of epochs for training")
     parser.add_argument("--patience", required=False, default=np.inf, type=float, help="Number of epoch at which "
                                                                 "training is stop if no improvement have been made")
     parser.add_argument("--tolerance", required=False, default=0, type=float,
@@ -147,6 +154,8 @@ if __name__ == "__main__":
     parser.add_argument("--kappalog", required=False, default=True, type=bool)
     parser.add_argument("--adam", required=False, default=True, type=bool,
                         help="ADAM update for the log-likelihood gradient")
+    parser.add_argument("--strides", required=False, default=2, type=int, help="Value of the stride parameter in the 3 "
+                                                    "downsampling and upsampling layers")
     # logs
     parser.add_argument("--logdir", required=False, default="None",
                         help="Path of logs directory. Default if None, no logs recorded")
