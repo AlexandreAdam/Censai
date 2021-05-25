@@ -24,8 +24,8 @@ class PhysicalModel:
 
     def deflection_angle(self, kappa):
         if self.method == "conv2d":
-            alpha_x = tf.nn.conv2d(kappa, self.xconv_kernel, [1, 1, 1, 1], "SAME")
-            alpha_y = tf.nn.conv2d(kappa, self.yconv_kernel, [1, 1, 1, 1], "SAME")
+            alpha_x = tf.nn.conv2d(kappa, self.xconv_kernel, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
+            alpha_y = tf.nn.conv2d(kappa, self.yconv_kernel, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
             x_src = self.ximage - alpha_x
             y_src = self.yimage - alpha_y
 
@@ -69,14 +69,14 @@ class PhysicalModel:
         return i_coord, j_coord
 
     def set_deflection_angle_vars(self):
-        dx_kap = self.kappa_side/(self.pixels - 1)
+        self.dx_kap = self.kappa_side/(self.pixels - 1)
 
         # coordinate grid for kappa
-        x = np.linspace(-1, 1, 2 * self.pixels + 1) # padding
+        x = np.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
         xx, yy = np.meshgrid(x, x)
-        rho = np.sqrt(xx**2 + yy**2)
-        xconv_kernel = -self._safe_divide(xx, rho) * self.kappa_side
-        yconv_kernel = -self._safe_divide(yy, rho) * self.kappa_side
+        rho = xx**2 + yy**2
+        xconv_kernel = -self._safe_divide(xx, rho)
+        yconv_kernel = -self._safe_divide(yy, rho)
         # reshape to [filter_height, filter_width, in_channels, out_channels]
         self.xconv_kernel = tf.constant(xconv_kernel[..., np.newaxis, np.newaxis], dtype=tf.float32)
         self.yconv_kernel = tf.constant(yconv_kernel[..., np.newaxis, np.newaxis], dtype=tf.float32)
@@ -93,7 +93,6 @@ class PhysicalModel:
         out = np.zeros_like(num)
         out[denominator != 0] = num[denominator != 0] / denominator[denominator != 0]
         return out
-
 
 
 class AnalyticalPhysicalModel: 

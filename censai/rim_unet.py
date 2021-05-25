@@ -1,58 +1,61 @@
 import tensorflow as tf
-from .definitions import lrelu4p
 from .models.rim_unet_model import UnetModel
 
+LOG10 = tf.math.log(10.)
 
-class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
-    def __init__(self, physical_model, batch_size, num_steps, num_pixels, input_size=None, activation=tf.tanh,
-                 cond1=None, cond2=None, **kwargs):
-        super(RIM_UNET_CELL, self).__init__(**kwargs)
+
+class RIM:
+    def __init__(
+            self,
+            physical_model,
+            batch_size,
+            steps,
+            pixels,
+            adam=True,
+            kappalog=True,
+            beta_1=0.9,
+            beta_2=0.999,
+            epsilon=1e-8,
+            **models_kwargs):
         self.physical_model = physical_model
-        self.num_pixels = num_pixels  # state size is not used, fixed in self.state_size_list
-        self.num_steps = num_steps
+        self.pixels = pixels  # state size is not used, fixed in self.state_size_list
+        self.steps = steps
         self._num_units = 32
-        # self.double_RIM_state_size = state_size #Not used
-        # self.single_RIM_state_size = state_size//2 # Not used
-        # self.gru_state_size = state_size//4
-        # self.gru_state_pixel_downsampled = 16*2
-        self._activation = activation
         self.state_size_list = [32, 32, 128, 512]
-        self.model_1 = UnetModel(self.state_size_list)
-        self.model_2 = UnetModel(self.state_size_list)
+        self.model_1 = UnetModel(self.state_size_list, **models_kwargs)
+        self.model_2 = UnetModel(self.state_size_list, **models_kwargs)
         self.batch_size = batch_size
-        self.initial_condition(cond1, cond2)
-        self.initial_output_state()
+        self.adam = adam
+        self.kappalog = kappalog
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+        self.epsilon = epsilon
 
-    def initial_condition(self, cond1, cond2):
-        if cond1 is None:
-            self.inputs_1 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, 1))
+        self.inputs_1 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, 1))  # source
+        if self.kappalog:
+            self.inputs_2 = -tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1)) # kappa
         else:
-            self.inputs_1 = tf.identity(cond1)
-        if cond2 is None:
-            self.inputs_2 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, 1))
-        else:
-            self.inputs_2 = tf.identity(cond2)
+            self.inputs_2 = tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1))/10
 
-    def initial_output_state(self):
-        STRIDE = self.model_1.STRIDE
+        strides = self.model_1.strides
         numfeat_1, numfeat_2, numfeat_3, numfeat_4 = self.state_size_list
-        state_11 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, numfeat_1))
+        state_11 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, numfeat_1))
         state_12 = tf.zeros(
-            shape=(self.batch_size, self.num_pixels // STRIDE ** 1, self.num_pixels // STRIDE ** 1, numfeat_2))
+            shape=(self.batch_size, self.pixels // strides ** 1, self.pixels // strides ** 1, numfeat_2))
         state_13 = tf.zeros(
-            shape=(self.batch_size, self.num_pixels // STRIDE ** 2, self.num_pixels // STRIDE ** 2, numfeat_3))
+            shape=(self.batch_size, self.pixels // strides ** 2, self.pixels // strides ** 2, numfeat_3))
         state_14 = tf.zeros(
-            shape=(self.batch_size, self.num_pixels // STRIDE ** 3, self.num_pixels // STRIDE ** 3, numfeat_4))
+            shape=(self.batch_size, self.pixels // strides ** 3, self.pixels // strides ** 3, numfeat_4))
         self.state_1 = [state_11, state_12, state_13, state_14]
 
-        STRIDE = self.model_2.STRIDE
-        state_21 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, numfeat_1))
+        strides = self.model_2.strides
+        state_21 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, numfeat_1))
         state_22 = tf.zeros(
-            shape=(self.batch_size, self.num_pixels // STRIDE ** 1, self.num_pixels // STRIDE ** 1, numfeat_2))
+            shape=(self.batch_size, self.pixels // strides ** 1, self.pixels // strides ** 1, numfeat_2))
         state_23 = tf.zeros(
-            shape=(self.batch_size, self.num_pixels // STRIDE ** 2, self.num_pixels // STRIDE ** 2, numfeat_3))
+            shape=(self.batch_size, self.pixels // strides ** 2, self.pixels // strides ** 2, numfeat_3))
         state_24 = tf.zeros(
-            shape=(self.batch_size, self.num_pixels // STRIDE ** 3, self.num_pixels // STRIDE ** 3, numfeat_4))
+            shape=(self.batch_size, self.pixels // strides ** 3, self.pixels // strides ** 3, numfeat_4))
         self.state_2 = [state_21, state_22, state_23, state_24]
 
     @property
@@ -62,6 +65,40 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
     @property
     def output_size(self):
         return self._num_units
+
+    @tf.function
+    def kappa_link(self, kappa):
+        if self.kappalog:
+            return tf.math.log(kappa + 1e-10) / LOG10
+        else:
+            return kappa
+
+    @tf.function
+    def kappa_inverse_link(self, eta):
+        if self.kappalog:
+            return 10**(eta)
+        else:
+            return eta
+
+    def grad_update(self, grad1, grad2, time_step):
+        if self.adam:
+            if time_step == 0:  # reset mean and variance for time t=-1
+                self._grad_mean1 = tf.zeros_like(grad1)
+                self._grad_var1 = tf.zeros_like(grad1)
+                self._grad_mean2 = tf.zeros_like(grad2)
+                self._grad_var2 = tf.zeros_like(grad2)
+            self._grad_mean1 = self. beta_1 * self._grad_mean1 + (1 - self.beta_1) * grad1
+            self._grad_var1  = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad1)
+            self._grad_mean2 = self. beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
+            self._grad_var2  = self.beta_2 * self._grad_var2 + (1 - self.beta_2) * tf.square(grad2)
+            # for grad update, unbias the moments
+            m_hat1 = self._grad_mean1 / (1 - self.beta_1**(time_step + 1))
+            v_hat1 = self._grad_var1 / (1 - self.beta_2**(time_step + 1))
+            m_hat2 = self._grad_mean2 / (1 - self.beta_1**(time_step + 1))
+            v_hat2 = self._grad_var2 / (1 - self.beta_2**(time_step + 1))
+            return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon), m_hat2 / (tf.sqrt(v_hat2) + self.epsilon)
+        else:
+            return grad1, grad2
 
     def __call__(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2, scope=None):
         xt_1, ht_1 = self.model_1(inputs_1, state_1, grad_1)
@@ -75,20 +112,22 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
         with tf.GradientTape() as g:
             g.watch(self.inputs_1)
             g.watch(self.inputs_2)
-            cost = self.physical_model.log_likelihood(y_true=data, source=self.inputs_1, kappa=self.inputs_2)
+            cost = self.physical_model.log_likelihood(y_true=data, source=self.inputs_1, kappa=self.kappa_inverse_link(self.inputs_2))
         grads = g.gradient(cost, [self.inputs_1, self.inputs_2])
+        grads = self.grad_update(*grads, 0)
 
         output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1, grads[0], self.inputs_2,
                                                              self.state_2, grads[1])
         output_series_1.append(output_1)
         output_series_2.append(output_2)
 
-        for current_step in range(self.num_steps - 1):
+        for current_step in range(1, self.steps):
             with tf.GradientTape() as g:
                 g.watch(output_1)
                 g.watch(output_2)
-                cost = self.physical_model.log_likelihood(y_true=data, source=output_1, kappa=output_2)
+                cost = self.physical_model.log_likelihood(y_true=data, source=output_1, kappa=self.kappa_inverse_link(output_2))
             grads = g.gradient(cost, [output_1, output_2])
+            grads = self.grad_update(*grads, current_step)
             output_1, state_1, output_2, state_2 = self.__call__(output_1, state_1, grads[0], output_2, state_2,
                                                                  grads[1])
             output_series_1.append(output_1)
@@ -97,7 +136,6 @@ class RIM_UNET_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
 
     def cost_function(self, data, source, kappa):
         output_series_1, output_series_2, final_log_L = self.forward_pass(data)
-        chi1 = sum([tf.square(output_series_1[i] - source) for i in range(self.num_steps)]) / self.num_steps
-        chi2 = sum([tf.square(output_series_2[i] - kappa) for i in range(self.num_steps)]) / self.num_steps
-        return tf.reduce_mean(chi1) + tf.reduce_mean(
-            chi2)  # , output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
+        chi1 = sum([tf.square(output_series_1[i] - source) for i in range(self.steps)]) / self.steps
+        chi2 = sum([tf.square(output_series_2[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
+        return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)

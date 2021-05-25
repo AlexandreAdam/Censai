@@ -4,43 +4,38 @@ from .layers.conv_gru_component import ConvGRUBlock
 
 
 class UnetModel(tf.keras.Model):
-    def __init__(self, num_cell_features):
+    def __init__(self, num_cell_features, strides=4):
         super(UnetModel, self).__init__(dtype=DTYPE)
         numfeat_1, numfeat_2, numfeat_3, numfeat_4 = num_cell_features
 
         activation = lrelu4p
-        self.STRIDE = 4
-        self.Lc11 = tf.keras.layers.Conv2D(numfeat_1 / 2, (3, 3), activation=activation, padding='same')
-        self.Lp13 = tf.keras.layers.Conv2D(numfeat_1 / 2, (7, 7), activation=activation, strides=self.STRIDE,
-                                           padding='same')
+        self.strides = strides
+        common_params = {"activation": activation, "padding": "same"}
+        self.Lc11 = tf.keras.layers.Conv2D(numfeat_1 / 2, (3, 3),  **common_params)
+        self.Lp13 = tf.keras.layers.Conv2D(numfeat_1 / 2, (7, 7), strides=strides, **common_params)
 
-        self.Lc21 = tf.keras.layers.Conv2D(numfeat_2 / 2, (3, 3), activation=activation, padding='same')
-        self.Lc22 = tf.keras.layers.Conv2D(numfeat_2 / 2, (3, 3), activation=activation, padding='same')
-        self.Lp23 = tf.keras.layers.Conv2D(numfeat_2 / 2, (7, 7), activation=activation, strides=self.STRIDE,
-                                           padding='same')
+        self.Lc21 = tf.keras.layers.Conv2D(numfeat_2 / 2, (3, 3), **common_params)
+        self.Lc22 = tf.keras.layers.Conv2D(numfeat_2 / 2, (3, 3), **common_params)
+        self.Lp23 = tf.keras.layers.Conv2D(numfeat_2 / 2, (7, 7), strides=strides, **common_params)
 
-        self.Lc31 = tf.keras.layers.Conv2D(numfeat_3 / 2, (3, 3), activation=activation, padding='same')
-        self.Lc32 = tf.keras.layers.Conv2D(numfeat_3 / 2, (3, 3), activation=activation, padding='same')
-        self.Lp33 = tf.keras.layers.Conv2D(numfeat_3 / 2, (7, 7), activation=activation, strides=self.STRIDE,
-                                           padding='same')
+        self.Lc31 = tf.keras.layers.Conv2D(numfeat_3 / 2, (3, 3), **common_params)
+        self.Lc32 = tf.keras.layers.Conv2D(numfeat_3 / 2, (3, 3), **common_params)
+        self.Lp33 = tf.keras.layers.Conv2D(numfeat_3 / 2, (7, 7), strides=strides, **common_params)
 
-        self.LcZ1 = tf.keras.layers.Conv2D(numfeat_4 / 2, (8, 8), activation=activation, padding='same')
-        self.LcZ2 = tf.keras.layers.Conv2D(numfeat_4 / 2, (8, 8), activation=activation, padding='same')
+        self.LcZ1 = tf.keras.layers.Conv2D(numfeat_4 / 2, (8, 8), **common_params)
+        self.LcZ2 = tf.keras.layers.Conv2D(numfeat_4 / 2, (8, 8), **common_params)
 
-        self.Lu61 = tf.keras.layers.Conv2DTranspose(numfeat_3 / 2, (6, 6), activation=activation, strides=self.STRIDE,
-                                                    padding='same')
-        self.Lc62 = tf.keras.layers.Conv2D(numfeat_3 / 2, (3, 3), activation=activation, padding='same')
-        self.Lc63 = tf.keras.layers.Conv2D(numfeat_3 / 2, (3, 3), activation=activation, padding='same')
+        self.Lu61 = tf.keras.layers.Conv2DTranspose(numfeat_3 / 2, (6, 6), strides=strides, **common_params)
+        self.Lc62 = tf.keras.layers.Conv2D(numfeat_3 / 2, (3, 3), **common_params)
+        self.Lc63 = tf.keras.layers.Conv2D(numfeat_3 / 2, (3, 3), **common_params)
 
-        self.Lu71 = tf.keras.layers.Conv2DTranspose(numfeat_2 / 2, (6, 6), activation=activation, strides=self.STRIDE,
-                                                    padding='same')
-        self.Lc72 = tf.keras.layers.Conv2D(numfeat_2 / 2, (3, 3), activation=activation, padding='same')
-        self.Lc73 = tf.keras.layers.Conv2D(numfeat_2 / 2, (3, 3), activation=activation, padding='same')
+        self.Lu71 = tf.keras.layers.Conv2DTranspose(numfeat_2 / 2, (6, 6), strides=strides, **common_params)
+        self.Lc72 = tf.keras.layers.Conv2D(numfeat_2 / 2, (3, 3), **common_params)
+        self.Lc73 = tf.keras.layers.Conv2D(numfeat_2 / 2, (3, 3), **common_params)
 
-        self.Lu81 = tf.keras.layers.Conv2DTranspose(numfeat_1 / 2, (6, 6), activation=activation, strides=self.STRIDE,
-                                                    padding='same')
-        self.Lc82 = tf.keras.layers.Conv2D(numfeat_1 / 2, (3, 3), activation=activation, padding='same')
-        self.Lc83 = tf.keras.layers.Conv2D(numfeat_1 / 2, (3, 3), activation=activation, padding='same')
+        self.Lu81 = tf.keras.layers.Conv2DTranspose(numfeat_1 / 2, (6, 6), strides=strides, **common_params)
+        self.Lc82 = tf.keras.layers.Conv2D(numfeat_1 / 2, (3, 3), **common_params)
+        self.Lc83 = tf.keras.layers.Conv2D(numfeat_1 / 2, (3, 3), **common_params)
 
         self.Loutputs = tf.keras.layers.Conv2D(1, (2, 2), activation='linear', padding='same')
 
@@ -50,45 +45,44 @@ class UnetModel(tf.keras.Model):
         self.GRU_COMP4 = ConvGRUBlock(numfeat_4)
 
     def call(self, inputs, state, grad):
-        stacked_input = tf.concat([inputs, grad], axis=3)
+        x = tf.concat([inputs, grad], axis=3)  # x is short for Delta x_t
         ht_1, ht_2, ht_3, ht_4 = state
 
-        c1 = self.Lc11(stacked_input)
-        c1_gru, c1_gru_state = self.GRU_COMP1(c1, ht_1)
+        x = self.Lc11(x)
+        c1_gru, c1_gru_state = self.GRU_COMP1(x, ht_1)  # GRU in the middle of the skip connection
+        x = self.Lp13(x)  # downsampling layer
 
-        p1 = self.Lp13(c1)
-        c2 = self.Lc21(p1)
-        c2 = self.Lc22(c2)
-        c2_gru, c2_gru_state = self.GRU_COMP2(c2, ht_2)
+        x = self.Lc21(x)
+        x = self.Lc22(x)
+        c2_gru, c2_gru_state = self.GRU_COMP2(x, ht_2)
+        x = self.Lp23(x)  # downsampling layer
 
-        p2 = self.Lp23(c2)
-        c3 = self.Lc31(p2)
-        c3 = self.Lc32(c3)
-        c3_gru, c3_gru_state = self.GRU_COMP3(c3, ht_3)
+        x = self.Lc31(x)
+        x = self.Lc32(x)
+        c3_gru, c3_gru_state = self.GRU_COMP3(x, ht_3)
+        x = self.Lp33(x)  # downsampling layer
 
-        p3 = self.Lp33(c3)
+        x = self.LcZ1(x)  # bottleneck of the architecture
+        x = self.LcZ2(x)
+        x, c4_gru_state = self.GRU_COMP4(x, ht_4)
 
-        z1 = self.LcZ1(p3)
-        z1 = self.LcZ2(z1)
-        c4_gru, c4_gru_state = self.GRU_COMP4(z1, ht_4)
+        x = self.Lu61(x)   # upsampling layer
+        x = tf.concat([x, c3_gru], axis=3)  # skip connection
+        x = self.Lc62(x)
+        x = self.Lc63(x)
 
-        u6 = self.Lu61(c4_gru)
-        u6 = tf.concat([u6, c3_gru], axis=3)
-        c6 = self.Lc62(u6)
-        c6 = self.Lc63(c6)
+        x = self.Lu71(x)  # upsampling layer
+        x = tf.concat([x, c2_gru], axis=3)  # skip connection
+        x = self.Lc72(x)
+        x = self.Lc73(x)
 
-        u7 = self.Lu71(c6)
-        u7 = tf.concat([u7, c2_gru], axis=3)
-        c7 = self.Lc72(u7)
-        c7 = self.Lc73(c7)
+        x = self.Lu81(x)  # upsampling layer
+        x = tf.concat([x, c1_gru], axis=3)  # skip connection
+        x = self.Lc82(x)
+        x = self.Lc83(x)
 
-        u8 = self.Lu81(c7)
-        u8 = tf.concat([u8, c1_gru], axis=3)
-        c8 = self.Lc82(u8)
-        c8 = self.Lc83(c8)
-
-        delta_xt = self.Loutputs(c8)
-        xt = inputs + delta_xt
+        delta_xt = self.Loutputs(x)
+        xt = inputs + delta_xt  # update image
         ht = [c1_gru_state, c2_gru_state, c3_gru_state, c4_gru_state]
 
         return xt, ht
