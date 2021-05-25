@@ -15,7 +15,6 @@ python train_rim.py\
   --learning_rate=1e-4\
   --decay_rate=1\
   --pixels=64\
-  --validation=10\
   --kappalog=True\
   --adam=True\
   --logdir=../logs\

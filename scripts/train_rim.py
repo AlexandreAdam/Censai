@@ -35,7 +35,7 @@ from datetime import datetime
 
 def main(args):
     gen = NISGenerator(args.total_items, args.batch_size, model="rim", pixels=args.pixels)
-    gen_test = NISGenerator(args.validation, args.validation, train=False, model="rim", pixels=args.pixels)
+    gen_test = NISGenerator(args.batch_size, args.batch_size, train=False, model="rim", pixels=args.pixels)
     phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms)
     rim = RIM(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam, strides=args.strides)
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
@@ -142,7 +142,6 @@ if __name__ == "__main__":
     # training params
     parser.add_argument("-t", "--total_items", default=100, type=int, required=False, help="Total images in an epoch")
     parser.add_argument("-b", "--batch_size", default=10, type=int, required=False, help="Number of images in a batch")
-    parser.add_argument("--validation", required=False, default=10, type=int, help="Number of images in the validation set")
     parser.add_argument("-e", "--epochs", required=False, default=1, type=int, help="Number of epochs for training")
     parser.add_argument("--patience", required=False, default=np.inf, type=float, help="Number of epoch at which "
                                                                 "training is stop if no improvement have been made")
