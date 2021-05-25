@@ -170,9 +170,9 @@ if __name__ == "__main__":
                         help="Name of the logs, default is the local date + time")
     parser.add_argument("--model_dir", required=False, default="None",
                         help="Path to the directory where to save models checkpoints")
-    parser.add_argument("--checkpoints", required=False, default=10,
+    parser.add_argument("--checkpoints", required=False, default=10, type=int,
                         help="Save a checkpoint of the models each {%} iteration")
-    parser.add_argument("--max_to_keep", required=False, default=3,
+    parser.add_argument("--max_to_keep", required=False, default=3, type=int,
                         help="Max model checkpoint to keep")
     args = parser.parse_args()
 
