@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+from tensorflow.python.training.checkpoint_management import CheckpointManager
+
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
     try:
@@ -28,8 +30,13 @@ def main(args):
     gen = NISGenerator(args.total_items, args.batch_size, model="rim", pixels=args.pixels)
     gen_test = NISGenerator(args.validation, args.validation, train=False, model="rim", pixels=args.pixels)
     phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms)
-    rim = RIM(phys, args.batch_size, args.time_steps, args.pixels)
-    optim = tf.optimizers.Adam(args.lr)
+    rim = RIM(phys, args.batch_size, args.time_steps, args.pixels, )
+    learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=args.learning_rate,
+        decay_rate=args.decay_rate,
+        decay_steps=args.decay_steps
+    )
+    optim = tf.optimizers.Adam(learning_rate=learning_rate_schedule)
     # setup tensorboard writer (nullwriter in case we do not want to sync)
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, args.logname)
@@ -46,6 +53,23 @@ def main(args):
     else:
         test_writer = nullwriter()
         train_writer = nullwriter()
+    if args.model_dir.lower() != "none":
+        models_dir = os.path.join(args.model_dir, args.logname)
+        if not os.path.isdir(models_dir):
+            os.mkdir(models_dir)
+        source_checkpoints_dir = os.path.join(models_dir, "source_checkpoints")
+        if not os.path.isdir(source_checkpoints_dir):
+            os.mkdir(source_checkpoints_dir)
+        kappa_checkpoints_dir = os.path.join(models_dir, "kappa_checkpoints")
+        if not os.path.isdir(kappa_checkpoints_dir):
+            os.mkdir(kappa_checkpoints_dir)
+        source_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.source_model)
+        source_checkpoint_manager = tf.train.CheckpointManager(source_ckpt, source_checkpoints_dir, max_to_keep=3)
+        kappa_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.kappa_model)
+        kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, kappa_checkpoints_dir, max_to_keep=3)
+        save_checkpoint = True
+    else:
+        save_checkpoint = False
 
     epoch_loss = tf.metrics.Mean()
     best_loss = np.inf
@@ -56,30 +80,39 @@ def main(args):
         with train_writer.as_default():
             for batch, (X, source, kappa) in enumerate(gen):
                 with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
-                    tape.watch(rim.model_1.trainable_variables)
-                    tape.watch(rim.model_2.trainable_variables)
+                    tape.watch(rim.source_model.trainable_variables)
+                    tape.watch(rim.kappa_model.trainable_variables)
                     cost = rim.cost_function(X, source, kappa)
-                gradient1 = tape.gradient(cost, rim.model_1.trainable_variables)
-                gradient2 = tape.gradient(cost, rim.model_2.trainable_variables)
+                gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
+                gradient2 = tape.gradient(cost, rim.kappa_model.trainable_variables)
                 # clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
-                optim.apply_gradients(zip(gradient1, rim.model_1.trainable_variables)) # backprop
-                optim.apply_gradients(zip(gradient2, rim.model_2.trainable_variables))
+                optim.apply_gradients(zip(gradient1, rim.source_model.trainable_variables)) # backprop
+                optim.apply_gradients(zip(gradient2, rim.kappa_model.trainable_variables))
 
                 #========== Summary and logs ==========
                 epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
-            # tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
+            tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         with test_writer.as_default():
             for (X, source, kappa) in gen_test:
                 test_cost = rim.cost_function(X, source,  tf.math.log(kappa + 1e-10) / tf.math.log(10.))
             tf.summary.scalar("MSE", test_cost, step=step)
-        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.numpy():.3e}") #| learning rate {optim.lr(step).numpy():.2e}")
-        if test_cost < best_loss - args.tolerance:
+        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.numpy():.3e} "
+              f"| learning rate {optim.lr(step).numpy():.2e}")
+        if test_cost < (1 - args.tolerance) * best_loss:
             best_loss = test_cost
             patience = args.patience
         else:
             patience -= 1
+        if save_checkpoint:
+            source_checkpoint_manager.checkpoint.step.assign_add(1) # a bit of a hack
+            kappa_checkpoint_manager.checkpoint.step.assign_add(1)
+            if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
+                source_checkpoint_manager.save()
+                kappa_checkpoint_manager.save()
+                print("Saved checkpoint for step {}: {}".format(int(source_checkpoint_manager.checkpoint.step),
+                                                                source_checkpoint_manager.latest_checkpoint))
         if patience == 0:
             print("Reached patience")
             break
@@ -89,24 +122,42 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     parser = ArgumentParser()
+    parser.add_argument("--model_id", type=str, default="None",
+                        help="Start from this model id checkpoint. None means start from scratch")
+    parser.add_argument("--pixels", required=False, default=68, type=int, help="Number of pixels on a side")
+
     # training params
-    parser.add_argument("-t", "--total_items", default=1, type=int, required=False, help="Total images in an epoch")
-    parser.add_argument("-b", "--batch_size", default=1, type=int, required=False, help="Number of images in a batch")
-    parser.add_argument("--validation", required=False, default=1, type=int, help="Number of images in the validation set")
-    parser.add_argument("-e", "--epochs", required=False, default=1, help="Number of epochs for training")
+    parser.add_argument("-t", "--total_items", default=100, type=int, required=False, help="Total images in an epoch")
+    parser.add_argument("-b", "--batch_size", default=10, type=int, required=False, help="Number of images in a batch")
+    parser.add_argument("--validation", required=False, default=10, type=int, help="Number of images in the validation set")
+    parser.add_argument("-e", "--epochs", required=False, default=10, type=int, help="Number of epochs for training")
+    parser.add_argument("--patience", required=False, default=np.inf, type=float, help="Number of epoch at which "
+                                                                "training is stop if no improvement have been made")
+    parser.add_argument("--tolerance", required=False, default=0, type=float,
+                        help="Percentage [0-1] of improvement required for patience to reset. The most lenient "
+                                                        "value is 0 (any improvement reset patience)")
+
     # hyperparameters
-    parser.add_argument("--lr", required=False, default=1e-4, type=float, help="Learning rate")
-    parser.add_argument("--pixels", required=False, default=128, type=int, help="Number of pixels on a side") # cannot change that for the moment
+    parser.add_argument("--learning_rate", required=False, default=1e-4, type=float)
+    parser.add_argument("--decay_rate", type=float, default=1,
+                        help="Decay rate of the exponential decay schedule of the learning rate. 1=no decay")
+    parser.add_argument("--decay_steps", type=int, default=100)
     parser.add_argument("--noise_rms", required=False, default=1e-3, type=float, help="Pixel value rms of lensed image")
     parser.add_argument("--time_steps", required=False, default=16, type=int, help="Number of time steps of RIM")
     parser.add_argument("--kappalog", required=False, default=True, type=bool)
-
-    parser.add_argument("--logdir", required=False, default="logs",
-                        help="Path of logs directory. Default assumes script is" \
-                             "run from the base directory of censai. For no logs, use None")
+    parser.add_argument("--adam", required=False, default=True, type=bool,
+                        help="ADAM update for the log-likelihood gradient")
+    # logs
+    parser.add_argument("--logdir", required=False, default="None",
+                        help="Path of logs directory. Default if None, no logs recorded")
     parser.add_argument("--logname", required=False, default=date,
                         help="Name of the logs, default is the local date + time")
+    parser.add_argument("--model_dir", required=False, default="None",
+                        help="Path to the directory where to save models checkpoints")
+    parser.add_argument("--checkpoints", required=False, default=10,
+                        help="Save a checkpoint of the models each {%} iteration")
+    parser.add_argument("--max_to_keep", required=False, default=3,
+                        help="Max model checkpoint to keep")
     args = parser.parse_args()
-    # ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=opt, net=rim.model)
-    # manager = tf.train.CheckpointManager(ckpt, models_dir, max_to_keep=3)
+
     main(args)
