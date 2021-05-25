@@ -109,7 +109,7 @@ def main(args):
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         with test_writer.as_default():
             for (X, source, kappa) in gen_test:
-                test_cost = rim.cost_function(X, source,  tf.math.log(kappa + 1e-10) / tf.math.log(10.))
+                test_cost = rim.cost_function(X, source,  kappa)
             tf.summary.scalar("MSE", test_cost, step=step)
         print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.numpy():.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e}")
