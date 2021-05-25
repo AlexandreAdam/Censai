@@ -59,8 +59,8 @@ with tf.device('/gpu:0'):
 
     
     if (RESTORE):
-        RIM.model_1.load_weights(load_checkpoint_path_1)
-        RIM.model_2.load_weights(load_checkpoint_path_2)
+        RIM.source_model.load_weights(load_checkpoint_path_1)
+        RIM.kappa_model.load_weights(load_checkpoint_path_2)
 
     optimizer = tf.train.AdamOptimizer(1e-4)
 
@@ -75,15 +75,15 @@ with tf.device('/gpu:0'):
         tf_logkappa  = log10(tf.identity(sk_gen.Kappa_tr[:,:,:,:]) )
 
         with tf.GradientTape() as tape:
-            tape.watch(RIM.model_1.variables)
-            tape.watch(RIM.model_2.variables)
+            tape.watch(RIM.source_model.variables)
+            tape.watch(RIM.kappa_model.variables)
             cost_value, _ , _ , OS_src , OS_kap = RIM.cost_function(noisy_data, tf_source , tf_logkappa)
-        weight_grads = tape.gradient(cost_value, [RIM.model_1.variables , RIM.model_2.variables] )
+        weight_grads = tape.gradient(cost_value, [RIM.source_model.variables , RIM.kappa_model.variables])
 
         clipped_grads_1 = [tf.clip_by_value(grads_i,-10,10) for grads_i in weight_grads[0]]
-        optimizer.apply_gradients(zip(clipped_grads_1, RIM.model_1.variables), global_step=tf.train.get_or_create_global_step())
+        optimizer.apply_gradients(zip(clipped_grads_1, RIM.source_model.variables), global_step=tf.train.get_or_create_global_step())
         clipped_grads_2 = [tf.clip_by_value(grads_i,-10,10) for grads_i in weight_grads[1]]
-        optimizer.apply_gradients(zip(clipped_grads_2, RIM.model_2.variables), global_step=tf.train.get_or_create_global_step())
+        optimizer.apply_gradients(zip(clipped_grads_2, RIM.kappa_model.variables), global_step=tf.train.get_or_create_global_step())
         print( train_iter , cost_value.numpy() )
         if (((train_iter+1)%100)==0):
             model_im = lens_util_obj.physical_model(OS_src , OS_kap)
@@ -107,8 +107,8 @@ with tf.device('/gpu:0'):
             # display.display(pl.gcf())
             print( train_iter , cost_value.numpy() )
         if (((train_iter+1)%100)==0):
-            RIM.model_1.save_weights(save_checkpoint_path_1)
-            RIM.model_2.save_weights(save_checkpoint_path_2)
+            RIM.source_model.save_weights(save_checkpoint_path_1)
+            RIM.kappa_model.save_weights(save_checkpoint_path_2)
             print('saved weights.')
 
             test

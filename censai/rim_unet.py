@@ -16,14 +16,22 @@ class RIM:
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
+            checkpoint_manager_source=None,
+            checkpoint_manager_kappa=None,
             **models_kwargs):
         self.physical_model = physical_model
         self.pixels = pixels  # state size is not used, fixed in self.state_size_list
         self.steps = steps
         self._num_units = 32
         self.state_size_list = [32, 32, 128, 512]
-        self.model_1 = UnetModel(self.state_size_list, **models_kwargs)
-        self.model_2 = UnetModel(self.state_size_list, **models_kwargs)
+        self.source_model = UnetModel(self.state_size_list, **models_kwargs)
+        self.kappa_model = UnetModel(self.state_size_list, **models_kwargs)
+        if checkpoint_manager_source is not None:
+            checkpoint_manager_source.checkpoint.restore(checkpoint_manager_source.latest_checkpoint)
+            print(f"Initialized source model from {checkpoint_manager_source.latest_checkpoint}")
+        if checkpoint_manager_kappa is not None:
+            checkpoint_manager_kappa.checkpoint.restore(checkpoint_manager_kappa.latest_checkpoint)
+            print(f"Initialized kappa model from {checkpoint_manager_kappa.latest_checkpoint}")
         self.batch_size = batch_size
         self.adam = adam
         self.kappalog = kappalog
@@ -31,13 +39,13 @@ class RIM:
         self.beta_2 = beta_2
         self.epsilon = epsilon
 
-        self.inputs_1 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, 1))  # source
+        self.source_init = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, 1))
         if self.kappalog:
-            self.inputs_2 = -tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1)) # kappa
+            self.kappa_init = -tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1))
         else:
-            self.inputs_2 = tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1))/10
+            self.kappa_init = tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1)) / 10
 
-        strides = self.model_1.strides
+        strides = self.source_model.strides
         numfeat_1, numfeat_2, numfeat_3, numfeat_4 = self.state_size_list
         state_11 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, numfeat_1))
         state_12 = tf.zeros(
@@ -48,7 +56,7 @@ class RIM:
             shape=(self.batch_size, self.pixels // strides ** 3, self.pixels // strides ** 3, numfeat_4))
         self.state_1 = [state_11, state_12, state_13, state_14]
 
-        strides = self.model_2.strides
+        strides = self.kappa_model.strides
         state_21 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, numfeat_1))
         state_22 = tf.zeros(
             shape=(self.batch_size, self.pixels // strides ** 1, self.pixels // strides ** 1, numfeat_2))
@@ -101,8 +109,8 @@ class RIM:
             return grad1, grad2
 
     def __call__(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2, scope=None):
-        xt_1, ht_1 = self.model_1(inputs_1, state_1, grad_1)
-        xt_2, ht_2 = self.model_2(inputs_2, state_2, grad_2)
+        xt_1, ht_1 = self.source_model(inputs_1, state_1, grad_1)
+        xt_2, ht_2 = self.kappa_model(inputs_2, state_2, grad_2)
         return xt_1, ht_1, xt_2, ht_2
 
     def forward_pass(self, data):
@@ -110,13 +118,13 @@ class RIM:
         output_series_1 = []
         output_series_2 = []
         with tf.GradientTape() as g:
-            g.watch(self.inputs_1)
-            g.watch(self.inputs_2)
-            cost = self.physical_model.log_likelihood(y_true=data, source=self.inputs_1, kappa=self.kappa_inverse_link(self.inputs_2))
-        grads = g.gradient(cost, [self.inputs_1, self.inputs_2])
+            g.watch(self.source_init)
+            g.watch(self.kappa_init)
+            cost = self.physical_model.log_likelihood(y_true=data, source=self.source_init, kappa=self.kappa_inverse_link(self.kappa_init))
+        grads = g.gradient(cost, [self.source_init, self.kappa_init])
         grads = self.grad_update(*grads, 0)
 
-        output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1, grads[0], self.inputs_2,
+        output_1, state_1, output_2, state_2 = self.__call__(self.source_init, self.state_1, grads[0], self.kappa_init,
                                                              self.state_2, grads[1])
         output_series_1.append(output_1)
         output_series_2.append(output_2)
