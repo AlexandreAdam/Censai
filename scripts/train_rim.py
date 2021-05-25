@@ -78,7 +78,7 @@ def main(args):
         save_checkpoint = True
         if args.model_id.lower() != "none":
             kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint_manager.latest_checkpoint)
-            source_checkpoint_manager.restore(source_checkpoint_manager.latest_checkpoint)
+            source_checkpoint_manager.checkpoint.restore(source_checkpoint_manager.latest_checkpoint)
     else:
         save_checkpoint = False
 
