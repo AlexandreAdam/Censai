@@ -39,6 +39,7 @@ class RIM:
         self.beta_2 = beta_2
         self.epsilon = epsilon
 
+        #TODO move this into a function and into forward pass
         self.source_init = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, 1))
         if self.kappalog:
             self.kappa_init = -tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1))
