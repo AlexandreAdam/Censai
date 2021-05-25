@@ -18,7 +18,6 @@ python train_rim.py\
   --decay_steps=2000\
   --staircase\
   --pixels=64\
-  --validation=10\
   --kappalog=True\
   --adam=True\
   --logdir=../logs\
