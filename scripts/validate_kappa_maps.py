@@ -14,7 +14,8 @@ parser.add_argument("-k", "--kappa_cutoff", default=2, type=float, help="If kapp
 parser.add_argument("--kappa_dir", required=True, help="Path to directory of kappa maps")
 args = parser.parse_args()
 
-bad_kappa_ids = np.loadtxt("../data/bad_kappa_ids.txt") # already identified bad kappa maps
+bad_kappa_ids = np.loadtxt("bad_kappa_ids.txt") # already identified bad kappa maps
+
 
 id_prev = None
 for file in tqdm(os.listdir(args.kappa_dir)):
