@@ -2,6 +2,7 @@ from astropy.io import fits
 import numpy as np
 import tensorflow as tf
 import galsim
+import os
 from numpy.lib.recfunctions import append_fields
 
 
@@ -11,9 +12,11 @@ def _bytes_feature(value):
     value = value.numpy() # BytesList won't unpack a string from an EagerTensor.
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
+
 def _float_feature(value):
   """Returns a float_list from a float / double."""
   return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
+
 
 def _int64_feature(value):
   """Returns an int64_list from a bool / enum / int / uint."""
@@ -89,21 +92,21 @@ def draw_and_encode_stamp(gal, psf, stamp_size, pixel_scale, attributes=None):
 
     # Apply mask to power spectrum so that it is very large outside maxk
     ps = np.where(mask, np.log(ps**2), 10).astype('float32')
-    serialized_output = {
-        "image": _bytes_feature(im.tostring()),
-        "image_height": _int64_feature(im.shape[0]),
-        "image_width": _int64_feature(im.shape[1]),
-        "image_channels": _int64_feature(im.shape[3]),
-        "psf": _bytes_feature(im_psf.tostring()),
-        "ps": _bytes_feature(ps.tostring()),
+    features = {
+        "image": _bytes_feature(im.tobytes()),
+        "height": _int64_feature(im.shape[0]),
+        "width": _int64_feature(im.shape[1]),
+        "psf": _bytes_feature(im_psf.tobytes()),
+        "ps": _bytes_feature(ps.tobytes()),  # power spectrum of the noise
     }
 
     # Adding the parameters provided
     if attributes is not None:
         for k in attributes:
-            serialized_output['attrs/'+k] = [attributes[k]]
+            features['attrs_'+k] = _float_feature(attributes[k])
 
-    return serialized_output
+    serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
+    return serialized_output.SerializeToString()
 
 
 def generator(hparams, task_id=-1, sample="25.2", cosmos_dir=None, exclusion_level="marginal"):
@@ -114,31 +117,17 @@ def generator(hparams, task_id=-1, sample="25.2", cosmos_dir=None, exclusion_lev
 
     # Create a list of galaxy indices for this task, remember, there is a task
     # per shard, each shard is 1000 galaxies.
-    assert(task_id > -1)
+    assert(task_id > -1) # use catalog.getNTot() instead
     index = range(task_id * hparams.example_per_shard,
                   min((task_id+1) * hparams.example_per_shard, catalog.getNObjects()))
 
     # Extracts additional information about the galaxies
     cat_param = catalog.param_cat[catalog.orig_index]
-
-    bparams = cat_param['bulgefit']
+    # bparams = cat_param['bulgefit']
     sparams = cat_param['sersicfit']
-    # Parameters for a 2 component fit
-    cat_param = append_fields(cat_param, 'bulge_q', bparams[:, 11])
-    cat_param = append_fields(cat_param, 'bulge_beta', bparams[:, 15])
-    cat_param = append_fields(cat_param, 'disk_q', bparams[:, 3])
-    cat_param = append_fields(cat_param, 'disk_beta', bparams[:, 7])
-    cat_param = append_fields(cat_param, 'bulge_hlr', cat_param['hlr'][:, 1])
-    cat_param = append_fields(cat_param, 'bulge_flux_log10', np.where(cat_param['use_bulgefit'] == 1, np.log10(cat_param['flux'][:, 1]), np.zeros(len(cat_param))))
-    cat_param = append_fields(cat_param, 'disk_hlr', cat_param['hlr'][:, 2])
-    cat_param = append_fields(cat_param, 'disk_flux_log10', np.where(cat_param['use_bulgefit'] == 1, np.log10(cat_param['flux'][:, 2]), np.log10(cat_param['flux'][:, 0])))
 
-    # Parameters for a single component fit
-    cat_param = append_fields(cat_param, 'sersic_flux_log10', np.log10(sparams[:, 0]))
     cat_param = append_fields(cat_param, 'sersic_q', sparams[:, 3])
-    cat_param = append_fields(cat_param, 'sersic_hlr', sparams[:, 1])
     cat_param = append_fields(cat_param, 'sersic_n', sparams[:, 2])
-    cat_param = append_fields(cat_param, 'sersic_beta', sparams[:, 7])
 
     for ind in index:
         # Draw a galaxy using GalSim, any kind of operation can be done here
@@ -179,11 +168,28 @@ if __name__ == '__main__':
     parser.add_argument("--cosmos_dir", default=None, help="Directory to cosmos data")
     parser.add_argument("--store_attributes", action="store_true", help="Wether to store ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q'] or not")
     parser.add_argument("--rotation", action="store_true", help="Rotate randomly the postage stamp (and psf)")
-    parser.add_argument("--output_dir", required=False, default="None", help="Path to the directory where to store tf records")
+    parser.add_argument("--output_dir", required=True, default="None", help="Path to the directory where to store tf records")
 
     args = parser.parse_args()
     if args.store_attributes:
         vars(args)["attributes"] = ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q']
+
     gen = generator(args, task_id=args.task_id, sample=args.sample, cosmos_dir=args.cosmos_dir, exclusion_level=args.exclusion_level)
-    for i in gen:
-        break
+    if args.do_all:
+        if args.sample == "23.5":
+            n_tasks = 58
+        elif args.sample == "25.2":
+            n_tasks = 58
+        else:
+            raise NotImplementedError
+        for task_id in range(0, n_tasks):
+            filename = os.path.join(args.output_dir, f"cosmos_record_{task_id}.tfrecords")
+            with tf.io.TFRecordWriter(filename) as writer:
+                for record in gen:
+                    writer.write(record)
+    else:
+        task_id = args.task_id
+        filename = os.path.join(args.output_dir, f"cosmos_record_{task_id}.tfrecords")
+        with tf.io.TFRecordWriter(filename) as writer:
+            for record in gen:
+                writer.write(record)
