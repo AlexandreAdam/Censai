@@ -24,7 +24,7 @@ if args.do_all:
     if args.sample == "23.5":
         n_tasks = 58
     elif args.sample == "25.2":
-        n_tasks = 58
+        n_tasks = 88
     else:
         raise NotImplementedError
     for task_id in range(0, n_tasks):
