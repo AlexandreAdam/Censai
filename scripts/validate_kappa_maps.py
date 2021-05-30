@@ -3,8 +3,7 @@ from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.visualization import ImageNormalize, LogStretch
-import os
-
+import os, glob
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
@@ -15,12 +14,17 @@ parser.add_argument("--kappa_dir", required=True, help="Path to directory of kap
 args = parser.parse_args()
 
 bad_kappa_ids = np.loadtxt("bad_kappa_ids.txt") # already identified bad kappa maps
+bad_kappa_ids = np.concatenate([bad_kappa_ids, np.loadtxt("possibly_good_kappa_maps.txt")])
 
 
 id_prev = None
-for file in tqdm(os.listdir(args.kappa_dir)):
-    a = fits.open(os.path.join(args.kappa_dir, file))
-    id = a[0].header["SUBID"]
+for file in tqdm(glob.glob(os.path.join(args.kappa_dir, "*_xy.fits"))):
+    try:
+        a = fits.open(file)
+        id = a[0].header["SUBID"]
+    except OSError:
+        print(file)
+        continue
     if id in bad_kappa_ids:
         continue
     if a[0].data.max() > args.kappa_cutoff and np.random.uniform() < args.random_cutoff:
