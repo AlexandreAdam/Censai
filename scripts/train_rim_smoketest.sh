@@ -9,6 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python train_rim.py\
+  --model_id=21-05-25_15-54-34\
   --epochs=10\
   --total_items=50\
   --batch_size=5\
