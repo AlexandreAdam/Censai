@@ -18,6 +18,7 @@ if gpus:
     # Memory growth must be set before GPUs have been initialized
         print(e)
 
+mirrored_strategy = tf.distribute.MirroredStrategy()
 
 class PolynomialSchedule:
     def __init__(self, initial_value, end_value, power, decay_steps):
