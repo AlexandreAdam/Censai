@@ -164,7 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_id", type=str, default="None",
                         help="Start from this model id checkpoint. None means start from scratch")
     parser.add_argument("--pixels", required=False, default=128, type=int, help="Number of pixels on a side, should be fixed for a given cosmos tfrecord")
-    parser.add_argument("--num_parallel_read", default=1, type=int, help="TF dataset number of parallel processes loading the data while training")
+    parser.add_argument("--num_parallel_reads", default=1, type=int, help="TF dataset number of parallel processes loading the data while training")
     parser.add_argument("--data", required=True, help="Path to the data root directory, containing tf records files")
 
     # training params
