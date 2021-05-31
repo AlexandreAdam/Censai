@@ -33,7 +33,7 @@ def natural_keys(text):
 
 def main(args):
     filenames = os.listdir(args.data)
-    filenames = filenames.sort(key=natural_keys)
+    filenames.sort(key=natural_keys)
     # keep the n last files as a test set
     filenames = filenames[:-args.test_shards]
     filenames = [os.path.join(args.data, file) for file in filenames]
