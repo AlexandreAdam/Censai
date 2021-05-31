@@ -14,7 +14,7 @@ python ../train_cosmos_autoencoder.py\
   --data=$HOME/scratch/Censai/data/cosmos_25.2\
   --split=0.95\
   --test_shards=50\
-  --example_per_shard=1000\
+  --examples_per_shard=1000\
   --batch_size=100\
   --epochs=1\
   --learning_rate=1e-3\
