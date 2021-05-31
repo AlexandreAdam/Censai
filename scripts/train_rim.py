@@ -49,7 +49,7 @@ def main(args):
     if args.model_id.lower() != "none":
         logname = args.model_id
     else:
-        logname = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = "UnetRIM_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
         traindir = os.path.join(logdir, "train")
