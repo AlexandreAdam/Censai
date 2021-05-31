@@ -170,7 +170,7 @@ if __name__ == "__main__":
     # training params
     parser.add_argument("--split", default=0.8, type=float, help="Training split, number in the range [0.5, 1)")
     parser.add_argument("--test_shards", default=2, type=int, help="Number of shards to keep as a test set. The largest shard index are kept")
-    parser.add_argument("--example_per_shard", default=1000, type=int,
+    parser.add_argument("--examples_per_shard", default=1000, type=int,
                         help="Number of example on a given COSMO shard. Should match the parameter of cosmo_to_tfrecords with which it was generated")
     parser.add_argument("-b", "--batch_size", default=100, type=int, required=False, help="Number of images in a batch")
     parser.add_argument("-e", "--epochs", required=False, default=1, type=int, help="Number of epochs for training")
