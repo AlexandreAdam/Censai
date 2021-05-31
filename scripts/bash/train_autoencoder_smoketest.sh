@@ -5,7 +5,7 @@
 #SBATCH --mem=8G			     # memory per node
 #SBATCH --time=0-01:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_On_SIE
+#SBATCH --job-name=Train_Autoencoder
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../train_cosmos_autoencoder.py\
