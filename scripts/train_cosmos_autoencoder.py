@@ -207,6 +207,11 @@ if __name__ == "__main__":
                         help="Number between [0, 1), number of filters to drop at each call. Default is to not use dropout")
     parser.add_argument("--latent_size", default=16, type=int,
                         help="Size of the latent vector space")
+    parser.add_argument("--res_architecture", default="bare", type=str, 
+                        help="Name of the Resnet Block architecture. Options are "\
+                             "'bare', 'original', 'bn_after_addition', "\
+                             "'relu_before_addition', 'relu_only_pre_activation', "\
+                             "'full_pre_activation', 'full_pre_activation_rescale'")
 
     # logs
     parser.add_argument("--logdir", required=False, default="None",
