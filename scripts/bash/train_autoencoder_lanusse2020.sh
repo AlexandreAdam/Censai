@@ -21,8 +21,6 @@ python ../train_cosmos_autoencoder.py\
   --decay_rate=0.9\
   --decay_step=5000\
   --staircase\
-  --logdir=$HOME/scratch/Censai/logs\
-  --model_dir=$HOME/scratch/Censai/models/\
   --apodization_alpha=0.1\
   --apodization_factor=1e-3\
   --tv_factor=1e-3\
@@ -32,4 +30,8 @@ python ../train_cosmos_autoencoder.py\
   --skip_strength=0.5\
   --skip_strength_decay_steps=5000\
   --skip_strength_decay_power=0.5\
-  --res_architecture="full_pre_activation_rescale"
+  --res_architecture="full_pre_activation_rescale"\
+  --logdir=$HOME/scratch/Censai/logs\
+  --model_dir=$HOME/scratch/Censai/models/\
+  --max_to_keep=10\
+  --checkpoints=5
