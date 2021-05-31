@@ -11,13 +11,13 @@ source $HOME/environments/censai3.8/bin/activate
 python ../train_cosmos_autoencoder.py\
   --pixels=128\
   --num_parallel_read=3\
-  --data=../../data/cosmos_25.2\
+  --data=$HOME/scratch/Censai/data/cosmos_25.2\
   --split=0.95\
   --test_shards=50\
   --example_per_shard=1000\
   --batch_size=100\
   --epochs=1\
   --learning_rate=1e-3\
-  --logdir=../../logs\
-  --model_dir=../../models/\
+  --logdir=$HOME/scratch/Censai/logs\
+  --model_dir=$HOME/scratch/Censai/models/\
   --logname="cosmosAE_smoketest"\
