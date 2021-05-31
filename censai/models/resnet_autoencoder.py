@@ -64,7 +64,7 @@ class Encoder(tf.keras.Model):
         for i in range(self._num_layers):
             x = self.downsample_conv[i](x)
             x = self.res_blocks[i](x)
-        x = tf.keras.layers.Flatten(x, data_format="channels_last")
+        x = tf.keras.layers.Flatten(data_format="channels_last")(x)
         x = self.mlp_bottleneck(x)
         return x
 
@@ -138,8 +138,8 @@ class Decoder(tf.keras.Model):
         return self.call(z)
 
     def call(self, z):
-        x = self.mlp_bottleneck(z)
-        batch_size, states = x.shape
+        z = self.mlp_bottleneck(z)
+        batch_size, _ = z.shape
         x = tf.reshape(z, [batch_size, self._z_pix, self._z_pix, self._z_filters])
         for i in range(self._num_layers):
             x = self.upsample_conv[i](x)
@@ -174,7 +174,7 @@ class Autoencoder(tf.keras.Model):
             alpha=0.04,
             resblock_dropout_rate=None,
             kernel_initializer="he_uniform",
-            mlp_bottleneck_neurons=16,
+            latent_size=16,
             **kwargs
     ):
         super(Autoencoder, self).__init__()
@@ -190,7 +190,7 @@ class Autoencoder(tf.keras.Model):
             alpha=alpha,
             resblock_dropout_rate=resblock_dropout_rate,
             kernel_initializer=kernel_initializer,
-            mlp_bottleneck_neurons=mlp_bottleneck_neurons,
+            mlp_bottleneck_neurons=latent_size,
             **kwargs
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
