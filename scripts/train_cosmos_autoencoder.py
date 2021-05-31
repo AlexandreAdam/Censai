@@ -19,6 +19,20 @@ if gpus:
         print(e)
 
 
+class PolynomialSchedule:
+    def __init__(self, initial_value, end_value, power, decay_steps):
+        self.initial_value = initial_value
+        self.end_value = end_value
+        self.power = power
+        self.decay_steps = decay_steps
+
+    def __call__(self, step=None):
+        if step is None:
+            step = tf.summary.experimental.get_step()
+        step = min(step, self.decay_steps)
+        return ((self.initial_value - self.end_value) * (1 - step / self.decay_steps) ^ (self.power)) + self.end_value
+
+
 def atoi(text):
     return int(text) if text.isdigit() else text
 
@@ -53,6 +67,18 @@ def main(args):
         decay_rate=args.decay_rate,
         decay_steps=args.decay_steps,
         staircase=args.staircase
+    )
+    skip_strength_schedule = PolynomialSchedule(
+        initial_value=args.skip_strength,
+        end_value=0.,
+        power=args.skip_strength_decay_power,
+        decay_steps=args.skip_strength_decay_steps
+    )
+    l2_bottleneck_schedule = PolynomialSchedule(
+        initial_value=args.l2_bottleneck,
+        end_value=0.,
+        power=args.l2_bottleneck_decay_power,
+        decay_steps=args.l2_bottleneck_decay_steps
     )
 
     optim = tf.optimizers.Adam(learning_rate=learning_rate_schedule)
@@ -122,7 +148,16 @@ def main(args):
             for batch, (X, PSF, PS) in train_dataset:
                 with tf.GradientTape() as tape:
                     tape.watch(AE.trainable_variables)
-                    cost = tf.reduce_mean(AE.training_cost_function(X, PSF, PS))
+                    cost = tf.reduce_mean(AE.training_cost_function(
+                        x=X,
+                        psf=PSF,
+                        ps=PS,
+                        skip_strength=skip_strength_schedule(step),
+                        l2_bottleneck=l2_bottleneck_schedule(step),
+                        apodization_alpha=args.apodization_alpha,
+                        apodization_factor=args.apodization_factor,
+                        tv_factor=args.tv_factor
+                    ))
                     cost += tf.reduce_sum(AE.losses)  # Add layer specific regularizer losses (L2 in definitions)
                 gradient = tape.gradient(cost, AE.trainable_variables)
                 # clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
@@ -135,7 +170,16 @@ def main(args):
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         with test_writer.as_default():
             for batch, (X, PSF, PS) in train_dataset:
-                test_cost = tf.reduce_mean(AE.training_cost_function(X, PSF, PS))
+                test_cost = tf.reduce_mean(AE.training_cost_function(
+                    x=X,
+                    psf=PSF,
+                    ps=PS,
+                    skip_strength=skip_strength_schedule(step),
+                    l2_bottleneck=l2_bottleneck_schedule(step),
+                    apodization_alpha=args.apodization_alpha,
+                    apodization_factor=args.apodization_factor,
+                    tv_factor=args.tv_factor
+                ))
             tf.summary.scalar("MSE", test_cost, step=step)
         print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.numpy():.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e}")
@@ -179,12 +223,38 @@ if __name__ == "__main__":
     parser.add_argument("--tolerance", required=False, default=0, type=float,
                         help="Percentage [0-1] of improvement required for patience to reset. The most lenient "
                                                         "value is 0 (any improvement reset patience)")
-    parser.add_argument("--learning_rate", required=False, default=1e-4, type=float)
+    parser.add_argument("--learning_rate", required=False, default=1e-4, type=float,
+                        help="Initial value of the learning rate")
     parser.add_argument("--decay_rate", type=float, default=1,
                         help="Decay rate of the exponential decay schedule of the learning rate. 1=no decay")
     parser.add_argument("--decay_steps", type=int, default=100)
     parser.add_argument("--staircase", action="store_true", help="Learning schedule is a staircase "
                                                                  "function if added to arguments")
+    parser.add_argument("--apodization_alpha", default=0.5, type=float,
+                        help="Shape parameter of the Tukey window (Tapered cosine Window),"\
+                        "representing the fraction of the window inside the cosine tapered region."\
+                        "If zero, the Tukey window is equivalent to a rectangular window (no apodization)"\
+                        "If one, the Tukey window is equivalent to a Hann window.")
+    parser.add_argument("--apodization_factor", default=1e-2, type=float,
+                        help="Lagrange multiplier of apodization loss")
+    parser.add_argument("--tv_factor", default=1e-2, type=float,
+                        help="Lagrange multiplier of Total Variation (TV) loss. Penalize high spatial frequency"
+                             "components in the predicted image")
+    parser.add_argument("--l2_bottleneck", default=1, type=float,
+                        help="Initial value of l2 penalty in bottleneck identity "
+                             "map of encoder/decoder latent representation")
+    parser.add_argument("--l2_bottleneck_decay_steps", default=1000, type=int,
+                        help="Number of steps until l2 bottleneck penalty factor reaches 0")
+    parser.add_argument("--l2_bottleneck_decay_power", default=0.2, type=float,
+                        help="Control the shape of the decay of l2_bottlenck schedule (0.5=square root decay, etc.)")
+    parser.add_argument("--skip_strength", default=0.5, type=float,
+                        help="Initial value of the multiplicative factor in front of the Unet additive skip between "
+                             "encoder and decoder layers.")
+    parser.add_argument("--skip_strength_decay_steps", default=1000, type=int,
+                        help="Number of steps until skip_strength reaches 0")
+    parser.add_argument("--skip_strength_decay_power", default=0.5, type=float,
+                        help="Control the shape of the decay for skip_strength schedule")
+
 
     # model hyperparameters
     parser.add_argument("--res_layers", default=7, type=int,
