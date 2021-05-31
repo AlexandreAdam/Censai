@@ -40,7 +40,7 @@ def main(args):
     train_size = len(filenames) * args.examples_per_shard  # estimate the length of the dataset
     dataset = tf.data.TFRecordDataset(filenames, num_parallel_reads=args.num_parallel_reads)
     dataset = dataset.map(decode_cosmos)
-    dataset = dataset.shuffle()
+    dataset = dataset.shuffle(buffer_size=args.examples_per_shard)  # shuffle images inside a shard
     train_dataset = dataset.take(int(train_size * args.split))
     test_dataset = dataset.skip(int(train_size * (1 - args.split)))
     train_dataset = train_dataset.batch(args.batch_size, drop_remainder=False)
