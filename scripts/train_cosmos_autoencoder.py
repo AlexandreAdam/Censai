@@ -193,7 +193,7 @@ if __name__ == "__main__":
                         help="Number of conv layers in a Residual block")
     parser.add_argument("--filter_scaling", default=2, type=float,
                         help="Filters scale by {filter_scaling}^{res_layer_index}, generally number between (1, 2]")
-    parser.add_argument("--filer_init", default=8, type=int,
+    parser.add_argument("--filter_init", default=8, type=int,
                         help="Number of filters in the first residual block (before last for decoder)")
     parser.add_argument("--kernel_size", default=3, type=int,
                         help="Size of the kernels throughout model")
