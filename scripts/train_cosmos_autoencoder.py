@@ -30,7 +30,7 @@ class PolynomialSchedule:
         if step is None:
             step = tf.summary.experimental.get_step()
         step = min(step, self.decay_steps)
-        return ((self.initial_value - self.end_value) * (1 - step / self.decay_steps) ^ (self.power)) + self.end_value
+        return ((self.initial_value - self.end_value) * (1 - step / self.decay_steps) ** (self.power)) + self.end_value
 
 
 def atoi(text):
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model_id", type=str, default="None",
                         help="Start from this model id checkpoint. None means start from scratch")
-    parser.add_argument("--pixels", required=False, default=128, type=int, help="Number of pixels on a side, should be fixed for a given cosmos tfrecord")
+    parser.add_argument("--pixels", default=128, type=int, help="Number of pixels on a side, should be fixed for a given cosmos tfrecord")
     parser.add_argument("--num_parallel_reads", default=1, type=int, help="TF dataset number of parallel processes loading the data while training")
     parser.add_argument("--data", required=True, help="Path to the data root directory, containing tf records files")
 
@@ -217,13 +217,13 @@ if __name__ == "__main__":
     parser.add_argument("--examples_per_shard", default=1000, type=int,
                         help="Number of example on a given COSMO shard. Should match the parameter of cosmo_to_tfrecords with which it was generated")
     parser.add_argument("-b", "--batch_size", default=100, type=int, required=False, help="Number of images in a batch")
-    parser.add_argument("-e", "--epochs", required=False, default=1, type=int, help="Number of epochs for training")
-    parser.add_argument("--patience", required=False, default=np.inf, type=float, help="Number of epoch at which "
+    parser.add_argument("-e", "--epochs", default=1, type=int, help="Number of epochs for training")
+    parser.add_argument("--patience", default=np.inf, type=float, help="Number of epoch at which "
                                                                 "training is stop if no improvement have been made")
-    parser.add_argument("--tolerance", required=False, default=0, type=float,
+    parser.add_argument("--tolerance", default=0, type=float,
                         help="Percentage [0-1] of improvement required for patience to reset. The most lenient "
                                                         "value is 0 (any improvement reset patience)")
-    parser.add_argument("--learning_rate", required=False, default=1e-4, type=float,
+    parser.add_argument("--learning_rate", default=1e-4, type=float,
                         help="Initial value of the learning rate")
     parser.add_argument("--decay_rate", type=float, default=1,
                         help="Decay rate of the exponential decay schedule of the learning rate. 1=no decay")
@@ -284,15 +284,15 @@ if __name__ == "__main__":
                              "'full_pre_activation', 'full_pre_activation_rescale'")
 
     # logs
-    parser.add_argument("--logdir", required=False, default="None",
+    parser.add_argument("--logdir", default="None",
                         help="Path of logs directory. Default if None, no logs recorded")
-    parser.add_argument("--model_dir", required=False, default="None",
+    parser.add_argument("--model_dir", default="None",
                         help="Path to the directory where to save models checkpoints")
-    parser.add_argument("--checkpoints", required=False, default=10, type=int,
+    parser.add_argument("--checkpoints", default=10, type=int,
                         help="Save a checkpoint of the models each {%} iteration")
-    parser.add_argument("--max_to_keep", required=False, default=3, type=int,
+    parser.add_argument("--max_to_keep", default=3, type=int,
                         help="Max model checkpoint to keep")
-    parser.add_argument("--logname", required=False, default="cosmosAE_" + date,
+    parser.add_argument("--logname", default="cosmosAE_" + date,
                         help="Name of the logs, default is the local date + time")
 
     args = parser.parse_args()
