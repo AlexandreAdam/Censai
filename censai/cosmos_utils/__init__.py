@@ -1,0 +1,1 @@
+from .decode_cosmos import decode_function as decode
