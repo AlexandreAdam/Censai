@@ -1,4 +1,5 @@
 import tensorflow as tf
+from censai.definitions import DTYPE
 
 
 def decode_function(record_bytes):
@@ -23,6 +24,11 @@ def decode_function(record_bytes):
     psf = tf.reshape(psf, [2*h, w + 1, 1])  # because of noise padding
     ps = tf.reshape(ps, [h, w//2 + 1, 1])
     return image, psf, ps
+
+
+def preprocessing_function(images, psf, ps):
+    images = tf.where(images < 0, tf.constant(0, DTYPE), images)  # set negative pixel to 0
+    return images, psf, ps
 
 
 # # some tests that everything works
