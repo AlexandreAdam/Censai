@@ -1,4 +1,4 @@
-from censai.models.ray_tracer512 import RayTracer512
+from censai.models import Autoencoder, RayTracer512
 import tensorflow as tf
 
 
@@ -12,5 +12,23 @@ def test_ray_tracer_512():
                          activation="linear")
     out = model(kappa)
 
+
+def test_resnet_autoencoder():
+    pixels = 128
+    AE = Autoencoder(pixels)
+    image = tf.random.uniform(shape=[1, 128, 128, 1])
+    psf = tf.abs(tf.signal.rfft2d(tf.random.normal(shape=[1, 256, 256]))[..., tf.newaxis])
+    ps = tf.abs(tf.signal.rfft2d(tf.random.normal(shape=[1, 128, 128]))[..., tf.newaxis])
+    AE(image, image)
+    train_cost = AE.training_cost_function(image, psf, ps,
+                                           skip_strength=1,
+                                           l2_bottleneck=1,
+                                           apodization_alpha=0.5,
+                                           apodization_factor=1,
+                                           tv_factor=1
+                    )
+    pass
+
 if __name__ == '__main__':
-    test_ray_tracer_512()
+    # test_ray_tracer_512()
+    test_resnet_autoencoder()
