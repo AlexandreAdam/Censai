@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --tasks=1
-#SBATCH --cpus-per-task=9 # maximum cpu per task is 3.5 per gpus
-#SBATCH --gres=gpu:3
+#SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
+#SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=6-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
