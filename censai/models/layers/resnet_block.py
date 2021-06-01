@@ -88,7 +88,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     def call(self, x):
         return self._call(self, x)
 
-@tf.function
+
 def _bare(res_block: ResidualBlock, x):
     features = tf.identity(x)
     for layer in res_block.conv_layers:
@@ -98,7 +98,6 @@ def _bare(res_block: ResidualBlock, x):
     return tf.add(x, features)
 
 
-@tf.function
 def _original(res_block: ResidualBlock, x):
     features = tf.identity(x)
     for i, layer in enumerate(res_block.conv_layers):
@@ -112,7 +111,6 @@ def _original(res_block: ResidualBlock, x):
     return features
 
 
-@tf.function
 def _bn_after_addition(res_block: ResidualBlock, x):
     features = tf.identity(x)
     for i, layer in enumerate(res_block.conv_layers):
@@ -127,7 +125,6 @@ def _bn_after_addition(res_block: ResidualBlock, x):
     return features
 
 
-@tf.function
 def _relu_before_addition(res_block: ResidualBlock, x):
     features = tf.identity(x)
     for i, layer in enumerate(res_block.conv_layers):
@@ -139,7 +136,6 @@ def _relu_before_addition(res_block: ResidualBlock, x):
     return features
 
 
-@tf.function
 def _relu_only_pre_activation(res_block: ResidualBlock, x):
     features = tf.identity(x)
     for i, layer in enumerate(res_block.conv_layers):
@@ -151,7 +147,6 @@ def _relu_only_pre_activation(res_block: ResidualBlock, x):
     return features
 
 
-@tf.function
 def _full_pre_activation(res_block: ResidualBlock, x):
     features = tf.identity(x)
     for i, layer in enumerate(res_block.conv_layers):
@@ -163,7 +158,6 @@ def _full_pre_activation(res_block: ResidualBlock, x):
     return features
 
 
-@tf.function
 def _full_pre_activation_rescale(res_block: ResidualBlock, x):
     features = tf.identity(x)
     # One by One Conv rescale

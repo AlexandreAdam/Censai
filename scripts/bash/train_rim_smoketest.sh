@@ -20,4 +20,5 @@ python ../train_rim.py\
   --logdir=../../logs\
   --model_dir=../../models\
   --checkpoints=1\
-  --max_to_keep=1
+  --max_to_keep=1\
+  --logname="RIM_smoketest"

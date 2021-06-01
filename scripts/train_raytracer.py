@@ -18,20 +18,19 @@ def main(args):
     optim = tf.optimizers.Adam(lr=args.lr)
 
     # setup tensorboard writer (nullwriter in case we do not want to sync)
+    if args.model_id.lower() != "none":
+        logname = args.model_id
+    else:
+        logname = args.logname
     if args.logdir.lower() != "none":
-        logdir = os.path.join(args.logdir, args.logname)
+        logdir = os.path.join(args.logdir, logname)
         traindir = os.path.join(logdir, "train")
-        testdir = os.path.join(logdir, "test")
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
         if not os.path.isdir(traindir):
             os.mkdir(traindir)
-        if not os.path.isdir(testdir):
-            os.mkdir(testdir)
         train_writer = tf.summary.create_file_writer(traindir)
-        test_writer = tf.summary.create_file_writer(testdir)
     else:
-        test_writer = nullwriter()
         train_writer = nullwriter()
 
     step = 1
@@ -59,7 +58,7 @@ if __name__ == "__main__":
     parser.add_argument("--validation", required=False, default=20, type=int, help="Number of images in the validation set")
     parser.add_argument("--logdir", required=False, default="logs", help="Path of logs directory. Default assumes script is" \
             "run from the base directory of censai. For no logs, use None")
-    parser.add_argument("--logname", required=False, default=date, help="Name of the logs, default is the local date + time")
+    parser.add_argument("--logname", required=False, default="RT_" + date, help="Name of the logs, default is the local date + time")
     parser.add_argument("-e", "--epochs", required=False, default=10, help="Number of epochs for training")
     parser.add_argument("--lr", required=False, default=1e-3, type=float, help="Learning rate")
     args = parser.parse_args()
