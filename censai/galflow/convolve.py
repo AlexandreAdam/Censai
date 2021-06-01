@@ -34,9 +34,7 @@ def k_wrapping(kimage, wrap_factor=2):
     return kimage
 
 
-def kconvolve(kimages, kpsf,
-             zero_padding_factor=2,
-             interp_factor=2):
+def kconvolve(kimages, kpsf, zero_padding_factor=2, interp_factor=2):
     """
     Convolution of provided k-space images and psf tensor.
     Careful! This function doesn't remove zero padding.
