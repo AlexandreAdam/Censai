@@ -259,7 +259,7 @@ class Autoencoder(tf.keras.Model):
         x = tf.signal.rfft2d(x[..., 0])
         x_pred = tf.signal.rfft2d(x_pred[..., 0])
 
-        chi_squared = -0.5 * tf.reduce_mean(tf.abs((x - x_pred)**2 / tf.complex(tf.exp(ps), 0.) / (2 * pi) ** 2), axis=[1, 2])
+        chi_squared = -0.5 * tf.reduce_mean(tf.abs((x - x_pred)**2 / tf.complex(tf.exp(ps) + 1e-8, 0.) / (2 * pi) ** 2), axis=[1, 2])
         return chi_squared
 
     def training_cost_function(self, x, psf, ps, skip_strength, l2_bottleneck, apodization_alpha, apodization_factor, tv_factor):
@@ -320,5 +320,6 @@ class Autoencoder(tf.keras.Model):
         x = tf.signal.rfft2d(x[..., 0])
         x_pred = tf.signal.rfft2d(x_pred[..., 0])
 
-        chi_squared = 0.5 * tf.reduce_mean(tf.abs((x - x_pred)**2 / tf.complex(tf.exp(ps)[..., 0], 0.) / (2 * pi) ** 2), axis=[1, 2])
+        # added a safety net in the division, even if tfrecords were generated to ensure
+        chi_squared = 0.5 * tf.reduce_mean(tf.abs((x - x_pred)**2 / tf.complex(tf.exp(ps)[..., 0] + 1e-8, 0.) / (2 * pi) ** 2), axis=[1, 2])
         return chi_squared + bottleneck_l2_cost + apo_loss + tv_loss
