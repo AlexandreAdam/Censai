@@ -175,9 +175,11 @@ class Autoencoder(tf.keras.Model):
             resblock_dropout_rate=None,
             kernel_initializer="he_uniform",
             latent_size=16,
+            image_floor=1e-8,
             **kwargs
     ):
         super(Autoencoder, self).__init__()
+        self.image_floor = image_floor
         self.encoder = Encoder(
             res_layers=res_layers,
             conv_layers_in_resblock=conv_layers_in_resblock,
@@ -214,6 +216,13 @@ class Autoencoder(tf.keras.Model):
             **kwargs
         )
 
+    def link_function(self, x):
+        return tf.math.log(x + self.image_floor)
+
+    @staticmethod
+    def inverse_link_function(eta):
+        return tf.math.exp(eta)
+
     def encode(self, x, psf):
         """
 
@@ -229,6 +238,8 @@ class Autoencoder(tf.keras.Model):
         # Roll the image to undo the fftshift, assuming x1 zero padding and x2 subsampling
         psf_image = tf.roll(psf_image, shift=[input_shape[1], input_shape[2]], axis=[1, 2])
         psf_image = tf.image.resize_with_crop_or_pad(psf_image, input_shape[1], input_shape[2])
+        x = self.link_function(x)
+        psf_image = self.link_function(psf_image)
         x = tf.concat([x, psf_image], axis=-1)
         return self.encoder(x)
 
@@ -238,8 +249,10 @@ class Autoencoder(tf.keras.Model):
     def __call__(self, x, psf):
         return self.call(x, psf)
 
-    def call(self, x, psf):
-        x = tf.concat([x, psf], axis=-1)
+    def call(self, x, psf_image):
+        x = self.link_function(x)
+        psf_image = self.link_function(psf_image)
+        x = tf.concat([x, psf_image], axis=-1)
         return self.decoder(self.encoder(x))
 
     def cost_function(self, x, psf, ps):
@@ -254,12 +267,13 @@ class Autoencoder(tf.keras.Model):
 
         """
         x_pred = self.decode(self.encode(x, psf))
-        x_pred = convolve(x_pred, psf)
+        x_pred = self.inverse_link_function(x_pred)
+        x_pred = convolve(x_pred, tf.cast(psf[..., 0], tf.complex64), zero_padding_factor=1)
 
         x = tf.signal.rfft2d(x[..., 0])
         x_pred = tf.signal.rfft2d(x_pred[..., 0])
 
-        chi_squared = -0.5 * tf.reduce_mean(tf.abs((x - x_pred)**2 / tf.complex(tf.exp(ps) + 1e-8, 0.) / (2 * pi) ** 2), axis=[1, 2])
+        chi_squared = 0.5 * tf.reduce_mean(tf.abs((x - x_pred)**2 / tf.complex(tf.exp(ps) + 1e-8, 0.) / (2 * pi) ** 2), axis=[1, 2])
         return chi_squared
 
     def training_cost_function(self, x, psf, ps, skip_strength, l2_bottleneck, apodization_alpha, apodization_factor, tv_factor):
@@ -286,10 +300,13 @@ class Autoencoder(tf.keras.Model):
         # Roll the image to undo the fftshift, assuming x1 zero padding and x2 subsampling
         psf_image = tf.roll(psf_image, shift=[input_shape[1], input_shape[2]], axis=[1, 2])
         psf_image = tf.image.resize_with_crop_or_pad(psf_image, input_shape[1], input_shape[2])
+        x = self.link_function(x)
+        psf_image = self.link_function(psf_image)
         x = tf.concat([x, psf_image], axis=-1)
 
         z, skips = self.encoder.call_with_skip_connections(x)
         x_pred, bottleneck_l2_cost = self.decoder.call_with_skip_connections(z, skips, skip_strength, l2_bottleneck)
+        x_pred = self.inverse_link_function(x_pred)
         x_pred = convolve(x_pred, tf.cast(psf[..., 0], tf.complex64), zero_padding_factor=1) # we already padded psf with noise in data preprocessing
 
         # We apply an optional apodization of the output before taking the
