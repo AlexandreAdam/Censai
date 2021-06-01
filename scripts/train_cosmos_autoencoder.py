@@ -18,7 +18,6 @@ if gpus:
     # Memory growth must be set before GPUs have been initialized
         print(e)
 
-mirrored_strategy = tf.distribute.MirroredStrategy()
 
 class PolynomialSchedule:
     def __init__(self, initial_value, end_value, power, decay_steps):
@@ -50,7 +49,8 @@ def main(args):
     filenames = os.listdir(args.data)
     filenames.sort(key=natural_keys)
     # keep the n last files as a test set
-    filenames = filenames[:-args.test_shards]
+    if args.test_shards != 0:
+        filenames = filenames[:-args.test_shards]
     filenames = [os.path.join(args.data, file) for file in filenames]
     train_size = len(filenames) * args.examples_per_shard  # estimate the length of the dataset
     dataset = tf.data.TFRecordDataset(filenames, num_parallel_reads=args.num_parallel_reads)
@@ -181,11 +181,11 @@ def main(args):
                     apodization_factor=args.apodization_factor,
                     tv_factor=args.tv_factor
                 ))
-            tf.summary.scalar("MSE", test_cost, step=step)
+        tf.summary.scalar("MSE", test_cost, step=step)
         print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.numpy():.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e}")
-        if test_cost < (1 - args.tolerance) * best_loss:
-            best_loss = test_cost
+        if epoch_loss.result() < (1 - args.tolerance) * best_loss:
+            best_loss = epoch_loss.result()
             patience = args.patience
         else:
             patience -= 1
