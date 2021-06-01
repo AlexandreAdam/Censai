@@ -1,1 +1,1 @@
-from .decode_cosmos import decode_function as decode
+from .decode_cosmos import decode_function as decode, preprocessing_function as preprocess

@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from censai.models import Autoencoder
-from censai.cosmos_utils import decode as decode_cosmos
+from censai.cosmos_utils import decode as decode_cosmos, preprocess
 from censai.utils import nullwriter
 import os
 from datetime import datetime
@@ -55,6 +55,7 @@ def main(args):
     train_size = len(filenames) * args.examples_per_shard  # estimate the length of the dataset
     dataset = tf.data.TFRecordDataset(filenames, num_parallel_reads=args.num_parallel_reads)
     dataset = dataset.map(decode_cosmos)
+    dataset = dataset.map(preprocess)
     dataset = dataset.shuffle(buffer_size=args.examples_per_shard)  # shuffle images inside a shard
     train_dataset = dataset.take(int(train_size * args.split))
     test_dataset = dataset.skip(int(train_size * (1 - args.split)))
@@ -170,7 +171,7 @@ def main(args):
                 step += 1
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         with test_writer.as_default():
-            for batch, (X, PSF, PS) in train_dataset:
+            for batch, (X, PSF, PS) in test_dataset:
                 test_cost = tf.reduce_mean(AE.training_cost_function(
                     x=X,
                     psf=PSF,
