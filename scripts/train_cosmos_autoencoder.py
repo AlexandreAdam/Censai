@@ -60,6 +60,7 @@ def main(args):
     train_dataset = dataset.take(int(train_size * args.split))
     test_dataset = dataset.skip(int(train_size * (1 - args.split)))
     train_dataset = train_dataset.batch(args.batch_size, drop_remainder=False)
+    test_dataset = test_dataset.batch(args.batch_size, drop_remainder=True)
     train_dataset = train_dataset.enumerate()
     train_dataset = train_dataset.cache()
     train_dataset = train_dataset.prefetch(tf.data.experimental.AUTOTUNE)
@@ -141,6 +142,7 @@ def main(args):
         save_checkpoint = False
 
     epoch_loss = tf.metrics.Mean()
+    test_loss = tf.metrics.Mean()
     best_loss = np.inf
     patience = args.patience
     step = 0
@@ -182,8 +184,9 @@ def main(args):
                     apodization_factor=args.apodization_factor,
                     tv_factor=args.tv_factor
                 ))
-        tf.summary.scalar("MSE", test_cost, step=step)
-        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.numpy():.3e} "
+                test_loss.update_state([test_cost])
+        tf.summary.scalar("MSE", test_cost.result(), step=step)
+        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.result().numpy():.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e}")
         if epoch_loss.result() < (1 - args.tolerance) * best_loss:
             best_loss = epoch_loss.result()
