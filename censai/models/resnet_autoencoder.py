@@ -307,7 +307,6 @@ class Autoencoder(tf.keras.Model):
 
         z, skips = self.encoder.call_with_skip_connections(x)
         x_pred, bottleneck_l2_cost = self.decoder.call_with_skip_connections(z, skips, skip_strength, l2_bottleneck)
-        x_pred = self.inverse_link_function(x_pred)
         x_pred = convolve(x_pred, tf.cast(psf[..., 0], tf.complex64), zero_padding_factor=1) # we already padded psf with noise in data preprocessing
 
         # We apply an optional apodization of the output before taking the
