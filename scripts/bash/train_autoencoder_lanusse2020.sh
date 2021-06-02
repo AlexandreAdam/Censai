@@ -15,7 +15,7 @@ python ../train_cosmos_autoencoder.py\
   --split=0.9\
   --test_shards=2\
   --examples_per_shard=1000\
-  --batch_size=20\
+  --batch_size=100\
   --epochs=50\
   --learning_rate=1e-3\
   --decay_rate=0.9\

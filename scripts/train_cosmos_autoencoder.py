@@ -46,6 +46,7 @@ def natural_keys(text):
 
 
 def main(args):
+    cache_file = os.path.join(os.getenv("SLURM_TMPDIR"), "cache")
     filenames = os.listdir(args.data)
     filenames.sort(key=natural_keys)
     # keep the n last files as a test set
@@ -62,7 +63,9 @@ def main(args):
     train_dataset = train_dataset.batch(args.batch_size, drop_remainder=False)
     test_dataset = test_dataset.batch(args.batch_size, drop_remainder=True)
     train_dataset = train_dataset.enumerate()
-    train_dataset = train_dataset.cache()
+    # save the dataset in a temporary file on SSD disc
+    train_dataset = train_dataset.cache(cache_file)
+    test_dataset = test_dataset.cache(cache_file)
     train_dataset = train_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
@@ -148,6 +151,7 @@ def main(args):
     step = 0
     for epoch in range(args.epochs):
         epoch_loss.reset_states()
+        test_loss.reset_states()
         with train_writer.as_default():
             for batch, (X, PSF, PS) in train_dataset:
                 with tf.GradientTape() as tape:
