@@ -185,8 +185,8 @@ def main(args):
                     tv_factor=args.tv_factor
                 ))
                 test_loss.update_state([test_cost])
-        tf.summary.scalar("MSE", test_cost.result(), step=step)
-        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.result().numpy():.3e} "
+        tf.summary.scalar("MSE", test_loss.result(), step=step)
+        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_loss.result().numpy():.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e}")
         if epoch_loss.result() < (1 - args.tolerance) * best_loss:
             best_loss = epoch_loss.result()
