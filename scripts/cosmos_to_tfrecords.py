@@ -18,7 +18,7 @@ parser.add_argument("--output_dir", required=True, default="None", help="Path to
 
 args = parser.parse_args()
 if args.store_attributes:
-    vars(args)["attributes"] = ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q']
+    vars(args)["attributes"] = ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'zphot']
 
 if args.do_all:
     if args.sample == "23.5":
