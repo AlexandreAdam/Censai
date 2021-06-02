@@ -171,7 +171,7 @@ def main(args):
                 step += 1
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         with test_writer.as_default():
-            for batch, (X, PSF, PS) in test_dataset:
+            for X, PSF, PS in test_dataset:
                 test_cost = tf.reduce_mean(AE.training_cost_function(
                     x=X,
                     psf=PSF,
