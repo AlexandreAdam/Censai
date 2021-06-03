@@ -46,7 +46,9 @@ def natural_keys(text):
 
 
 def main(args):
-    cache_file = os.path.join(os.getenv("SLURM_TMPDIR"), "cache")
+    train_cache_file = os.path.join(os.getenv("SLURM_TMPDIR"), "train_cache")
+    test_cache_file = os.path.join(os.getenv("SLURM_TMPDIR"), "test_cache")
+
     filenames = os.listdir(args.data)
     filenames.sort(key=natural_keys)
     # keep the n last files as a test set
@@ -59,13 +61,13 @@ def main(args):
     dataset = dataset.map(preprocess)
     dataset = dataset.shuffle(buffer_size=args.examples_per_shard)  # shuffle images inside a shard
     train_dataset = dataset.take(int(train_size * args.split))
-    test_dataset = dataset.skip(int(train_size * (1 - args.split)))
+    test_dataset = dataset.skip(int(train_size * args.split))
     train_dataset = train_dataset.batch(args.batch_size, drop_remainder=False)
     test_dataset = test_dataset.batch(args.batch_size, drop_remainder=True)
     train_dataset = train_dataset.enumerate()
     # save the dataset in a temporary file on SSD disc
-    train_dataset = train_dataset.cache(cache_file)
-    test_dataset = test_dataset.cache(cache_file)
+    train_dataset = train_dataset.cache(train_cache_file)
+    test_dataset = test_dataset.cache(test_cache_file)
     train_dataset = train_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
