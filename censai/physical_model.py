@@ -1,5 +1,4 @@
 import tensorflow as tf
-import tensorflow_addons as tfa
 import numpy as np
 from censai.models.ray_tracer import RayTracer
 import tensorflow_addons as tfa
@@ -160,11 +159,11 @@ class AnalyticalPhysicalModel:
         theta2 = rho * tf.sin(varphi)
         return theta1, theta2
 
-    def potential(self, r_ein, e, phi, x0, y0): # arcsec^2
+    def potential(self, r_ein, e, phi, x0, y0):  # arcsec^2
         theta1, theta2 = self.rotated_and_shifted_coords(phi, x0, y0)
         return r_ein * tf.sqrt(theta1**2/(1-e) + (1-e)*theta2**2 + self.theta_c**2)
 
-    def deflection_angles(self, r_ein, e, phi, x0, y0): # arcsec
+    def deflection_angles(self, r_ein, e, phi, x0, y0):  # arcsec
         theta1, theta2 = self.rotated_and_shifted_coords(phi, x0, y0)
         psi = tf.sqrt(theta1**2/(1-e) + (1-e)*theta2**2 + self.theta_c**2)
         alpha1 = r_ein * (theta1 / psi) / (1 - e)

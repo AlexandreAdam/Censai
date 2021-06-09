@@ -248,6 +248,24 @@ class NISGenerator(tf.keras.utils.Sequence):
         im = tfa.image.resampler(source, wrap)  # bilinear interpolation
         return im
 
+    def lens_source_func(self, r_ein, e, phi, x0, y0, xs, ys, es, w):
+        if self.method == "analytic":
+            alpha = self.analytical_deflection_angles(x0, y0, e, phi, r_ein)
+        elif self.method == "approximate":
+            alpha = self.approximate_deflection_angles(x0, y0, e, phi, r_ein)
+        elif self.method == "conv2d":
+            kap = self.kappa_field(x0, y0, e, phi, r_ein)
+            alpha = self.conv2d_deflection_angles(kap)
+        # place the origin at the center of mass
+        theta1, theta2 = self.theta1 - x0, self.theta2 - x0
+        # lens equation
+        beta1 = theta1 - alpha[..., 0]
+        beta2 = theta2 - alpha[..., 1]
+        # sample intensity directly from the functional form
+        rho_sq = (beta1 - xs)**2/(1-es) + (beta2 - ys)**2 * (1 - es)
+        lens = np.exp(-0.5 * rho_sq / w**2) #/ 2 / np.pi / w**2
+        return lens
+
     def src_coord_to_pix(self, x, y):
         dx = self._src_side/(self.pixels - 1)
         xmin = -0.5 * self._src_side
