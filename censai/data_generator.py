@@ -263,7 +263,7 @@ class NISGenerator(tf.keras.utils.Sequence):
         beta2 = theta2 - alpha[..., 1]
         # sample intensity directly from the functional form
         rho_sq = (beta1 - xs)**2/(1-es) + (beta2 - ys)**2 * (1 - es)
-        lens = np.exp(-0.5 * rho_sq / w**2) #/ 2 / np.pi / w**2
+        lens = tf.math.exp(-0.5 * rho_sq / w**2) #/ 2 / np.pi / w**2
         return lens
 
     def src_coord_to_pix(self, x, y):
