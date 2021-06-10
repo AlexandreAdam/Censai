@@ -19,6 +19,8 @@ def distributed_strategy(args):
     phys = PhysicalModel(image_side=args.image_fov, src_side=args.source_fov, pixels=args.pixels,
                          kappa_side=args.kappa_fov, method="conv2d", noise_rms=1e-4)
     kappa_files = glob.glob(os.path.join(args.kappa_dir), "*.fits")
+    if args.smoke_test:
+        kappa_files = kappa_files[:N_WORKERS*args.batch]
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{this_worker}.tfrecords")) as writer:
         for i in range(this_worker-1, len(kappa_files), N_WORKERS * args.batch):
             files = kappa_files[i: i + args.batch - 1]
@@ -27,6 +29,7 @@ def distributed_strategy(args):
             kappa_fits = [fits.open(file) for file in files]
             # add missing batch and channel dimension to kappa map, then stack them along batch dim
             kappa = np.stack([kap.data[np.newaxis, ..., np.newaxis] for kap in kappa_fits], axis=0)
+            kappa = kappa[..., args.crop:args.pixels-args.crop, args.crop:args.pixels-args.crop, ...]
             if args.augment:
                 factors = 1 + np.random.exponential(1/kappa.max(axis=(1, 2, 3)), size=args.batch)
                 kappa *= factors[..., np.newaxis, np.newaxis, np.newaxis]
@@ -62,12 +65,17 @@ if __name__ == '__main__':
                         help="RMS of white noise applied to lensed image")
     parser.add_argument("--batch", default=1, type=int,
                         help="Number of label maps to be computed at the same time")
+    parser.add_argument("--crop", default=0, type=int,
+                        help="Crop kappa map by N pixels. After crop, the size of the kappa map "
+                             "should correspond to pixel argument "
+                             "(e.g. kappa of 612 pixels cropped by N=50 on each side -> 512 pixels)")
     parser.add_argument("--augment", action="store_true",
                         help="Rescale kappa map by a random number, which is stored in the record for future reference.")
     parser.add_argument("--exponential_rate", default=1, type=float,
                         help="If we augment data, what is the base rate (ie when max(kappa)=1) "
                              "of the exponential distribution (factor = 1 + Exponential(rate/max(kappa))")
     parser.add_argument("--output_dir", required=True, help="Path where tfrecords are stored")
+    parser.add_argument("--smoke_test", action="store_true")
     args = parser.parse_args()
 
     distributed_strategy(args)
