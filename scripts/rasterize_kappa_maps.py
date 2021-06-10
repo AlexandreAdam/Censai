@@ -95,6 +95,23 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
 
 
 def load_subhalo(subhalo_id, particle_type, offsets, subhalo_offsets, snapshot_dir, snapshot_id):
+    """
+    We store here the logic to read from the file chunks of IllustrisTNG files. Another approach can be found
+    here: https://github.com/illustristng/illustris_python
+    Args:
+        subhalo_id: The subhalo we wish to retrieve
+        particle_type: 0: gas, 1: Dark matter, 4: Stars, 5: Black holes
+        offsets: File offset matrix, with a row per chunk and column per particle type.
+            Indicate the global particle ID of the first particle in a chunk.
+        subhalo_offsets: Global particle ID of the first particle in the subhalo (for each type).
+        snapshot_dir: Path of the directory where snapshot are stored
+        snapshot_id: Id of the snapshot (e.g. 99 for the z=0 snapshot of TNG300-1)
+
+    Returns: Subhalo particle coordinates and mass
+
+    """
+    assert particle_type in [0, 1, 4, 5]
+    tot_chunks = offsets.shape[0]
 
     coords = []
     mass = []
@@ -104,7 +121,7 @@ def load_subhalo(subhalo_id, particle_type, offsets, subhalo_offsets, snapshot_d
     subhalo_length = subhalo_offsets[subhalo_id + 1, particle_type] - subhalo_offsets[subhalo_id, particle_type]
     if subhalo_length == 0:
         return None, None
-    chunk_length = offsets[min(599, chunk + 1), particle_type] - offsets[min(598, chunk), particle_type]
+    chunk_length = offsets[min(tot_chunks-1, chunk + 1), particle_type] - offsets[min(tot_chunks-2, chunk), particle_type]
     length = min(subhalo_length, chunk_length - start)
     remaining = subhalo_length - length
     i = 0
@@ -116,7 +133,7 @@ def load_subhalo(subhalo_id, particle_type, offsets, subhalo_offsets, snapshot_d
                 mass.append(f[f"PartType{particle_type:d}"]["Masses"][start:start + length])
         i += 1
         start = 0
-        chunk_length = offsets[min(599, chunk + 1 + i), particle_type] - offsets[min(598, chunk + i), particle_type]
+        chunk_length = offsets[min(tot_chunks-1, chunk + 1 + i), particle_type] - offsets[min(tot_chunks-2, chunk + i), particle_type]
         length = min(remaining, chunk_length)
         remaining -= length
 
@@ -130,62 +147,38 @@ def load_subhalo(subhalo_id, particle_type, offsets, subhalo_offsets, snapshot_d
     return coords, mass
 
 
-parser = ArgumentParser()
-# parser.add_argument("--groupcat", default="/home/aadam/projects/rrg-lplevass/aadam/illustrisTNG300-1_snapshot99_groupcat")
-parser.add_argument("--output_dir", required=True, type=str, help="Directory where to save raster images (fits file)")
-parser.add_argument("--subhalo_id", required=True, type=str,
-                    help="npy file that contains array of int32 index of subhalos to rasterize")
-parser.add_argument("--projection", required=True, type=str,
-                    help="2 characters, a combination of x, y and z (e.g. 'xy')")
-parser.add_argument("--base_filenames", default="kappa")
-parser.add_argument("--pixels", default=512, type=int, help="Number of pixels in the raster image")
-parser.add_argument("--n_neighbors", default=10, type=int, help="Number of neighbors used to compute kernel length")
-parser.add_argument("--fw_param", default=2, type=float,
-                help="Mean distance of neighbors is interpreted as FW at (1/fw_param) of the maximum of the gaussian")
-parser.add_argument("--offsets", default="/home/aadam/scratch/data/TNG300-1/offsets/offsets_099.hdf5")
-parser.add_argument("--groupcat_dir",
-                    default="/home/aadam/projects/rrg-lplevass/aadam/illustrisTNG300-1_snapshot99_groupcat/")
-parser.add_argument("--snapshot_dir",
-                    default="/home/aadam/scratch/data/TNG300-1/snapshot99/", help="Root directory of the snapshot")
-parser.add_argument("--snapshot_id", default=99, type=int,
-                    help="Should match id of snapshot given in snapshot argument")
-parser.add_argument("--fov", default=1, type=float, help="Field of view of a scene in comoving Mpc")
-parser.add_argument("--box_size", default=205, type=float, help="Box size of the simulation, in Mpc")
-parser.add_argument("--z_source", default=1.5, type=float)
-parser.add_argument("--z_lens", default=0.5, type=float)
-parser.add_argument("--smoke_test", action="store_true")
-args = parser.parse_args()
+def distributed_strategy(args):
+    subhalo_ids = np.load(args.subhalo_id)
+    if args.smoke_test:
+        print("smoke_test")
+        subhalo_ids = np.array([10])  # should be an easy halo to try out
+        print(subhalo_ids.size)
+    if "done.txt" in os.listdir(args.output_dir):  # for checkpointing
+        done = np.loadtxt(os.path.join(args.output_dir, "done.txt"))
+        done_dim0 = done[:, 1]
+        done_dim1 = done[:, 2]
+        done = done[:, 0]
+    else:
+        done = []
+        done_dim0 = []  # we don't need them but create them just in case of a bug
+        done_dim1 = []
+    dims = projection(args.projection)
 
-subhalo_ids = np.load(args.subhalo_id)
-if args.smoke_test:
-    print("smoke_test")
-    subhalo_ids = np.array([10])  # should be an easy halo to try out
-    print(subhalo_ids.size)
-if "done.txt" in os.listdir(args.output_dir):   # for checkpointing
-    done = np.loadtxt(os.path.join(args.output_dir, "done.txt"))
-    done_dim0 = done[:, 1]
-    done_dim1 = done[:, 2]
-    done = done[:, 0]
-else:
-    done = []
-    done_dim0 = [] # we don't need them but create them just in case of a bug
-    done_dim1 = []
-dims = projection(args.projection)
+    zd = args.z_lens
+    zs = args.z_source
+    Ds = cosmo.angular_diameter_distance(zs)
+    Dd = cosmo.angular_diameter_distance(zd)
+    Dds = cosmo.angular_diameter_distance_z1z2(zd, zs)
+    sigma_crit = (c ** 2 * Ds / (4 * np.pi * G * Dd * Dds) / (1e10 * M_sun)).to(u.Mpc ** (-2)).value
 
-zd = args.z_lens
-zs = args.z_source
-Ds = cosmo.angular_diameter_distance(zs)
-Dd = cosmo.angular_diameter_distance(zd)
-Dds = cosmo.angular_diameter_distance_z1z2(zd, zs)
-sigma_crit = (c ** 2 * Ds / (4 * np.pi * G * Dd * Dds) / (1e10 * M_sun)).to(u.Mpc ** (-2)).value
+    with h5py.File(args.offsets, "r") as f:
+        offsets = f["FileOffsets"]["SnapByType"][:]  # global particle number at the beginning of a chunk
+        subhalo_offsets = f["Subhalo"]["SnapByType"][:]
+        subhalo_fileoffsets = f["FileOffsets"]["Subhalo"][:]
 
-with h5py.File(args.offsets, "r") as f:
-    offsets = f["FileOffsets"]["SnapByType"][:]  # global particle number at the beginning of a chunk
-    subhalo_offsets = f["Subhalo"]["SnapByType"][:]
-    subhalo_fileoffsets = f["FileOffsets"]["Subhalo"][:]
+    tot_chunks = offsets.shape[0]
 
-
-def distributed_strategy():
+    # start hard work here
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
         if subhalo_id in done:
@@ -210,14 +203,14 @@ def distributed_strategy():
         coords = np.concatenate(coords)
         mass = np.concatenate(mass)
 
-        # load subhalo position for fixed_boundary_coordinates
+        # load subhalo position for fixed_boundary_coordinates (same comment about hardcoded numbers here)
         chunk = max(0, (subhalo_id > subhalo_fileoffsets).sum() - 1)  # first chunk
         subhalo_index = subhalo_id - subhalo_fileoffsets[chunk]
-        chunk_length = subhalo_fileoffsets[min(599, chunk + 1)] - subhalo_fileoffsets[min(598, chunk)]
+        chunk_length = subhalo_fileoffsets[min(tot_chunks-1, chunk + 1)] - subhalo_fileoffsets[min(tot_chunks-2, chunk)]
         while subhalo_index >= chunk_length:
             chunk += 1
             subhalo_index -= chunk_length
-            chunk_length = subhalo_fileoffsets[min(599, chunk + 1)] - subhalo_fileoffsets[min(598, chunk)]
+            chunk_length = subhalo_fileoffsets[min(tot_chunks-1, chunk + 1)] - subhalo_fileoffsets[min(tot_chunks-2, chunk)]
         fof_datapath = os.path.join(args.groupcat_dir, f"fof_subhalo_tab_099.{chunk}.hdf5")
         with h5py.File(fof_datapath, "r") as f:
             centroid = f["Subhalo"]["SubhaloCM"][subhalo_index] / 1e3
@@ -287,4 +280,31 @@ def distributed_strategy():
 
 
 if __name__ == '__main__':
-    distributed_strategy()
+    parser = ArgumentParser()
+    # parser.add_argument("--groupcat", default="/home/aadam/projects/rrg-lplevass/aadam/illustrisTNG300-1_snapshot99_groupcat")
+    parser.add_argument("--output_dir", required=True, type=str,
+                        help="Directory where to save raster images (fits file)")
+    parser.add_argument("--subhalo_id", required=True, type=str,
+                        help="npy file that contains array of int32 index of subhalos to rasterize")
+    parser.add_argument("--projection", required=True, type=str,
+                        help="2 characters, a combination of x, y and z (e.g. 'xy')")
+    parser.add_argument("--base_filenames", default="kappa")
+    parser.add_argument("--pixels", default=512, type=int, help="Number of pixels in the raster image")
+    parser.add_argument("--n_neighbors", default=10, type=int, help="Number of neighbors used to compute kernel length")
+    parser.add_argument("--fw_param", default=2, type=float,
+                        help="Mean distance of neighbors is interpreted as FW at (1/fw_param) of the maximum of the gaussian")
+    parser.add_argument("--offsets", default="/home/aadam/scratch/data/TNG300-1/offsets/offsets_099.hdf5")
+    parser.add_argument("--groupcat_dir",
+                        default="/home/aadam/projects/rrg-lplevass/aadam/illustrisTNG300-1_snapshot99_groupcat/")
+    parser.add_argument("--snapshot_dir",
+                        default="/home/aadam/scratch/data/TNG300-1/snapshot99/", help="Root directory of the snapshot")
+    parser.add_argument("--snapshot_id", default=99, type=int,
+                        help="Should match id of snapshot given in snapshot argument")
+    parser.add_argument("--fov", default=1, type=float, help="Field of view of a scene in comoving Mpc")
+    parser.add_argument("--box_size", default=205, type=float, help="Box size of the simulation, in Mpc")
+    parser.add_argument("--z_source", default=1.5, type=float)
+    parser.add_argument("--z_lens", default=0.5, type=float)
+    parser.add_argument("--smoke_test", action="store_true")
+    args = parser.parse_args()
+
+    distributed_strategy(args)

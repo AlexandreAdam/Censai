@@ -25,10 +25,11 @@ for file in tqdm(glob.glob(os.path.join(args.kappa_dir, "*_xy.fits"))):
     except OSError:
         print(file)
         continue
-    if id in bad_kappa_ids:
-        continue
+    # if id in bad_kappa_ids:
+    #     continue
     if a[0].data.max() > args.kappa_cutoff and np.random.uniform() < args.random_cutoff:
         continue
+    plt.figure(figsize=(10, 10))
     plt.imshow(a[0].data, cmap=args.cmap, norm=ImageNormalize(stretch=LogStretch()))
     plt.colorbar()
     plt.axis("off")
