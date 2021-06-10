@@ -18,7 +18,7 @@ this_worker = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 def distributed_strategy(args):
     phys = PhysicalModel(image_side=args.image_fov, src_side=args.source_fov, pixels=args.pixels,
                          kappa_side=args.kappa_fov, method="conv2d", noise_rms=1e-4)
-    kappa_files = glob.glob(os.path.join(args.kappa_dir), "*.fits")
+    kappa_files = glob.glob(os.path.join(args.kappa_dir, "*.fits"))
     if args.smoke_test:
         kappa_files = kappa_files[:N_WORKERS*args.batch]
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{this_worker}.tfrecords")) as writer:
