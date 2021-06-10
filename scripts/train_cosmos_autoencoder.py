@@ -6,17 +6,17 @@ from censai.utils import nullwriter
 import os
 from datetime import datetime
 import re
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    try:
-    # Currently, memory growth needs to be the same across GPUs
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-    except RuntimeError as e:
-    # Memory growth must be set before GPUs have been initialized
-        print(e)
+# gpus = tf.config.list_physical_devices('GPU')
+# if gpus:
+#     try:
+#     # Currently, memory growth needs to be the same across GPUs
+#         for gpu in gpus:
+#             tf.config.experimental.set_memory_growth(gpu, True)
+#         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+#         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+#     except RuntimeError as e:
+#     # Memory growth must be set before GPUs have been initialized
+#         print(e)
 
 
 class PolynomialSchedule:
@@ -46,6 +46,9 @@ def natural_keys(text):
 
 
 def main(args):
+    train_cache_file = os.path.join(os.getenv("SLURM_TMPDIR"), "train_cache")
+    test_cache_file = os.path.join(os.getenv("SLURM_TMPDIR"), "test_cache")
+
     filenames = os.listdir(args.data)
     filenames.sort(key=natural_keys)
     # keep the n last files as a test set
@@ -58,10 +61,13 @@ def main(args):
     dataset = dataset.map(preprocess)
     dataset = dataset.shuffle(buffer_size=args.examples_per_shard)  # shuffle images inside a shard
     train_dataset = dataset.take(int(train_size * args.split))
-    test_dataset = dataset.skip(int(train_size * (1 - args.split)))
+    test_dataset = dataset.skip(int(train_size * args.split))
     train_dataset = train_dataset.batch(args.batch_size, drop_remainder=False)
+    test_dataset = test_dataset.batch(args.batch_size, drop_remainder=True)
     train_dataset = train_dataset.enumerate()
-    train_dataset = train_dataset.cache()
+    # save the dataset in a temporary file on SSD disc
+    train_dataset = train_dataset.cache(train_cache_file)
+    test_dataset = test_dataset.cache(test_cache_file)
     train_dataset = train_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
@@ -141,11 +147,13 @@ def main(args):
         save_checkpoint = False
 
     epoch_loss = tf.metrics.Mean()
+    test_loss = tf.metrics.Mean()
     best_loss = np.inf
     patience = args.patience
     step = 0
     for epoch in range(args.epochs):
         epoch_loss.reset_states()
+        test_loss.reset_states()
         with train_writer.as_default():
             for batch, (X, PSF, PS) in train_dataset:
                 with tf.GradientTape() as tape:
@@ -171,7 +179,7 @@ def main(args):
                 step += 1
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         with test_writer.as_default():
-            for batch, (X, PSF, PS) in test_dataset:
+            for X, PSF, PS in test_dataset:
                 test_cost = tf.reduce_mean(AE.training_cost_function(
                     x=X,
                     psf=PSF,
@@ -182,8 +190,9 @@ def main(args):
                     apodization_factor=args.apodization_factor,
                     tv_factor=args.tv_factor
                 ))
-        tf.summary.scalar("MSE", test_cost, step=step)
-        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_cost.numpy():.3e} "
+                test_loss.update_state([test_cost])
+        tf.summary.scalar("MSE", test_loss.result(), step=step)
+        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {test_loss.result().numpy():.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e}")
         if epoch_loss.result() < (1 - args.tolerance) * best_loss:
             best_loss = epoch_loss.result()
