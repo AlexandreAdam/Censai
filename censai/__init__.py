@@ -1,2 +1,2 @@
 from censai.models.ray_tracer512 import RayTracer512
-from censai.physical_model import PhysicalModel
+from .physical_model import PhysicalModel

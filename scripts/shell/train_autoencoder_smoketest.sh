@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --tasks=1
-#SBATCH --cpus-per-task=6 # maximum cpu per task is 3.5 per gpus
+#SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=0-01:00		# time (DD-HH:MM)
@@ -17,7 +17,7 @@ python ../train_cosmos_autoencoder.py\
   --examples_per_shard=1000\
   --batch_size=100\
   --epochs=1\
-  --learning_rate=1e-3\
+  --learning_rate=1e-4\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models/\
   --logname="cosmosAE_smoketest"\

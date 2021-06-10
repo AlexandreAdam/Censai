@@ -27,7 +27,10 @@ class Encoder(tf.keras.Model):
         self._num_layers = res_layers
         self.res_blocks = []
         self.downsample_conv = []
-        self.mlp_bottleneck = tf.keras.layers.Dense(mlp_bottleneck_neurons)
+        self.mlp_bottleneck = tf.keras.layers.Dense(
+            units=mlp_bottleneck_neurons,
+            kernel_regularizer=tf.keras.regularizers.l2(l2=0.01)
+        )
         for i in range(res_layers):
             self.downsample_conv.append(
                 tf.keras.layers.Conv2D(
@@ -132,7 +135,17 @@ class Decoder(tf.keras.Model):
                     **kwargs
                 )
             )
-        self.mlp_bottleneck = tf.keras.layers.Dense(mlp_bottleneck)
+        self.mlp_bottleneck = tf.keras.layers.Dense(
+            units=mlp_bottleneck,
+            kernel_regularizer=tf.keras.regularizers.l2(l2=0.01)
+        )
+        self.output_layer = tf.keras.layers.Conv2D(
+            filters=1,
+            kernel_size=3,
+            padding="SAME",
+            activation=tf.keras.activations.softplus,  # ensures output positivity
+            kernel_initializer=kernel_initializer,
+        )
 
     def __call__(self, z):
         return self.call(z)
@@ -144,6 +157,7 @@ class Decoder(tf.keras.Model):
         for i in range(self._num_layers):
             x = self.upsample_conv[i](x)
             x = self.res_blocks[i](x)
+        x = self.output_layer(x)
         return x
 
     def call_with_skip_connections(self, z, skips: list, skip_strength, l2):
@@ -156,6 +170,7 @@ class Decoder(tf.keras.Model):
             x = tf.add(x, skip_strength * skips[i+1])
             x = self.upsample_conv[i](x)
             x = self.res_blocks[i](x)
+        x = self.output_layer(x)
         return x, bottleneck_l2_cost
 
 
@@ -216,13 +231,6 @@ class Autoencoder(tf.keras.Model):
             **kwargs
         )
 
-    def link_function(self, x):
-        return tf.math.log(x + self.image_floor)
-
-    @staticmethod
-    def inverse_link_function(eta):
-        return tf.math.exp(eta)
-
     def encode(self, x, psf):
         """
 
@@ -238,8 +246,6 @@ class Autoencoder(tf.keras.Model):
         # Roll the image to undo the fftshift, assuming x1 zero padding and x2 subsampling
         psf_image = tf.roll(psf_image, shift=[input_shape[1], input_shape[2]], axis=[1, 2])
         psf_image = tf.image.resize_with_crop_or_pad(psf_image, input_shape[1], input_shape[2])
-        x = self.link_function(x)
-        psf_image = self.link_function(psf_image)
         x = tf.concat([x, psf_image], axis=-1)
         return self.encoder(x)
 
@@ -250,8 +256,6 @@ class Autoencoder(tf.keras.Model):
         return self.call(x, psf)
 
     def call(self, x, psf_image):
-        x = self.link_function(x)
-        psf_image = self.link_function(psf_image)
         x = tf.concat([x, psf_image], axis=-1)
         return self.decoder(self.encoder(x))
 
@@ -267,7 +271,6 @@ class Autoencoder(tf.keras.Model):
 
         """
         x_pred = self.decode(self.encode(x, psf))
-        x_pred = self.inverse_link_function(x_pred)
         x_pred = convolve(x_pred, tf.cast(psf[..., 0], tf.complex64), zero_padding_factor=1)
 
         x = tf.signal.rfft2d(x[..., 0])
@@ -300,13 +303,10 @@ class Autoencoder(tf.keras.Model):
         # Roll the image to undo the fftshift, assuming x1 zero padding and x2 subsampling
         psf_image = tf.roll(psf_image, shift=[input_shape[1], input_shape[2]], axis=[1, 2])
         psf_image = tf.image.resize_with_crop_or_pad(psf_image, input_shape[1], input_shape[2])
-        x = self.link_function(x)
-        psf_image = self.link_function(psf_image)
         x = tf.concat([x, psf_image], axis=-1)
 
         z, skips = self.encoder.call_with_skip_connections(x)
         x_pred, bottleneck_l2_cost = self.decoder.call_with_skip_connections(z, skips, skip_strength, l2_bottleneck)
-        x_pred = self.inverse_link_function(x_pred)
         x_pred = convolve(x_pred, tf.cast(psf[..., 0], tf.complex64), zero_padding_factor=1) # we already padded psf with noise in data preprocessing
 
         # We apply an optional apodization of the output before taking the

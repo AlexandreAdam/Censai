@@ -3,7 +3,7 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
-#SBATCH --time=6-00:00		# time (DD-HH:MM)
+#SBATCH --time=2-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_Autoencoder
 #SBATCH --output=%x-%j.out
@@ -15,7 +15,7 @@ python ../train_cosmos_autoencoder.py\
   --split=0.9\
   --test_shards=2\
   --examples_per_shard=1000\
-  --batch_size=20\
+  --batch_size=100\
   --epochs=50\
   --learning_rate=1e-3\
   --decay_rate=0.9\
