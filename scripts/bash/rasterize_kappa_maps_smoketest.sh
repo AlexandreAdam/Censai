@@ -9,8 +9,8 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../rasterize_kappa_maps.py \
-  --output_dir=$HOME/scratch/Censai/results \
-  --subhalo_id=$HOME/scratch/Censai/data/subhalo_id.npy \
+  --output_dir=$HOME/scratch/Censai/data \
+  --subhalo_id=$HOME/scratch/Censai/data/subhalo_TNG100-1_id.npy \
   --projection=xy \
   --pixels=612 \
   --smoke_test
