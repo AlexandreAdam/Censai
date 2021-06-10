@@ -12,9 +12,9 @@ python ../cosmos_to_tfrecords.py\
   --img_len=128\
   --example_per_shard=1000\
   --do_all\
-  --sample=25.2\
+  --sample=23.5\
   --exclusion_level=marginal\
-  --cosmos_dir=$HOME/scratch/data/COSMOS/COSMOS_25.2_training_sample/\
+  --cosmos_dir=$HOME/scratch/data/COSMOS/COSMOS_23.5_training_sample/\
   --store_attributes\
   --rotation\
-  --output_dir=$HOME/scratch/Censai/data/cosmos_25.2/
+  --output_dir=$HOME/scratch/Censai/data/cosmos_23.5/

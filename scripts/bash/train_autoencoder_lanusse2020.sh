@@ -25,10 +25,10 @@ python ../train_cosmos_autoencoder.py\
   --apodization_factor=1e-3\
   --tv_factor=1e-3\
   --l2_bottleneck=1\
-  --l2_bottleneck_decay_steps=5000\
+  --l2_bottleneck_decay_steps=2000\
   --l2_bottleneck_decay_power=0.5\
   --skip_strength=0.5\
-  --skip_strength_decay_steps=5000\
+  --skip_strength_decay_steps=2000\
   --skip_strength_decay_power=0.5\
   --res_architecture="full_pre_activation_rescale"\
   --logdir=$HOME/scratch/Censai/logs\
