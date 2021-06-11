@@ -31,7 +31,7 @@ def distributed_strategy(args):
             kappa = np.stack([kap["PRIMARY"].data[np.newaxis, ..., np.newaxis] for kap in kappa_fits], axis=0)
             kappa = kappa[..., args.crop:args.pixels-args.crop, args.crop:args.pixels-args.crop, :]
             if args.augment:
-                factors = 1 + np.random.exponential(1/kappa.max(axis=(1, 2, 3)), size=args.batch)
+                factors = 1 + np.random.exponential(1/kappa.max(axis=(1, 2, 3)))
                 kappa *= factors[..., np.newaxis, np.newaxis, np.newaxis]
             alpha = phys.deflection_angle(kappa).numpy()  # compute labels here, bring back to numpy
 
