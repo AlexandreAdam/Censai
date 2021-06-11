@@ -72,6 +72,8 @@ class PhysicalModel:
         # we have to compute everything here from scratch to get gradient paths
         x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
         theta_x, theta_y = tf.meshgrid(x, x)
+        theta_x = tf.cast(theta_x, DTYPE)
+        theta_y = tf.cast(theta_y, DTYPE)
         theta_x = tf.Variable(theta_x[..., tf.newaxis, tf.newaxis], dtype=DTYPE) # [..., in_channels, out_channels]
         theta_y = tf.Variable(theta_y[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
         with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
