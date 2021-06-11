@@ -72,7 +72,7 @@ class PhysicalModel:
         x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
         theta_x, theta_y = tf.meshgrid(x, x)
         theta_x = theta_x[tf.newaxis, ..., tf.newaxis]
-        theta_y = theta_x[tf.newaxis, ..., tf.newaxis]
+        theta_y = theta_y[tf.newaxis, ..., tf.newaxis]
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(theta_x)
             tape.watch(theta_y)
