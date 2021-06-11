@@ -33,7 +33,7 @@ def distributed_strategy(args):
             if args.augment:
                 factors = 1 + np.random.exponential(1/kappa.max(axis=(1, 2, 3)))
                 kappa *= factors[..., np.newaxis, np.newaxis, np.newaxis]
-            alpha = phys.deflection_angle(kappa).numpy()  # compute labels here, bring back to numpy
+            alpha = tf.concat(phys.deflection_angle(kappa), axis=-1).numpy()  # compute labels here, bring back to numpy
 
             for j in range(args.batch):
                 features = {
