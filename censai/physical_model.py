@@ -71,10 +71,9 @@ class PhysicalModel:
         """
         # we have to compute everything here from scratch to get gradient paths
         x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
-        x = tf.cast(x, DTYPE)
         theta_x, theta_y = tf.meshgrid(x, x)
-        theta_x = theta_x[..., tf.newaxis, tf.newaxis]  # [..., in_channels, out_channels]
-        theta_y = theta_y[..., tf.newaxis, tf.newaxis]
+        theta_x = tf.Variable(theta_x[..., tf.newaxis, tf.newaxis], dtype=DTYPE) # [..., in_channels, out_channels]
+        theta_y = tf.Variable(theta_y[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
         with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
             tape.watch(theta_x)
             tape.watch(theta_y)
@@ -94,10 +93,10 @@ class PhysicalModel:
             x_src = theta_x - alpha_x
             y_src = theta_y - alpha_y
         # if target is not connected to source, make sure gradient return tensor of ZERO not NONE
-        j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)#[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)#[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)#[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        j22 = tape.gradient(y_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)#[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j22 = tape.gradient(y_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
         # put in a shape for which tf.linalg.det is easy to use (shape = [..., 2, 2])
         j1 = tf.concat([j11, j12], axis=3)
         j2 = tf.concat([j21, j22], axis=3)
