@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 from censai.models.ray_tracer import RayTracer
 import tensorflow_addons as tfa
+from censai.definitions import DTYPE
 
 
 class PhysicalModel:
@@ -70,6 +71,7 @@ class PhysicalModel:
         """
         # we have to compute everything here from scratch to get gradient paths
         x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
+        x = tf.cast(x, DTYPE)
         theta_x, theta_y = tf.meshgrid(x, x)
         theta_x = theta_x[..., tf.newaxis, tf.newaxis]  # [..., in_channels, out_channels]
         theta_y = theta_y[..., tf.newaxis, tf.newaxis]
@@ -91,7 +93,7 @@ class PhysicalModel:
             # lens equation
             x_src = theta_x - alpha_x
             y_src = theta_y - alpha_y
-        # if target is not connected to source, make sure gradient return tensor of ZERO no NONE
+        # if target is not connected to source, make sure gradient return tensor of ZERO not NONE
         j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
         j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
         j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
