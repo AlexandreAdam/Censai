@@ -17,7 +17,7 @@ this_worker = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 def distributed_strategy(args):
     phys = PhysicalModel(image_side=args.image_fov, src_side=args.source_fov, pixels=args.pixels,
-                         kappa_side=args.kappa_fov, method="conv2d", noise_rms=1e-4)
+                         kappa_side=args.kappa_fov, method="conv2d")
     kappa_files = glob.glob(os.path.join(args.kappa_dir, "*.fits"))
     if args.smoke_test:
         kappa_files = kappa_files[:N_WORKERS*args.batch]
@@ -61,8 +61,6 @@ if __name__ == '__main__':
                         help="Number of pixels on a side of the image in the lens plane")
     parser.add_argument("--kappa_fov", default=16, type=int,
                         help="Field of view of the kappa map")
-    parser.add_argument("--noise_rms", default=1e-4, type=float,
-                        help="RMS of white noise applied to lensed image")
     parser.add_argument("--batch", default=1, type=int,
                         help="Number of label maps to be computed at the same time")
     parser.add_argument("--crop", default=0, type=int,
