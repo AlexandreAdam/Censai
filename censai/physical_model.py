@@ -60,9 +60,19 @@ class PhysicalModel:
         return im
 
     def lens_source_and_compute_jacobian(self, source, kappa):
+        """
+        Note: this method will return a different picture than forward if image_side != kappa_side
+        Args:
+            source: Batch of source brightness distributions
+            kappa: Batch of kappa maps
+
+        Returns: lens image, jacobian matrix
+        """
         # we have to compute everything here from scratch to get gradient paths
         x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
         theta_x, theta_y = tf.meshgrid(x, x)
+        theta_x = theta_x[tf.newaxis, ..., tf.newaxis]
+        theta_y = theta_x[tf.newaxis, ..., tf.newaxis]
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(theta_x)
             tape.watch(theta_y)
@@ -77,10 +87,10 @@ class PhysicalModel:
             # lens equation
             x_src = theta_x - alpha_x
             y_src = theta_y - alpha_y
-        j11 = tape.gradient(x_src, theta_x)[..., self.pixels//2: int(3*self.pixels//2), :]
-        j12 = tape.gradient(x_src, theta_y)[..., self.pixels//2: int(3*self.pixels//2), :]
-        j21 = tape.gradient(y_src, theta_x)[..., self.pixels//2: int(3*self.pixels//2), :]
-        j22 = tape.gradient(y_src, theta_y)[..., self.pixels//2: int(3*self.pixels//2), :]
+        j11 = tape.gradient(x_src, theta_x)[..., self.pixels//2: 3*self.pixels//2, :]
+        j12 = tape.gradient(x_src, theta_y)[..., self.pixels//2: 3*self.pixels//2, :]
+        j21 = tape.gradient(y_src, theta_x)[..., self.pixels//2: 3*self.pixels//2, :]
+        j22 = tape.gradient(y_src, theta_y)[..., self.pixels//2: 3*self.pixels//2, :]
         # put in a shape for which tf.linalg.det is easy to use (shape = [..., 2, 2])
         j1 = tf.concat([j11, j12], axis=3)
         j2 = tf.concat([j21, j22], axis=3)
@@ -90,8 +100,6 @@ class PhysicalModel:
         wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
         im = tfa.image.resampler(source, wrap)
         return im, jacobian
-
-
 
     def src_coord_to_pix(self, x, y):
         dx = self.src_side/(self.pixels - 1)
