@@ -44,8 +44,7 @@ class PhysicalModel:
     def forward(self, source, kappa):
         if self.logkappa:
             kappa = 10**kappa
-        x_src, y_src, _, _ = self.deflection_angle(kappa)
-        im = self.lens_source(x_src, y_src, source)
+        im = self.lens_source(source, kappa)
         return im
 
     def noisy_forward(self, source, kappa, noise_rms):
@@ -53,11 +52,46 @@ class PhysicalModel:
         noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
         return im + noise
 
-    def lens_source(self, x_src, y_src, source):
+    def lens_source(self, source, kappa):
+        x_src, y_src, _, _ = self.deflection_angle(kappa)
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
-        wrap = tf.concat([x_src_pix, y_src_pix], axis=-1) # stack create new dimension
-        im = tfa.image.resampler(source, wrap) # bilinear interpolation of source on wrap grid
+        wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
+        im = tfa.image.resampler(source, wrap)  # bilinear interpolation of source on wrap grid
         return im
+
+    def lens_source_and_compute_jacobian(self, source, kappa):
+        # we have to compute everything here from scratch to get gradient paths
+        x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
+        theta_x, theta_y = tf.meshgrid(x, x)
+        with tf.GradientTape(persistent=True) as tape:
+            tape.watch(theta_x)
+            tape.watch(theta_y)
+            rho = theta_x**2 + theta_y**2
+            kernel_x = - tf.math.divide_no_nan(theta_x, rho)
+            kernel_y = - tf.math.divide_no_nan(theta_y, rho)
+            # compute deflection angles
+            alpha_x = tf.nn.conv2d(kappa, kernel_x, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
+            alpha_y = tf.nn.conv2d(kappa, kernel_y, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
+            # pad deflection angles with zeros outside of the scene
+            alpha_x = tf.pad(alpha_x, [[self.pixels//2, self.pixels//2 + 1]]*2)
+            # lens equation
+            x_src = theta_x - alpha_x
+            y_src = theta_y - alpha_y
+        j11 = tape.gradient(x_src, theta_x)[..., self.pixels//2: int(3*self.pixels//2), :]
+        j12 = tape.gradient(x_src, theta_y)[..., self.pixels//2: int(3*self.pixels//2), :]
+        j21 = tape.gradient(y_src, theta_x)[..., self.pixels//2: int(3*self.pixels//2), :]
+        j22 = tape.gradient(y_src, theta_y)[..., self.pixels//2: int(3*self.pixels//2), :]
+        # put in a shape for which tf.linalg.det is easy to use (shape = [..., 2, 2])
+        j1 = tf.concat([j11, j12], axis=3)
+        j2 = tf.concat([j21, j22], axis=3)
+        jacobian = tf.stack([j1, j2], axis=-1)
+        # lens the source brightness distribution
+        x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
+        wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
+        im = tfa.image.resampler(source, wrap)
+        return im, jacobian
+
+
 
     def src_coord_to_pix(self, x, y):
         dx = self.src_side/(self.pixels - 1)
