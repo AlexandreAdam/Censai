@@ -83,7 +83,7 @@ class PhysicalModel:
             alpha_x = tf.nn.conv2d(kappa, kernel_x, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
             alpha_y = tf.nn.conv2d(kappa, kernel_y, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
             # pad deflection angles with zeros outside of the scene
-            alpha_x = tf.pad(alpha_x, [[0, self.pixels//2, self.pixels//2 + 1, 0]]*2)
+            alpha_x = tf.pad(alpha_x, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
             # reshape theta's to broadcast properly onto alpha
             theta_x = tf.reshape(theta_x, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1])
             theta_y = tf.reshape(theta_y, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1])
