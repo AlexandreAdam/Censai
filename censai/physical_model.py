@@ -71,8 +71,8 @@ class PhysicalModel:
         # we have to compute everything here from scratch to get gradient paths
         x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
         theta_x, theta_y = tf.meshgrid(x, x)
-        theta_x = theta_x[tf.newaxis, ..., tf.newaxis]
-        theta_y = theta_y[tf.newaxis, ..., tf.newaxis]
+        theta_x = theta_x[..., tf.newaxis, tf.newaxis]  # [..., in_channels, out_channels]
+        theta_y = theta_y[..., tf.newaxis, tf.newaxis]
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(theta_x)
             tape.watch(theta_y)
@@ -83,7 +83,10 @@ class PhysicalModel:
             alpha_x = tf.nn.conv2d(kappa, kernel_x, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
             alpha_y = tf.nn.conv2d(kappa, kernel_y, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
             # pad deflection angles with zeros outside of the scene
-            alpha_x = tf.pad(alpha_x, [[self.pixels//2, self.pixels//2 + 1]]*2)
+            alpha_x = tf.pad(alpha_x, [[0, self.pixels//2, self.pixels//2 + 1, 0]]*2)
+            # reshape theta's to broadcast properly onto alpha
+            theta_x = tf.reshape(theta_x, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1])
+            theta_y = tf.reshape(theta_y, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1])
             # lens equation
             x_src = theta_x - alpha_x
             y_src = theta_y - alpha_y
