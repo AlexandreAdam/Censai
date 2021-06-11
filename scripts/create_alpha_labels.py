@@ -28,7 +28,7 @@ def distributed_strategy(args):
             kappa_ids = [filename.split("_")[1] for filename in filenames]  # format is kappa_{id}_xy.fits
             kappa_fits = [fits.open(file) for file in files]
             # add missing batch and channel dimension to kappa map, then stack them along batch dim
-            kappa = np.stack([kap["PRIMARY"].data[np.newaxis, ..., np.newaxis] for kap in kappa_fits], axis=0)
+            kappa = np.concat([kap["PRIMARY"].data[np.newaxis, ..., np.newaxis] for kap in kappa_fits], axis=0)
             kappa = kappa[..., args.crop:args.pixels-args.crop, args.crop:args.pixels-args.crop, :]
             if args.augment:
                 factors = 1 + np.random.exponential(1/kappa.max(axis=(1, 2, 3)))
