@@ -23,7 +23,7 @@ def distributed_strategy(args):
         kappa_files = kappa_files[:N_WORKERS*args.batch]
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{this_worker}.tfrecords")) as writer:
         for i in range(this_worker-1, len(kappa_files), N_WORKERS * args.batch):
-            files = kappa_files[i: i + args.batch - 1]
+            files = kappa_files[i: i + args.batch]
             filenames = [os.path.split(file)[-1] for file in files]
             kappa_ids = [int(filename.split("_")[1]) for filename in filenames]  # format is kappa_{id}_xy.fits
             kappa_fits = [fits.open(file) for file in files]
@@ -31,7 +31,7 @@ def distributed_strategy(args):
             kappa = np.concatenate([kap["PRIMARY"].data[np.newaxis, ..., np.newaxis] for kap in kappa_fits], axis=0)
             kappa = kappa[..., args.crop:args.pixels-args.crop, args.crop:args.pixels-args.crop, :]
             if args.augment:
-                factors = 1 + np.random.exponential(1/kappa.max(axis=(1, 2, 3)))
+                factors = 1 + np.random.exponential(args.exponential_rate/kappa.max(axis=(1, 2, 3)))
                 kappa *= factors[..., np.newaxis, np.newaxis, np.newaxis]
             alpha = tf.concat(phys.deflection_angle(kappa), axis=-1).numpy()  # compute labels here, bring back to numpy
 
