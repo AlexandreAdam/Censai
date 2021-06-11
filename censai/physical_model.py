@@ -94,15 +94,17 @@ class PhysicalModel:
             x_src = theta_x - alpha_x
             y_src = theta_y - alpha_y
         # if target is not connected to source, make sure gradient return tensor of ZERO not NONE
-        j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        j22 = tape.gradient(y_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)#[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)#[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)#[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j22 = tape.gradient(y_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)#[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
         # put in a shape for which tf.linalg.det is easy to use (shape = [..., 2, 2])
         j1 = tf.concat([j11, j12], axis=3)
         j2 = tf.concat([j21, j22], axis=3)
         jacobian = tf.stack([j1, j2], axis=-1)
         # lens the source brightness distribution
+        x_src = x_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        y_src = y_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
         wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
         im = tfa.image.resampler(source, wrap)
