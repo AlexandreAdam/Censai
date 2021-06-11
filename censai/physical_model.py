@@ -73,7 +73,7 @@ class PhysicalModel:
         theta_x, theta_y = tf.meshgrid(x, x)
         theta_x = theta_x[..., tf.newaxis, tf.newaxis]  # [..., in_channels, out_channels]
         theta_y = theta_y[..., tf.newaxis, tf.newaxis]
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
             tape.watch(theta_x)
             tape.watch(theta_y)
             rho = theta_x**2 + theta_y**2
@@ -91,11 +91,11 @@ class PhysicalModel:
             # lens equation
             x_src = theta_x - alpha_x
             y_src = theta_y - alpha_y
-        j11 = tape.gradient(x_src, theta_x)[..., self.pixels//2: 3*self.pixels//2, :]
-        print(j11.shape)
-        j12 = tape.gradient(x_src, theta_y)[..., self.pixels//2: 3*self.pixels//2, :]
-        j21 = tape.gradient(y_src, theta_x)[..., self.pixels//2: 3*self.pixels//2, :]
-        j22 = tape.gradient(y_src, theta_y)[..., self.pixels//2: 3*self.pixels//2, :]
+        # if target is not connected to source, make sure gradient return tensor of ZERO no NONE
+        j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j22 = tape.gradient(y_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
         # put in a shape for which tf.linalg.det is easy to use (shape = [..., 2, 2])
         j1 = tf.concat([j11, j12], axis=3)
         j2 = tf.concat([j21, j22], axis=3)
