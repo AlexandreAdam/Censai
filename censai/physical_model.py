@@ -64,11 +64,12 @@ class PhysicalModel:
         """
         Note: this method will return a different picture than forward if image_side != kappa_side
         Args:
-            source: Batch of source brightness distributions
-            kappa: Batch of kappa maps
+            source: A source brightness distributions
+            kappa: A kappa maps
 
         Returns: lens image, jacobian matrix
         """
+        assert source.shape[0] == 1, "For now, this only works for a single example"
         # we have to compute everything here from scratch to get gradient paths
         x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
         theta_x, theta_y = tf.meshgrid(x, x)
@@ -93,10 +94,15 @@ class PhysicalModel:
             x_src = tf.reshape(theta_x, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_x
             y_src = tf.reshape(theta_y, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_y
         # if target is not connected to source, make sure gradient return tensor of ZERO not NONE
-        j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        j22 = tape.gradient(y_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+        j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
+        j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
+        j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
+        j22 = tape.gradient(y_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
+        # reshape gradients to [batch, pixels, pixels, channels] shape. TODO make the above code work for batch != 1
+        j11 = tf.reshape(j11, [1, self.pixels, self.pixels, 1])
+        j12 = tf.reshape(j12, [1, self.pixels, self.pixels, 1])
+        j21 = tf.reshape(j21, [1, self.pixels, self.pixels, 1])
+        j22 = tf.reshape(j22, [1, self.pixels, self.pixels, 1])
         # put in a shape for which tf.linalg.det is easy to use (shape = [..., 2, 2])
         j1 = tf.concat([j11, j12], axis=3)
         j2 = tf.concat([j21, j22], axis=3)
