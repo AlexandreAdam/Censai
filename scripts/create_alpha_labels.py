@@ -40,7 +40,7 @@ def distributed_strategy(args):
                         "kappa": _bytes_feature(kappa[j].tobytes()),
                         "pixels": _int64_feature(args.pixels),
                         "alpha": _bytes_feature(alpha[j].tobytes()),
-                        "rescale": _float_feature(1.),
+                        "rescale": _float_feature(factors[j]),
                         "sigma_crit": _float_feature(kappa_fits[j][0].header["SIGCRIT"]),
                         "kappa_id": _int64_feature(kappa_ids[j])
                     }
