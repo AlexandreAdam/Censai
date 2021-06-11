@@ -92,6 +92,7 @@ class PhysicalModel:
             x_src = theta_x - alpha_x
             y_src = theta_y - alpha_y
         j11 = tape.gradient(x_src, theta_x)[..., self.pixels//2: 3*self.pixels//2, :]
+        print(j11.shape)
         j12 = tape.gradient(x_src, theta_y)[..., self.pixels//2: 3*self.pixels//2, :]
         j21 = tape.gradient(y_src, theta_x)[..., self.pixels//2: 3*self.pixels//2, :]
         j22 = tape.gradient(y_src, theta_y)[..., self.pixels//2: 3*self.pixels//2, :]
