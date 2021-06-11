@@ -74,8 +74,8 @@ class PhysicalModel:
         theta_x, theta_y = tf.meshgrid(x, x)
         theta_x = tf.cast(theta_x, DTYPE)
         theta_y = tf.cast(theta_y, DTYPE)
-        theta_x = tf.Variable(theta_x[..., tf.newaxis, tf.newaxis], dtype=DTYPE) # [..., in_channels, out_channels]
-        theta_y = tf.Variable(theta_y[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
+        theta_x = theta_x[..., tf.newaxis, tf.newaxis] # [..., in_channels, out_channels]
+        theta_y = theta_y[..., tf.newaxis, tf.newaxis]
         with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
             tape.watch(theta_x)
             tape.watch(theta_y)
@@ -89,11 +89,9 @@ class PhysicalModel:
             alpha_x = tf.pad(alpha_x, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
             alpha_y = tf.pad(alpha_y, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
             # reshape thetas to broadcast properly onto alpha
-            theta_x = tf.reshape(theta_x, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1])
-            theta_y = tf.reshape(theta_y, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1])
             # lens equation
-            x_src = theta_x - alpha_x
-            y_src = theta_y - alpha_y
+            x_src = tf.reshape(theta_x, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_x
+            y_src = tf.reshape(theta_y, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_y
         # if target is not connected to source, make sure gradient return tensor of ZERO not NONE
         j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
         j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
