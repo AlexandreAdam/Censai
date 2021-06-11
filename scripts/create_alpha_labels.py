@@ -25,7 +25,7 @@ def distributed_strategy(args):
         for i in range(this_worker-1, len(kappa_files), N_WORKERS * args.batch):
             files = kappa_files[i: i + args.batch - 1]
             filenames = [os.path.split(file)[-1] for file in files]
-            kappa_ids = [filename.split("_")[1] for filename in filenames]  # format is kappa_{id}_xy.fits
+            kappa_ids = [int(filename.split("_")[1]) for filename in filenames]  # format is kappa_{id}_xy.fits
             kappa_fits = [fits.open(file) for file in files]
             # add missing batch and channel dimension to kappa map, then stack them along batch dim
             kappa = np.concatenate([kap["PRIMARY"].data[np.newaxis, ..., np.newaxis] for kap in kappa_fits], axis=0)
