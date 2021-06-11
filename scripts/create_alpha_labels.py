@@ -22,7 +22,7 @@ def distributed_strategy(args):
     if args.smoke_test:
         kappa_files = kappa_files[:N_WORKERS*args.batch]
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{this_worker}.tfrecords")) as writer:
-        for i in range(this_worker-1, len(kappa_files), N_WORKERS * args.batch):
+        for i in range(this_worker-1 * args.batch, len(kappa_files), N_WORKERS * args.batch):
             files = kappa_files[i: i + args.batch]
             filenames = [os.path.split(file)[-1] for file in files]
             kappa_ids = [int(filename.split("_")[1]) for filename in filenames]  # format is kappa_{id}_xy.fits
