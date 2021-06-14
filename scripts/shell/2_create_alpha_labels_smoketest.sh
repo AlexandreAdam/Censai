@@ -6,7 +6,7 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=0-00:10		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Creat-Alpha-Labels-SmokeTest
+#SBATCH --job-name=Create-Alpha-Labels-SmokeTest
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../create_alpha_labels.py \
