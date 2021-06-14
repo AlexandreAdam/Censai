@@ -177,6 +177,8 @@ def distributed_strategy(args):
         subhalo_fileoffsets = f["FileOffsets"]["Subhalo"][:]
 
     tot_chunks = offsets.shape[0]
+    with h5py.File(os.path.join(args.snapshot_dir, f"snap_{args.snapshot_id:03d}.0.hdf5"), "r") as f:
+        box_size = dict(f['Header'].attrs.items())["BoxSize"]/1e3
 
     # start hard work here
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
@@ -215,7 +217,7 @@ def distributed_strategy(args):
         with h5py.File(fof_datapath, "r") as f:
             centroid = f["Subhalo"]["SubhaloCM"][subhalo_index] / 1e3
 
-        coords = fixed_boundary_coordinates(coords, centroid, args.box_size)
+        coords = fixed_boundary_coordinates(coords, centroid, box_size)
         x = coords[:, dims[0]]  # projection
         y = coords[:, dims[1]]
 
@@ -281,7 +283,12 @@ def distributed_strategy(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    # parser.add_argument("--groupcat", default="/home/aadam/projects/rrg-lplevass/aadam/illustrisTNG300-1_snapshot99_groupcat")
+    parser.add_argument("--offsets", required=True, type=str, help="Path to offset file (hfd5)")
+    parser.add_argument("--groupcat_dir", required=True, type=str,
+                        help="Directory of of groupcat files for the snapshot of interest")
+    parser.add_argument("--snapshot_dir", required=True, help="Root directory of the snapshot")
+    parser.add_argument("--snapshot_id", required=True, type=int,
+                        help="Should match id of snapshot given in snapshot argument")
     parser.add_argument("--output_dir", required=True, type=str,
                         help="Directory where to save raster images (fits file)")
     parser.add_argument("--subhalo_id", required=True, type=str,
@@ -292,16 +299,9 @@ if __name__ == '__main__':
     parser.add_argument("--pixels", default=512, type=int, help="Number of pixels in the raster image")
     parser.add_argument("--n_neighbors", default=10, type=int, help="Number of neighbors used to compute kernel length")
     parser.add_argument("--fw_param", default=2, type=float,
-                        help="Mean distance of neighbors is interpreted as FW at (1/fw_param) of the maximum of the gaussian")
-    parser.add_argument("--offsets", default="/home/aadam/scratch/data/TNG300-1/offsets/offsets_099.hdf5")
-    parser.add_argument("--groupcat_dir",
-                        default="/home/aadam/projects/rrg-lplevass/aadam/illustrisTNG300-1_snapshot99_groupcat/")
-    parser.add_argument("--snapshot_dir",
-                        default="/home/aadam/scratch/data/TNG300-1/snapshot99/", help="Root directory of the snapshot")
-    parser.add_argument("--snapshot_id", default=99, type=int,
-                        help="Should match id of snapshot given in snapshot argument")
+                        help="Mean distance of neighbors is interpreted as "
+                             "FW at (1/fw_param) of the maximum of the gaussian")
     parser.add_argument("--fov", default=1, type=float, help="Field of view of a scene in comoving Mpc")
-    parser.add_argument("--box_size", default=205, type=float, help="Box size of the simulation, in Mpc")
     parser.add_argument("--z_source", default=1.5, type=float)
     parser.add_argument("--z_lens", default=0.5, type=float)
     parser.add_argument("--smoke_test", action="store_true")
