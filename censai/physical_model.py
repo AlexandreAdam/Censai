@@ -89,11 +89,10 @@ class PhysicalModel:
             # pad deflection angles with zeros outside of the scene (these are cropped out latter)
             alpha_x = tf.pad(alpha_x, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
             alpha_y = tf.pad(alpha_y, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
-            # reshape thetas to broadcast properly onto alpha
-            # lens equation
+            # lens equation (reshape thetas to broadcast properly onto alpha)
             x_src = tf.reshape(theta_x, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_x
             y_src = tf.reshape(theta_y, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_y
-        # if target is not connected to source, make sure gradient return tensor of ZERO not NONE
+        # if target is not connected to source, make sure gradient return tensor of ZERO not NONE, also crop gradients
         j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
         j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
         j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
