@@ -168,7 +168,7 @@ def distributed_strategy(args):
     subhalo_ids = np.load(args.subhalo_id)
     if args.smoke_test:
         print("smoke_test")
-        subhalo_ids = np.array([10])#np.array([41585])
+        subhalo_ids = np.array([args.smoke_test_id])#np.array([52623])#np.array([41585])
     if "done.txt" in os.listdir(args.output_dir):  # for checkpointing
         done = np.loadtxt(os.path.join(args.output_dir, "done.txt"))
         done_dim0 = done[:, 1]
@@ -322,6 +322,7 @@ if __name__ == '__main__':
     parser.add_argument("--use_gpu", action="store_true", help="Will rasterize with tensorflow.experimental.numpy")
     parser.add_argument("--batch_size", default=1, type=int, help="Number of particles to rasterize at the same time")
     parser.add_argument("--smoke_test", action="store_true")
+    parser.add_argument("--smoke_test_id", default=10, type=int, help="Subhalo to do smoke test on")
     args = parser.parse_args()
 
     distributed_strategy(args)
