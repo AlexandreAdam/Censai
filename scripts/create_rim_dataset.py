@@ -24,9 +24,16 @@ def distributed_strategy(args):
     cosmos = tf.data.TFRecordDataset(cosmos_files).map(decode).map(preprocess)
     if args.shuffle_cosmos:
         cosmos = cosmos.shuffle(buffer_size=args.shuffle_buffer_size)
+    cosmos = cosmos.batch(args.batch)
 
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{this_worker}.tfrecords")) as writer:
         for i in range((this_worker-1) * args.batch, args.len_dataset, N_WORKERS * args.batch):
+            # for a given batch, we select unique kappa maps
+            batch_indices = np.random.choice(list(range(len(kappa_files))), replace=False, size=args.batch)
+            kappa = []
+            for file in kappa_files[batch_indices]:
+                kappa.append(fits.open(file))
+
             for j in range(args.batch):
                 features = {
                 }

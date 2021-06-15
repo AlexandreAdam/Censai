@@ -9,10 +9,23 @@ class PhysicalModel:
     """
     Physical model to be passed to RIM class at instantiation
     """
-    def __init__(self, image_side=7.68, src_side=3.0, pixels=256, kappa_side=7.68, method="conv2d", noise_rms=1, logkappa=False, checkpoint_path=None):
+    def __init__(
+            self,
+            pixels,  # 512
+            src_pixels=None,  # 128 for cosmos
+            image_side=7.68,
+            src_side=3.0,
+            kappa_side=7.68,
+            method="conv2d",
+            noise_rms=1,
+            logkappa=False,
+            checkpoint_path=None):
+        if src_pixels is None:
+            src_pixels = pixels  # assume src has the same shape
         self.image_side = image_side
         self.src_side = src_side
         self.pixels = pixels
+        self.src_pixels = src_pixels
         self.kappa_side = kappa_side
         self.method = method
         self.noise_rms = noise_rms
@@ -54,6 +67,7 @@ class PhysicalModel:
         return im + noise
 
     def lens_source(self, source, kappa):
+        batch_size = source.shape[0]
         x_src, y_src, _, _ = self.deflection_angle(kappa)
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
         wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
@@ -115,7 +129,7 @@ class PhysicalModel:
         return im, jacobian
 
     def src_coord_to_pix(self, x, y):
-        dx = self.src_side/(self.pixels - 1)
+        dx = self.src_side/(self.src_pixels - 1)
         xmin = -0.5 * self.src_side
         ymin = -0.5 * self.src_side
         i_coord = (x - xmin) / dx
@@ -150,7 +164,7 @@ class PhysicalModel:
 
 
 class AnalyticalPhysicalModel: 
-    def __init__(self, src_side=3.0, pixels=256, kappa_side=7.68, theta_c=0.1):
+    def __init__(self, src_side=3.0, pixels=256, kappa_side=7.68, theta_c=1e-4):
         self.src_side = src_side
         self.pixels = pixels
         self.kappa_side = kappa_side
