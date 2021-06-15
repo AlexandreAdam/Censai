@@ -101,7 +101,7 @@ def encode_examples(hparams, task_id=0, sample="25.2", cosmos_dir=None, exclusio
 
     for ind in index:
         # Draw a galaxy using GalSim, any kind of operation can be done here
-        gal = catalog.makeGalaxy(ind, noise_pad_size=hparams.img_len * hparams.pixel_scale*2)
+        gal = catalog.makeGalaxy(ind, noise_pad_size=hparams.img_len * hparams.pixel_scale)
         psf = gal.original_psf
 
         # Apply random rotation if requested
