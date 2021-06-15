@@ -85,8 +85,8 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         _np = np  # regular numpy
     else:
         _np = tnp  # tensorflow version of numpy
-    x = _np.linspace(xmin, xmax, pixels, type=_np.float32)
-    y = _np.linspace(ymin, ymax, pixels, type=_np.float32)
+    x = _np.linspace(xmin, xmax, pixels, dtype=_np.float32)
+    y = _np.linspace(ymin, ymax, pixels, dtype=_np.float32)
     x, y = _np.meshgrid(x, y)
     pixel_grid = _np.stack([x, y], axis=-1)
 
