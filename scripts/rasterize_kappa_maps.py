@@ -23,12 +23,12 @@ this_worker = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
 
 def numpy_dataset(coords, masses, ell_hat, batch_size):
     """
-
+    Used in rasterize function when use_gpu=False
     Args:
         coords: Projected coordinate (2d) of particles
         masses: Masse of the particles
         ell_hat: Shape of the kernel
-        batch_size: Number of particles to output in one go
+        batch_size: Number of particles data to output each iterations
 
     Yields: Batch of coords, masses and ell_hat
     """
@@ -36,19 +36,28 @@ def numpy_dataset(coords, masses, ell_hat, batch_size):
     iterations = list(range(0, int(num_particle / batch_size) * batch_size, batch_size)) + ["leftover"]
     for i in iterations:
         if i != "leftover":
-            c = coords[i:i + batch_size, :][..., np.newaxis, np.newaxis, :]
+            c = coords[i:i + batch_size, :][..., np.newaxis, np.newaxis, :]  # broadcast to shape of xi
             m = masses[i:i+batch_size, np.newaxis, np.newaxis]  # broadcast to shape of r_squared
-            ell = ell_hat[i:i + batch_size, np.newaxis, np.newaxis]
+            ell = ell_hat[i:i + batch_size, np.newaxis, np.newaxis]  # broadcast to shape of r_squared
             yield c, m, ell
         elif i == "leftover":
             leftover = num_particle % batch_size
-            c = coords[-leftover:, :][..., np.newaxis, np.newaxis, :]
+            c = coords[-leftover:, :][..., np.newaxis, np.newaxis, :]  # broadcast to shape of xi
             m = masses[-leftover:, np.newaxis, np.newaxis]  # broadcast to shape of r_squared
-            ell = ell_hat[-leftover:, np.newaxis, np.newaxis]
+            ell = ell_hat[-leftover:, np.newaxis, np.newaxis]  # broadcast to shape of r_squared
             yield c, m, ell
 
 
 def tensorflow_generator(coords, masses, ell_hat):
+    """
+    Used in rasterize function when use_gpu=True
+    Args:
+        coords: Projected coordinate (2d) of particles
+        masses: Masse of the particles
+        ell_hat: Shape of the kernel
+
+    Return: The callable generator to be fed to tensorflow dataset
+    """
     num_particle = coords.shape[0]
 
     def generator():
@@ -173,7 +182,7 @@ def load_subhalo(subhalo_id, particle_type, offsets, subhalo_offsets, snapshot_d
     coords = []
     mass = []
 
-    chunk = max(0, (subhalo_offsets[subhalo_id, particle_type] > offsets[:, particle_type]).sum() - 1)  # first chunk
+    chunk = max(0, (subhalo_offsets[subhalo_id, particle_type] >= offsets[:, particle_type]).sum() - 1)  # first chunk
     start = subhalo_offsets[subhalo_id, particle_type] - offsets[chunk, particle_type]
     subhalo_length = subhalo_offsets[subhalo_id + 1, particle_type] - subhalo_offsets[subhalo_id, particle_type]
     if subhalo_length == 0:
