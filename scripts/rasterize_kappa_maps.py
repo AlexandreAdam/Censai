@@ -128,7 +128,7 @@ def load_subhalo(subhalo_id, particle_type, offsets, subhalo_offsets, snapshot_d
     while length > 0:
         snapshot_datapath = os.path.join(snapshot_dir, f"snap_{snapshot_id:03d}.{chunk + i}.hdf5")
         with h5py.File(snapshot_datapath, "r") as f:
-            coords.append(f[f"PartType{particle_type:d}"]["Coordinates"][start:start + length, :] / 1e3)
+            coords.append(f[f"PartType{particle_type:d}"]["Coordinates"][start:start + length, :] / 1e3)  # Mpc
             if particle_type != 1:
                 mass.append(f[f"PartType{particle_type:d}"]["Masses"][start:start + length])
         i += 1
@@ -178,7 +178,7 @@ def distributed_strategy(args):
 
     tot_chunks = offsets.shape[0]
     with h5py.File(os.path.join(args.snapshot_dir, f"snap_{args.snapshot_id:03d}.0.hdf5"), "r") as f:
-        box_size = dict(f['Header'].attrs.items())["BoxSize"]/1e3
+        box_size = dict(f['Header'].attrs.items())["BoxSize"]/1e3  # box size in Mpc
 
     # start hard work here
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
@@ -205,7 +205,6 @@ def distributed_strategy(args):
         coords = np.concatenate(coords)
         mass = np.concatenate(mass)
 
-        # load subhalo position for fixed_boundary_coordinates (same comment about hardcoded numbers here)
         chunk = max(0, (subhalo_id > subhalo_fileoffsets).sum() - 1)  # first chunk
         subhalo_index = subhalo_id - subhalo_fileoffsets[chunk]
         chunk_length = subhalo_fileoffsets[min(tot_chunks-1, chunk + 1)] - subhalo_fileoffsets[min(tot_chunks-2, chunk)]
@@ -213,7 +212,7 @@ def distributed_strategy(args):
             chunk += 1
             subhalo_index -= chunk_length
             chunk_length = subhalo_fileoffsets[min(tot_chunks-1, chunk + 1)] - subhalo_fileoffsets[min(tot_chunks-2, chunk)]
-        fof_datapath = os.path.join(args.groupcat_dir, f"fof_subhalo_tab_099.{chunk}.hdf5")
+        fof_datapath = os.path.join(args.groupcat_dir, f"fof_subhalo_tab_{args.snapshot_id:03d}.{chunk}.hdf5")
         with h5py.File(fof_datapath, "r") as f:
             centroid = f["Subhalo"]["SubhaloCM"][subhalo_index] / 1e3
 
