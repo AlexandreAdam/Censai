@@ -93,10 +93,10 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     num_particle = coords.shape[0]
     Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
     for i in range(0, int(num_particle/batch_size)*batch_size, batch_size):
-        xi = coords[i:i+batch_size-1, dims][..., _np.newaxis, _np.newaxis, :] - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
+        xi = coords[i:i+batch_size, dims][..., _np.newaxis, _np.newaxis, :] - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
         r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
-        _mass = mass[i:i+batch_size-1, _np.newaxis, _np.newaxis]  # broadcast to shape of r_squared
-        _ell_hat = ell_hat[i:i+batch_size-1, _np.newaxis, _np.newaxis]
+        _mass = mass[i:i+batch_size, _np.newaxis, _np.newaxis]  # broadcast to shape of r_squared
+        _ell_hat = ell_hat[i:i+batch_size, _np.newaxis, _np.newaxis]
         Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)  # gaussian kernel
 
     # do leftover batch of particles
