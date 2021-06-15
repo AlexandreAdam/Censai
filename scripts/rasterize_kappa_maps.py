@@ -151,8 +151,7 @@ def distributed_strategy(args):
     subhalo_ids = np.load(args.subhalo_id)
     if args.smoke_test:
         print("smoke_test")
-        subhalo_ids = np.array([41585]) 
-        print(subhalo_ids.size)
+        subhalo_ids = np.array([41585])
     if "done.txt" in os.listdir(args.output_dir):  # for checkpointing
         done = np.loadtxt(os.path.join(args.output_dir, "done.txt"))
         done_dim0 = done[:, 1]
@@ -219,8 +218,6 @@ def distributed_strategy(args):
         coords = fixed_boundary_coordinates(coords, centroid, box_size)
         x = coords[:, dims[0]]  # projection
         y = coords[:, dims[1]]
-        print(x.shape)
-        print(y.shape)
 
         #  figure out coordinate where kappa is at a maximum, this is so kappa maps are nicely centered
         heatmap, xedges, yedges = np.histogram2d(x, y, bins=args.pixels, range=[[x.min(), x.max()], [y.min(), y.max()]],
