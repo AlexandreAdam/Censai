@@ -129,9 +129,9 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         signature = (tf.TensorSpec(shape=(1, 1, 2), dtype=tf.float32),
                      tf.TensorSpec(shape=(1, 1), dtype=tf.float32),
                      tf.TensorSpec(shape=(1, 1), dtype=tf.float32))
-        dataset = tf.data.Dataset.from_generator(numpy_dataset(coords[:, dims], mass, ell_hat, batch_size),
+        dataset = tf.data.Dataset.from_generator(tensorflow_generator(coords[:, dims], mass, ell_hat),
                                                  output_signature=signature)
-        dataset = dataset.batch(batch_size, drop_remainder=False).prefetch(tf.data.experimental.AUTOTUNE)
+        dataset = dataset.batch(batch_size, drop_remainder=False)#.prefetch(tf.data.experimental.AUTOTUNE)
     else:
         _np = np  # regular numpy
         context = nullcontext()  # no context needed
