@@ -8,7 +8,9 @@ import os
 import h5py
 from argparse import ArgumentParser
 from datetime import datetime
+import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
+from censai.utils import nullcontext
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -17,6 +19,45 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 # this worker's array index. Assumes slurm array job is zero-indexed
 # defaults to zero if not running under SLURM
 this_worker = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
+
+
+def numpy_dataset(coords, masses, ell_hat, batch_size):
+    """
+
+    Args:
+        coords: Projected coordinate (2d) of particles
+        masses: Masse of the particles
+        ell_hat: Shape of the kernel
+        batch_size: Number of particles to output in one go
+
+    Yields: Batch of coords, masses and ell_hat
+    """
+    num_particle = coords.shape[0]
+    iterations = list(range(0, int(num_particle / batch_size) * batch_size, batch_size)) + ["leftover"]
+    for i in iterations:
+        if i != "leftover":
+            c = coords[i:i + batch_size, :][..., np.newaxis, np.newaxis, :]
+            m = masses[i:i+batch_size, np.newaxis, np.newaxis]  # broadcast to shape of r_squared
+            ell = ell_hat[i:i + batch_size, np.newaxis, np.newaxis]
+            yield c, m, ell
+        elif i == "leftover":
+            leftover = num_particle % batch_size
+            c = coords[-leftover:, :][..., np.newaxis, np.newaxis, :]
+            m = masses[-leftover:, np.newaxis, np.newaxis]  # broadcast to shape of r_squared
+            ell = ell_hat[-leftover:, np.newaxis, np.newaxis]
+            yield c, m, ell
+
+
+def tensorflow_generator(coords, masses, ell_hat):
+    num_particle = coords.shape[0]
+
+    def generator():
+        for i in range(num_particle):
+            c = coords[i, :][np.newaxis, np.newaxis, :]
+            m = masses[i, np.newaxis, np.newaxis]
+            ell = ell_hat[i, np.newaxis, np.newaxis]
+            yield c, m, ell
+    return generator
 
 
 def projection(proj):
@@ -83,31 +124,30 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     ymin = center[1] - fov / 2
     ymax = center[1] + fov / 2
     if use_gpu:
-        _np = np  # regular numpy
-    else:
         _np = tnp  # tensorflow version of numpy
-    x = _np.linspace(xmin, xmax, pixels, dtype=_np.float32)
-    y = _np.linspace(ymin, ymax, pixels, dtype=_np.float32)
-    x, y = _np.meshgrid(x, y)
-    pixel_grid = _np.stack([x, y], axis=-1)
+        context = tf.device("/device:GPU:0")  # context is in GPU
+        signature = (tf.TensorSpec(shape=(1, 1, 2), dtype=tf.float32),
+                     tf.TensorSpec(shape=(1, 1), dtype=tf.float32),
+                     tf.TensorSpec(shape=(1, 1), dtype=tf.float32))
+        dataset = tf.data.Dataset.from_generator(numpy_dataset(coords[:, dims], mass, ell_hat, batch_size),
+                                                 output_signature=signature)
+        dataset = dataset.batch(batch_size, drop_remainder=False).prefetch(tf.data.experimental.AUTOTUNE)
+    else:
+        _np = np  # regular numpy
+        context = nullcontext()  # no context needed
+        dataset = numpy_dataset(coords[:, dims], mass, ell_hat, batch_size)
 
-    num_particle = coords.shape[0]
-    Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
-    for i in range(0, int(num_particle/batch_size)*batch_size, batch_size):
-        xi = coords[i:i+batch_size, dims][..., _np.newaxis, _np.newaxis, :] - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
-        r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
-        _mass = mass[i:i+batch_size, _np.newaxis, _np.newaxis]  # broadcast to shape of r_squared
-        _ell_hat = ell_hat[i:i+batch_size, _np.newaxis, _np.newaxis]
-        Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)  # gaussian kernel
+    with context:
+        x = _np.linspace(xmin, xmax, pixels, dtype=_np.float32)
+        y = _np.linspace(ymin, ymax, pixels, dtype=_np.float32)
+        x, y = _np.meshgrid(x, y)
+        pixel_grid = _np.stack([x, y], axis=-1)
 
-    # do leftover batch of particles
-    leftover = num_particle % batch_size
-    if leftover > 0:
-        xi = coords[-leftover:, dims][..., _np.newaxis, _np.newaxis, :] - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
-        r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
-        _mass = mass[-leftover:, _np.newaxis, _np.newaxis]  # broadcast to shape of r_squared
-        _ell_hat = ell_hat[-leftover:, _np.newaxis, _np.newaxis]
-        Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0) # gaussian kernel
+        Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
+        for _coords, _mass, _ell_hat in dataset:
+            xi = _coords - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
+            r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
+            Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)  # gaussian kernel
     return Sigma
 
 
