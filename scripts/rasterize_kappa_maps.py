@@ -77,6 +77,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     #     y = np.linspace(ymin, ymax, pixels)
     #     x, y = np.meshgrid(x, y)
 
+    # fixed fov scene
     xmin = center[0] - fov / 2
     xmax = center[0] + fov / 2
     ymin = center[1] - fov / 2
@@ -167,7 +168,7 @@ def distributed_strategy(args):
     subhalo_ids = np.load(args.subhalo_id)
     if args.smoke_test:
         print("smoke_test")
-        subhalo_ids = np.array([41585])
+        subhalo_ids = np.array([10])#np.array([41585])
     if "done.txt" in os.listdir(args.output_dir):  # for checkpointing
         done = np.loadtxt(os.path.join(args.output_dir, "done.txt"))
         done_dim0 = done[:, 1]
