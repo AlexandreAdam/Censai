@@ -8,6 +8,7 @@ import os
 import h5py
 from argparse import ArgumentParser
 from datetime import datetime
+import tensorflow.experimental.numpy as tnp
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -52,14 +53,14 @@ def fixed_boundary_coordinates(coords, centroid, box_size):
     return new_coords
 
 
-def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512, n_neighbors=64, fw_param=3):
+def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512, n_neighbors=64, fw_param=3, use_gpu=False, batch_size=1):
     """
     Rasterize particle cloud over the 2 dimensions, the output is a projected density
     """
     # Smooth particle mass over a region of size equal to the mean distance btw its n nearest neighbors in 3D
     nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='kd_tree').fit(coords)
     distances, _ = nbrs.kneighbors(coords)
-    distances = distances[:, 1:]  # the first column is 0 since the nearest neighbor of each point is the point itself, at a distance of zero.
+    distances = distances[:, 1:]  # the first column is 0 since the nearest neighbor of each point is  the point itself, at a distance of zero.
     D = distances.mean(axis=1)  # characteristic distance used in kernel, correspond to FWHM of the kernel
     ell_hat = D / 2 / np.sqrt(2 * np.log(fw_param))  # ell_hat is now the standard deviation
 
@@ -80,17 +81,32 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     xmax = center[0] + fov / 2
     ymin = center[1] - fov / 2
     ymax = center[1] + fov / 2
-    x = np.linspace(xmin, xmax, pixels)
-    y = np.linspace(ymin, ymax, pixels)
-    x, y = np.meshgrid(x, y)
-    pixel_grid = np.stack([x, y], axis=-1)
+    if use_gpu:
+        _np = np  # regular numpy
+    else:
+        _np = tnp  # tensorflow version of numpy
+    x = _np.linspace(xmin, xmax, pixels, type=_np.float32)
+    y = _np.linspace(ymin, ymax, pixels, type=_np.float32)
+    x, y = _np.meshgrid(x, y)
+    pixel_grid = _np.stack([x, y], axis=-1)
 
     num_particle = coords.shape[0]
-    Sigma = np.zeros(shape=pixel_grid.shape[:2], dtype=np.float32)
-    for i in range(num_particle):
-        xi = coords[i, dims][np.newaxis, np.newaxis, :] - pixel_grid
-        r_squared = xi[..., 0]**2 + xi[..., 1]**2
-        Sigma += mass[i] * np.exp(-0.5 * r_squared / ell_hat[i] ** 2) / (2 * np.pi * ell_hat[i] ** 2)  # gaussian kernel
+    Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
+    for i in range(0, int(num_particle/batch_size)*batch_size, batch_size):
+        xi = coords[i:i+batch_size-1, dims][..., _np.newaxis, _np.newaxis, :] - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
+        r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
+        _mass = mass[i:i+batch_size-1, _np.newaxis, _np.newaxis]  # broadcast to shape of r_squared
+        _ell_hat = ell_hat[i:i+batch_size-1, _np.newaxis, _np.newaxis]
+        Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)  # gaussian kernel
+
+    # do leftover batch of particles
+    leftover = num_particle % batch_size
+    if leftover > 0:
+        xi = coords[-leftover:, dims][..., _np.newaxis, _np.newaxis, :] - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
+        r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
+        _mass = mass[-leftover:, _np.newaxis, _np.newaxis]  # broadcast to shape of r_squared
+        _ell_hat = ell_hat[-leftover:, _np.newaxis, _np.newaxis]
+        Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0) # gaussian kernel
     return Sigma
 
 
@@ -235,7 +251,8 @@ def distributed_strategy(args):
         margin = args.fov / args.pixels # allow for particle near the margin to be counted in
         select = (x < xmax + margin) & (x > xmin - margin) & (y < ymax + margin) & (y > ymin - margin)
         kappa = gaussian_kernel_rasterize(coords[select], mass[select], center, args.fov, dims=dims, pixels=args.pixels,
-                                          n_neighbors=args.n_neighbors, fw_param=args.fw_param)
+                                          n_neighbors=args.n_neighbors, fw_param=args.fw_param, use_gpu=args.use_gpu,
+                                          batch_size=args.batch_size)
         kappa /= sigma_crit
 
         # create fits file and its header, than save result
@@ -301,6 +318,8 @@ if __name__ == '__main__':
     parser.add_argument("--fov", default=1, type=float, help="Field of view of a scene in comoving Mpc")
     parser.add_argument("--z_source", default=1.5, type=float)
     parser.add_argument("--z_lens", default=0.5, type=float)
+    parser.add_argument("--use_gpu", action="store_true", help="Will rasterize with tensorflow.experimental.numpy")
+    parser.add_argument("--batch_size", default=1, type=int, help="Number of particles to rasterize at the same time")
     parser.add_argument("--smoke_test", action="store_true")
     args = parser.parse_args()
 
