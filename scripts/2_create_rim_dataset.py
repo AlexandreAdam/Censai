@@ -165,7 +165,7 @@ if __name__ == '__main__':
                         help="Field of view of the image (lens plane) in arc seconds")
     parser.add_argument("--source_fov", default=3, type=float,
                         help="Field of view of the source plane in arc seconds")
-    parser.add_argument("--noise_rms", default=0.3e3, type=float,
+    parser.add_argument("--noise_rms", default=0.3e-3, type=float,
                         help="White noise RMS added to lensed image")
     #TODO add an option to change color of the noise to match COSMOS color
 

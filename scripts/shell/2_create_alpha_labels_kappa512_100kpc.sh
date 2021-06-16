@@ -9,7 +9,7 @@
 #SBATCH --job-name=Create-Alpha-Labels-Kappa512_100kpc
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../create_alpha_labels.py \
+python ../2_create_alpha_labels.py \
   --kappa_dir=$HOME/scratch/Censai/data/kappa512_100kpc\
   --output_dir=$HOME/scratch/Censai/data/alpha512_100kpc\
   --augment\
