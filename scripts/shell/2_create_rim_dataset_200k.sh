@@ -10,10 +10,10 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../2_create_rim_dataset.py\
-  --output_dir=$HOME/scratch/aadam/Censai/data/\
+  --output_dir=$HOME/scratch/Censai/data/\
   --len_dataset=10\
-  --kappa_dir=$HOME/scratch/aadam/Censai/data/kappa612_TNG100_64neighbors\
-  --cosmos_dir=$HOME/scratch/aadam/Censai/data/cosmos_23.5/\
+  --kappa_dir=$HOME/scratch/Censai/data/kappa612_TNG100_64neighbors\
+  --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
   --src_pixels=128\
   --image_fov=20\
   --source_fov=3\
