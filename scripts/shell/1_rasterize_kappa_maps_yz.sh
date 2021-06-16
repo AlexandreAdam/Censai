@@ -4,9 +4,9 @@
 #SBATCH --cpus-per-task=3  # maximum cpu per task is 3.5 per gpus
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --gres=gpu:1
-#SBATCH --time=6-00:00		 # time (DD-HH:MM)
+#SBATCH --time=1-00:00		 # time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Rasterize_Kappa_Maps
+#SBATCH --job-name=Rasterize_Kappa_Maps_yz
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../1_rasterize_kappa_maps.py\
