@@ -8,7 +8,7 @@
 #SBATCH --job-name=Rasterize_Kappa_Maps
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../rasterize_kappa_maps.pye
+python ../1_rasterize_kappa_maps.pye
   --output_dir=$HOME/scratch/Censai/data/kappa612_TNG100_64neighbors\
   --subhalo_id=$HOME/scratch/Censai/data/subhalo_TNG1001-1_id.npy\
   --projection=xy\
