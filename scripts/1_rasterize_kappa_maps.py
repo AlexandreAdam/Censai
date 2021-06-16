@@ -250,7 +250,7 @@ def distributed_strategy(args):
     # start hard work here
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
-        if subhalo_id in done:
+        if subhalo_id in done:  # logic here is skipped if done.txt not in output_dir
             first_dim = done_dim0[done == subhalo_id]
             if first_dim.size != 0:
                 if dims[0] in np.atleast_1d(first_dim[1]):  # check that projection match
