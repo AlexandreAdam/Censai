@@ -8,7 +8,7 @@
 #SBATCH --job-name=CosmosToTFRecords
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../cosmos_to_tfrecords.py\
+python ../1_cosmos_to_tfrecords.py\
   --img_len=128\
   --example_per_shard=1000\
   --do_all\
