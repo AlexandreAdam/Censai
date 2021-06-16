@@ -82,8 +82,9 @@ def distributed_strategy(args):
         theta_e = theta_einstein(kappa, rescaling_array)
         # compute theta distribution
         select = (theta_e >= min_theta_e) & (theta_e <= max_theta_e)
-        theta_hist, bin_edges = np.histogram(theta_e, bins=bins, range=[min_theta_e, max_theta_e], density=True)
+        theta_hist, bin_edges = np.histogram(theta_e, bins=bins, range=[min_theta_e, max_theta_e], density=False)
         rescaling_bin = np.digitize(theta_e[select], bin_edges)  # for each theta_e, find bin index of our histogram
+        theta_hist[theta_hist == 0] = 1                          # give empty bins a weight
         p[select] = 1/theta_hist[rescaling_bin]
         p /= p.sum()  # normalize our new probability distribution
         return p
@@ -104,6 +105,7 @@ def distributed_strategy(args):
 
             # choose a random center shift for kappa maps, based on pixels cropped (shift by integer pixel)
             shift = np.random.randint(low=-args.crop+1, high=args.crop-1, size=(args.batch, 2))
+            theta_e_init = []
             theta_e_rescaled = []
             rescalings = []
             for j in range(args.batch):
@@ -111,6 +113,7 @@ def distributed_strategy(args):
                            args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
                            args.crop + shift[j, 1]: -(args.crop - shift[j, 1])][..., np.newaxis]  # add channel dimension
                 theta_e = theta_einstein(kappa[j], 1.)[0]
+                theta_e_init.append(theta_e)
                 # Rough estimate of allowed rescaling factors
                 rescaling_array = np.linspace(min_theta_e / theta_e, max_theta_e / theta_e, args.rescaling_size)
                 # compute probability distribution of rescaling so that theta_e ~ Uniform(min_theta_e, max_theta_e)
@@ -131,17 +134,17 @@ def distributed_strategy(args):
                     "kappa": _bytes_feature(kappa[j].numpy().tobytes()),
                     "source": _bytes_feature(galaxies[j].numpy().tobytes()),
                     "lens": _bytes_feature(lensed_images[j].numpy().tobytes()),
-                    "Einstein radius": _float_feature(np.cast(theta_e_rescaled[j], np.float32)),
-                    "rescaling factor": _float_feature(np.cast(rescalings[j], np.float32)),
+                    "Einstein radius before rescaling": _float_feature(theta_e_init[j]),
+                    "Einstein radius": _float_feature(theta_e_rescaled[j]),
+                    "rescaling factor": _float_feature(rescalings[j]),
                     "power spectrum": _bytes_feature(ps[j].numpy().tobytes()),
-                    "z source": _float_feature(np.cast(args.z_source, np.float32)),
-                    "z lens": _float_feature(np.cast(args.z_lens, np.float32)),
-                    "image fov": _float_feature(np.cast(args.image_fov, np.float32)),             # arcsec
-                    "kappa fov": _float_feature(np.cast(pixel_scale * crop_pixels, np.float32)),  # arcsec
-                    "sigma crit": _float_feature(np.cast(                                         # 10^{10} M_sun / Mpc^2
-                        (sigma_crit / (1e10*M_sun)).decompose().to(u.Mpc**(-2)).value,
-                        np.float32
-                    )),
+                    "z source": _float_feature(args.z_source),
+                    "z lens": _float_feature(args.z_lens),
+                    "image fov": _float_feature(args.image_fov),             # arcsec
+                    "kappa fov": _float_feature(pixel_scale * crop_pixels),  # arcsec
+                    "sigma crit": _float_feature(                            # 10^{10} M_sun / Mpc^2
+                        (sigma_crit / (1e10*M_sun)).decompose().to(u.Mpc**(-2)).value
+                    ),
                     "src pixels": _int64_feature(args.src_pixels),
                     "kappa pixels": _int64_feature(crop_pixels),
                     "noise rms": _float_feature(args.noise_rms)
