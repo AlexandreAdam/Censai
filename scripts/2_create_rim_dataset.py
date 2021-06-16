@@ -115,13 +115,12 @@ def distributed_strategy(args):
                            args.crop + shift[j, 1]: -(args.crop - shift[j, 1])][..., np.newaxis]  # add channel dimension
                 theta_e = theta_einstein(kappa[j], 1.)[0]
                 theta_e_init.append(theta_e)
-                # Rough estimate of allowed rescaling factors -> sqrt because theta_e ~ rescaling^2
-                rescaling_array = np.linspace((min_theta_e / theta_e)**(1/2), (max_theta_e / theta_e)**(1/2),
-                                              args.rescaling_size)
+                # Rough estimate of allowed rescaling factors
+                rescaling_array = np.linspace(1, 5, args.rescaling_size)
                 # compute probability distribution of rescaling so that theta_e ~ Uniform(min_theta_e, max_theta_e)
                 rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array, bins=args.bins)
                 # make an informed random choice
-                rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)
+                rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)[0]
                 # rescale
                 kappa[j] = rescaling * sigma_crit_factor * kappa[j]
                 theta_e_rescaled.append(theta_einstein(kappa[j], 1.)[0])
