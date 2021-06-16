@@ -65,7 +65,7 @@ def distributed_strategy(args):
         """
         rescaling = np.atleast_1d(rescaling)
         kap = rescaling[..., np.newaxis, np.newaxis, np.newaxis] * sigma_crit_factor * kappa[np.newaxis, ...]
-        mass_inside_einstein_radius = np.sum(kap * (kap > 1), axis=(1, 2, 3)) * sigma_crit * (physical_fov / crop_pixels)**2
+        mass_inside_einstein_radius = np.sum(kap * (kap > 1), axis=(1, 2, 3)) * sigma_crit * (physical_fov * u.Mpc / crop_pixels)**2
         return (np.sqrt(4 * G / c**2 * mass_inside_einstein_radius * Dds / Ds / Dd).decompose() * u.rad).to(u.arcsec).value
 
     def compute_rescaling_probabilities(kappa, rescaling_array, bins=10):
