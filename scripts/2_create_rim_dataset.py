@@ -83,8 +83,9 @@ def distributed_strategy(args):
         # compute theta distribution
         select = (theta_e >= min_theta_e) & (theta_e <= max_theta_e)
         theta_hist, bin_edges = np.histogram(theta_e, bins=bins, range=[min_theta_e, max_theta_e], density=False)
-        rescaling_bin = np.digitize(theta_e[select], bin_edges)  # for each theta_e, find bin index of our histogram
-        theta_hist[theta_hist == 0] = 1                          # give empty bins a weight
+        # for each theta_e, find bin index of our histogram. We give the left edges of the bin (param right=False)
+        rescaling_bin = np.digitize(theta_e[select], bin_edges[:-1], right=False)
+        theta_hist[theta_hist == 0] = 1 # give empty bins a weight
         p[select] = 1/theta_hist[rescaling_bin]
         p /= p.sum()  # normalize our new probability distribution
         return p
