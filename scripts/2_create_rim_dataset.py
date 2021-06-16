@@ -10,6 +10,8 @@ from astropy.cosmology import Planck18 as cosmo
 from astropy import units as u
 from astropy.constants import M_sun, G, c
 from scipy.signal.windows import tukey
+from datetime import datetime
+
 
 
 # total number of slurm workers detected
@@ -186,6 +188,11 @@ if __name__ == '__main__':
                              "If 0, the Tukey window is equivalent to a rectangular window. "
                              "If 1, the Tukey window is equivalent to a Hann window. "
                              "This window is used on cosmos postage stamps.")
+    parser.add_argument("--bins", default=10, type=int,
+                        help="Number of bins to estimate Einstein radius distribution of a kappa given "
+                             "a set of rescaling factors.")
+    parser.add_argument("--rescaling_size", default=100, type=int,
+                        help="Number of rescaling factors to try for a given kappa map")
 
     # Physics params
     parser.add_argument("--z_source", default=2.379, type=float)

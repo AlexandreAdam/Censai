@@ -49,6 +49,7 @@ def main(args):
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
 
+
 if __name__ == "__main__":
     from argparse import ArgumentParser
     date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
@@ -63,5 +64,3 @@ if __name__ == "__main__":
     parser.add_argument("--lr", required=False, default=1e-3, type=float, help="Learning rate")
     args = parser.parse_args()
     main(args)
-
-

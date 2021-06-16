@@ -74,6 +74,7 @@ if __name__ == '__main__':
                              "of the exponential distribution (factor = 1 + Exponential(rate/max(kappa))")
     parser.add_argument("--output_dir", required=True, help="Path where tfrecords are stored")
     parser.add_argument("--smoke_test", action="store_true")
+
     args = parser.parse_args()
 
     distributed_strategy(args)
