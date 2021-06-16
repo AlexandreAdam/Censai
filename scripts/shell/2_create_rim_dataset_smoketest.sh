@@ -23,5 +23,7 @@ python ../2_create_rim_dataset.py\
   --shuffle_buff_size=1000\
   --batch=2\
   --tukey_alpha=0.6\
+  --bins=10\
+  --rescaling_size=100\
   --z_source=2.379\
   --z_lens=0.4457
