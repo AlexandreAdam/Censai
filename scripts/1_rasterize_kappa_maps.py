@@ -255,7 +255,7 @@ def distributed_strategy(args):
         subhalo_id = subhalo_ids[i]
         if subhalo_id in done:  # logic here is skipped if done.txt not in output_dir
             _done = done[done[:, 0] == subhalo_id]
-            if len(_done.shape) == 2:
+            if len(_done.shape) == 1:
                 _done = _done[np.newaxis, ...]
             if projection_is_done(done_subset=_done, dim0=dims[0], dim1=dims[1]):
                 continue
