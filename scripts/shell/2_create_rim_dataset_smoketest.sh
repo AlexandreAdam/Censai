@@ -20,7 +20,7 @@ python ../2_create_rim_dataset.py\
   --noise_rms=0.3e-3\
   --crop=50\
   --shuffle_cosmos\
-  --shuffle_buff_size=1000\
+  --shuffle_buffer_size=1000\
   --batch=2\
   --tukey_alpha=0.6\
   --bins=10\
