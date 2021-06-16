@@ -231,7 +231,7 @@ def distributed_strategy(args):
     if "done.txt" in os.listdir(args.output_dir):  # for checkpointing
         done = np.loadtxt(os.path.join(args.output_dir, "done.txt"))
     else:
-        done = []
+        done = np.array([])
     dims = projection(args.projection)
 
     zd = args.z_lens
@@ -255,6 +255,8 @@ def distributed_strategy(args):
         subhalo_id = subhalo_ids[i]
         if subhalo_id in done:  # logic here is skipped if done.txt not in output_dir
             _done = done[done[:, 0] == subhalo_id]
+            if len(_done.shape) == 2:
+                _done = _done[np.newaxis, ...]
             if projection_is_done(done_subset=_done, dim0=dims[0], dim1=dims[1]):
                 continue
 
