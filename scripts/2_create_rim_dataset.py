@@ -47,7 +47,7 @@ def distributed_strategy(args):
     min_theta_e = 1 if args.min_theta_e is None else args.min_theta_e
     max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
 
-    window = tukey(args.tukey_alpha)
+    window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
     phys = PhysicalModel(image_side=args.image_fov, src_side=args.source_fov, pixels=crop_pixels,
                          src_pixels=args.src_pixels, kappa_side=pixel_scale * crop_pixels, method="conv2d")
