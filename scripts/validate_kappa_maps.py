@@ -22,6 +22,7 @@ for file in tqdm(glob.glob(os.path.join(args.kappa_dir, "*_xy.fits"))):
     try:
         a = fits.open(file)
         id = a[0].header["SUBID"]
+        print(a[0].header["CD1_1"])
     except OSError:
         print(file)
         continue
