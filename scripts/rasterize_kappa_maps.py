@@ -133,6 +133,8 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     ymin = center[1] - fov / 2
     ymax = center[1] + fov / 2
     if use_gpu:
+        # The particle data can't be all loaded into the GPU,
+        # so we use the tf.data.Dataset API to load a single batch at a time
         _np = tnp  # tensorflow version of numpy
         context = tf.device("/device:GPU:0")  # context is in GPU
         signature = (tf.TensorSpec(shape=(1, 1, 2), dtype=tf.float32),
