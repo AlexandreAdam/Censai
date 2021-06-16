@@ -92,8 +92,8 @@ def distributed_strategy(args):
             # for a given batch, we select unique kappa maps
             batch_indices = np.random.choice(list(range(len(kappa_files))), replace=False, size=args.batch)
             kappa = []
-            for file in kappa_files[batch_indices]:
-                kappa.append(fits.open(file))
+            for kap_index in batch_indices:
+                kappa.append(fits.open(kappa_files[kap_index]))
 
             # select a batch of galaxies
             batch_index = np.random.randint(0, n_galaxies//args.batch)
