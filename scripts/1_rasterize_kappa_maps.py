@@ -254,7 +254,7 @@ def distributed_strategy(args):
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
         if subhalo_id in done:  # logic here is skipped if done.txt not in output_dir
-            _done = done[done[0] == subhalo_id]
+            _done = done[done[:, 0] == subhalo_id]
             if projection_is_done(done_subset=_done, dim0=dims[0], dim1=dims[1]):
                 continue
 
