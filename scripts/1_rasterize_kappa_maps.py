@@ -251,9 +251,12 @@ def distributed_strategy(args):
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
         if subhalo_id in done:
-            if dims[0] in done_dim0[done == subhalo_id][1]:
-                if dims[1] in done_dim1[done == subhalo_id][2]:
-                    continue
+            if dims[0] in done_dim0[done == subhalo_id][1]:  # check that projection match
+                last_dim = done_dim1[done == subhalo_id][2]
+                last_dim = last_dim[last_dim[1] == dims[0]]
+                if last_dim.size != 0:
+                    if dims[1] == last_dim[2]:
+                        continue
 
         print(f"Started subhalo {subhalo_id} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
 
