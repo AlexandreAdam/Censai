@@ -28,7 +28,7 @@ def distributed_strategy(args):
     n_galaxies = len(cosmos_files) * args.buffer_size
     cosmos = tf.data.TFRecordDataset(cosmos_files).map(decode).map(preprocess)
     if args.shuffle_cosmos:
-        cosmos = cosmos.shuffle(buffer_size=args.shuffle_buffer_size)
+        cosmos = cosmos.shuffle(buffer_size=args.buffer_size)
     cosmos = cosmos.batch(args.batch)
 
     # extract physical informations from fits files (common to all)
@@ -176,7 +176,7 @@ if __name__ == '__main__':
                              "should correspond to pixel argument "
                              "(e.g. kappa of 612 pixels cropped by N=50 on each side -> 512 pixels)")
     parser.add_argument("--shuffle_cosmos", action="store_true", help="Shuffle indices of cosmos dataset")
-    parser.add_argument("--shuffle_buffer_size", default=1000, type=int,
+    parser.add_argument("--buffer_size", default=1000, type=int,
                         help="Should match example_per_shard when tfrecords were produced "
                              "(only used if shuffle_cosmos is called)")
     parser.add_argument("--batch", default=1, type=int,
