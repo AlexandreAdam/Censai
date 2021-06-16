@@ -37,7 +37,8 @@ def distributed_strategy(args):
     Ds = cosmo.angular_diameter_distance(args.z_source)
     Dds = cosmo.angular_diameter_distance_z1z2(args.z_lens, args.z_source)
     sigma_crit = (c**2 * Ds / (4 * np.pi * G * Dd * Dds)).to(u.kg * u.Mpc**(-2))
-    sigma_crit_factor = header["SIGCRIT"] / sigma_crit  # a rescaling factor given possibly new redshift pair
+    # Compute a rescaling factor given possibly new redshift pair
+    sigma_crit_factor = (header["SIGCRIT"] * (1e10 * M_sun * u.Mpc**(-2)) / sigma_crit).decompose().value
 
     pixel_scale = header["CD1_1"]  # pixel scale in arc seconds
     pixels = fits.open(kappa_files[0])["PRIMARY"].data.shape[0]  # pixels of the full cutout
