@@ -196,7 +196,6 @@ if __name__ == '__main__':
                         help="Maximum allowed Einstein radius, default is 35% of image fov")
     parser.add_argument("--min_theta_e", default=None, type=float,
                         help="Minimum allowed Einstein radius, default is 1 arcsec")
-    parser.add_argument()
 
     # Physics params
     parser.add_argument("--z_source", default=2.379, type=float)
