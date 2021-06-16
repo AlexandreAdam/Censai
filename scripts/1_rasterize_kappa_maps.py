@@ -83,6 +83,14 @@ def projection(proj):
     return out
 
 
+def projection_is_done(done_subset, dim0, dim1):
+    # check that the projection match (either [0, 1], [0, 2] or [1, 2])
+    for i in range(done_subset.shape[0]):
+        if done_subset[i, 1] == dim0 and done_subset[i, 2] == dim1:
+            return True
+    return False
+
+
 def fixed_boundary_coordinates(coords, centroid, box_size):
     # account for the periodic box
 
@@ -222,13 +230,8 @@ def distributed_strategy(args):
         subhalo_ids = np.array([args.smoke_test_id])#np.array([52623])#np.array([41585])
     if "done.txt" in os.listdir(args.output_dir):  # for checkpointing
         done = np.loadtxt(os.path.join(args.output_dir, "done.txt"))
-        done_dim0 = done[:, 1]
-        done_dim1 = done[:, 2]
-        done = done[:, 0]
     else:
         done = []
-        done_dim0 = []  # we don't need them but create them just in case of a bug
-        done_dim1 = []
     dims = projection(args.projection)
 
     zd = args.z_lens
@@ -251,14 +254,9 @@ def distributed_strategy(args):
     for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
         if subhalo_id in done:  # logic here is skipped if done.txt not in output_dir
-            first_dim = done_dim0[done == subhalo_id]
-            if first_dim.size != 0:
-                if dims[0] in np.atleast_1d(first_dim[1]):  # check that projection match
-                    last_dim = done_dim1[done == subhalo_id]
-                    last_dim = last_dim[last_dim[1] == dims[0]]
-                    if last_dim.size != 0:
-                        if dims[1] == last_dim:
-                            continue
+            _done = done[done[0] == subhalo_id]
+            if projection_is_done(done_subset=_done, dim0=dims[0], dim1=dims[1]):
+                continue
 
         print(f"Started subhalo {subhalo_id} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
 
