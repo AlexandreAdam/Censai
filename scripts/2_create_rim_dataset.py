@@ -10,7 +10,6 @@ from astropy.cosmology import Planck18 as cosmo
 from astropy import units as u
 from astropy.constants import M_sun, G, c
 from scipy.signal.windows import tukey
-from datetime import datetime
 
 
 
