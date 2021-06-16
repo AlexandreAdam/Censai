@@ -155,7 +155,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("--output_dir", required=True, type=str, help="Path to output directory")
-    parser.add_argument("--len_dataset", required=True, type=str, help="Size of the dataset")
+    parser.add_argument("--len_dataset", required=True,`` type=int, help="Size of the dataset")
     parser.add_argument("--kappa_dir", required=True, type=str, help="Path to directory of kappa fits files")
     parser.add_argument("--cosmos_dir", required=True, type=str,
                         help="Path to directory of galaxy brightness distribution tfrecords "
