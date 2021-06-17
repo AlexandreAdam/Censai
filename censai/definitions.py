@@ -1,7 +1,57 @@
 import tensorflow as tf
 import numpy as np
+from astropy import units as u
+from astropy.constants import G, c
+import astropy.cosmology.Planck18 as cosmo
 
 DTYPE = tf.float32
+
+
+def theta_einstein(kappa, rescaling, physical_pixel_scale, sigma_crit, Dds, Ds, Dd):
+    """ #TODO deal with astropy units internally in this function
+    Einstein radius is computed with the mass inside the Einstein ring, which corresponds to
+    where kappa > 1.
+    Args:
+        kappa: A single kappa map of shape [crop_pixels, crop_pixels, channels]
+        rescaling: Possibly an array of rescaling factor of the kappa maps
+        physical_pixel_scale: Pixel scale in Comoving Mpc for the kappa map grid (in Mpc/pixels, with astropy units)
+        sigma_crit: Critical Density (should be in units kg / Mpc**2 with astropy units attached)
+        Dds: Angular diameter distance between the deflector (d) and the source (s) (in Mpc with astropy units attached)
+        Ds: Augular diameter distance between the observer and the source (in Mpc with astropy units attached)
+        Dd: Augular diameter distance between the observer and the deflector (in Mpc with astropy units attached)
+
+    Returns: Einstein radius in arcsecond (an array of floats, no astropy units attached)
+    """
+    rescaling = np.atleast_1d(rescaling)
+    kap = rescaling[..., np.newaxis, np.newaxis, np.newaxis] * kappa[np.newaxis, ...]
+    mass_inside_einstein_radius = np.sum(kap * (kap > 1), axis=(1, 2, 3)) * sigma_crit * physical_pixel_scale**2
+    return (np.sqrt(4 * G / c ** 2 * mass_inside_einstein_radius * Dds / Ds / Dd).decompose() * u.rad).to(u.arcsec).value
+
+
+def compute_rescaling_probabilities(kappa, rescaling_array, bins=10, min_theta_e=1., max_theta_e=5.):
+    """
+    Args:
+        kappa: A single kappa map, of shape [crop_pixels, crop_pixels, channel]
+        rescaling_array: An array of rescaling factor
+        bins: Number of bins of the histogram used to figure out einstein radius distribution
+        min_theta_e: Minimum desired value of Einstein ring radius (in arcsec)
+        max_theta_e: Maximum desired value of Einstein ring radius (in arcsec)
+
+    Returns: Probability of picking rescaling factor in rescaling array so that einstein radius has a
+        uniform distribution between minimum and maximum allowed value
+    """
+    p = np.zeros_like(rescaling_array)
+    theta_e = theta_einstein(kappa, rescaling_array)
+    # compute theta distribution
+    select = (theta_e >= min_theta_e) & (theta_e <= max_theta_e)
+    theta_hist, bin_edges = np.histogram(theta_e, bins=bins, range=[min_theta_e, max_theta_e], density=False)
+    # for each theta_e, find bin index of our histogram. We give the left edges of the bin (param right=False)
+    rescaling_bin = np.digitize(theta_e[select], bin_edges[:-1],
+                                right=False) - 1  # bin 0 is outside the range to the left by default
+    theta_hist[theta_hist == 0] = 1  # give empty bins a weight
+    p[select] = 1 / theta_hist[rescaling_bin]
+    p /= p.sum()  # normalize our new probability distribution
+    return p
 
 
 def belu(x):

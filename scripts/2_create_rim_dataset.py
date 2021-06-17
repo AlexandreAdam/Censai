@@ -4,11 +4,10 @@ import numpy as np
 from astropy.io import fits
 from censai.utils import _bytes_feature, _float_feature, _int64_feature
 from censai import PhysicalModel
-from censai.definitions import DTYPE
+from censai.definitions import DTYPE, compute_rescaling_probabilities, theta_einstein, cosmo
 from censai.cosmos_utils import preprocess, decode
-from astropy.cosmology import Planck18 as cosmo
 from astropy import units as u
-from astropy.constants import M_sun, G, c
+from astropy.constants import M_sun, c, G
 from scipy.signal.windows import tukey
 
 
@@ -46,9 +45,10 @@ def distributed_strategy(args):
     sigma_crit_factor = (header["SIGCRIT"] * (1e10 * M_sun * u.Mpc**(-2)) / sigma_crit).decompose().value
 
     pixel_scale = header["CD1_1"]  # pixel scale in arc seconds
+
     pixels = fits.open(kappa_files[0])["PRIMARY"].data.shape[0]  # pixels of the full cutout
     crop_pixels = pixels - 2 * args.crop                         # pixels after crop
-    physical_fov = header["FOV"] * crop_pixels / pixels  # fov in Mpc
+    physical_pixel_scale = header["FOV"] / pixels * u.Mpc
 
     min_theta_e = 1 if args.min_theta_e is None else args.min_theta_e
     max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
@@ -57,43 +57,6 @@ def distributed_strategy(args):
     window = np.outer(window, window)
     phys = PhysicalModel(image_side=args.image_fov, src_side=args.source_fov, pixels=crop_pixels,
                          src_pixels=args.src_pixels, kappa_side=pixel_scale * crop_pixels, method="conv2d")
-
-    def theta_einstein(kappa, rescaling):
-        """
-        Einstein radius is computed with the mass inside the Einstein ring, which corresponds to
-        where kappa > 1.
-        Args:
-            kappa: A single kappa map of shape [crop_pixels, crop_pixels, channels]
-            rescaling: Possibly an array of rescaling factor of the kappa maps
-
-        Returns: Einstein radius in arcsecond
-        """
-        rescaling = np.atleast_1d(rescaling)
-        kap = rescaling[..., np.newaxis, np.newaxis, np.newaxis] * sigma_crit_factor * kappa[np.newaxis, ...]
-        mass_inside_einstein_radius = np.sum(kap * (kap > 1), axis=(1, 2, 3)) * sigma_crit * (physical_fov * u.Mpc / crop_pixels)**2
-        return (np.sqrt(4 * G / c**2 * mass_inside_einstein_radius * Dds / Ds / Dd).decompose() * u.rad).to(u.arcsec).value
-
-    def compute_rescaling_probabilities(kappa, rescaling_array, bins=10):
-        """
-        Args:
-            kappa: A single kappa map, of shape [crop_pixels, crop_pixels, channel]
-            rescaling_array: An array of rescaling factor
-            bins: Number of bins of the histogram used to figure out einstein radius distribution
-
-        Returns: Probability of picking rescaling factor in rescaling array so that einstein radius has a
-            uniform distribution between minimum and maximum allowed value
-        """
-        p = np.zeros_like(rescaling_array)
-        theta_e = theta_einstein(kappa, rescaling_array)
-        # compute theta distribution
-        select = (theta_e >= min_theta_e) & (theta_e <= max_theta_e)
-        theta_hist, bin_edges = np.histogram(theta_e, bins=bins, range=[min_theta_e, max_theta_e], density=False)
-        # for each theta_e, find bin index of our histogram. We give the left edges of the bin (param right=False)
-        rescaling_bin = np.digitize(theta_e[select], bin_edges[:-1], right=False) - 1  # bin 0 is outside the range to the left by default
-        theta_hist[theta_hist == 0] = 1  # give empty bins a weight
-        p[select] = 1/theta_hist[rescaling_bin]
-        p /= p.sum()  # normalize our new probability distribution
-        return p
 
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{this_worker}.tfrecords")) as writer:
         for i in range((this_worker-1) * args.batch, args.len_dataset, N_WORKERS * args.batch):
@@ -122,17 +85,17 @@ def distributed_strategy(args):
                 # Make sure at least a few pixels have kappa > 1
                 if kappa[j].max() <= 1:
                     kappa[j] /= 0.95 * kappa[j].max()
-                theta_e = theta_einstein(kappa[j], 1.)[0]
+                theta_e = theta_einstein(kappa[j], 1., physical_pixel_scale, sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd)[0]
                 theta_e_init.append(theta_e)
                 # Rough estimate of allowed rescaling factors
-                rescaling_array = np.linspace(min_theta_e/theta_e, max_theta_e/theta_e, args.rescaling_size)
+                rescaling_array = np.linspace(min_theta_e/theta_e, max_theta_e/theta_e, args.rescaling_size) * sigma_crit_factor
                 # compute probability distribution of rescaling so that theta_e ~ Uniform(min_theta_e, max_theta_e)
-                rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array, bins=args.bins)
+                rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array, bins=args.bins, min_theta_e=min_theta_e, max_theta_e=max_theta_e)
                 # make an informed random choice
                 rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)[0]
                 # rescale
-                kappa[j] = rescaling * sigma_crit_factor * kappa[j]
-                theta_e_rescaled.append(theta_einstein(kappa[j], 1.)[0])
+                kappa[j] = rescaling * kappa[j]
+                theta_e_rescaled.append(theta_einstein(kappa[j], 1., physical_pixel_scale, sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd)[0])
                 rescalings.append(rescaling)
             kappa = tf.stack(kappa, axis=0)
             kappa = tf.cast(kappa, dtype=DTYPE)
@@ -194,7 +157,7 @@ if __name__ == '__main__':
                         help="Should match example_per_shard when tfrecords were produced "
                              "(only used if shuffle_cosmos is called)")
     parser.add_argument("--batch", default=1, type=int,
-                        help="Number of examples worked out in a single pass by a worker")
+                        help="Number of examples worked out in a s ingle pass by a worker")
     parser.add_argument("--tukey_alpha", default=0.6, type=float,  # help from scipy own documentation
                         help="Shape parameter of the Tukey window, representing the fraction of the "
                              "window inside the cosine tapered region. "
