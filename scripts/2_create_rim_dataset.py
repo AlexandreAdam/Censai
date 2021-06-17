@@ -113,10 +113,14 @@ def distributed_strategy(args):
                 kappa[j] = kappa[j]["PRIMARY"].data[  # crop and shift center of kappa maps
                            args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
                            args.crop + shift[j, 1]: -(args.crop - shift[j, 1])][..., np.newaxis]  # add channel dimension
+
+                # Make sure at least a few pixels have kappa > 1
+                if kappa[j].max() <= 1:
+                    kappa[j] /= 0.95 * kappa[j].max()
                 theta_e = theta_einstein(kappa[j], 1.)[0]
                 theta_e_init.append(theta_e)
                 # Rough estimate of allowed rescaling factors
-                rescaling_array = np.linspace(1, 5, args.rescaling_size)
+                rescaling_array = np.linspace(min_theta_e/theta_e, max_theta_e/theta_e, args.rescaling_size)
                 # compute probability distribution of rescaling so that theta_e ~ Uniform(min_theta_e, max_theta_e)
                 rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array, bins=args.bins)
                 # make an informed random choice
