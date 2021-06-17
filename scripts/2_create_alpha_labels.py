@@ -65,8 +65,8 @@ def distributed_strategy(args):
             kappa = []
             for file in files:
                 kappa.append(fits.open(file))
-            kappa_ids = [kap["PRIMARY"].header["SUBID"] for kap in kappa_fits]
-            kappa = [kap["PRIMARY"].data[np.newaxis, ..., np.newaxis] for kap in kappa_fits]
+            kappa_ids = [kap["PRIMARY"].header["SUBID"] for kap in kappa]
+            kappa = [kap["PRIMARY"].data[np.newaxis, ..., np.newaxis] for kap in kappa]
 
             if args.augment:
                 # choose a random center shift for kappa maps, based on pixels cropped (shift by integer pixel)
@@ -97,23 +97,23 @@ def distributed_strategy(args):
                     theta_e_rescaled.append(
                         theta_einstein(kappa[j], 1., physical_pixel_scale, sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd)[0])
                     rescalings.append(rescaling)
-            elif args.crop:  # already done in data augment if we went there
+            elif args.crop:
                 kappa = [kap[args.crop: -args.crop, args.crop: -args.crop, ...] for kap in kappa]
                 rescalings = [1.] * args.batch
             else:
                 rescalings = [1.] * args.batch
             kappa = tf.stack(kappa, axis=0)
             kappa = tf.cast(kappa, dtype=DTYPE)
-            # add missing batch and channel dimension to kappa map, then stack them along batch dim
-            alpha = tf.concat(phys.deflection_angle(kappa), axis=-1).numpy()  # compute labels here, bring back to numpy
+            alpha = tf.concat(phys.deflection_angle(kappa), axis=-1)  # compute labels here
 
             for j in range(args.batch):
                 features = {
                         "kappa": _bytes_feature(kappa[j].numpy().tobytes()),
                         "pixels": _int64_feature(args.pixels),
-                        "alpha": _bytes_feature(alpha[j].tobytes()),
+                        "alpha": _bytes_feature(alpha[j].numpy().tobytes()),
                         "rescale": _float_feature(rescalings[j]),
-                        "kappa_id": _int64_feature(kappa_ids[j])
+                        "kappa_id": _int64_feature(kappa_ids[j]),
+                        "Einstein radius": _float_feature(theta_e_rescaled[j])
                     }
 
                 serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
