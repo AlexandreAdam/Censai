@@ -109,7 +109,7 @@ def distributed_strategy(args):
             for j in range(args.batch):
                 features = {
                         "kappa": _bytes_feature(kappa[j].numpy().tobytes()),
-                        "pixels": _int64_feature(args.pixels),
+                        "pixels": _int64_feature(crop_pixels),
                         "alpha": _bytes_feature(alpha[j].numpy().tobytes()),
                         "rescale": _float_feature(rescalings[j]),
                         "kappa_id": _int64_feature(kappa_ids[j]),
