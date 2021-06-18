@@ -12,6 +12,10 @@ source $HOME/environments/censai3.8/bin/activate
 python ../2_create_alpha_labels.py \
   --kappa_dir=$HOME/scratch/Censai/data/kappa512_100kpc \
   --output_dir=$HOME/scratch/Censai/data/\
-  --augment\
+  --augment=1.\
   --batch=2\
+  --bins=10\
+  --rescaling_size=100\
+  --z_source=2.379\
+  --z_lens=0.4457\
   --smoke_test
