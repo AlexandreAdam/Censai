@@ -90,7 +90,9 @@ def distributed_strategy(args):
                 # Rough estimate of allowed rescaling factors
                 rescaling_array = np.linspace(min_theta_e/theta_e, max_theta_e/theta_e, args.rescaling_size) * sigma_crit_factor
                 # compute probability distribution of rescaling so that theta_e ~ Uniform(min_theta_e, max_theta_e)
-                rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array, bins=args.bins, min_theta_e=min_theta_e, max_theta_e=max_theta_e)
+                rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array,
+                                                              sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd,
+                                                              bins=args.bins, min_theta_e=min_theta_e, max_theta_e=max_theta_e)
                 # make an informed random choice
                 rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)[0]
                 # rescale
