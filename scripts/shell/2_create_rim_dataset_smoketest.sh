@@ -11,7 +11,7 @@
 source $HOME/environments/censai3.8/bin/activate
 python ../2_create_rim_dataset.py\
   --output_dir=$HOME/scratch/Censai/data/\
-  --len_dataset=200000\
+  --len_dataset=20\
   --kappa_dir=$HOME/scratch/Censai/data/kappa612_TNG100_64neighbors/\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
   --src_pixels=128\

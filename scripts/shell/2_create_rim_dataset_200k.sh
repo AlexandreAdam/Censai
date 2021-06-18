@@ -10,8 +10,8 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../2_create_rim_dataset.py\
-  --output_dir=$HOME/scratch/Censai/data/\
-  --len_dataset=10\
+  --output_dir=$HOME/scratch/Censai/data/lens_TNG100/\
+  --len_dataset=200000\
   --kappa_dir=$HOME/scratch/Censai/data/kappa612_TNG100_64neighbors\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
   --src_pixels=128\
@@ -20,7 +20,7 @@ python ../2_create_rim_dataset.py\
   --noise_rms=0.3e-3\
   --crop=50\
   --shuffle_cosmos\
-  --shuffle_buffer_size=1000\
+  --buffer_size=1000\
   --batch=20\
   --tukey_alpha=0.6\
   --bins=10\
