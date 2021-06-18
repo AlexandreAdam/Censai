@@ -114,7 +114,7 @@ def distributed_strategy(args):
                            args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
                            args.crop + shift[j, 1]: -(args.crop - shift[j, 1])][..., np.newaxis]  # add channel dimension
 
-                # Make sure at least a few pixels have kappa > 1
+                # Make sure at least a few pixels have kappa > 1 to compute Einstein radius
                 if kappa[j].max() <= 1:
                     kappa[j] /= 0.95 * kappa[j].max()
                 theta_e = theta_einstein(kappa[j], 1.)[0]
