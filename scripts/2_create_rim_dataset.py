@@ -9,6 +9,7 @@ from censai.cosmos_utils import preprocess, decode
 from astropy import units as u
 from astropy.constants import M_sun, c, G
 from scipy.signal.windows import tukey
+from datetime import datetime
 
 
 
@@ -59,6 +60,7 @@ def distributed_strategy(args):
                          src_pixels=args.src_pixels, kappa_side=pixel_scale * crop_pixels, method="conv2d")
 
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{this_worker}.tfrecords")) as writer:
+        print(f"Started worker {this_worker} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
         for i in range((this_worker-1) * args.batch, args.len_dataset, N_WORKERS * args.batch):
             # for a given batch, we select unique kappa maps
             batch_indices = np.random.choice(list(range(len(kappa_files))), replace=False, size=args.batch)
@@ -128,6 +130,7 @@ def distributed_strategy(args):
                 serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
                 record = serialized_output.SerializeToString()
                 writer.write(record)
+    print(f"Finished work at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
 
 
 if __name__ == '__main__':
