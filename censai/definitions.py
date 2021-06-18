@@ -165,6 +165,17 @@ def inverse_sigmoid_decay(max_step, min_value=0.01, step=None):
     return y
 
 
+def conv2_layers_flops(layer):
+    _, _, _, input_channels = layer.input_shape
+    _, h, w, output_channels = layer.output_shape
+    w_h, w_w = layer.kernel_size
+    strides_h, strides_w = layer.strides
+    flops = h * w * input_channels * output_channels * w_h * w_w / strides_w / strides_h
+
+    flops_bias = np.prod(layer.output_shape[1:]) if layer.use_bias else 0
+    flops = 2 * flops + flops_bias  # times 2 since we must consider multiplications and additions
+    return flops
+
 
 class LensUtil:
     def __init__(self, im_side=7.68, src_side=3.0, numpix_side=256 , kap_side=7.68 , method="conv2d"):

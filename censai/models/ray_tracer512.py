@@ -1,5 +1,6 @@
 import tensorflow as tf
 from .utils import get_activation
+from censai.definitions import conv2_layers_flops
 
 
 class RayTracer512(tf.keras.Model):
@@ -151,3 +152,15 @@ class RayTracer512(tf.keras.Model):
     def cost(self, kappa, alpha_true):
         alpha_pred = self.call(kappa)
         return tf.reduce_mean((alpha_pred - alpha_true)**2)
+
+    def estimate_flops(self, input_shape):
+        flops = 0
+        # build model
+        input = tf.zeros(shape=[1] + input_shape)
+        self.call(input)
+        # estimate flops from conv layers only
+        for layer in self.layers:
+            if "conv2d" in layer.name:
+                flops += conv2_layers_flops(layer)
+        return flops
+

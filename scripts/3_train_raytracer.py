@@ -60,6 +60,10 @@ def main(args):
         checkpoints_dir = os.path.join(models_dir, "source_checkpoints")
         if not os.path.isdir(checkpoints_dir):
             os.mkdir(checkpoints_dir)
+            # save script parameter for future reference
+            import json
+            with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
+                json.dump(vars(args), f)
         ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=ray_tracer)
         checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
@@ -149,8 +153,11 @@ if __name__ == "__main__":
     parser.add_argument("--normalize",                      default=False,            type=bool,  help="Normalize log of kappa with max and minimum values defined in definitions.py")
 
     # Training set params
-    parser.add_argument("-t", "--total_items",              default=100, type=int, help="Total images in an epoch")
     parser.add_argument("-b", "--batch_size",               default=10,  type=int, help="Number of images in a batch")
+    parser.add_argument("--dataset",                        default="analytic",    help="Dataset to use, either path to directory that contains alpha labels tfrecords or the string "
+                                                                                        "'analytic' in which case we use the NISGenerator class to generate data")
+    # for analytic dataset
+    parser.add_argument("-t", "--total_items",              default=100, type=int, help="Total images in an epoch")
 
     # Logs
     parser.add_argument("--logdir",                         default="None",        help="Path of logs directory.")
