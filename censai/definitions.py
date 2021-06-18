@@ -46,6 +46,8 @@ def compute_rescaling_probabilities(kappa, rescaling_array, physical_pixel_scale
     theta_e = theta_einstein(kappa, rescaling_array, physical_pixel_scale, sigma_crit, Dds, Ds, Dd)
     # compute theta distribution
     select = (theta_e >= min_theta_e) & (theta_e <= max_theta_e)
+    if select.sum() == 0:
+        return p
     theta_hist, bin_edges = np.histogram(theta_e, bins=bins, range=[min_theta_e, max_theta_e], density=False)
     # for each theta_e, find bin index of our histogram. We give the left edges of the bin (param right=False)
     rescaling_bin = np.digitize(theta_e[select], bin_edges[:-1],
