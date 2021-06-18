@@ -62,11 +62,6 @@ def distributed_strategy(args):
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{this_worker}.tfrecords")) as writer:
         print(f"Started worker {this_worker} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
         for i in range((this_worker-1) * args.batch, args.len_dataset, N_WORKERS * args.batch):
-            # for a given batch, we select unique kappa maps
-            batch_indices = np.random.choice(list(range(len(kappa_files))), replace=False, size=args.batch)
-            kappa = []
-            for kap_index in batch_indices:
-                kappa.append(fits.open(kappa_files[kap_index]))
 
             # select a batch of galaxies
             batch_index = np.random.randint(0, n_galaxies//args.batch)
@@ -74,11 +69,16 @@ def distributed_strategy(args):
                 break
             galaxies = window[np.newaxis, ..., np.newaxis] * galaxies
 
+            # for a given batch, we select unique kappa maps
+            batch_size = galaxies.shape[0] # Batch size will differ if we selected last batch of dataset
+            batch_indices = np.random.choice(list(range(len(kappa_files))), replace=False, size=batch_size)
+            kappa = []
+            for kap_index in batch_indices:
+                kappa.append(fits.open(kappa_files[kap_index]))
+
             # choose a random center shift for kappa maps, based on pixels cropped (shift by integer pixel)
-            if args.crop > 0:
-                shift = np.random.randint(low=-args.crop + 1, high=args.crop - 1, size=(args.batch, 2))
-            else:
-                shift = np.zeros(shape=(args.batch, 2))
+            if args.crop:
+                shift = np.random.randint(low=-args.crop + 1, high=args.crop - 1, size=(batch_size, 2))
             theta_e_init = []
             theta_e_rescaled = []
             rescalings = []
@@ -86,9 +86,12 @@ def distributed_strategy(args):
             for j in range(args.batch):
                 kappa_id = kappa[j]["PRIMARY"].header["SUBID"]
                 kappa_ids.append(kappa_id)
-                kappa[j] = kappa[j]["PRIMARY"].data[  # crop and shift center of kappa maps
-                           args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
-                           args.crop + shift[j, 1]: -(args.crop - shift[j, 1])][..., np.newaxis]  # add channel dimension
+                if args.crop:
+                    kappa[j] = kappa[j]["PRIMARY"].data[  # crop and shift center of kappa maps
+                               args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
+                               args.crop + shift[j, 1]: -(args.crop - shift[j, 1])][..., np.newaxis]  # add channel dimension
+                else:
+                    kappa[j] = kappa[j]["PRIMAR"].data[..., np.newaxis]
 
                 # Make sure at least a few pixels have kappa > 1 to compute Einstein radius
                 if kappa[j].max() <= 1:
