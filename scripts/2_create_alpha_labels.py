@@ -51,7 +51,7 @@ def distributed_strategy(args):
         kappa_files = kappa_files[:N_WORKERS*args.batch]
 
     if args.augment:
-        dataset_size = (1 + args.augment) * len(kappa_files)
+        dataset_size = int((1 + args.augment) * len(kappa_files))
         _original_len = len(kappa_files)
         for i in range(int(args.augment + 1)):
             # make copies of the dataset so its length >= the augmented dataset size
