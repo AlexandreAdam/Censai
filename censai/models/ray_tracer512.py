@@ -103,8 +103,6 @@ class RayTracer512(tf.keras.Model):
         c2 = self.Lc21(c2)
         c2 = self.Lc22(c2)
         c3 = self.Lp23(c2)  # 256 -> 128
-        if self.one_by_one_convs:
-            c3 = self.Lp24(c3)
 
         c3 = self.Lc31(c3)
         c3 = self.Lc32(c3)
