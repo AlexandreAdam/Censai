@@ -100,7 +100,8 @@ def distributed_strategy(args):
                 # compute probability distribution of rescaling so that theta_e ~ Uniform(min_theta_e, max_theta_e)
                 rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array, physical_pixel_scale,
                                                               sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd,
-                                                              bins=args.bins, min_theta_e=min_theta_e, max_theta_e=max_theta_e)
+                                                              bins=args.bins, min_theta_e=min_theta_e,
+                                                              max_theta_e=max_theta_e)
                 if rescaling_p.sum() == 0:
                     print(kappa_id)
                     rescaling = 1.
