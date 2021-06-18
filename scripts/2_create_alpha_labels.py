@@ -70,17 +70,16 @@ def distributed_strategy(args):
 
             if args.augment:
                 # choose a random center shift for kappa maps, based on pixels cropped (shift by integer pixel)
-                if args.crop > 0:
+                if args.crop:
                     shift = np.random.randint(low=-args.crop + 1, high=args.crop - 1, size=(args.batch, 2))
-                else:
-                    shift = np.zeros(shape=(args.batch, 2))
                 theta_e_init = []
                 theta_e_rescaled = []
                 rescalings = []
                 for j in range(args.batch):
-                    kappa[j] = kappa[j][  # crop and shift center of kappa maps
-                               args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
-                               args.crop + shift[j, 1]: -(args.crop - shift[j, 1]), ...]
+                    if args.crop:
+                        kappa[j] = kappa[j][  # crop and shift center of kappa maps
+                                   args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
+                                   args.crop + shift[j, 1]: -(args.crop - shift[j, 1]), ...]
 
                     # Make sure at least a few pixels have kappa > 1
                     if kappa[j].max() <= 1:

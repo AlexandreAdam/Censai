@@ -83,9 +83,10 @@ def distributed_strategy(args):
             theta_e_rescaled = []
             rescalings = []
             for j in range(args.batch):
-                kappa[j] = kappa[j]["PRIMARY"].data[  # crop and shift center of kappa maps
-                           args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
-                           args.crop + shift[j, 1]: -(args.crop - shift[j, 1])][..., np.newaxis]  # add channel dimension
+                if args.crop:
+                    kappa[j] = kappa[j][  # crop and shift center of kappa maps
+                               args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
+                               args.crop + shift[j, 1]: -(args.crop - shift[j, 1]), ...]
 
                 # Make sure at least a few pixels have kappa > 1 to compute Einstein radius
                 if kappa[j].max() <= 1:
@@ -165,7 +166,7 @@ if __name__ == '__main__':
                         help="Should match example_per_shard when tfrecords were produced "
                              "(only used if shuffle_cosmos is called)")
     parser.add_argument("--batch", default=1, type=int,
-                        help="Number of examples worked out in a s ingle pass by a worker")
+                        help="Number of examples worked out in a single pass by a worker")
     parser.add_argument("--tukey_alpha", default=0.6, type=float,  # help from scipy own documentation
                         help="Shape parameter of the Tukey window, representing the fraction of the "
                              "window inside the cosine tapered region. "
