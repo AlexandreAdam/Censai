@@ -28,7 +28,9 @@ def theta_einstein(kappa, rescaling, physical_pixel_scale, sigma_crit, Dds, Ds, 
     return (np.sqrt(4 * G / c ** 2 * mass_inside_einstein_radius * Dds / Ds / Dd).decompose() * u.rad).to(u.arcsec).value
 
 
-def compute_rescaling_probabilities(kappa, rescaling_array, bins=10, min_theta_e=1., max_theta_e=5.):
+def compute_rescaling_probabilities(kappa, rescaling_array, physical_pixel_scale, sigma_crit, Dds, Ds, Dd,
+                                    bins=10, min_theta_e=1., max_theta_e=5.,
+                                    ):
     """
     Args:
         kappa: A single kappa map, of shape [crop_pixels, crop_pixels, channel]
@@ -41,7 +43,7 @@ def compute_rescaling_probabilities(kappa, rescaling_array, bins=10, min_theta_e
         uniform distribution between minimum and maximum allowed value
     """
     p = np.zeros_like(rescaling_array)
-    theta_e = theta_einstein(kappa, rescaling_array)
+    theta_e = theta_einstein(kappa, rescaling_array, physical_pixel_scale, sigma_crit, Dds, Ds, Dd)
     # compute theta distribution
     select = (theta_e >= min_theta_e) & (theta_e <= max_theta_e)
     theta_hist, bin_edges = np.histogram(theta_e, bins=bins, range=[min_theta_e, max_theta_e], density=False)
