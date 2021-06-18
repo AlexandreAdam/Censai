@@ -70,7 +70,7 @@ def distributed_strategy(args):
             galaxies = window[np.newaxis, ..., np.newaxis] * galaxies
 
             # for a given batch, we select unique kappa maps
-            batch_size = galaxies.shape[0] # Batch size will differ if we selected last batch of dataset
+            batch_size = galaxies.shape[0]  # Batch size will differ if we selected last batch of dataset
             batch_indices = np.random.choice(list(range(len(kappa_files))), replace=False, size=batch_size)
             kappa = []
             for kap_index in batch_indices:
@@ -120,7 +120,7 @@ def distributed_strategy(args):
 
             lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=args.noise_rms)
 
-            for j in range(args.batch):
+            for j in range(batch_size):
                 features = {
                     "kappa": _bytes_feature(kappa[j].numpy().tobytes()),
                     "source": _bytes_feature(galaxies[j].numpy().tobytes()),
