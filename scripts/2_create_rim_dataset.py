@@ -75,7 +75,10 @@ def distributed_strategy(args):
             galaxies = window[np.newaxis, ..., np.newaxis] * galaxies
 
             # choose a random center shift for kappa maps, based on pixels cropped (shift by integer pixel)
-            shift = np.random.randint(low=-args.crop+1, high=args.crop-1, size=(args.batch, 2))
+            if args.crop > 0:
+                shift = np.random.randint(low=-args.crop + 1, high=args.crop - 1, size=(args.batch, 2))
+            else:
+                shift = np.zeros(shape=(args.batch, 2))
             theta_e_init = []
             theta_e_rescaled = []
             rescalings = []
