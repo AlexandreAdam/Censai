@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from astropy import units as u
 from astropy.constants import G, c
-import astropy.cosmology.Planck18 as cosmo
+from astropy.cosmology import Planck18 as cosmo
 
 DTYPE = tf.float32
 
