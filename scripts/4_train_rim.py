@@ -76,9 +76,9 @@ def main(args):
         if not os.path.isdir(kappa_checkpoints_dir):
             os.mkdir(kappa_checkpoints_dir)
         source_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.source_model)
-        source_checkpoint_manager = tf.train.CheckpointManager(source_ckpt, source_checkpoints_dir, max_to_keep=3)
+        source_checkpoint_manager = tf.train.CheckpointManager(source_ckpt, source_checkpoints_dir, max_to_keep=args.max_to_keep)
         kappa_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.kappa_model)
-        kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, kappa_checkpoints_dir, max_to_keep=3)
+        kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, kappa_checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
         if args.model_id.lower() != "none":
             kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint_manager.latest_checkpoint)
@@ -151,10 +151,10 @@ if __name__ == "__main__":
                                                         "value is 0 (any improvement reset patience)")
 
     # hyperparameters
-    parser.add_argument("--learning_rate", required=False, default=1e-4, type=float)
-    parser.add_argument("--decay_rate", type=float, default=1,
+    parser.add_argument("--learning_rate",          default=1e-4, type=float)
+    parser.add_argument("--decay_rate",             default=1,    type=float,
                         help="Decay rate of the exponential decay schedule of the learning rate. 1=no decay")
-    parser.add_argument("--decay_steps", type=int, default=100)
+    parser.add_argument("--decay_steps",            default=100,  type=int)
     parser.add_argument("--staircase", action="store_true", help="Learning schedule is a staircase "
                                                                  "function if added to arguments")
     parser.add_argument("--noise_rms", required=False, default=1e-3, type=float, help="Pixel value rms of lensed image")

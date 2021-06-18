@@ -3,22 +3,25 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=8G			     # memory per node
-#SBATCH --time=0-01:00		# time (DD-HH:MM)
+#SBATCH --time=1-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RIM_On_SIE
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../train_rim.py\
-  --epochs=10\
-  --total_items=50\
-  --batch_size=5\
+python ../4_train_rim.py\
+  --epochs=1000\
+  --total_items=200\
+  --batch_size=10\
   --learning_rate=1e-4\
-  --decay_rate=1\
+  --decay_rate=0.9\
+  --decay_steps=2000\
+  --staircase\
   --pixels=64\
   --kappalog=True\
   --adam=True\
   --logdir=../../logs\
   --model_dir=../../models\
-  --checkpoints=1\
-  --max_to_keep=1\
-  --logname="RIM_smoketest"
+  --checkpoints=10\
+  --max_to_keep=5
+
+
