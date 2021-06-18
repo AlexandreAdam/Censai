@@ -66,7 +66,7 @@ def distributed_strategy(args):
             for file in files:
                 kappa.append(fits.open(file))
             kappa_ids = [kap["PRIMARY"].header["SUBID"] for kap in kappa]
-            kappa = [kap["PRIMARY"].data[np.newaxis, ..., np.newaxis] for kap in kappa]
+            kappa = [kap["PRIMARY"].data[..., np.newaxis] for kap in kappa]  # add channel dim
 
             if args.augment:
                 # choose a random center shift for kappa maps, based on pixels cropped (shift by integer pixel)
@@ -87,8 +87,7 @@ def distributed_strategy(args):
                     theta_e = theta_einstein(kappa[j], 1., physical_pixel_scale, sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd)[0]
                     theta_e_init.append(theta_e)
                     # Rough estimate of allowed rescaling factors
-                    rescaling_array = np.linspace(min_theta_e / theta_e, max_theta_e / theta_e,
-                                                  args.rescaling_size) * sigma_crit_factor
+                    rescaling_array = np.linspace(min_theta_e / theta_e, max_theta_e / theta_e, args.rescaling_size) * sigma_crit_factor
                     # compute probability distribution of rescaling so that theta_e ~ Uniform(min_theta_e, max_theta_e)
                     rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array, physical_pixel_scale,
                                                                   sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd,
