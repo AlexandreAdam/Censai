@@ -82,11 +82,13 @@ def distributed_strategy(args):
             theta_e_init = []
             theta_e_rescaled = []
             rescalings = []
+            kappa_ids = []
             for j in range(args.batch):
-                if args.crop:
-                    kappa[j] = kappa[j][  # crop and shift center of kappa maps
-                               args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
-                               args.crop + shift[j, 1]: -(args.crop - shift[j, 1]), ...]
+                kappa_id = kappa[j]["PRIMARY"].header["SUBID"]
+                kappa_ids.append(kappa_id)
+                kappa[j] = kappa[j]["PRIMARY"].data[  # crop and shift center of kappa maps
+                           args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
+                           args.crop + shift[j, 1]: -(args.crop - shift[j, 1])][..., np.newaxis]  # add channel dimension
 
                 # Make sure at least a few pixels have kappa > 1 to compute Einstein radius
                 if kappa[j].max() <= 1:
@@ -99,8 +101,12 @@ def distributed_strategy(args):
                 rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array, physical_pixel_scale,
                                                               sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd,
                                                               bins=args.bins, min_theta_e=min_theta_e, max_theta_e=max_theta_e)
-                # make an informed random choice
-                rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)[0]
+                if rescaling_p.sum() == 0:
+                    print(kappa_id)
+                    rescaling = 1.
+                else:
+                    # make an informed random choice
+                    rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)[0]
                 # rescale
                 kappa[j] = rescaling * kappa[j]
                 theta_e_rescaled.append(theta_einstein(kappa[j], 1., physical_pixel_scale, sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd)[0])
@@ -128,7 +134,8 @@ def distributed_strategy(args):
                     ),
                     "src pixels": _int64_feature(args.src_pixels),
                     "kappa pixels": _int64_feature(crop_pixels),
-                    "noise rms": _float_feature(args.noise_rms)
+                    "noise rms": _float_feature(args.noise_rms),
+                    "kappa id": _int64_feature(kappa_ids[j])
                 }
 
                 serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
