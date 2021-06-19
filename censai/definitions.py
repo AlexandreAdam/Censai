@@ -177,6 +177,11 @@ def conv2_layers_flops(layer):
     return flops
 
 
+def upsampling2d_layers_flops(layer):
+    _, h, w, output_channels = layer.output_shape
+    return 50 * h * w * output_channels
+
+
 class LensUtil:
     def __init__(self, im_side=7.68, src_side=3.0, numpix_side=256 , kap_side=7.68 , method="conv2d"):
         self.im_side = im_side

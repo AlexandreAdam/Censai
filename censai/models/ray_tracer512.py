@@ -1,6 +1,6 @@
 import tensorflow as tf
 from .utils import get_activation
-from censai.definitions import conv2_layers_flops
+from censai.definitions import conv2_layers_flops, upsampling2d_layers_flops
 
 
 class RayTracer512(tf.keras.Model):
@@ -155,12 +155,13 @@ class RayTracer512(tf.keras.Model):
 
     def estimate_flops(self, input_shape):
         flops = 0
-        # build model
-        input = tf.zeros(shape=[1] + input_shape)
-        self.call(input)
-        # estimate flops from conv layers only
+        # build model graph
+        inputs = tf.keras.Input(shape=input_shape)
+        self.call(inputs)
         for layer in self.layers:
             if "conv2d" in layer.name:
                 flops += conv2_layers_flops(layer)
+            elif "up_sampling2d" in layer.name:
+                flops += upsampling2d_layers_flops(layer)
         return flops
 
