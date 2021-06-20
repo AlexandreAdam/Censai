@@ -2,12 +2,12 @@ import tensorflow as tf
 from censai.definitions import DTYPE
 
 
-def decode_function(record_bytes):
+def decode(record_bytes):
     example = tf.io.parse_single_example(
           # Data
           record_bytes,
           # Schema
-          features = {
+          features={
               'height': tf.io.FixedLenFeature([], tf.int64),
               'width': tf.io.FixedLenFeature([], tf.int64),
               'image': tf.io.FixedLenFeature([], tf.string),
@@ -26,17 +26,17 @@ def decode_function(record_bytes):
     return image, psf, ps
 
 
-def preprocessing_function(images, psf, ps):
+def preprocess(images, psf, ps):
     images = tf.where(images < 0, tf.constant(0, DTYPE), images)  # set negative pixel to 0
     return images, psf, ps
 
 
 # # some tests that everything works
-# if __name__ == '__main__':
-#     import os
-#     path = os.path.join("/home/alexandre/Desktop/Projects", "Censai/data/cosmos_record_1.tfrecords")
-#     data = tf.data.TFRecordDataset(path)
-#     data = data.map(decode_function)
-#     data = data.batch(10)
-#     for (im, psf, ps) in data.as_numpy_iterator():
-#         break
+if __name__ == '__main__':
+    import os
+    path = os.path.join("/home/alexandre/Desktop/Projects", "Censai/data/cosmos_record_1.tfrecords")
+    data = tf.data.TFRecordDataset(path)
+    data = data.map(decode)
+    data = data.batch(10)
+    for (im, psf, ps) in data.as_numpy_iterator():
+        break

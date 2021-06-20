@@ -1,10 +1,5 @@
-from censai.physical_model import PhysicalModel, AnalyticalPhysicalModel
-from censai.cosmos_utils import decode, preprocess
-from astropy.visualization import LogStretch, ImageNormalize
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+from censai.data.cosmos import decode, preprocess
 import tensorflow as tf
-import numpy as np
-import os
 
 
 def create_model(l2=1e-2, alpha=0.1, dropout_rate=0.5):

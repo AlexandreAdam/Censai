@@ -13,20 +13,20 @@ class PhysicalModel:
             self,
             pixels,  # 512
             src_pixels=None,  # 128 for cosmos
-            image_side=7.68,
+            image_fov=7.68,
             src_side=3.0,
-            kappa_side=7.68,
+            kappa_fov=7.68,
             method="conv2d",
             noise_rms=1,
             logkappa=False,
             checkpoint_path=None):
         if src_pixels is None:
             src_pixels = pixels  # assume src has the same shape
-        self.image_side = image_side
+        self.image_fov = image_fov
         self.src_side = src_side
         self.pixels = pixels
         self.src_pixels = src_pixels
-        self.kappa_side = kappa_side
+        self.kappa_fov = kappa_fov
         self.method = method
         self.noise_rms = noise_rms
         self.logkappa = logkappa
@@ -47,8 +47,52 @@ class PhysicalModel:
             alpha_x, alpha_y = tf.split(alpha, axis=3)
             x_src = self.ximage - alpha_x
             y_src = self.yimage - alpha_y
+        elif self.method == "fft":
+            """
+            The convolution using the Convolution Theorem.
+            Since we use FFT to justify this approach, we must zero pad the kernel and kappa map to transform 
+            a 'circular convolution' (assumed by our use of FFT) into an an 'acyclic convolution' 
+            (sum from m=0 to infinity).
+            
+            To do that, we pad our signal with N-1 trailing zeros for each dimension. N = 2*pixels+1 since 
+            our kernel has this shape.
+            
+            This approach has complexity O((4*pixels)^2 * log^2(4 * pixels)), and is precise to about rms=2e-5 of the 
+            true convolution for the deflection angles.
+            """
+            kappa = tf.image.pad_to_bounding_box(kappa,
+                                                 offset_height=0,
+                                                 offset_width=0,
+                                                 target_width=4 * self.pixels+1,
+                                                 target_height=4 * self.pixels+1)
+            xconv_kernel = tf.image.pad_to_bounding_box(self.xconv_kernel[..., 0], 0, 0, 4*self.pixels+1, 4*self.pixels+1)
+            yconv_kernel = tf.image.pad_to_bounding_box(self.yconv_kernel[..., 0], 0, 0, 4*self.pixels+1, 4*self.pixels+1)
+            x_kernel_tilde = tf.signal.fft2d(tf.cast(-xconv_kernel[..., 0], tf.complex64))
+            y_kernel_tilde = tf.signal.fft2d(tf.cast(-yconv_kernel[..., 0], tf.complex64))
+
+            batch_size = kappa.shape[0]
+            alpha_x = []
+            alpha_y = []
+            for i in range(batch_size):
+                kappa_tilde = tf.signal.fft2d(tf.cast(kappa[i, ..., 0], tf.complex64))
+                alpha_x.append(tf.math.real(tf.signal.ifft2d(kappa_tilde * x_kernel_tilde)) * (self.dx_kap**2/np.pi))
+                alpha_y.append(tf.math.real(tf.signal.ifft2d(kappa_tilde * y_kernel_tilde)) * (self.dx_kap**2/np.pi))
+            alpha_x = tf.stack(alpha_x, axis=0)[..., tf.newaxis]
+            alpha_x = tf.image.crop_to_bounding_box(alpha_x,
+                                                    offset_height=self.pixels,
+                                                    offset_width=self.pixels,
+                                                    target_width=self.pixels,
+                                                    target_height=self.pixels)
+            alpha_y = tf.stack(alpha_y, axis=0)[..., tf.newaxis]
+            alpha_y = tf.image.crop_to_bounding_box(alpha_y,
+                                                    offset_height=self.pixels,
+                                                    offset_width=self.pixels,
+                                                    target_width=self.pixels,
+                                                    target_height=self.pixels)
+            x_src = self.ximage - alpha_x
+            y_src = self.yimage - alpha_y
         else:
-            raise ValueError(f"{self.method} is not in [conv2d, unet]")
+            raise ValueError(f"{self.method} is not in [conv2d, unet, fft]")
         return x_src, y_src, alpha_x, alpha_y
 
     def log_likelihood(self, source, kappa, y_true):
@@ -76,7 +120,7 @@ class PhysicalModel:
 
     def lens_source_and_compute_jacobian(self, source, kappa):
         """
-        Note: this method will return a different picture than forward if image_side != kappa_side
+        Note: this method will return a different picture than forward if image_fov != kappa_fov
         Args:
             source: A source brightness distributions
             kappa: A kappa maps
@@ -85,7 +129,7 @@ class PhysicalModel:
         """
         assert source.shape[0] == 1, "For now, this only works for a single example"
         # we have to compute everything here from scratch to get gradient paths
-        x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
+        x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_fov
         theta_x, theta_y = tf.meshgrid(x, x)
         theta_x = tf.cast(theta_x, DTYPE)
         theta_y = tf.cast(theta_y, DTYPE)
@@ -137,10 +181,10 @@ class PhysicalModel:
         return i_coord, j_coord
 
     def set_deflection_angle_vars(self):
-        self.dx_kap = self.kappa_side/(self.pixels - 1)
+        self.dx_kap = self.kappa_fov / (self.pixels - 1)
 
         # coordinate grid for kappa
-        x = np.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_side
+        x = np.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_fov
         xx, yy = np.meshgrid(x, x)
         rho = xx**2 + yy**2
         xconv_kernel = -self._safe_divide(xx, rho)
@@ -150,7 +194,7 @@ class PhysicalModel:
         self.yconv_kernel = tf.constant(yconv_kernel[..., np.newaxis, np.newaxis], dtype=tf.float32)
 
         # coordinates for image
-        x = np.linspace(-1, 1, self.pixels) * self.image_side/2
+        x = np.linspace(-1, 1, self.pixels) * self.image_fov / 2
         xx, yy = np.meshgrid(x, x) 
         # reshape for broadcast to [batch_size, pixels, pixels, 1]
         self.ximage = tf.constant(xx[np.newaxis, ..., np.newaxis], dtype=np.float32)

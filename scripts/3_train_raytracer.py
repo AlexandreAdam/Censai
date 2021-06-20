@@ -1,6 +1,6 @@
 import tensorflow as tf
 from censai import RayTracer512 as RayTracer
-from censai.data_generator import NISGenerator
+from censai.data import NISGenerator
 from censai.utils import nullwriter
 import os
 import numpy as np
@@ -16,7 +16,7 @@ except ImportError:
 def main(args):
     if wndb:
         config = wandb.config
-        config.update(args)
+        config.update(vars(args))
     gen = NISGenerator(args.total_items, args.batch_size, pixels=args.pixels)
     ray_tracer = RayTracer(
         initializer=args.initializer,

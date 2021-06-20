@@ -1,3 +1,5 @@
+import numpy as np
+
 from censai.physical_model import PhysicalModel, AnalyticalPhysicalModel
 import tensorflow as tf
 
@@ -11,12 +13,38 @@ def test_deflection_angle_conv2():
 def test_lens_source_conv2():
     pixels = 64
     src_pixels = 32
-    phys = PhysicalModel(pixels=pixels, src_pixels=src_pixels, kappa_side=16, image_side=16)
+    phys = PhysicalModel(pixels=pixels, src_pixels=src_pixels, kappa_fov=16, image_fov=16)
     phys_analytic = AnalyticalPhysicalModel(pixels=pixels, kappa_side=16)
     source = tf.random.normal([1, src_pixels, src_pixels, 1])
     kappa = phys_analytic.kappa_field(7, 0.1, 0, 0, 0)
     lens = phys.lens_source(source, kappa)
     return lens
+
+
+def test_alpha_method_fft():
+    pixels = 64
+    phys = PhysicalModel(pixels=pixels, method="fft")
+    phys_analytic = AnalyticalPhysicalModel(pixels=pixels, kappa_side=7)
+    phys2 = PhysicalModel(pixels=pixels, method="conv2d")
+
+    # test out noise
+    kappa = tf.random.uniform(shape=[1, pixels, pixels, 1])
+    _, _, alphax, alphay = phys.deflection_angle(kappa)
+    _, _, alphax2, alphay2 = phys2.deflection_angle(kappa)
+
+    assert np.allclose(alphax, alphax2, atol=1e-4)
+    assert np.allclose(alphay, alphay2, atol=1e-4)
+
+    # test out an analytical profile
+    kappa = phys_analytic.kappa_field(2, 0., 0, 0.1, 0.5)
+    _, _, alphax, alphay = phys.deflection_angle(kappa)
+
+    _, _, alphax2, alphay2 = phys2.deflection_angle(kappa)
+
+    assert np.allclose(alphax, alphax2, atol=1e-4)
+    assert np.allclose(alphay, alphay2, atol=1e-4)
+
+    return alphax, alphax2
 
 
 def test_noisy_forward_conv2():
@@ -46,8 +74,37 @@ def test_analytical_lensing():
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
     # im = test_analytical_lensing()
-    im = test_lens_source_conv2()[0, ..., 0]
-    plt.imshow(im)
+    # im = test_lens_source_conv2()[0, ..., 0]
+    im1, im2 = test_alpha_method_fft()
+    # plt.imshow(im)
+    # plt.colorbar()
+    # plt.show()
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
+
+    im = ax1.imshow(im1[0, ..., 0])
+    ax1.set_title("FFT")
+    ax1.axis("off")
+    divider = make_axes_locatable(ax1)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
+
+    im = ax2.imshow(im2[0, ..., 0])
+    ax2.set_title("Conv")
+    ax2.axis("off")
+    divider = make_axes_locatable(ax2)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
+
+    im = ax3.imshow(im2[0, ..., 0] - im1[0, ..., 0])
+    ax3.set_title("Residual")
+    ax3.axis("off")
+    divider = make_axes_locatable(ax3)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
+
     plt.show()
+
 

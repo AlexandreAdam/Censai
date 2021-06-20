@@ -4,6 +4,7 @@ from astropy import units as u
 from astropy.constants import G, c
 from astropy.cosmology import Planck18 as cosmo
 
+COSMO = cosmo
 DTYPE = tf.float32
 
 
@@ -83,17 +84,9 @@ def xsquared(x):
     return (x/4)**2
 
 
-def logKap_normalization(logkappa , dir="code"):
-    if dir=="code":
-        return tf.nn.relu(logkappa + 4.0) / 7.0
-    else:
-        return (logkappa * 7.0 - 4.0)
-
-
-def log10(x):
-  numerator = tf.log(x)
-  denominator = tf.log(tf.constant(10, dtype=numerator.dtype))
-  return numerator / denominator
+def logkappa_normalization(logkappa, forward=True):
+    if forward:
+        return
 
 
 def lrelu4p(x, alpha=0.04):

@@ -1,10 +1,10 @@
 import tensorflow as tf
 from .models.rim_model import Model
 
-
-class RIM_CELL(tf.compat.v1.nn.rnn_cell.RNNCell):
+# TODO dubug this class
+class RIM(tf.compat.v1.nn.rnn_cell.RNNCell):
     def __init__(self, batch_size, num_steps, num_pixels, state_size, input_size=None, activation=tf.tanh, **kwargs):
-        super(RIM_CELL, self).__init__(**kwargs)
+        super(RIM, self).__init__(**kwargs)
         self.num_pixels = num_pixels
         self.num_steps = num_steps
         self._num_units = state_size
