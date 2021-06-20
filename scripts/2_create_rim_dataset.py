@@ -5,7 +5,7 @@ from astropy.io import fits
 from censai.utils import _bytes_feature, _float_feature, _int64_feature
 from censai import PhysicalModel
 from censai.definitions import DTYPE, compute_rescaling_probabilities, theta_einstein, cosmo
-from censai.cosmos_utils import preprocess, decode
+from censai.data.cosmos import preprocess, decode
 from astropy import units as u
 from astropy.constants import M_sun, c, G
 from scipy.signal.windows import tukey
@@ -56,8 +56,8 @@ def distributed_strategy(args):
 
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
-    phys = PhysicalModel(image_side=args.image_fov, src_side=args.source_fov, pixels=crop_pixels,
-                         src_pixels=args.src_pixels, kappa_side=pixel_scale * crop_pixels, method="conv2d")
+    phys = PhysicalModel(image_fov=args.image_fov, src_side=args.source_fov, pixels=crop_pixels,
+                         src_pixels=args.src_pixels, kappa_fov=pixel_scale * crop_pixels, method="conv2d")
 
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{this_worker}.tfrecords")) as writer:
         print(f"Started worker {this_worker} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")

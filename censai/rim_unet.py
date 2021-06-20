@@ -1,10 +1,11 @@
 import tensorflow as tf
 from .models.rim_unet_model import UnetModel
+from censai.definitions import logkappa_normalization
 
 LOG10 = tf.math.log(10.)
 
 
-class RIM:
+class RIMUnet:
     def __init__(
             self,
             physical_model,
@@ -13,6 +14,7 @@ class RIM:
             pixels,
             adam=True,
             kappalog=True,
+            kappa_normalize=True,
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
@@ -35,6 +37,7 @@ class RIM:
         self.batch_size = batch_size
         self.adam = adam
         self.kappalog = kappalog
+        self.kappa_normalize = kappa_normalize
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
@@ -78,13 +81,18 @@ class RIM:
     @tf.function
     def kappa_link(self, kappa):
         if self.kappalog:
-            return tf.math.log(kappa + 1e-10) / LOG10
+            kappa = tf.math.log(kappa + 1e-10) / LOG10
+            if self.kappa_normalize:
+                return logkappa_normalization(kappa, forward=True)
+            return kappa
         else:
             return kappa
 
     @tf.function
     def kappa_inverse_link(self, eta):
         if self.kappalog:
+            if self.kappa_normalize:
+                eta = logkappa_normalization(eta, forward=False)
             return 10**(eta)
         else:
             return eta

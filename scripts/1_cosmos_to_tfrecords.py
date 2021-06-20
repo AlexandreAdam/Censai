@@ -1,6 +1,6 @@
 import tensorflow as tf
 import os
-from censai.cosmos_utils.encode_cosmos import encode_examples
+from censai.data.cosmos import encode_examples
 from argparse import ArgumentParser
 
 parser = ArgumentParser()

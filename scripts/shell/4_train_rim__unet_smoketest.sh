@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_RIM_On_SIE
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../4_train_rim.py\
+python ../4_train_rim_unet.py\
   --epochs=10\
   --total_items=50\
   --batch_size=5\

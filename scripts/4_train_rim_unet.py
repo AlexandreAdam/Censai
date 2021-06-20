@@ -1,14 +1,10 @@
 import tensorflow as tf
 import numpy as np
-
-# that won't work, network needs a few Gb of memory to lead its weight in the GPU
-# from tensorflow.compat.v1 import ConfigProto
-# from tensorflow.compat.v1 import InteractiveSession
-#
-# config = ConfigProto()
-# config.gpu_options.allow_growth = True
-# session = InteractiveSession(config=config)
-
+from censai import PhysicalModel, RIMUnet
+from censai.data import NISGenerator
+from censai.utils import nullwriter
+import os
+from datetime import datetime
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
     try:
@@ -20,24 +16,23 @@ if gpus:
     except RuntimeError as e:
     # Memory growth must be set before GPUs have been initialized
         print(e)
-from censai.physical_model import PhysicalModel
-from censai.data_generator import NISGenerator
-from censai.rim_unet import RIM
-from censai.utils import nullwriter
-import os
-from datetime import datetime
-# try:
-#     import wandb
-#     wandb.init(project="censai_rim", entity="adam-alexandre01123", sync_tensorboard=True)
-# except ImportError:
-#     print("wandb not installed, package ignored")
+try:
+    import wandb
+    wandb.init(project="censai_unet_rim", entity="adam-alexandre01123", sync_tensorboard=True)
+    wndb = True
+except ImportError:
+    wndb = False
+    print("wandb not installed, package ignored")
 
 
 def main(args):
+    if wndb:
+        config = wandb.config
+        config.update(vars(args))
     gen = NISGenerator(args.total_items, args.batch_size, model="rim", pixels=args.pixels)
     gen_test = NISGenerator(args.batch_size, args.batch_size, train=False, model="rim", pixels=args.pixels)
     phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms)
-    rim = RIM(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam, strides=args.strides)
+    rim = RIMUnet(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam, strides=args.strides)
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.learning_rate,
         decay_rate=args.decay_rate,

@@ -345,7 +345,7 @@ def distributed_strategy(args):
         header["NNEIGH"] = args.n_neighbors
         header["FWPARAM"] = (args.fw_param, "FW at (1/x) maximum for smoothing")
         header["SIGCRIT"] = sigma_crit
-        header["COSMO"]  = "Planck18"
+        header["COSMO"] = "Planck18"
         hdu = fits.PrimaryHDU(kappa, header=header)
         hdul = fits.HDUList([hdu])
         hdul.writeto(os.path.join(args.output_dir,

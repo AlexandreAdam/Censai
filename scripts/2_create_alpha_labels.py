@@ -8,6 +8,7 @@ from censai.definitions import cosmo, theta_einstein, compute_rescaling_probabil
 from astropy.constants import M_sun, c, G
 from astropy import units as u
 from argparse import ArgumentParser
+from datetime import datetime
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -44,8 +45,8 @@ def distributed_strategy(args):
     min_theta_e = 1 if args.min_theta_e is None else args.min_theta_e
     max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
 
-    phys = PhysicalModel(image_side=args.image_fov, pixels=crop_pixels,
-                         kappa_side=pixel_scale * crop_pixels, method="conv2d")
+    phys = PhysicalModel(image_fov=args.image_fov, pixels=crop_pixels,
+                         kappa_fov=pixel_scale * crop_pixels, method="conv2d")
 
     if args.smoke_test:
         kappa_files = kappa_files[:N_WORKERS*args.batch]
@@ -60,6 +61,7 @@ def distributed_strategy(args):
         dataset_size = len(kappa_files)
 
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{this_worker}.tfrecords")) as writer:
+        print(f"Started worker {this_worker} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
         for i in range((this_worker-1) * args.batch, dataset_size, N_WORKERS * args.batch):
             files = kappa_files[i: i + args.batch]
             kappa = []
@@ -125,6 +127,7 @@ def distributed_strategy(args):
                 serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
                 record = serialized_output.SerializeToString()
                 writer.write(record)
+    print(f"Finished work at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
 
 
 if __name__ == '__main__':

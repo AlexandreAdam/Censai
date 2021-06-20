@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from censai.models import Autoencoder
-from censai.cosmos_utils import decode as decode_cosmos, preprocess
+from censai.data.cosmos import decode as decode_cosmos, preprocess
 from censai.utils import nullwriter
 import os
 from datetime import datetime
