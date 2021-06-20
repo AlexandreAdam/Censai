@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from censai.definitions import COSMO
+from censai.definitions import COSMO, DTYPE
 from astropy.constants import G, c, M_sun
 from astropy.io import fits
 from astropy import units as u
@@ -8,6 +8,10 @@ from tensorflow_addons.image import rotate
 
 
 class AugmentedTNGKappaGenerator:
+    """
+    This class contains the logic for data augmentation of kappa maps based
+    on a rescaling factor, random shifts, crop and rotations.
+    """
     def __init__(
             self,
             kappa_fits_files,               # fits files from rasterize scripts
@@ -40,10 +44,14 @@ class AugmentedTNGKappaGenerator:
 
         pixels = fits.open(kappa_fits_files[0])["PRIMARY"].data.shape[0]  # pixels of the full cutout
         self.physical_pixel_scale = header["FOV"] / pixels * u.Mpc
+        self.crop_pixels = pixels - 2 * crop  # pixels after crop
+        self.pixel_scale = header["CD1_1"]  # pixel scale in arc seconds
+        self.kappa_fov = self.pixel_scale * self.crop_pixels
 
         self.min_theta_e = min_theta_e
         self.max_theta_e = max_theta_e
         # ====================================================
+        self.index = 0
 
     def crop(self, kappa):
         if len(kappa.shape) == 3:
@@ -157,22 +165,40 @@ class AugmentedTNGKappaGenerator:
         kappa_rescaled = tf.stack(kappa_rescaled, axis=0)
         return kappa_rescaled, new_einstein_radius, rescaling_factors
 
-    def draw_batch(self, batch_size, rescale: bool, crop: bool, shift: bool, rotate: bool):
-        batch_indices = np.random.choice(list(range(len(self.kappa_files))), replace=False, size=batch_size)
+    def draw_batch(self, batch_size, rescale: bool, shift: bool, rotate: bool, random_draw=True,
+                   return_einstein_radius_init=False):
+        if random_draw:
+            batch_indices = np.random.choice(list(range(len(self.kappa_files))), replace=False, size=batch_size)
+        else:
+            batch_indices = list(range(self.index, min(self.index + batch_size, len(self.kappa_files))))
+            if len(batch_indices) < batch_size:
+                self.index = 0  # reset counter
+            else:
+                self.index += 1
         kappa = []
+        kappa_ids = []
         for kap_index in batch_indices:
             kappa.append(fits.open(self.kappa_files[kap_index])["PRIMARY"].data[np.newaxis, ..., np.newaxis])
+            kappa_ids.append(fits.open(self.kappa_files[kap_index])["PRIMARY"].header["SUBID"])
         kappa = tf.stack(kappa, axis=0)
         if rotate:
             kappa = self.rotate(kappa)
-        if crop:
+        if self._crop:
             if shift:
                 kappa = self.crop_and_shift(kappa)
             else:
                 kappa = self.crop(kappa)
         if rescale:
+            theta_e_init = self.einstein_radius(kappa)
             kappa, theta_e, rescaling_factors = self.rescale(kappa)
+            kappa = tf.cast(kappa, DTYPE)
+            if return_einstein_radius_init:
+                return kappa, theta_e, rescaling_factors, kappa_ids, theta_e_init
+            else:
+                return kappa, theta_e, rescaling_factors, kappa_ids
         else:
             theta_e = self.einstein_radius(kappa)
             rescaling_factors = np.ones(kappa.shape[0])
-        return kappa, theta_e, rescaling_factors
+            kappa = tf.cast(kappa, DTYPE)
+            return kappa, theta_e, rescaling_factors, kappa_ids
+
