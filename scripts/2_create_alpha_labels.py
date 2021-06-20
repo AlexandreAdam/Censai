@@ -1,13 +1,9 @@
 import tensorflow as tf
 import os, glob
 import numpy as np
-from astropy.io import fits
-from censai.utils import _bytes_feature, _float_feature, _int64_feature
+from censai.data import AugmentedTNGKappaGenerator
+from censai.data.alpha_tng import encode_examples
 from censai import PhysicalModel
-from censai.definitions import cosmo, theta_einstein, compute_rescaling_probabilities, DTYPE
-from astropy.constants import M_sun, c, G
-from astropy import units as u
-from argparse import ArgumentParser
 from datetime import datetime
 
 # total number of slurm workers detected
@@ -27,26 +23,19 @@ def distributed_strategy(args):
         keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
         kappa_files = [kap_file for i, kap_file in enumerate(kappa_files) if keep_kappa[i]]
 
-    # extract physical informations from fits files (common to all)
-    header = fits.open(kappa_files[0])["PRIMARY"].header
-    Dd = cosmo.angular_diameter_distance(args.z_lens)
-    Ds = cosmo.angular_diameter_distance(args.z_source)
-    Dds = cosmo.angular_diameter_distance_z1z2(args.z_lens, args.z_source)
-    sigma_crit = (c ** 2 * Ds / (4 * np.pi * G * Dd * Dds)).to(u.kg * u.Mpc ** (-2))
-    # Compute a rescaling factor given possibly new redshift pair
-    sigma_crit_factor = (header["SIGCRIT"] * (1e10 * M_sun * u.Mpc ** (-2)) / sigma_crit).decompose().value
+    kappa_gen = AugmentedTNGKappaGenerator(
+        kappa_fits_files=kappa_files,
+        z_lens=args.z_lens,
+        z_source=args.z_source,
+        crop=args.crop,
+        min_theta_e=args.min_theta_e,
+        max_theta_e=args.max_theta_e,
+        rescaling_size=args.rescaling_size,
+        rescaling_theta_bins=args.bins
+    )
 
-    pixel_scale = header["CD1_1"]  # pixel scale in arc seconds
-
-    pixels = fits.open(kappa_files[0])["PRIMARY"].data.shape[0]  # pixels of the full cutout
-    crop_pixels = pixels - 2 * args.crop  # pixels after crop
-    physical_pixel_scale = header["FOV"] / pixels * u.Mpc
-
-    min_theta_e = 1 if args.min_theta_e is None else args.min_theta_e
-    max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
-
-    phys = PhysicalModel(image_fov=args.image_fov, pixels=crop_pixels,
-                         kappa_fov=pixel_scale * crop_pixels, method="conv2d")
+    phys = PhysicalModel(image_fov=args.image_fov, pixels=kappa_gen.crop_pixels,
+                         kappa_fov=kappa_gen.kappa_fov, method="conv2d")
 
     if args.smoke_test:
         kappa_files = kappa_files[:N_WORKERS*args.batch]
@@ -63,74 +52,29 @@ def distributed_strategy(args):
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{this_worker}.tfrecords")) as writer:
         print(f"Started worker {this_worker} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
         for i in range((this_worker-1) * args.batch, dataset_size, N_WORKERS * args.batch):
-            files = kappa_files[i: i + args.batch]
-            kappa = []
-            for file in files:
-                kappa.append(fits.open(file))
-            kappa_ids = [kap["PRIMARY"].header["SUBID"] for kap in kappa]
-            kappa = [kap["PRIMARY"].data[..., np.newaxis] for kap in kappa]  # add channel dim
-
             if args.augment:
-                # choose a random center shift for kappa maps, based on pixels cropped (shift by integer pixel)
-                if args.crop:
-                    shift = np.random.randint(low=-args.crop + 1, high=args.crop - 1, size=(args.batch, 2))
-                theta_e_init = []
-                theta_e_rescaled = []
-                rescalings = []
-                for j in range(args.batch):
-                    if args.crop:
-                        kappa[j] = kappa[j][  # crop and shift center of kappa maps
-                                   args.crop + shift[j, 0]: -(args.crop - shift[j, 0]),
-                                   args.crop + shift[j, 1]: -(args.crop - shift[j, 1]), ...]
-
-                    # Make sure at least a few pixels have kappa > 1
-                    if kappa[j].max() <= 1:
-                        kappa[j] /= 0.95 * kappa[j].max()
-                    theta_e = theta_einstein(kappa[j], 1., physical_pixel_scale, sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd)[0]
-                    theta_e_init.append(theta_e)
-                    # Rough estimate of allowed rescaling factors
-                    rescaling_array = np.linspace(min_theta_e / theta_e, max_theta_e / theta_e, args.rescaling_size) * sigma_crit_factor
-                    # compute probability distribution of rescaling so that theta_e ~ Uniform(min_theta_e, max_theta_e)
-                    rescaling_p = compute_rescaling_probabilities(kappa[j], rescaling_array, physical_pixel_scale,
-                                                                  sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd,
-                                                                  bins=args.bins, min_theta_e=min_theta_e,
-                                                                  max_theta_e=max_theta_e)
-                    if rescaling_p.sum() == 0:
-                        rescaling = 1.
-                    else:
-                        # make an informed random choice
-                        rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)[0]
-                    # rescale
-                    kappa[j] = rescaling * kappa[j]
-                    theta_e_rescaled.append(
-                        theta_einstein(kappa[j], 1., physical_pixel_scale, sigma_crit, Dds=Dds, Ds=Ds, Dd=Dd)[0])
-                    rescalings.append(rescaling)
-            elif args.crop:
-                kappa = [kap[args.crop: -args.crop, args.crop: -args.crop, ...] for kap in kappa]
-                rescalings = [1.] * args.batch
+                kappa, einstein_radius, rescaling_factors, kappa_ids = kappa_gen.draw_batch(
+                    batch_size=args.batch, rescale=True, shift=args.shift, rotate=args.rotate, random_draw=False)
             else:
-                rescalings = [1.] * args.batch
-            kappa = tf.stack(kappa, axis=0)
-            kappa = tf.cast(kappa, dtype=DTYPE)
-            alpha = tf.concat(phys.deflection_angle(kappa), axis=-1)  # compute labels here
+                kappa, einstein_radius, rescaling_factors, kappa_ids = kappa_gen.draw_batch(
+                    batch_size=args.batch, rescale=False, shift=False, rotate=False, random_draw=False)
 
-            for j in range(args.batch):
-                features = {
-                        "kappa": _bytes_feature(kappa[j].numpy().tobytes()),
-                        "pixels": _int64_feature(crop_pixels),
-                        "alpha": _bytes_feature(alpha[j].numpy().tobytes()),
-                        "rescale": _float_feature(rescalings[j]),
-                        "kappa_id": _int64_feature(kappa_ids[j]),
-                        "Einstein radius": _float_feature(theta_e_rescaled[j])
-                    }
+            alpha = tf.concat(phys.deflection_angle(kappa), axis=-1)
 
-                serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
-                record = serialized_output.SerializeToString()
+            records = encode_examples(
+                kappa=kappa,
+                alpha=alpha,
+                rescalings=rescaling_factors,
+                kappa_ids=kappa_ids,
+                einstein_radius=einstein_radius
+            )
+            for record in records:
                 writer.write(record)
     print(f"Finished work at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
 
 
 if __name__ == '__main__':
+    from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("--kappa_dir", required=True, help="Path to kappa fits files directory")
 
@@ -149,6 +93,12 @@ if __name__ == '__main__':
                         help="Percentage by which to augment the data. (0=no augmentation)"
                              "Random shift of the position of the "
                              "kappa maps if crops > 0, and random rescaling.")
+    parser.add_argument("--shift", action="store_true", help="Shift center of kappa map with a budget defined by "
+                                                             "the crop argument.")
+    parser.add_argument("--rotate", action="store_true", help="If augment, we rotate the kappa map")
+    parser.add_argument("--rotate_by", default="90",
+                        help="'90': will rotate by a multiple of 90 degrees. 'uniform' will rotate by any angle, "
+                             "with nearest neighbor interpolation and zero padding")
     parser.add_argument("--bins", default=10, type=int,
                         help="Number of bins to estimate Einstein radius distribution of a kappa given "
                              "a set of rescaling factors.")
