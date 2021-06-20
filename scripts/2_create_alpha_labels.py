@@ -12,7 +12,7 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 
 # this worker's array index. Assumes slurm array job is zero-indexed
 # defaults to zero if not running under SLURM
-this_worker = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
+THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 
 def distributed_strategy(args):
@@ -49,9 +49,9 @@ def distributed_strategy(args):
     else:
         dataset_size = len(kappa_files)
 
-    with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{this_worker}.tfrecords")) as writer:
-        print(f"Started worker {this_worker} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
-        for i in range((this_worker-1) * args.batch, dataset_size, N_WORKERS * args.batch):
+    with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{THIS_WORKER}.tfrecords")) as writer:
+        print(f"Started worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
+        for i in range((THIS_WORKER - 1) * args.batch, dataset_size, N_WORKERS * args.batch):
             if args.augment:
                 kappa, einstein_radius, rescaling_factors, kappa_ids = kappa_gen.draw_batch(
                     batch_size=args.batch, rescale=True, shift=args.shift, rotate=args.rotate, random_draw=False)
@@ -116,6 +116,26 @@ if __name__ == '__main__':
     parser.add_argument("--z_source", default=2.379, type=float)
     parser.add_argument("--z_lens", default=0.4457, type=float)
 
+    # Reproducibility params
+    parser.add_argument("--seed", default=None, type=int, help="Random seed for numpy and tensorflow")
+    parser.add_argument("--json_override", default=None,
+                        help="A json filepath that will override every command line parameters. "
+                             "Useful for reproducibility")
+
     args = parser.parse_args()
+    if args.seed is not None:
+        tf.random.set_seed(args.seed)
+        np.random.seed(args.seed)
+    if args.json_override is not None:
+        import json
+        with open(args.json_override, "r") as f:
+            json_override = json.load(f)
+        args_dict = vars(args)
+        args_dict.update(json_override)
+    if THIS_WORKER == 1:
+        import json
+        with open(os.path.join(args.output_dir, "script_params.json"), "w") as f:
+            args_dict = vars(args)
+            json.dump(args_dict, f)
 
     distributed_strategy(args)
