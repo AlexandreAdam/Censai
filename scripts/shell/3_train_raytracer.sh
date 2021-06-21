@@ -12,6 +12,7 @@ python ../3_train_raytracer.py\
   --initializer=random_uniform\
   --decoder_encoder_kernel_size=3\
   --pre_bottleneck_kernel_size=6\
+  --bottleneck_strides=4\
   --bottleneck_kernel_size=16\
   --decoder_encoder_filters=32\
   --filter_scaling=1\
