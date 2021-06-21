@@ -8,15 +8,10 @@ import os, glob
 from datetime import datetime
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
-    try:
-    # Currently, memory growth needs to be the same across GPUs
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-    except RuntimeError as e:
-    # Memory growth must be set before GPUs have been initialized
-        print(e)
+    if len(gpus) == 2:
+        PHYSICAL_MODEL_DEVICE = tf.device("/device:GPU:1")
+    else:
+        PHYSICAL_MODEL_DEVICE = tf.device("/device:GPU:0")
 try:
     import wandb
     wandb.init(project="censai_unet_rim", entity="adam-alexandre01123", sync_tensorboard=True)
@@ -33,7 +28,7 @@ def main(args):
     if args.dataset == "NIS":
         train_dataset = NISGenerator(int(args.split * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
         val_dataset = NISGenerator(int((1 - args.split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
-        phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms)
+        phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms, device=PHYSICAL_MODEL_DEVICE)
     else:
         files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
         dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
@@ -50,7 +45,8 @@ def main(args):
             kappa_fov=params["kappa fov"].numpy(),
             method="conv2d",
             noise_rms=params["noise rms"],
-            logkappa=args.logkappa
+            logkappa=args.logkappa,
+            device=PHYSICAL_MODEL_DEVICE
         )
     rim = RIMUnet(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam,
                   **{"source": {"strides": args.source_strides},
