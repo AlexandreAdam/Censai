@@ -26,14 +26,16 @@ def distributed_strategy(args):
         keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
         kappa_files = [kap_file for i, kap_file in enumerate(kappa_files) if keep_kappa[i]]
 
+    min_theta_e = 1 if args.min_theta_e is None else args.min_theta_e
+    max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
     kappa_gen = AugmentedTNGKappaGenerator(
         kappa_fits_files=kappa_files,
         z_lens=args.z_lens,
         z_source=args.z_source,
         crop=args.crop,
         rotate_by=args.rotate_by,
-        min_theta_e=args.min_theta_e,
-        max_theta_e=args.max_theta_e,
+        min_theta_e=min_theta_e,
+        max_theta_e=max_theta_e,
         rescaling_size=args.rescaling_size,
         rescaling_theta_bins=args.bins
     )
@@ -57,7 +59,7 @@ def distributed_strategy(args):
                 break
             galaxies = window[np.newaxis, ..., np.newaxis] * galaxies
 
-            batch_size = galaxies.shape[0]  # Batch size will differ if we selected last batch of galaxy dataset
+            batch_size = galaxies.shape[0]
             kappa, einstein_radius, rescaling_factors, kappa_ids, einstein_radius_init = kappa_gen.draw_batch(
                 batch_size, rescale=True, shift=True, rotate=args.rotate, random_draw=True, return_einstein_radius_init=True)
             lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=args.noise_rms)

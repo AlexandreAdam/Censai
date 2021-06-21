@@ -18,22 +18,22 @@ class RIMUnet:
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
-            checkpoint_manager_source=None,
-            checkpoint_manager_kappa=None,
+            # checkpoint_manager_source=None,
+            # checkpoint_manager_kappa=None,
             **models_kwargs):
         self.physical_model = physical_model
         self.pixels = pixels  # state size is not used, fixed in self.state_size_list
         self.steps = steps
         self._num_units = 32
         self.state_size_list = [32, 32, 128, 512]
-        self.source_model = UnetModel(self.state_size_list, **models_kwargs)
-        self.kappa_model = UnetModel(self.state_size_list, **models_kwargs)
-        if checkpoint_manager_source is not None:
-            checkpoint_manager_source.checkpoint.restore(checkpoint_manager_source.latest_checkpoint)
-            print(f"Initialized source model from {checkpoint_manager_source.latest_checkpoint}")
-        if checkpoint_manager_kappa is not None:
-            checkpoint_manager_kappa.checkpoint.restore(checkpoint_manager_kappa.latest_checkpoint)
-            print(f"Initialized kappa model from {checkpoint_manager_kappa.latest_checkpoint}")
+        self.source_model = UnetModel(self.state_size_list, **models_kwargs["source"])
+        self.kappa_model = UnetModel(self.state_size_list, **models_kwargs["kappa"])
+        # if checkpoint_manager_source is not None:
+        #     checkpoint_manager_source.checkpoint.restore(checkpoint_manager_source.latest_checkpoint)
+        #     print(f"Initialized source model from {checkpoint_manager_source.latest_checkpoint}")
+        # if checkpoint_manager_kappa is not None:
+        #     checkpoint_manager_kappa.checkpoint.restore(checkpoint_manager_kappa.latest_checkpoint)
+        #     print(f"Initialized kappa model from {checkpoint_manager_kappa.latest_checkpoint}")
         self.batch_size = batch_size
         self.adam = adam
         self.kappalog = kappalog

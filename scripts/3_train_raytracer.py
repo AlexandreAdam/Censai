@@ -2,7 +2,7 @@ import tensorflow as tf
 from censai import RayTracer512 as RayTracer
 from censai.data import NISGenerator
 from censai.utils import nullwriter
-import os
+import os, glob
 import numpy as np
 try:
     import wandb
@@ -17,7 +17,15 @@ def main(args):
     if wndb:
         config = wandb.config
         config.update(vars(args))
-    gen = NISGenerator(args.total_items, args.batch_size, pixels=args.pixels)
+    if args.dataset == "NIS":
+        train_dataset = NISGenerator(int(args.split * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
+        val_dataset = NISGenerator(int((1 - args.split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
+    else:
+        files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
+        dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
+        dataset = dataset.batch(args.batch_size).cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
+        train_dataset = dataset.take(int(args.split * args.total_items))
+        val_dataset = dataset.skip(int(args.split * args.total_items))
     ray_tracer = RayTracer(
         initializer=args.initializer,
         bottleneck_kernel_size=args.bottleneck_kernel_size,
@@ -49,6 +57,7 @@ def main(args):
         if not os.path.isdir(testdir):
             os.mkdir(testdir)
         train_writer = tf.summary.create_file_writer(traindir)
+        test_writer = tf.summary.create_file_writer(testdir)
     else:
         train_writer = nullwriter()
         test_writer = nullwriter()
@@ -82,6 +91,7 @@ def main(args):
         save_checkpoint = False
 
     epoch_loss = tf.metrics.Mean()
+    val_loss = tf.metrics.Mean()
     best_loss = np.inf
     patience = args.patience
     step = 1
@@ -93,11 +103,11 @@ def main(args):
     for epoch in range(1, args.epochs + 1):
         epoch_loss.reset_states()
         with train_writer.as_default():
-            for batch, (kappa, alpha) in enumerate(gen):
+            for batch, (kappa, alpha) in enumerate(train_dataset):
                 # ========== Forward and backprop ==========
                 with tf.GradientTape(watch_accessed_variables=True) as tape:
                     tape.watch(ray_tracer.trainable_weights)
-                    cost = tf.reduce_mean(tf.square(ray_tracer(link(kappa)) - alpha)) # also MSE
+                    cost = tf.reduce_mean(tf.square(ray_tracer(link(kappa)) - alpha))
                     cost += tf.reduce_sum(ray_tracer.losses)  # add L2 regularizer loss
                 gradient = tape.gradient(cost, ray_tracer.trainable_weights)
                 if args.clipping:
@@ -105,14 +115,21 @@ def main(args):
                 else:
                     clipped_gradient = gradient
                 optim.apply_gradients(zip(clipped_gradient, ray_tracer.trainable_variables))
-                # ========== Summary and logs ==========
+        # ========== Summary and logs ==========
                 epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
+        with test_writer.as_default():
+            val_loss.reset_states()
+            for kappa, alpha in val_dataset:
+                cost = tf.reduce_mean(tf.square(ray_tracer(link(kappa)) - alpha))
+                cost += tf.reduce_sum(ray_tracer.losses)
+                val_loss.update_state([cost])
         train_cost = epoch_loss.result().numpy()
-        print(f"epoch {epoch} | train loss {train_cost:.3e} | learning rate {optim.lr(step).numpy():.2e}")
-        if train_cost < best_loss * (1 - args.tolerance):
-            best_loss = train_cost
+        val_cost = val_loss.result.numpy()
+        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e}")
+        if val_cost < best_loss * (1 - args.tolerance):
+            best_loss = val_cost
             patience = args.patience
         else:
             patience -= 1
@@ -121,7 +138,7 @@ def main(args):
             checkpoint_manager.checkpoint.step.assign_add(1)  # a bit of a hack
             if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
                 with open(os.path.join(checkpoints_dir, "score_sheet.txt"), mode="a") as f:
-                    np.savetxt(f, np.array([lastest_checkpoint, train_cost]))
+                    np.savetxt(f, np.array([lastest_checkpoint, val_cost]))
                 lastest_checkpoint += 1
                 checkpoint_manager.save()
                 print("Saved checkpoint for step {}: {}".format(int(checkpoint_manager.checkpoint.step), checkpoint_manager.latest_checkpoint))
@@ -133,6 +150,7 @@ def main(args):
 if __name__ == "__main__":
     from argparse import ArgumentParser
     from datetime import datetime
+    import json
     date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     parser = ArgumentParser()
     parser.add_argument("--model_id",        default="None", help="Start training from previous "
@@ -154,14 +172,21 @@ if __name__ == "__main__":
 
     # Training set params
     parser.add_argument("-b", "--batch_size",               default=10,  type=int, help="Number of images in a batch")
-    parser.add_argument("--dataset",                        default="analytic",    help="Dataset to use, either path to directory that contains alpha labels tfrecords or the string "
-                                                                                        "'analytic' in which case we use the NISGenerator class to generate data")
-    # for analytic dataset
-    parser.add_argument("-t", "--total_items",              default=100, type=int, help="Total images in an epoch")
+    parser.add_argument("--dataset",                        default="NIS",    help="Dataset to use, either path to directory that contains alpha labels tfrecords "
+                                                                                   "or the name of the dataset tu use. Options are ['NIS'].")
+    parser.add_argument("--train_split",                    default=0.8, type=float, help="Fraction of the training set")
+    parser.add_argument("--total_items", required=True,                  type=int, help="Total images in an epoch.")
+
+    # For NIS dataset
+    parser.add_argument("--pixels",                         default=512, type=int, help="When using NIS, size of the image to generate")
+
+    # for tfrecord dataset
+    parser.add_argument("--num_parallel_reads",             default=10, type=int, help="TFRecord dataset number of parallel reads when loading data")
+    parser.add_argument("--cache_file",                     default=None, help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
 
     # Logs
     parser.add_argument("--logdir",                         default="None",        help="Path of logs directory.")
-    parser.add_argument("--logname",                        default="RT_" + date,  help="Name of the logs, default is the local date + time")
+    parser.add_argument("--logname",                        default="RT_" + date,  help="Name of the logs, default is 'RT_' + date")
     parser.add_argument("--model_dir",                      default="None",        help="Directory where to save model weights")
     parser.add_argument("--checkpoints",                    default=10, type=int,  help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3, type=int,   help="Max model checkpoint to keep")
@@ -172,8 +197,24 @@ if __name__ == "__main__":
     parser.add_argument("--decay_rate",                     default=1.,     type=float, help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",                    default=1000,   type=int,   help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--clipping",                       default=True,   type=bool,  help="Clip backprop gradients between -10 and 10")
-    parser.add_argument("--patience",                       default=np.inf, type=float, help="Number of step at which training is stopped if no improvement is recorder")
+    parser.add_argument("--patience",                       default=np.inf, type=int, help="Number of step at which training is stopped if no improvement is recorder")
     parser.add_argument("--tolerance",                      default=0,      type=float, help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
 
+    # Reproducibility params
+    parser.add_argument("--seed", default=None, type=int, help="Random seed for numpy and tensorflow")
+    parser.add_argument("--json_override", default=None,
+                        help="A json filepath that will override every command line parameters. "
+                             "Useful for reproducibility")
+
     args = parser.parse_args()
+    if args.seed is not None:
+        tf.random.set_seed(args.seed)
+        np.random.seed(args.seed)
+    if args.json_override is not None:
+
+        with open(args.json_override, "r") as f:
+            json_override = json.load(f)
+        args_dict = vars(args)
+        args_dict.update(json_override)
+
     main(args)
