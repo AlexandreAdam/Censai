@@ -18,6 +18,7 @@ class AugmentedTNGKappaGenerator:
             z_lens: float = None,           # new z_lens if provided
             z_source: float = None,
             crop: int = 0,
+            max_shift: float = 1.,
             rotate_by: str = "90",          # Either rotate by 90 degrees or 'uniform'
             min_theta_e: float = 1,
             max_theta_e: float = 5,
@@ -29,6 +30,7 @@ class AugmentedTNGKappaGenerator:
         self.z_lens = z_lens if z_lens is not None else header["ZLENS"]
         self.z_source = z_source if z_source is not None else header["ZSOURCE"]
         self._crop = crop
+        self.max_shift_arcsec = max_shift
         self.rescaling_size = rescaling_size
         self.rescaling_theta_bins = rescaling_theta_bins
         self.rotate_by = rotate_by
@@ -51,6 +53,7 @@ class AugmentedTNGKappaGenerator:
         self.min_theta_e = min_theta_e
         self.max_theta_e = max_theta_e
         # ====================================================
+        self.max_shift = min(int(max_shift / self.pixel_scale), self._crop - 1)
         self.index = 0
 
     def crop(self, kappa):
@@ -61,7 +64,7 @@ class AugmentedTNGKappaGenerator:
 
     def crop_and_shift(self, kappa):
         if len(kappa.shape) == 3:
-            shift = np.random.randint(low=-self._crop + 1, high=self._crop - 1, size=2)
+            shift = np.random.randint(low=-self.max_shift, high=self.max_shift, size=2)
             return kappa[
                    self._crop + shift[0]: -(self._crop - shift[0]),
                    self._crop + shift[1]: -(self._crop - shift[1]), ...]
@@ -69,7 +72,7 @@ class AugmentedTNGKappaGenerator:
             batch_size = kappa.shape[0]
             kap = []
             for j in range(batch_size):
-                shift = np.random.randint(low=-self._crop + 1, high=self._crop - 1, size=2)
+                shift = np.random.randint(low=-self.max_shift, high=self.max_shift, size=2)
                 kap.append(
                     kappa[j,
                     self._crop + shift[0]: -(self._crop - shift[0]),
