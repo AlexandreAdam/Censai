@@ -59,7 +59,7 @@ class AugmentedTNGKappaGenerator:
         if len(kappa.shape) == 3:
             return kappa[self._crop: -self._crop, self._crop: -self._crop, ...]
         elif len(kappa.shape) == 4:
-            return kappa[..., self._crop: -self._crop, self._crop: -self._crop, ...]
+            return kappa[..., self._crop: -self._crop, self._crop: -self._crop, :]
 
     def crop_and_shift(self, kappa):
         if len(kappa.shape) == 3:

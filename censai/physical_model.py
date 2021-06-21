@@ -2,7 +2,8 @@ import tensorflow as tf
 import numpy as np
 from censai.models.ray_tracer import RayTracer
 import tensorflow_addons as tfa
-from censai.definitions import DTYPE
+from censai.definitions import DTYPE, log_kappa, logkappa_normalization
+from censai.utils import nullcontext
 
 
 class PhysicalModel:
@@ -20,7 +21,10 @@ class PhysicalModel:
             method="conv2d",
             noise_rms=1,
             logkappa=False,
-            checkpoint_path=None):
+            normalize_logkappa=False,
+            checkpoint_path=None,
+            device=nullcontext()
+    ):
         if src_pixels is None:
             src_pixels = pixels  # assume src has the same shape
         self.image_fov = image_fov
@@ -32,6 +36,8 @@ class PhysicalModel:
         self.method = method
         self.noise_rms = noise_rms
         self.logkappa = logkappa
+        self.normalize_logkappa = normalize_logkappa
+        self.device = device
         if method == "unet":
             self.RT = RayTracer(trainable=False)
             self.RT.load_weights(checkpoint_path)
@@ -63,11 +69,7 @@ class PhysicalModel:
             This approach has complexity O((4*pixels)^2 * log^2(4 * pixels)), and is precise to about rms=2e-5 of the 
             true convolution for the deflection angles.
             """
-            kappa = tf.image.pad_to_bounding_box(kappa,
-                                                 offset_height=0,
-                                                 offset_width=0,
-                                                 target_width=4 * self.pixels+1,
-                                                 target_height=4 * self.pixels+1)
+            # pad the kernel and compute itf fourier transform
             xconv_kernel = tf.image.pad_to_bounding_box(self.xconv_kernel[..., 0], 0, 0, 4*self.pixels+1, 4*self.pixels+1)
             yconv_kernel = tf.image.pad_to_bounding_box(self.yconv_kernel[..., 0], 0, 0, 4*self.pixels+1, 4*self.pixels+1)
             x_kernel_tilde = tf.signal.fft2d(tf.cast(-xconv_kernel[..., 0], tf.complex64))
@@ -77,7 +79,12 @@ class PhysicalModel:
             alpha_x = []
             alpha_y = []
             for i in range(batch_size):
-                kappa_tilde = tf.signal.fft2d(tf.cast(kappa[i, ..., 0], tf.complex64))
+                kap = tf.image.pad_to_bounding_box(kappa[i, ...],  # pad kappa one by one to save memory space
+                                                   offset_height=0,
+                                                   offset_width=0,
+                                                   target_width=4 * self.pixels + 1,
+                                                   target_height=4 * self.pixels + 1)
+                kappa_tilde = tf.signal.fft2d(tf.cast(kap[..., 0], tf.complex64))
                 alpha_x.append(tf.math.real(tf.signal.ifft2d(kappa_tilde * x_kernel_tilde)) * (self.dx_kap**2/np.pi))
                 alpha_y.append(tf.math.real(tf.signal.ifft2d(kappa_tilde * y_kernel_tilde)) * (self.dx_kap**2/np.pi))
             alpha_x = tf.stack(alpha_x, axis=0)[..., tf.newaxis]
@@ -99,11 +106,14 @@ class PhysicalModel:
         return x_src, y_src, alpha_x, alpha_y
 
     def log_likelihood(self, source, kappa, y_true):
-        y_pred = self.forward(source, kappa)
+        with self.device:
+            y_pred = self.forward(source, kappa)
         return 0.5 * tf.reduce_mean((y_pred - y_true)**2/self.noise_rms**2)
 
     def forward(self, source, kappa):
         if self.logkappa:
+            if self.normalize_logkappa:  # undo normalization
+                kappa = logkappa_normalization(kappa, forward=False)
             kappa = 10**kappa
         im = self.lens_source(source, kappa)
         im = self.convolve_with_psf(im)
