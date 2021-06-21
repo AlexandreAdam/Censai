@@ -121,7 +121,7 @@ def main(args):
                 cost += tf.reduce_sum(ray_tracer.losses)
                 val_loss.update_state([cost])
         train_cost = epoch_loss.result().numpy()
-        val_cost = val_loss.result.numpy()
+        val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e}")
         if val_cost < best_loss * (1 - args.tolerance):
             best_loss = val_cost
