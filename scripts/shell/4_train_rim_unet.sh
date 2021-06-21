@@ -9,19 +9,9 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../4_train_rim.py\
-  --epochs=1000\
-  --total_items=200\
-  --batch_size=10\
-  --learning_rate=1e-4\
-  --decay_rate=0.9\
-  --decay_steps=2000\
-  --staircase\
-  --pixels=64\
+  --time_steps=16\
   --kappalog=True\
   --adam=True\
-  --logdir=../../logs\
-  --model_dir=../../models\
-  --checkpoints=10\
-  --max_to_keep=5
+  --
 
 

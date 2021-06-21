@@ -52,7 +52,10 @@ def main(args):
             noise_rms=params["noise rms"],
             logkappa=args.logkappa
         )
-    rim = RIMUnet(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam, strides=args.strides)
+    rim = RIMUnet(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam,
+                  **{"source": {"strides": args.source_strides},
+                     "kappa": {"strides": args.kappa_strides}}
+                  )
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.initial_learning_rate,
         decay_rate=args.decay_rate,
@@ -183,33 +186,40 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model_id", type=str, default="None",
                         help="Start from this model id checkpoint. None means start from scratch")
-    parser.add_argument("--load_checkpoint", default="best", help="One of 'best', 'lastest' or the specific checkpoint index")
+    parser.add_argument("--load_checkpoint", default="best", help="One of 'best', 'lastest' or the specific checkpoint index.")
 
     # RIM hyperparameters
     parser.add_argument("--time_steps",     default=16,     type=int, help="Number of time steps of RIM")
-    parser.add_argument("--kappalog",       default=True,   type=bool)
     parser.add_argument("--adam",           default=True,   type=bool,
-                        help="ADAM update for the log-likelihood gradient")
-    parser.add_argument("--strides",        default=2,      type=int,
-                        help="Value of the stride parameter in the 3 downsampling and upsampling layers")
+                        help="ADAM update for the log-likelihood gradient.")
+    # ... for kappa model
+    parser.add_argument("--kappalog",       default=True,   type=bool)
+    parser.add_argument("--kappa_strides",  default=4,      type=int,
+                        help="Value of the stride parameter in the 3 downsampling and upsampling layers "
+                             "for the kappa model.")
+
+    # ... for the source model
+    parser.add_argument("--source_strides", default=2,      type=int,
+                        help="Value of the stride parameter in the 3 downsampling and upsampling layers "
+                             "for the source model.")
 
     # Training set params
-    parser.add_argument("-b", "--batch_size",   default=10,     type=int,   help="Number of images in a batch")
+    parser.add_argument("-b", "--batch_size",   default=10,     type=int,   help="Number of images in a batch.")
     parser.add_argument("--dataset",            default="NIS",
                         help="Dataset to use, either path to directory that contains alpha labels tfrecords "
                              "or the name of the dataset tu use. Options are ['NIS'].")
-    parser.add_argument("--train_split",        default=0.8,    type=float, help="Fraction of the training set")
+    parser.add_argument("--train_split",        default=0.8,    type=float, help="Fraction of the training set.")
     parser.add_argument("--total_items",        required=True,  type=int,   help="Total images in an epoch.")
 
     # ... for NIS dataset
-    parser.add_argument("--pixels",     default=512,    type=int,   help="When using NIS, size of the image to generate")
-    parser.add_argument("--noise_rms",  default=1e-3,   type=float, help="Pixel value rms of lensed image")
+    parser.add_argument("--pixels",     default=512,    type=int,   help="When using NIS, size of the image to generate.")
+    parser.add_argument("--noise_rms",  default=1e-3,   type=float, help="Pixel value rms of lensed image.")
 
     # ... for tfrecord dataset
     parser.add_argument("--num_parallel_reads", default=10, type=int,
-                        help="TFRecord dataset number of parallel reads when loading data")
+                        help="TFRecord dataset number of parallel reads when loading data.")
     parser.add_argument("--cache_file",         default=None,
-                        help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
+                        help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache.")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,   help="Number of epochs for training.")
@@ -218,25 +228,25 @@ if __name__ == "__main__":
                         help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,
                         help="Decay steps of exponential decay of the learning rate.")
-    parser.add_argument("--clipping",               default=True,   type=bool, help="Clip backprop gradients between -10 and 10")
+    parser.add_argument("--clipping",               default=True,   type=bool, help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,
-                        help="Number of step at which training is stopped if no improvement is recorder")
+                        help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,
                         help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
 
     # logs
     parser.add_argument("--logdir",                  default="None",
-                        help="Path of logs directory. Default if None, no logs recorded")
+                        help="Path of logs directory. Default if None, no logs recorded.")
     parser.add_argument("--model_dir",               default="None",
-                        help="Path to the directory where to save models checkpoints")
+                        help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,
-                        help="Save a checkpoint of the models each {%} iteration")
+                        help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,
-                        help="Max model checkpoint to keep")
+                        help="Max model checkpoint to keep.")
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,
-                        help="Random seed for numpy and tensorflow")
+                        help="Random seed for numpy and tensorflow.")
     parser.add_argument("--json_override",          default=None,
                         help="A json filepath that will override every command line parameters. "
                              "Useful for reproducibility")
