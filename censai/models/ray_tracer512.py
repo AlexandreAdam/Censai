@@ -38,6 +38,8 @@ class RayTracer512(tf.keras.Model):
         bottle_stride = tuple([bottleneck_strides]*2)
         self.trainable = trainable
         activation = get_activation(activation)
+        self.kappalog = kappalog
+        self.kappa_normalize = normalize
 
         self.Lc11 = tf.keras.layers.Conv2D(filters, main_kernel, activation=activation, **common_params)
         self.Lc12 = tf.keras.layers.Conv2D(filters, main_kernel, activation=activation, **common_params)
