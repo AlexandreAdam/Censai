@@ -22,6 +22,7 @@ python ../3_train_raytracer.py\
   --batch_size=10\
   --dataset=$HOME/scratch/Censai/data/kappa612_TNG100_64neighbors/\
   --total_items=45360\
+  --train_split=0.9\
   --num_parallel_reads=10\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
