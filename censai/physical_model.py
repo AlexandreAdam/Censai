@@ -12,7 +12,7 @@ class PhysicalModel:
     def __init__(
             self,
             pixels,           # 512
-            psf_sigma,        # gaussian PSF
+            psf_sigma=0.06,   # gaussian PSF
             src_pixels=None,  # 128 for cosmos
             image_fov=7.68,
             src_fov=3.0,
