@@ -215,17 +215,17 @@ class PhysicalModel:
         cutout_size = 10 * self.psf_sigma / pixel_scale
         r_squared = self.ximage**2 + self.yimage**2
         psf = np.exp(-0.5 * r_squared / self.psf_sigma**2)
-        psf = tf.image.crop_to_bounding_box(psf[..., None],
+        psf = tf.image.crop_to_bounding_box(psf,
                                             offset_height=self.pixels//2 - cutout_size//2,
                                             offset_width=self.pixels//2 - cutout_size//2,
                                             target_width=cutout_size,
                                             target_height=cutout_size)
         psf /= psf.numpy().sum()
+        psf = tf.reshape(psf, shape=[cutout_size, cutout_size, 1, 1])
         return psf
 
     def convolve_with_psf(self, images):
-        kernel = self.PSF[..., tf.newaxis, tf.newaxis]
-        convolved_images = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding="SAME")
+        convolved_images = tf.nn.conv2d(images, self.PSF, [1, 1, 1, 1], padding="SAME")
         return convolved_images
 
 
