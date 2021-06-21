@@ -91,10 +91,12 @@ def xsquared(x):
     return (x/4)**2
 
 
+@tf.function
 def log_kappa(x):
     return tf.math.log(x + LOGFLOOR) / LOG10
 
 
+@tf.function
 def logkappa_normalization(x, forward=True):
     if forward:
         return (x - log_kappa(KAPPA_MEAN)) / log_kappa(KAPPA_STD)
