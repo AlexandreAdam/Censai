@@ -18,14 +18,14 @@ def main(args):
         config = wandb.config
         config.update(vars(args))
     if args.dataset == "NIS":
-        train_dataset = NISGenerator(int(args.split * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
-        val_dataset = NISGenerator(int((1 - args.split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
+        train_dataset = NISGenerator(int(args.train_split * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
+        val_dataset = NISGenerator(int((1 - args.train_split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
     else:
         files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
         dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
         dataset = dataset.batch(args.batch_size).cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
-        train_dataset = dataset.take(int(args.split * args.total_items))
-        val_dataset = dataset.skip(int(args.split * args.total_items))
+        train_dataset = dataset.take(int(args.train_split * args.total_items))
+        val_dataset = dataset.skip(int(args.train_split * args.total_items))
     ray_tracer = RayTracer(
         initializer=args.initializer,
         bottleneck_kernel_size=args.bottleneck_kernel_size,
