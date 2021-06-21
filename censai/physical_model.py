@@ -11,10 +11,11 @@ class PhysicalModel:
     """
     def __init__(
             self,
-            pixels,  # 512
+            pixels,           # 512
+            psf_sigma,        # gaussian PSF
             src_pixels=None,  # 128 for cosmos
             image_fov=7.68,
-            src_side=3.0,
+            src_fov=3.0,
             kappa_fov=7.68,
             method="conv2d",
             noise_rms=1,
@@ -23,7 +24,8 @@ class PhysicalModel:
         if src_pixels is None:
             src_pixels = pixels  # assume src has the same shape
         self.image_fov = image_fov
-        self.src_side = src_side
+        self.psf_sigma = psf_sigma
+        self.src_fov = src_fov
         self.pixels = pixels
         self.src_pixels = src_pixels
         self.kappa_fov = kappa_fov
@@ -34,6 +36,7 @@ class PhysicalModel:
             self.RT = RayTracer(trainable=False)
             self.RT.load_weights(checkpoint_path)
         self.set_deflection_angle_vars()
+        self.PSF = self.psf_model()
 
     def deflection_angle(self, kappa):
         if self.method == "conv2d":
@@ -103,15 +106,16 @@ class PhysicalModel:
         if self.logkappa:
             kappa = 10**kappa
         im = self.lens_source(source, kappa)
+        im = self.convolve_with_psf(im)
         return im
 
     def noisy_forward(self, source, kappa, noise_rms):
         im = self.forward(source, kappa)
         noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
-        return im + noise
+        out = self.convolve_with_psf(im + noise)
+        return out
 
     def lens_source(self, source, kappa):
-        batch_size = source.shape[0]
         x_src, y_src, _, _ = self.deflection_angle(kappa)
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
         wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
@@ -173,9 +177,9 @@ class PhysicalModel:
         return im, jacobian
 
     def src_coord_to_pix(self, x, y):
-        dx = self.src_side/(self.src_pixels - 1)
-        xmin = -0.5 * self.src_side
-        ymin = -0.5 * self.src_side
+        dx = self.src_fov / (self.src_pixels - 1)
+        xmin = -0.5 * self.src_fov
+        ymin = -0.5 * self.src_fov
         i_coord = (x - xmin) / dx
         j_coord = (y - ymin) / dx
         return i_coord, j_coord
@@ -205,6 +209,24 @@ class PhysicalModel:
         out = np.zeros_like(num)
         out[denominator != 0] = num[denominator != 0] / denominator[denominator != 0]
         return out
+
+    def psf_model(self):
+        pixel_scale = self.image_fov / self.pixels
+        cutout_size = 10 * self.psf_sigma / pixel_scale
+        r_squared = self.ximage**2 + self.yimage**2
+        psf = np.exp(-0.5 * r_squared / self.psf_sigma**2)
+        psf = tf.image.crop_to_bounding_box(psf[..., None],
+                                            offset_height=self.pixels//2 - cutout_size//2,
+                                            offset_width=self.pixels//2 - cutout_size//2,
+                                            target_width=cutout_size,
+                                            target_height=cutout_size)
+        psf /= psf.numpy().sum()
+        return psf
+
+    def convolve_with_psf(self, images):
+        kernel = self.PSF[..., tf.newaxis, tf.newaxis]
+        convolved_images = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding="SAME")
+        return convolved_images
 
 
 class AnalyticalPhysicalModel: 
