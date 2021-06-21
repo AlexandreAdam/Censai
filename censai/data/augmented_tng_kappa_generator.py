@@ -40,7 +40,6 @@ class AugmentedTNGKappaGenerator:
         self.Ds = COSMO.angular_diameter_distance(self.z_source)
         self.Dds = COSMO.angular_diameter_distance_z1z2(self.z_lens, self.z_source)
         self.sigma_crit = (c ** 2 * self.Ds / (4 * np.pi * G * self.Dd * self.Dds)).to(u.kg * u.Mpc ** (-2))
-
         # Compute a rescaling factor given possibly new redshift pair
         self.sigma_crit_factor = (header["SIGCRIT"] * (1e10 * M_sun * u.Mpc ** (-2)) / self.sigma_crit).decompose().value
 
@@ -153,18 +152,18 @@ class AugmentedTNGKappaGenerator:
         rescaling_factors = []
         new_einstein_radius = []
         for j in range(batch_size):
-            if tf.reduce_max(kappa[j]) <= 1:  # make sure at least a few pixels will be dense enough for deflection
-                kappa[j] /= 0.95 * tf.reduce_max(kappa[j])
-            theta_e = self.einstein_radius(kappa[j][None, ...])[0]
+            kap = kappa[j]
+            if tf.reduce_max(kap) <= 1:  # make sure at least a few pixels will be dense enough for deflection
+                kap /= 0.95 * tf.reduce_max(kap)
+            theta_e = self.einstein_radius(kap[None, ...])[0]
             # Rough estimate of allowed rescaling factors
             rescaling_array = np.linspace(self.min_theta_e / theta_e, self.max_theta_e / theta_e, self.rescaling_size) * self.sigma_crit_factor
-            rescaling_p = self.compute_rescaling_probabilities(kappa[j], rescaling_array)
+            rescaling_p = self.compute_rescaling_probabilities(kap, rescaling_array)
             if rescaling_p.sum() == 0:
                 rescaling = 1.
-
             else:
                 rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)[0]
-            kappa_rescaled.append(rescaling * kappa[j])
+            kappa_rescaled.append(rescaling * kap)
             new_einstein_radius.append(self.einstein_radius(kappa_rescaled[-1][None, ...])[0])
             rescaling_factors.append(rescaling)
         kappa_rescaled = tf.stack(kappa_rescaled, axis=0)
