@@ -13,6 +13,19 @@ except ImportError:
     wndb = False
     print("wandb not installed, package ignored")
 
+RAYTRACER_HPARAMS = [
+    "decoder_encoder_kernel_size",
+    "pre_bottleneck_kernel_size",
+    "bottleneck_kernel_size",
+    "bottleneck_strides",
+    "decoder_encoder_filters",
+    "filter_scaling",
+    "upsampling_interpolation",
+    "activation",
+    "kappalog",
+    "normalize"
+]
+
 
 def main(args):
     if wndb:
@@ -74,6 +87,9 @@ def main(args):
             import json
             with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
                 json.dump(vars(args), f)
+            with open(os.path.join(checkpoints_dir, "ray_tracer_hparams.json"), "w") as f:
+                hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
+                json.dump(hparams_dict, f)
         ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=ray_tracer)
         checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
@@ -168,18 +184,17 @@ if __name__ == "__main__":
     parser.add_argument("--normalize",                      default=False,            type=bool,  help="Normalize log of kappa with max and minimum values defined in definitions.py")
 
     # Training set params
-    parser.add_argument("-b", "--batch_size",               default=10,  type=int, help="Number of images in a batch")
-    parser.add_argument("--dataset",                        default="NIS",    help="Dataset to use, either path to directory that contains alpha labels tfrecords "
-                                                                                   "or the name of the dataset tu use. Options are ['NIS'].")
-    parser.add_argument("--train_split",                    default=0.8, type=float, help="Fraction of the training set")
-    parser.add_argument("--total_items", required=True,                  type=int, help="Total images in an epoch.")
-
-    # For NIS dataset
-    parser.add_argument("--pixels",                         default=512, type=int, help="When using NIS, size of the image to generate")
-
-    # for tfrecord dataset
-    parser.add_argument("--num_parallel_reads",             default=10, type=int, help="TFRecord dataset number of parallel reads when loading data")
-    parser.add_argument("--cache_file",                     default=None, help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
+    parser.add_argument("-b", "--batch_size",               default=10,     type=int,       help="Number of images in a batch")
+    parser.add_argument("--dataset",                        default="NIS",
+                        help="Dataset to use, either path to directory that contains alpha labels tfrecords "
+                             "or the name of the dataset tu use. Options are ['NIS'].")
+    parser.add_argument("--train_split",                    default=0.8,    type=float,     help="Fraction of the training set")
+    parser.add_argument("--total_items", required=True,                     type=int,       help="Total images in an epoch.")
+    # ... for NIS dataset
+    parser.add_argument("--pixels",                         default=512,    type=int,       help="When using NIS, size of the image to generate")
+    # ... for tfrecord dataset
+    parser.add_argument("--num_parallel_reads",             default=10,     type=int,       help="TFRecord dataset number of parallel reads when loading data")
+    parser.add_argument("--cache_file",                     default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
 
     # Logs
     parser.add_argument("--logdir",                         default="None",        help="Path of logs directory.")

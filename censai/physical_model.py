@@ -23,7 +23,8 @@ class PhysicalModel:
             logkappa=False,
             normalize_logkappa=False,
             checkpoint_path=None,
-            device=nullcontext()
+            device=nullcontext(),
+            **raytracer_hparams
     ):
         if src_pixels is None:
             src_pixels = pixels  # assume src has the same shape
@@ -39,7 +40,7 @@ class PhysicalModel:
         self.normalize_logkappa = normalize_logkappa
         self.device = device
         if method == "unet":
-            self.RT = RayTracer(trainable=False)
+            self.RT = RayTracer(trainable=False, **raytracer_hparams)
             self.RT.load_weights(checkpoint_path)
         self.set_deflection_angle_vars()
         self.PSF = self.psf_model()
@@ -111,25 +112,32 @@ class PhysicalModel:
         return 0.5 * tf.reduce_mean((y_pred - y_true)**2/self.noise_rms**2)
 
     def forward(self, source, kappa):
-        if self.logkappa:
-            if self.normalize_logkappa:  # undo normalization
-                kappa = logkappa_normalization(kappa, forward=False)
-            kappa = 10**kappa
-        im = self.lens_source(source, kappa)
-        im = self.convolve_with_psf(im)
+        with self.device:
+            if self.logkappa:
+                if self.normalize_logkappa:  # undo normalization
+                    kappa = logkappa_normalization(kappa, forward=False)
+                kappa = 10**kappa
+            im = self.lens_source(source, kappa)
+            im = self.convolve_with_psf(im)
         return im
 
     def noisy_forward(self, source, kappa, noise_rms):
-        im = self.forward(source, kappa)
-        noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
-        out = self.convolve_with_psf(im + noise)
+        with self.device:
+            if self.logkappa:
+                if self.normalize_logkappa:  # undo normalization
+                    kappa = logkappa_normalization(kappa, forward=False)
+                kappa = 10**kappa
+            im = self.lens_source(source, kappa)
+            noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
+            out = self.convolve_with_psf(im + noise)
         return out
 
     def lens_source(self, source, kappa):
-        x_src, y_src, _, _ = self.deflection_angle(kappa)
-        x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
-        wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
-        im = tfa.image.resampler(source, wrap)  # bilinear interpolation of source on wrap grid
+        with self.device:
+            x_src, y_src, _, _ = self.deflection_angle(kappa)
+            x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
+            wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
+            im = tfa.image.resampler(source, wrap)  # bilinear interpolation of source on wrap grid
         return im
 
     def lens_source_and_compute_jacobian(self, source, kappa):
@@ -142,48 +150,49 @@ class PhysicalModel:
         Returns: lens image, jacobian matrix
         """
         assert source.shape[0] == 1, "For now, this only works for a single example"
-        # we have to compute everything here from scratch to get gradient paths
-        x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_fov
-        theta_x, theta_y = tf.meshgrid(x, x)
-        theta_x = tf.cast(theta_x, DTYPE)
-        theta_y = tf.cast(theta_y, DTYPE)
-        theta_x = theta_x[..., tf.newaxis, tf.newaxis] # [..., in_channels, out_channels]
-        theta_y = theta_y[..., tf.newaxis, tf.newaxis]
-        with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
-            tape.watch(theta_x)
-            tape.watch(theta_y)
-            rho = theta_x**2 + theta_y**2
-            kernel_x = - tf.math.divide_no_nan(theta_x, rho)
-            kernel_y = - tf.math.divide_no_nan(theta_y, rho)
-            # compute deflection angles
-            alpha_x = tf.nn.conv2d(kappa, kernel_x, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
-            alpha_y = tf.nn.conv2d(kappa, kernel_y, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
-            # pad deflection angles with zeros outside of the scene (these are cropped out latter)
-            alpha_x = tf.pad(alpha_x, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
-            alpha_y = tf.pad(alpha_y, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
-            # lens equation (reshape thetas to broadcast properly onto alpha)
-            x_src = tf.reshape(theta_x, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_x
-            y_src = tf.reshape(theta_y, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_y
-        # if target is not connected to source, make sure gradient return tensor of ZERO not NONE, also crop gradients
-        j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
-        j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
-        j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
-        j22 = tape.gradient(y_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
-        # reshape gradients to [batch, pixels, pixels, channels] shape. TODO make the above code work for batch != 1
-        j11 = tf.reshape(j11, [1, self.pixels, self.pixels, 1])
-        j12 = tf.reshape(j12, [1, self.pixels, self.pixels, 1])
-        j21 = tf.reshape(j21, [1, self.pixels, self.pixels, 1])
-        j22 = tf.reshape(j22, [1, self.pixels, self.pixels, 1])
-        # put in a shape for which tf.linalg.det is easy to use (shape = [..., 2, 2])
-        j1 = tf.concat([j11, j12], axis=3)
-        j2 = tf.concat([j21, j22], axis=3)
-        jacobian = tf.stack([j1, j2], axis=-1)
-        # lens the source brightness distribution
-        x_src = x_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        y_src = y_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
-        wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
-        im = tfa.image.resampler(source, wrap)
+        with self.device:
+            # we have to compute everything here from scratch to get gradient paths
+            x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_fov
+            theta_x, theta_y = tf.meshgrid(x, x)
+            theta_x = tf.cast(theta_x, DTYPE)
+            theta_y = tf.cast(theta_y, DTYPE)
+            theta_x = theta_x[..., tf.newaxis, tf.newaxis] # [..., in_channels, out_channels]
+            theta_y = theta_y[..., tf.newaxis, tf.newaxis]
+            with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
+                tape.watch(theta_x)
+                tape.watch(theta_y)
+                rho = theta_x**2 + theta_y**2
+                kernel_x = - tf.math.divide_no_nan(theta_x, rho)
+                kernel_y = - tf.math.divide_no_nan(theta_y, rho)
+                # compute deflection angles
+                alpha_x = tf.nn.conv2d(kappa, kernel_x, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
+                alpha_y = tf.nn.conv2d(kappa, kernel_y, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
+                # pad deflection angles with zeros outside of the scene (these are cropped out latter)
+                alpha_x = tf.pad(alpha_x, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
+                alpha_y = tf.pad(alpha_y, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
+                # lens equation (reshape thetas to broadcast properly onto alpha)
+                x_src = tf.reshape(theta_x, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_x
+                y_src = tf.reshape(theta_y, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_y
+            # if target is not connected to source, make sure gradient return tensor of ZERO not NONE, also crop gradients
+            j11 = tape.gradient(x_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
+            j12 = tape.gradient(x_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
+            j21 = tape.gradient(y_src, theta_x, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
+            j22 = tape.gradient(y_src, theta_y, unconnected_gradients=tf.UnconnectedGradients.ZERO)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
+            # reshape gradients to [batch, pixels, pixels, channels] shape. TODO make the above code work for batch != 1
+            j11 = tf.reshape(j11, [1, self.pixels, self.pixels, 1])
+            j12 = tf.reshape(j12, [1, self.pixels, self.pixels, 1])
+            j21 = tf.reshape(j21, [1, self.pixels, self.pixels, 1])
+            j22 = tf.reshape(j22, [1, self.pixels, self.pixels, 1])
+            # put in a shape for which tf.linalg.det is easy to use (shape = [..., 2, 2])
+            j1 = tf.concat([j11, j12], axis=3)
+            j2 = tf.concat([j21, j22], axis=3)
+            jacobian = tf.stack([j1, j2], axis=-1)
+            # lens the source brightness distribution
+            x_src = x_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+            y_src = y_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
+            x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
+            wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
+            im = tfa.image.resampler(source, wrap)
         return im, jacobian
 
     def src_coord_to_pix(self, x, y):

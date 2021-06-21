@@ -28,7 +28,7 @@ def main(args):
     if args.dataset == "NIS":
         train_dataset = NISGenerator(int(args.split * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
         val_dataset = NISGenerator(int((1 - args.split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
-        phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms, device=PHYSICAL_MODEL_DEVICE)
+        phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms, method=args.forward_method, device=PHYSICAL_MODEL_DEVICE)
     else:
         files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
         dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
@@ -43,9 +43,10 @@ def main(args):
             src_pixels=params["source pixels"].numpy(),
             image_fov=params["image fov"].numpy(),
             kappa_fov=params["kappa fov"].numpy(),
-            method="conv2d",
+            method=args.forward_method,
             noise_rms=params["noise rms"],
             logkappa=args.logkappa,
+            checkpoint_path=args.raytracer,
             device=PHYSICAL_MODEL_DEVICE
         )
     rim = RIMUnet(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam,
@@ -185,19 +186,26 @@ if __name__ == "__main__":
     parser.add_argument("--load_checkpoint", default="best", help="One of 'best', 'lastest' or the specific checkpoint index.")
 
     # RIM hyperparameters
-    parser.add_argument("--time_steps",     default=16,     type=int, help="Number of time steps of RIM")
-    parser.add_argument("--adam",           default=True,   type=bool,
+    parser.add_argument("--time_steps",         default=16,     type=int, help="Number of time steps of RIM")
+    parser.add_argument("--adam",               default=True,   type=bool,
                         help="ADAM update for the log-likelihood gradient.")
     # ... for kappa model
-    parser.add_argument("--kappalog",       default=True,   type=bool)
-    parser.add_argument("--kappa_strides",  default=4,      type=int,
+    parser.add_argument("--kappalog",           default=True,   type=bool)
+    parser.add_argument("--kappa_strides",      default=4,      type=int,
                         help="Value of the stride parameter in the 3 downsampling and upsampling layers "
                              "for the kappa model.")
-
     # ... for the source model
-    parser.add_argument("--source_strides", default=2,      type=int,
+    parser.add_argument("--source_strides",     default=2,      type=int,
                         help="Value of the stride parameter in the 3 downsampling and upsampling layers "
                              "for the source model.")
+    # ... for the physical model
+    parser.add_argument("--forward_method",     default="conv2d",
+                        help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
+                             "'--raytracer' must be provided and point to model checkpoint directory.")
+    parser.add_argument("--raytracer",          default="none",
+                        help="Path to raytracer checkpoint dir if method 'unet' is used.")
+    parser.add_argument("--raytracer_hparams",  default="none",
+                        help="Path to raytracer json that describe hyper parameters")
 
     # Training set params
     parser.add_argument("-b", "--batch_size",   default=10,     type=int,   help="Number of images in a batch.")
@@ -206,13 +214,11 @@ if __name__ == "__main__":
                              "or the name of the dataset tu use. Options are ['NIS'].")
     parser.add_argument("--train_split",        default=0.8,    type=float, help="Fraction of the training set.")
     parser.add_argument("--total_items",        required=True,  type=int,   help="Total images in an epoch.")
-
     # ... for NIS dataset
-    parser.add_argument("--pixels",     default=512,    type=int,   help="When using NIS, size of the image to generate.")
-    parser.add_argument("--noise_rms",  default=1e-3,   type=float, help="Pixel value rms of lensed image.")
-
+    parser.add_argument("--pixels",             default=512,    type=int,   help="When using NIS, size of the image to generate.")
+    parser.add_argument("--noise_rms",          default=1e-3,   type=float, help="Pixel value rms of lensed image.")
     # ... for tfrecord dataset
-    parser.add_argument("--num_parallel_reads", default=10, type=int,
+    parser.add_argument("--num_parallel_reads", default=10,     type=int,
                         help="TFRecord dataset number of parallel reads when loading data.")
     parser.add_argument("--cache_file",         default=None,
                         help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache.")
