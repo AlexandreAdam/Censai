@@ -16,24 +16,22 @@ class NISGenerator(tf.keras.utils.Sequence):
     def __init__(self,
                  total_items=1,
                  batch_size=1,
-                 kappa_side_length=7.68,
-                 src_side_length=3.,
+                 kappa_fov=7.68,
+                 src_fov=3.,
                  pixels=128,
                  x_c=0.001,  # arcsec
                  z_source=2.,
                  z_lens=0.5,
-                 train=True,
                  norm=True,
                  model="raytracer",  # alternative is rim
                  method="analytic"
                  ):
         self.batch_size = batch_size
         self.total_items = total_items
-        self.train = train
         self.norm = norm
         self.model = model.lower()
-        self._kap_side = kappa_side_length
-        self._src_side = src_side_length
+        self.kappa_fov = kappa_fov
+        self.src_fov = src_fov
         self.pixels = pixels
         self.method = method
 
@@ -42,9 +40,9 @@ class NISGenerator(tf.keras.utils.Sequence):
         # instantiate coordinate grids
         x = tf.linspace(-1, 1, pixels)
         x = tf.cast(x, tf.float32)
-        self.x_source, self.y_source = [xx * src_side_length / 2 for xx in tf.meshgrid(x, x)]
-        self.theta1, self.theta2 = [xx * kappa_side_length / 2 for xx in tf.meshgrid(x, x)]
-        self.dy_k = (x[1] - x[0]) * kappa_side_length / 2
+        self.x_source, self.y_source = [xx * src_fov/ 2 for xx in tf.meshgrid(x, x)]
+        self.theta1, self.theta2 = [xx * kappa_fov / 2 for xx in tf.meshgrid(x, x)]
+        self.dy_k = (x[1] - x[0]) * kappa_fov / 2
         self.angular_diameter_distances(z_source, z_lens)
         self.set_deflection_angles_vars()
 
@@ -69,10 +67,6 @@ class NISGenerator(tf.keras.utils.Sequence):
             return self.generate_batch_rim()
 
     def generate_batch(self):
-        if self.train:
-            tf.random.set_seed(None)
-        else:
-            tf.random.set_seed(42)
         xlens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-1, maxval=1)
         ylens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-1, maxval=1)
         elp = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0., maxval=0.2)
@@ -89,11 +83,6 @@ class NISGenerator(tf.keras.utils.Sequence):
         return kappa, alpha  # (X, Y)
 
     def generate_batch_rim(self):
-        if self.train:
-            tf.random.set_seed(None)
-        else:
-            tf.random.set_seed(42)
-
         xlens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-.5, maxval=.5)
         ylens = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=-.5, maxval=.5)
         elp = tf.random.uniform(shape=[self.batch_size, 1, 1], minval=0., maxval=0.2)
@@ -149,9 +138,9 @@ class NISGenerator(tf.keras.utils.Sequence):
         return lens
 
     def src_coord_to_pix(self, x, y):
-        dx = self._src_side / (self.pixels - 1)
-        xmin = -0.5 * self._src_side
-        ymin = -0.5 * self._src_side
+        dx = self.src_fov / (self.pixels - 1)
+        xmin = -0.5 * self.src_fov
+        ymin = -0.5 * self.src_fov
         i_coord = (x - xmin) / dx
         j_coord = (y - ymin) / dx
         return i_coord, j_coord
@@ -218,9 +207,9 @@ class NISGenerator(tf.keras.utils.Sequence):
         self.kernel_side_l = 2 * self.pixels + 1  # this number should be odd
         self.cond = np.zeros((self.kernel_side_l, self.kernel_side_l))
         self.cond[self.pixels, self.pixels] = True
-        self.dx_kap = self._kap_side / (self.pixels - 1)
-        x = tf.linspace(-1., 1., self.kernel_side_l) * self._kap_side
-        y = tf.linspace(-1., 1., self.kernel_side_l) * self._kap_side
+        self.dx_kap = self.kappa_fov / (self.pixels - 1)
+        x = tf.linspace(-1., 1., self.kernel_side_l) * self.kappa_fov
+        y = tf.linspace(-1., 1., self.kernel_side_l) * self.kappa_fov
         X_filt, Y_filt = tf.meshgrid(x, y)
         kernel_denom = tf.square(X_filt) + tf.square(Y_filt)
         Xconv_kernel = tf.divide(-X_filt, kernel_denom)
@@ -231,8 +220,8 @@ class NISGenerator(tf.keras.utils.Sequence):
         self.Xconv_kernel = tf.reshape(Xconv_kernel, [self.kernel_side_l, self.kernel_side_l, 1, 1])
         self.Yconv_kernel = tf.reshape(Yconv_kernel, [self.kernel_side_l, self.kernel_side_l, 1, 1])
         x = tf.linspace(-1., 1.,
-                        self.pixels) * self._src_side / 2.  # TODO make options to have different size source image
-        y = tf.linspace(-1., 1., self.pixels) * self._src_side / 2.
+                        self.pixels) * self.src_fov / 2.  # TODO make options to have different size source image
+        y = tf.linspace(-1., 1., self.pixels) * self.src_fov / 2.
         self.Xim, self.Yim = tf.meshgrid(x, y)
         self.Xim = tf.reshape(self.Xim, [-1, self.pixels, self.pixels, 1])
         self.Yim = tf.reshape(self.Yim, [-1, self.pixels, self.pixels, 1])

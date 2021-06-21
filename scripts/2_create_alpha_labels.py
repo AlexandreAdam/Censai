@@ -23,13 +23,15 @@ def distributed_strategy(args):
         keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
         kappa_files = [kap_file for i, kap_file in enumerate(kappa_files) if keep_kappa[i]]
 
+    min_theta_e = 1 if args.min_theta_e is None else args.min_theta_e
+    max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
     kappa_gen = AugmentedTNGKappaGenerator(
         kappa_fits_files=kappa_files,
         z_lens=args.z_lens,
         z_source=args.z_source,
         crop=args.crop,
-        min_theta_e=args.min_theta_e,
-        max_theta_e=args.max_theta_e,
+        min_theta_e=min_theta_e,
+        max_theta_e=max_theta_e,
         rescaling_size=args.rescaling_size,
         rescaling_theta_bins=args.bins
     )
@@ -77,6 +79,8 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("--kappa_dir", required=True, help="Path to kappa fits files directory")
+    parser.add_argument("--output_dir", required=True, help="Path where tfrecords are stored")
+    parser.add_argument("--smoke_test", action="store_true")
 
     # Physical Model params
     parser.add_argument("--image_fov", default=20, type=float,
@@ -108,9 +112,6 @@ if __name__ == '__main__':
                         help="Maximum allowed Einstein radius, default is 35% of image fov")
     parser.add_argument("--min_theta_e", default=None, type=float,
                         help="Minimum allowed Einstein radius, default is 1 arcsec")
-
-    parser.add_argument("--output_dir", required=True, help="Path where tfrecords are stored")
-    parser.add_argument("--smoke_test", action="store_true")
 
     # Physics params
     parser.add_argument("--z_source", default=2.379, type=float)
