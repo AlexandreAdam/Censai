@@ -1,6 +1,8 @@
 import tensorflow as tf
 import os, glob
 import numpy as np
+from astropy.constants import M_sun
+from astropy import units as u
 from censai import PhysicalModel
 from censai.data.cosmos import preprocess, decode
 from censai.data import AugmentedTNGKappaGenerator
@@ -78,7 +80,7 @@ def distributed_strategy(args):
                 z_lens=args.z_lens,
                 image_fov=args.image_fov,
                 kappa_fov=phys.kappa_fov,
-                sigma_crit=kappa_gen.sigma_crit,
+                sigma_crit=(kappa_gen.sigma_crit / (1e10 * M_sun)).decompose().value,  # 10^{10} M_sun / Mpc^2
                 noise_rms=args.noise_rms,
                 psf_sigma=args.psf_sigma,
                 kappa_ids=kappa_ids
