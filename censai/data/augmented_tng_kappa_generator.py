@@ -177,13 +177,13 @@ class AugmentedTNGKappaGenerator:
             if len(batch_indices) < batch_size:
                 self.index = 0  # reset counter
             else:
-                self.index += 1
+                self.index += batch_size
         kappa = []
         kappa_ids = []
         for kap_index in batch_indices:
-            kappa.append(fits.open(self.kappa_files[kap_index])["PRIMARY"].data[np.newaxis, ..., np.newaxis])
+            kappa.append(fits.open(self.kappa_files[kap_index])["PRIMARY"].data[..., np.newaxis])  # add channel dim
             kappa_ids.append(fits.open(self.kappa_files[kap_index])["PRIMARY"].header["SUBID"])
-        kappa = tf.stack(kappa, axis=0)
+        kappa = tf.stack(kappa, axis=0)  # stack on batch dimension
         if rotate:
             kappa = self.rotate(kappa)
         if self._crop:
