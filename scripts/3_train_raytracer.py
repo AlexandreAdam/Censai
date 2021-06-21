@@ -157,6 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("--decoder_encoder_kernel_size",    default=3,                type=int,   help="Main kernel size")
     parser.add_argument("--pre_bottleneck_kernel_size",     default=6,                type=int,   help="Kernel size of layer before bottleneck")
     parser.add_argument("--bottleneck_kernel_size",         default=16,               type=int,   help="Kernel size of bottleneck layr, should be twice bottleneck feature map size")
+    parser.add_argument("--bottleneck_strides",             default=4,                type=int,   help="Strided of the downsampling convolutional layer before bottleneck")
     parser.add_argument("--decoder_encoder_filters",        default=32,               type=int,   help="Number of filters of conv layers")
     parser.add_argument("--filter_scaling",                 default=1,                type=float, help="Scaling of the number of filters at each layers (1=no scaling)")
     parser.add_argument("--upsampling_interpolation",       default=False,            type=bool,  help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
