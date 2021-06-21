@@ -84,17 +84,17 @@ class AugmentedTNGKappaGenerator:
     def rotate(self, kappa):
         if len(kappa.shape) == 3:
             if self.rotate_by == "90":
-                angle = np.random.randint(low=0, high=3, size=1)
+                angle = np.random.randint(low=0, high=3, size=1)[0]
                 return tf.image.rot90(kappa, k=angle)
             elif self.rotate_by == "uniform":
-                angle = np.random.uniform(low=-np.pi, high=np.pi, size=1)
+                angle = np.random.uniform(low=-np.pi, high=np.pi, size=1)[0]
                 return rotate(kappa, angle, interpolation="nearest", fill_mode="constant")
         elif len(kappa.shape) == 4:
             batch_size = kappa.shape[0]
             if self.rotate_by == "90":
                 rotated_kap = []
                 for j in range(batch_size):
-                        angle = np.random.randint(low=0, high=3, size=1)
+                        angle = np.random.randint(low=0, high=3, size=1)[0]
                         rotated_kap.append(
                             tf.image.rot90(kappa, k=angle)
                         )
@@ -160,6 +160,7 @@ class AugmentedTNGKappaGenerator:
             rescaling_p = self.compute_rescaling_probabilities(kappa[j], rescaling_array)
             if rescaling_p.sum() == 0:
                 rescaling = 1.
+
             else:
                 rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)[0]
             kappa_rescaled.append(rescaling * kappa[j])
