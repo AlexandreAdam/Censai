@@ -61,7 +61,7 @@ def distributed_strategy(args):
                 kappa, einstein_radius, rescaling_factors, kappa_ids = kappa_gen.draw_batch(
                     batch_size=args.batch, rescale=False, shift=False, rotate=False, random_draw=False)
 
-            alpha = tf.concat(phys.deflection_angle(kappa), axis=-1)
+            alpha = tf.concat(phys.deflection_angle(kappa)[2:], axis=-1)
 
             records = encode_examples(
                 kappa=kappa,
