@@ -212,7 +212,7 @@ class PhysicalModel:
 
     def psf_model(self):
         pixel_scale = self.image_fov / self.pixels
-        cutout_size = 10 * self.psf_sigma / pixel_scale
+        cutout_size = int(10 * self.psf_sigma / pixel_scale)
         r_squared = self.ximage**2 + self.yimage**2
         psf = np.exp(-0.5 * r_squared / self.psf_sigma**2)
         psf = tf.image.crop_to_bounding_box(psf,
