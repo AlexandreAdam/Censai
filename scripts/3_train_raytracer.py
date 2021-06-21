@@ -153,7 +153,7 @@ if __name__ == "__main__":
     parser.add_argument("--load_checkpoint", default="best", help="One of 'best', 'lastest' or the specific checkpoint index")
 
     # Model hyper parameters
-    parser.add_argument("--initializer",                    default="random_uniform", type=str,   help="Weight initializer")
+    parser.add_argument("--initializer",                    default="glorot_uniform", type=str,   help="Weight initializer")
     parser.add_argument("--decoder_encoder_kernel_size",    default=3,                type=int,   help="Main kernel size")
     parser.add_argument("--pre_bottleneck_kernel_size",     default=6,                type=int,   help="Kernel size of layer before bottleneck")
     parser.add_argument("--bottleneck_kernel_size",         default=16,               type=int,   help="Kernel size of bottleneck layr, should be twice bottleneck feature map size")
