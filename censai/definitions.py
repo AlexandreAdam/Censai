@@ -6,6 +6,13 @@ from astropy.cosmology import Planck18 as cosmo
 
 COSMO = cosmo
 DTYPE = tf.float32
+LOG10 = tf.constant(np.log(10.), DTYPE)
+LOGFLOOR = tf.constant(1e-10, DTYPE)
+# some estimate of kappa statistics (after rescaling for theta_e ~ Uniform(1, 7))
+KAPPA_MEAN = 0.3
+KAPPA_STD = 0.5
+KAPPA_MAX = 1e3
+KAPPA_MIN = 1e-10  # this is the log floor, not actual min, which is 0
 
 
 def theta_einstein(kappa, rescaling, physical_pixel_scale, sigma_crit, Dds, Ds, Dd):
@@ -84,9 +91,15 @@ def xsquared(x):
     return (x/4)**2
 
 
-def logkappa_normalization(logkappa, forward=True):
+def log_kappa(x):
+    return tf.math.log(x + LOGFLOOR) / LOG10
+
+
+def logkappa_normalization(x, forward=True):
     if forward:
-        return
+        return (x - log_kappa(KAPPA_MEAN)) / log_kappa(KAPPA_STD)
+    else:
+        return log_kappa(KAPPA_STD) * x + log_kappa(KAPPA_MEAN)
 
 
 def lrelu4p(x, alpha=0.04):
