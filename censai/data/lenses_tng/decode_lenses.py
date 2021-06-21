@@ -22,6 +22,7 @@ def decode_all(record_bytes):
               'src pixels': tf.io.FixedLenFeature([], tf.int64),
               'kappa pixels': tf.io.FixedLenFeature([], tf.int64),
               'noise rms': tf.io.FixedLenFeature([], tf.float32),
+              "psf sigma": tf.io.FixedLenFeature([], tf.float32),
               'kappa id': tf.io.FixedLenFeature([], tf.int64)
           })
     kappa = tf.io.decode_raw(example['kappa'], tf.float32)
@@ -39,7 +40,7 @@ def decode_all(record_bytes):
 
 
 def decode_physical_model_info(record_bytes):
-    params_keys = ['image fov', 'kappa fov', 'src pixels', 'kappa pixels', 'noise rms']
+    params_keys = ['image fov', 'kappa fov', 'src pixels', 'kappa pixels', 'noise rms', 'psf_sigma']
     example = decode_all(record_bytes)
     return {key: example[key] for key in params_keys}
 

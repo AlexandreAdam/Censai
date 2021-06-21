@@ -16,6 +16,7 @@ def encode_examples(
         kappa_fov: float,
         sigma_crit: float,
         noise_rms: float,
+        psf_sigma: float,
         kappa_ids: list
 ):
     batch_size = galaxies.shape[0]
@@ -39,6 +40,7 @@ def encode_examples(
             "src pixels": _int64_feature(source_pixels),
             "kappa pixels": _int64_feature(kappa_pixels),
             "noise rms": _float_feature(noise_rms),
+            "psf sigma": _float_feature(psf_sigma),
             "kappa id": _int64_feature(kappa_ids[j])
         }
         serialized_output = tf.train.Example(features=tf.train.Features(feature=features))

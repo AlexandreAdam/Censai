@@ -33,6 +33,7 @@ def distributed_strategy(args):
         z_lens=args.z_lens,
         z_source=args.z_source,
         crop=args.crop,
+        max_shift=args.max_shift,
         rotate_by=args.rotate_by,
         min_theta_e=min_theta_e,
         max_theta_e=max_theta_e,
@@ -48,7 +49,8 @@ def distributed_strategy(args):
 
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
-    phys = PhysicalModel(image_fov=args.image_fov, src_side=args.source_fov, pixels=kappa_gen.crop_pixels,
+    phys = PhysicalModel(psf_sigma=args.psf_sigma,
+                         image_fov=args.image_fov, src_fov=args.source_fov, pixels=kappa_gen.crop_pixels,
                          src_pixels=args.src_pixels, kappa_fov=kappa_gen.kappa_fov, method="conv2d")
 
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords")) as writer:
@@ -78,6 +80,7 @@ def distributed_strategy(args):
                 kappa_fov=phys.kappa_fov,
                 sigma_crit=kappa_gen.sigma_crit,
                 noise_rms=args.noise_rms,
+                psf_sigma=args.psf_sigma,
                 kappa_ids=kappa_ids
             )
             for record in records:
@@ -102,13 +105,15 @@ if __name__ == '__main__':
                         help="Field of view of the source plane in arc seconds")
     parser.add_argument("--noise_rms",   default=0.3e-3, type=float,
                         help="White noise RMS added to lensed image")
-    #TODO add an option to change color of the noise to match COSMOS color
+    parser.add_argument("--psf_sigma",   default=0.06,   type=float, help="Sigma of psf in arcseconds")
 
     # Data generation params
     parser.add_argument("--crop",           default=0,      type=int,
                         help="Crop kappa map by 2*N pixels. After crop, the size of the kappa map "
                              "should correspond to pixel argument "
                              "(e.g. kappa of 612 pixels cropped by N=50 on each side -> 512 pixels)")
+    parser.add_argument("--max_shift",      default=1.,    type=float,
+                        help="Maximum allowed shift of kappa map center in arcseconds")
     parser.add_argument("--rotate",         action="store_true", help="Rotate the kappa map")
     parser.add_argument("--rotate_by",      default="90",
                         help="'90': will rotate by a multiple of 90 degrees. 'uniform' will rotate by any angle, "
