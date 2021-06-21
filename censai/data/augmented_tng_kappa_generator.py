@@ -94,9 +94,9 @@ class AugmentedTNGKappaGenerator:
             if self.rotate_by == "90":
                 rotated_kap = []
                 for j in range(batch_size):
-                        angle = np.random.randint(low=0, high=3, size=1)[0]
-                        rotated_kap.append(
-                            tf.image.rot90(kappa, k=angle)
+                    angle = np.random.randint(low=0, high=3, size=1)[0]
+                    rotated_kap.append(
+                        tf.image.rot90(kappa[j], k=angle)
                         )
                 return tf.stack(rotated_kap, axis=0)
             elif self.rotate_by == "uniform":
@@ -112,7 +112,8 @@ class AugmentedTNGKappaGenerator:
 
         Returns: Einstein radius in arcsecond of shape [batch_size]
         """
-        mass_inside_einstein_radius = np.sum(kappa * (kappa > 1), axis=(1, 2, 3)) * self.sigma_crit * self.physical_pixel_scale ** 2
+        indicator_array = tf.cast(kappa > 1, tf.float32)
+        mass_inside_einstein_radius = np.sum(kappa * indicator_array, axis=(1, 2, 3)) * self.sigma_crit * self.physical_pixel_scale ** 2
         return (np.sqrt(4 * G / c ** 2 * mass_inside_einstein_radius * self.Dds / self.Ds / self.Dd).decompose() * u.rad).to(u.arcsec).value
 
     def compute_rescaling_probabilities(self, kappa, rescaling_array):
@@ -152,8 +153,8 @@ class AugmentedTNGKappaGenerator:
         rescaling_factors = []
         new_einstein_radius = []
         for j in range(batch_size):
-            if kappa[j].max() <= 1:  # make sure at least a few pixels will be dense enough for deflection
-                kappa[j] /= 0.95 * kappa[j].max()
+            if tf.reduce_max(kappa[j]) <= 1:  # make sure at least a few pixels will be dense enough for deflection
+                kappa[j] /= 0.95 * tf.reduce_max(kappa[j])
             theta_e = self.einstein_radius(kappa[j][None, ...])[0]
             # Rough estimate of allowed rescaling factors
             rescaling_array = np.linspace(self.min_theta_e / theta_e, self.max_theta_e / theta_e, self.rescaling_size) * self.sigma_crit_factor
