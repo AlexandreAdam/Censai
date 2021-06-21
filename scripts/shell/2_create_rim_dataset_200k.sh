@@ -18,7 +18,11 @@ python ../2_create_rim_dataset.py\
   --image_fov=20\
   --source_fov=3\
   --noise_rms=0.3e-3\
+  --psf_sigma=0.06\
   --crop=50\
+  --max_shift=1\
+  --rotate\
+  --rotate_by=90\
   --shuffle_cosmos\
   --buffer_size=1000\
   --batch=20\
