@@ -158,8 +158,9 @@ class AugmentedTNGKappaGenerator:
             theta_e = self.einstein_radius(kap[None, ...])[0]
             # Rough estimate of allowed rescaling factors
             rescaling_array = np.linspace(self.min_theta_e / theta_e, self.max_theta_e / theta_e, self.rescaling_size) * self.sigma_crit_factor
+            # compute actual probabilities from sketched grid
             rescaling_p = self.compute_rescaling_probabilities(kap, rescaling_array)
-            if rescaling_p.sum() == 0:
+            if rescaling_p.sum() == 0:  # all rescaling factors fell outside target range
                 rescaling = 1.
             else:
                 rescaling = np.random.choice(rescaling_array, size=1, p=rescaling_p)[0]

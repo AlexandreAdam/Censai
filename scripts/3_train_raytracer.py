@@ -89,17 +89,12 @@ def main(args):
                 checkpoint_manager.checkpoint.restore(checkpoint)
     else:
         save_checkpoint = False
-
     epoch_loss = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
     best_loss = np.inf
     patience = args.patience
     step = 1
     lastest_checkpoint = 1
-    if args.kappalog:
-        link = lambda x: tf.math.log(x) / tf.math.log(10.)
-    else:
-        link = lambda x: x
     for epoch in range(1, args.epochs + 1):
         epoch_loss.reset_states()
         with train_writer.as_default():
@@ -107,7 +102,7 @@ def main(args):
                 # ========== Forward and backprop ==========
                 with tf.GradientTape(watch_accessed_variables=True) as tape:
                     tape.watch(ray_tracer.trainable_weights)
-                    cost = tf.reduce_mean(tf.square(ray_tracer(link(kappa)) - alpha))
+                    cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha))
                     cost += tf.reduce_sum(ray_tracer.losses)  # add L2 regularizer loss
                 gradient = tape.gradient(cost, ray_tracer.trainable_weights)
                 if args.clipping:
@@ -122,7 +117,7 @@ def main(args):
         with test_writer.as_default():
             val_loss.reset_states()
             for kappa, alpha in val_dataset:
-                cost = tf.reduce_mean(tf.square(ray_tracer(link(kappa)) - alpha))
+                cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha))
                 cost += tf.reduce_sum(ray_tracer.losses)
                 val_loss.update_state([cost])
         train_cost = epoch_loss.result().numpy()
@@ -186,7 +181,7 @@ if __name__ == "__main__":
 
     # Logs
     parser.add_argument("--logdir",                         default="None",        help="Path of logs directory.")
-    parser.add_argument("--logname",                        default="RT_" + date,  help="Name of the logs, default is 'RT_' + date")
+    parser.add_argument("--logname",                        default="RayTracer_" + date,  help="Name of the logs, default is 'RT_' + date")
     parser.add_argument("--model_dir",                      default="None",        help="Directory where to save model weights")
     parser.add_argument("--checkpoints",                    default=10, type=int,  help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3, type=int,   help="Max model checkpoint to keep")

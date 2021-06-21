@@ -1,6 +1,7 @@
 import tensorflow as tf
 from .utils import get_activation
 from censai.definitions import conv2_layers_flops, upsampling2d_layers_flops
+from censai.definitions import logkappa_normalization, log_kappa
 
 
 class RayTracer512(tf.keras.Model):
@@ -18,9 +19,11 @@ class RayTracer512(tf.keras.Model):
             kernel_regularizer_amp=0.,
             bias_regularizer_amp=0.,  # if bias is used
             activation="linear",
+            filter_scaling=1,
+            kappalog=True,
+            normalize=False,
             use_bias=False,
             trainable=True,
-            filter_scaling=1,
     ):
         super(RayTracer512, self).__init__(name=name)
         common_params = {"padding": "same", "kernel_initializer": initializer,
@@ -96,7 +99,18 @@ class RayTracer512(tf.keras.Model):
 
         self.Loutputs = tf.keras.layers.Conv2D(2, (1, 1), activation="linear", **common_params)  # rescaling of ouptut
 
+    @tf.function
+    def kappa_link(self, kappa):
+        if self.kappalog:
+            kappa = log_kappa(kappa)
+            if self.kappa_normalize:
+                return logkappa_normalization(kappa, forward=True)
+            return kappa
+        else:
+            return kappa
+
     def call(self, kappa):
+        kappa = self.kappa_link(kappa)  # preprocessing
         c1 = self.Lc11(kappa)
         c1 = self.Lc12(c1)  # keep this for skip connection
         c2 = self.Lp13(c1)  # downsample 512 -> 256

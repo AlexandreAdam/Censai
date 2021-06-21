@@ -1,6 +1,6 @@
 import tensorflow as tf
 from .models.rim_unet_model import UnetModel
-from censai.definitions import logkappa_normalization
+from censai.definitions import logkappa_normalization, log_kappa
 
 LOG10 = tf.math.log(10.)
 
@@ -81,7 +81,7 @@ class RIMUnet:
     @tf.function
     def kappa_link(self, kappa):
         if self.kappalog:
-            kappa = tf.math.log(kappa + 1e-10) / LOG10
+            kappa = log_kappa(kappa)
             if self.kappa_normalize:
                 return logkappa_normalization(kappa, forward=True)
             return kappa
