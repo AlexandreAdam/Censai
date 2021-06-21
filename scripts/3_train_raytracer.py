@@ -1,6 +1,7 @@
 import tensorflow as tf
 from censai import RayTracer512 as RayTracer
 from censai.data import NISGenerator
+from censai.data.alpha_tng import decode_train
 from censai.utils import nullwriter
 import os, glob
 import numpy as np
@@ -22,7 +23,7 @@ def main(args):
         val_dataset = NISGenerator(int((1 - args.train_split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
     else:
         files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
-        dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
+        dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads).map(decode_train)
         dataset = dataset.batch(args.batch_size).cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
         train_dataset = dataset.take(int(args.train_split * args.total_items))
         val_dataset = dataset.skip(int(args.train_split * args.total_items))
