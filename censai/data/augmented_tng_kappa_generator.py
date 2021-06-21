@@ -176,7 +176,7 @@ class AugmentedTNGKappaGenerator:
             batch_indices = np.random.choice(list(range(len(self.kappa_files))), replace=False, size=batch_size)
         else:
             batch_indices = list(range(self.index, min(self.index + batch_size, len(self.kappa_files))))
-            if len(batch_indices) < batch_size:
+            if len(batch_indices) <= batch_size:
                 self.index = 0  # reset counter
             else:
                 self.index += batch_size
