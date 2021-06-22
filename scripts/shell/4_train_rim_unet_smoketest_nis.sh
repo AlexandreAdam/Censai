@@ -15,7 +15,7 @@ python ../4_train_rim_unet.py\
   --initial_learning_rate=1e-4\
   --decay_rate=1\
   --pixels=64\
-  --kappalog=True\
+  --logkappa=True\
   --adam=True\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models\
