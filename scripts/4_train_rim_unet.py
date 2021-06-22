@@ -245,6 +245,7 @@ if __name__ == "__main__":
                         help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,
                         help="Decay steps of exponential decay of the learning rate.")
+    parser.add_argument("--staircase",              action="store_true",        help="Learning rate schedule only change after decay steps if enabled.")
     parser.add_argument("--clipping",               default=True,   type=bool, help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,
                         help="Number of step at which training is stopped if no improvement is recorder.")
