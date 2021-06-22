@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from censai import PhysicalModel, RIMUnet
-from censai.data.lenses_tng import decode_all, decode_train
+from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.data import NISGenerator
 from censai.utils import nullwriter
 import os, glob
@@ -26,14 +26,14 @@ def main(args):
         config = wandb.config
         config.update(vars(args))
     if args.dataset == "NIS":
-        train_dataset = NISGenerator(int(args.train_split * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
-        val_dataset = NISGenerator(int((1 - args.train_split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
+        train_dataset = NISGenerator(int(args.train_split * args.total_items), batch_size=args.batch_size, pixels=args.pixels, model="rim")
+        val_dataset = NISGenerator(int((1 - args.train_split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels, model="rim")
         phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms, method=args.forward_method, device=PHYSICAL_MODEL_DEVICE)
     else:
         files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
         dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
         # Read off global parameters from first example in dataset
-        for params in dataset.map(decode_all):
+        for params in dataset.map(decode_physical_model_info):
             break
         dataset = dataset.map(decode_train).batch(args.batch_size)
         if args.cache_file is not None:
@@ -50,7 +50,7 @@ def main(args):
             raytracer_hparams = {}
         phys = PhysicalModel(
             pixels=params["kappa pixels"].numpy(),
-            src_pixels=params["source pixels"].numpy(),
+            src_pixels=params["src pixels"].numpy(),
             image_fov=params["image fov"].numpy(),
             kappa_fov=params["kappa fov"].numpy(),
             method=args.forward_method,
