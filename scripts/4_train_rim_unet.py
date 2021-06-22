@@ -54,7 +54,7 @@ def main(args):
             image_fov=params["image fov"].numpy(),
             kappa_fov=params["kappa fov"].numpy(),
             method=args.forward_method,
-            noise_rms=params["noise rms"],
+            noise_rms=params["noise rms"].numpy(),
             logkappa=args.logkappa,
             checkpoint_path=args.raytracer,
             device=PHYSICAL_MODEL_DEVICE,
