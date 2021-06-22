@@ -21,4 +21,4 @@ python ../4_train_rim_unet.py\
   --model_dir=$HOME/scratch/Censai/models\
   --checkpoints=1\
   --max_to_keep=1\
-  --logname="RIM_smoketest_NIS"
+  --logname=RIM_smoketest_NIS

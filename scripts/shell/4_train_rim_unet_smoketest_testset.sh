@@ -28,6 +28,7 @@ python ../4_train_rim_unet.py\
   --clipping=True\
   --logdir=$HOME/scratch/Censai/logs/\
   --model_dir=$HOME/scratch/Censai/models/\
+  --logname=RIM_SmokeTest\
   --checkpoints=1\
   --max_to_keep=1\
   --seed=42
