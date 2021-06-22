@@ -64,7 +64,7 @@ def main(args):
             **raytracer_hparams
         )
     rim = RIMUnet(
-        phys=phys,
+        physical_model=phys,
         steps=args.time_steps,
         adam=args.adam,
         kappalog=args.kappalog,
@@ -80,6 +80,8 @@ def main(args):
         staircase=args.staircase
     )
     optim = tf.optimizers.Adam(learning_rate=learning_rate_schedule)
+
+    # ==== Take care of where to write logs and stuff ====
     if args.model_id.lower() != "none":
         logname = args.model_id
     elif args.logname is not None:
@@ -139,7 +141,9 @@ def main(args):
                 source_checkpoint_manager.checkpoint.restore(source_checkpoint)
     else:
         save_checkpoint = False
+    # ====================================================
 
+    # ====== Training loop ===============================
     epoch_loss = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
     best_loss = np.inf
