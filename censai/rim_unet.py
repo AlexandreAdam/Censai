@@ -157,8 +157,22 @@ class RIMUnet:
             output_series_2.append(output_2)
         return output_series_1, output_series_2, cost
 
-    def cost_function(self, data, source, kappa):
+    def cost_function(self, data, source, kappa, reduction=False):
+        """
+
+        Args:
+            data: Batch of lensed images
+            source: Batch of source images
+            kappa: Batch of kappa maps
+            reduction: Whether or not to reduce the batch dimension in computing the loss or not
+
+        Returns: The average loss over pixels, time steps and (if reduction=True) batch size.
+
+        """
         output_series_1, output_series_2, final_log_L = self.forward_pass(data)
         chi1 = sum([tf.square(output_series_1[i] - source) for i in range(self.steps)]) / self.steps
         chi2 = sum([tf.square(output_series_2[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
-        return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)
+        if reduction:
+            return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)
+        else:
+            return tf.reduce_mean(chi1, axis=(1, 2, 3)) + tf.reduce_mean(chi2, axis=(1, 2, 3))

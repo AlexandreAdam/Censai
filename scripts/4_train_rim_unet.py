@@ -6,15 +6,20 @@ from censai.data import NISGenerator
 from censai.utils import nullwriter
 import os, glob
 from datetime import datetime
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    if len(gpus) == 2:
-        PHYSICAL_MODEL_DEVICE = tf.device("/device:GPU:1")
-    else:
-        PHYSICAL_MODEL_DEVICE = tf.device("/device:GPU:0")
-else:
-    from censai.utils import nullcontext
-    PHYSICAL_MODEL_DEVICE = nullcontext()
+MIRRORED_STRATEGY = tf.distribute.MirroredStrategy() # Strategy for data parallelism -> Consider using n gpu for a batch size of size n
+# ============================== Strategy for model parrallelism required manual placement of ops on devices =========
+# THIS STRATEGY DOES NOT WORK BECAUSE OF BACKPROP! USEFUL IN FORWARD MODE ONLY WHEN USING FFT FOR DEFLECTION ANGLES
+# gpus = tf.config.list_physical_devices('GPU')
+# if gpus:
+#     if len(gpus) == 2:
+#         PHYSICAL_MODEL_DEVICE = tf.device("/device:GPU:1")
+#     else:
+#         PHYSICAL_MODEL_DEVICE = tf.device("/device:GPU:0")
+# else:
+#     from censai.utils import nullcontext
+#     PHYSICAL_MODEL_DEVICE = nullcontext()
+from censai.utils import nullcontext
+PHYSICAL_MODEL_DEVICE = nullcontext()
 try:
     import wandb
     wandb.init(project="censai_unet_rim", entity="adam-alexandre01123", sync_tensorboard=True)
@@ -28,29 +33,31 @@ def main(args):
     if wndb:
         config = wandb.config
         config.update(vars(args))
-    if args.dataset == "NIS":
-        train_dataset = NISGenerator(int(args.train_split * args.total_items), batch_size=args.batch_size, pixels=args.pixels, model="rim")
-        val_dataset = NISGenerator(int((1 - args.train_split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels, model="rim")
-        phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms, method=args.forward_method, device=PHYSICAL_MODEL_DEVICE)
+    files = []
+    for dataset in args.datasets:
+        files.append(glob.glob(os.path.join(dataset, "*.tfrecords")))
+    if args.smoketest:
+        files = files[0]  # just take one file, hope user provided correct dataset size!
+    dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
+    # Read off global parameters from first example in dataset
+    for params in dataset.map(decode_physical_model_info):
+        break
+    dataset = dataset.map(decode_train).batch(args.batch_size)
+    if args.cache_file is not None:
+        dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
+    else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
+        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    train_dataset = dataset.take(int(args.train_split * args.total_items))
+    val_dataset = dataset.skip(int(args.train_split * args.total_items))
+    train_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(train_dataset)
+    val_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(val_dataset)
+    if args.raytracer_hparams is not None:
+        import json
+        with open(args.raytracer_hparams, "r") as f:
+            raytracer_hparams = json.load(f)
     else:
-        files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
-        dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
-        # Read off global parameters from first example in dataset
-        for params in dataset.map(decode_physical_model_info):
-            break
-        dataset = dataset.map(decode_train).batch(args.batch_size)
-        if args.cache_file is not None:
-            dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
-        else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
-            dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-        train_dataset = dataset.take(int(args.train_split * args.total_items))
-        val_dataset = dataset.skip(int(args.train_split * args.total_items))
-        if args.raytracer_hparams is not None:
-            import json
-            with open(args.raytracer_hparams, "r") as f:
-                raytracer_hparams = json.load(f)
-        else:
-            raytracer_hparams = {}
+        raytracer_hparams = {}
+    with MIRRORED_STRATEGY.scope():  # Replicate ops accross gpus
         phys = PhysicalModel(
             pixels=params["kappa pixels"].numpy(),
             src_pixels=params["src pixels"].numpy(),
@@ -63,25 +70,25 @@ def main(args):
             device=PHYSICAL_MODEL_DEVICE,
             **raytracer_hparams
         )
-    rim = RIMUnet(
-        physical_model=phys,
-        steps=args.time_steps,
-        adam=args.adam,
-        kappalog=args.kappalog,
-        normalize=args.normalize,
-        state_sizes=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4],
-         **{"source": {"strides": args.source_strides},
-            "kappa": {"strides": args.kappa_strides}}
-    )
-    learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=args.initial_learning_rate,
-        decay_rate=args.decay_rate,
-        decay_steps=args.decay_steps,
-        staircase=args.staircase
-    )
-    optim = tf.optimizers.Adam(learning_rate=learning_rate_schedule)
+        rim = RIMUnet(
+            physical_model=phys,
+            steps=args.time_steps,
+            adam=args.adam,
+            kappalog=args.kappalog,
+            normalize=args.normalize,
+            state_sizes=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4],
+             **{"source": {"strides": args.source_strides},
+                "kappa": {"strides": args.kappa_strides}}
+        )
+        learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=args.initial_learning_rate,
+            decay_rate=args.decay_rate,
+            decay_steps=args.decay_steps,
+            staircase=args.staircase
+        )
+        optim = tf.optimizers.Adam(learning_rate=learning_rate_schedule)
 
-    # ==== Take care of where to write logs and stuff ====
+    # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         logname = args.model_id
     elif args.logname is not None:
@@ -103,6 +110,7 @@ def main(args):
     else:
         test_writer = nullwriter()
         train_writer = nullwriter()
+    # ===== Make sure directory and checkpoint manager are created to save model ===================================
     if args.model_dir.lower() != "none":
         models_dir = os.path.join(args.model_dir, logname)
         if not os.path.isdir(models_dir):
@@ -121,6 +129,7 @@ def main(args):
         kappa_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.kappa_model)
         kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, kappa_checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
+        # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
             if args.load_checkpoint == "lastest":
                 kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint_manager.latest_checkpoint)
@@ -141,9 +150,43 @@ def main(args):
                 source_checkpoint_manager.checkpoint.restore(source_checkpoint)
     else:
         save_checkpoint = False
-    # ====================================================
+    # =================================================================================================================
 
-    # ====== Training loop ===============================
+    def train_step(inputs):
+        X, source, kappa = inputs
+        with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
+            tape.watch(rim.source_model.trainable_variables)
+            tape.watch(rim.kappa_model.trainable_variables)
+            cost = rim.cost_function(X, source, kappa, reduction=False)
+            cost = tf.reduce_sum(cost) / args.batch_size  # Reduce by the global batch size, not the replica batch size
+        gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
+        gradient2 = tape.gradient(cost, rim.kappa_model.trainable_variables)
+        if args.clipping:
+            gradient1 = [tf.clip_by_value(grad, -10, 10) for grad in gradient1]
+            gradient2 = [tf.clip_by_value(grad, -10, 10) for grad in gradient2]
+        optim.apply_gradients(zip(gradient1, rim.source_model.trainable_variables))
+        optim.apply_gradients(zip(gradient2, rim.kappa_model.trainable_variables))
+        return cost
+
+    @tf.function
+    def distributed_train_step(dist_inputs):
+        per_replica_losses = MIRRORED_STRATEGY.run(train_step, args=(dist_inputs,))
+        # Replica losses are aggregated by summing them
+        return MIRRORED_STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+
+    def test_step(inputs):
+        X, source, kappa = inputs
+        cost = rim.cost_function(X, source, kappa, reduction=False)
+        cost = tf.reduce_sum(cost) / args.batch_size
+        return cost
+
+    @tf.function
+    def distributed_test_step(dist_inputs):
+        per_replica_losses = MIRRORED_STRATEGY.run(test_step, args=(dist_inputs,))
+        # Replica losses are aggregated by summing them
+        return MIRRORED_STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+
+    # ====== Training loop ============================================================================================
     epoch_loss = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
     best_loss = np.inf
@@ -153,19 +196,8 @@ def main(args):
     for epoch in range(args.epochs):
         epoch_loss.reset_states()
         with train_writer.as_default():
-            for batch, (X, source, kappa) in enumerate(train_dataset):
-                with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
-                    tape.watch(rim.source_model.trainable_variables)
-                    tape.watch(rim.kappa_model.trainable_variables)
-                    cost = rim.cost_function(X, source, kappa)
-                gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
-                gradient2 = tape.gradient(cost, rim.kappa_model.trainable_variables)
-                if args.clipping:
-                    gradient1 = [tf.clip_by_value(grad, -10, 10) for grad in gradient1]
-                    gradient2 = [tf.clip_by_value(grad, -10, 10) for grad in gradient2]
-                optim.apply_gradients(zip(gradient1, rim.source_model.trainable_variables)) # backprop
-                optim.apply_gradients(zip(gradient2, rim.kappa_model.trainable_variables))
-
+            for batch, distributed_inputs in enumerate(train_dataset):
+                cost = distributed_train_step(distributed_inputs)
                 #========== Summary and logs ==========
                 epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
@@ -173,8 +205,8 @@ def main(args):
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         with test_writer.as_default():
             val_loss.reset_states()
-            for X, source, kappa in val_dataset:
-                test_cost = rim.cost_function(X, source,  kappa)
+            for distributed_inputs in val_dataset:
+                test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
             tf.summary.scalar("MSE", test_cost, step=step)
         val_cost = val_loss.result().numpy()
@@ -210,6 +242,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_id", type=str, default="None",
                         help="Start from this model id checkpoint. None means start from scratch")
     parser.add_argument("--load_checkpoint", default="best", help="One of 'best', 'lastest' or the specific checkpoint index.")
+    parser.add_argument("--smoketest", action="store_true")
 
     # RIM hyperparameters
     parser.add_argument("--time_steps",         default=16,     type=int, help="Number of time steps of RIM")
@@ -245,10 +278,9 @@ if __name__ == "__main__":
                         help="Path to raytracer json that describe hyper parameters")
 
     # Training set params
-    parser.add_argument("-b", "--batch_size",   default=10,     type=int,   help="Number of images in a batch.")
-    parser.add_argument("--dataset",            default="NIS",
-                        help="Dataset to use, either path to directory that contains alpha labels tfrecords "
-                             "or the name of the dataset tu use. Options are ['NIS'].")
+    parser.add_argument("-b", "--batch_size",   default=1,     type=int,    help="Number of images in a batch. ")
+    parser.add_argument("--datasets",            required=True, nargs="+",
+                        help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
     parser.add_argument("--train_split",        default=0.8,    type=float, help="Fraction of the training set.")
     parser.add_argument("--total_items",        required=True,  type=int,   help="Total images in an epoch.")
     # ... for NIS dataset
