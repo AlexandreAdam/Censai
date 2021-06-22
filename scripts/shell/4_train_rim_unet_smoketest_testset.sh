@@ -25,6 +25,7 @@ python ../4_train_rim_unet.py\
   --epochs=2\
   --initial_learning_rate=1e-3\
   --decay_rate=1\
+  --staircase\
   --clipping=True\
   --logdir=$HOME/scratch/Censai/logs/\
   --model_dir=$HOME/scratch/Censai/models/\
