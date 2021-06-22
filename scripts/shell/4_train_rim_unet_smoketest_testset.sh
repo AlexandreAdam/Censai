@@ -11,7 +11,7 @@ source $HOME/environments/censai3.8/bin/activate
 python ../4_train_rim_unet.py\
   --time_steps=16\
   --adam=True\
-  --kappalog=True\
+  --logkappa=True\
   --normalize=False\
   --kappa_strides=4\
   --source_strides=2\
