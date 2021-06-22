@@ -26,8 +26,8 @@ def main(args):
         config = wandb.config
         config.update(vars(args))
     if args.dataset == "NIS":
-        train_dataset = NISGenerator(int(args.split * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
-        val_dataset = NISGenerator(int((1 - args.split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
+        train_dataset = NISGenerator(int(args.train_split * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
+        val_dataset = NISGenerator(int((1 - args.train_split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
         phys = PhysicalModel(pixels=args.pixels, noise_rms=args.noise_rms, method=args.forward_method, device=PHYSICAL_MODEL_DEVICE)
     else:
         files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
@@ -35,9 +35,19 @@ def main(args):
         # Read off global parameters from first example in dataset
         for params in dataset.map(decode_all):
             break
-        dataset = dataset.map(decode_train).batch(args.batch_size).cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
-        train_dataset = dataset.take(int(args.split * args.total_items))
-        val_dataset = dataset.skip(int(args.split * args.total_items))
+        dataset = dataset.map(decode_train).batch(args.batch_size)
+        if args.cache_file is not None:
+            dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
+        else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
+            dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+        train_dataset = dataset.take(int(args.train_split * args.total_items))
+        val_dataset = dataset.skip(int(args.train_split * args.total_items))
+        if args.raytracer_hparams is not None:
+            import json
+            with open(args.raytracer_hparams, "r") as f:
+                raytracer_hparams = json.load(f)
+        else:
+            raytracer_hparams = {}
         phys = PhysicalModel(
             pixels=params["kappa pixels"].numpy(),
             src_pixels=params["source pixels"].numpy(),
@@ -47,9 +57,11 @@ def main(args):
             noise_rms=params["noise rms"],
             logkappa=args.logkappa,
             checkpoint_path=args.raytracer,
-            device=PHYSICAL_MODEL_DEVICE
+            device=PHYSICAL_MODEL_DEVICE,
+            **raytracer_hparams
         )
     rim = RIMUnet(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam,
+                  kappalog=args.kappalog, normalize=args.normalize,
                   **{"source": {"strides": args.source_strides},
                      "kappa": {"strides": args.kappa_strides}}
                   )
@@ -191,6 +203,7 @@ if __name__ == "__main__":
                         help="ADAM update for the log-likelihood gradient.")
     # ... for kappa model
     parser.add_argument("--kappalog",           default=True,   type=bool)
+    parser.add_argument("--normalize",          default=False,  type=bool)
     parser.add_argument("--kappa_strides",      default=4,      type=int,
                         help="Value of the stride parameter in the 3 downsampling and upsampling layers "
                              "for the kappa model.")
@@ -202,9 +215,9 @@ if __name__ == "__main__":
     parser.add_argument("--forward_method",     default="conv2d",
                         help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
                              "'--raytracer' must be provided and point to model checkpoint directory.")
-    parser.add_argument("--raytracer",          default="none",
+    parser.add_argument("--raytracer",          default=None,
                         help="Path to raytracer checkpoint dir if method 'unet' is used.")
-    parser.add_argument("--raytracer_hparams",  default="none",
+    parser.add_argument("--raytracer_hparams",  default=None,
                         help="Path to raytracer json that describe hyper parameters")
 
     # Training set params
@@ -221,7 +234,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_parallel_reads", default=10,     type=int,
                         help="TFRecord dataset number of parallel reads when loading data.")
     parser.add_argument("--cache_file",         default=None,
-                        help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache.")
+                        help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,   help="Number of epochs for training.")
