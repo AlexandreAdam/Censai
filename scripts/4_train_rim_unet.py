@@ -281,8 +281,4 @@ if __name__ == "__main__":
         args_dict = vars(args)
         args_dict.update(json_override)
 
-    with open(os.path.join(args.output_dir, "script_params.json"), "w") as f:
-        args_dict = vars(args)
-        json.dump(args_dict, f)
-
     main(args)
