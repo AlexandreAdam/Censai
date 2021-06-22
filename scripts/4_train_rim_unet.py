@@ -12,6 +12,9 @@ if gpus:
         PHYSICAL_MODEL_DEVICE = tf.device("/device:GPU:1")
     else:
         PHYSICAL_MODEL_DEVICE = tf.device("/device:GPU:0")
+else:
+    from censai.utils import nullcontext
+    PHYSICAL_MODEL_DEVICE = nullcontext()
 try:
     import wandb
     wandb.init(project="censai_unet_rim", entity="adam-alexandre01123", sync_tensorboard=True)
@@ -60,8 +63,9 @@ def main(args):
             device=PHYSICAL_MODEL_DEVICE,
             **raytracer_hparams
         )
-    rim = RIMUnet(phys, args.batch_size, args.time_steps, args.pixels, adam=args.adam,
+    rim = RIMUnet(phys, args.time_steps, args.pixels, adam=args.adam,
                   kappalog=args.kappalog, normalize=args.normalize,
+                  state_sizes=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4],
                   **{"source": {"strides": args.source_strides},
                      "kappa": {"strides": args.kappa_strides}}
                   )
@@ -213,6 +217,16 @@ if __name__ == "__main__":
     parser.add_argument("--source_strides",     default=2,      type=int,
                         help="Value of the stride parameter in the 3 downsampling and upsampling layers "
                              "for the source model.")
+    # ... for both
+    parser.add_argument("--state_size_1",       default=4,      type=int,
+                        help="Size of the hidden state for block-layer 1")
+    parser.add_argument("--state_size_2",       default=32,     type=int,
+                        help="Size of the hidden state for block-layer 2")
+    parser.add_argument("--state_size_3",       default=128,    type=int,
+                        help="Size of the hidden state for block-layer 3")
+    parser.add_argument("--state_size_4",       default=512,    type=int,
+                        help="Size of the hidden state for block-layer 4")
+
     # ... for the physical model
     parser.add_argument("--forward_method",     default="conv2d",
                         help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
@@ -276,7 +290,6 @@ if __name__ == "__main__":
         tf.random.set_seed(args.seed)
         np.random.seed(args.seed)
     if args.json_override is not None:
-
         with open(args.json_override, "r") as f:
             json_override = json.load(f)
         args_dict = vars(args)

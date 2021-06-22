@@ -9,9 +9,9 @@ class RIMUnet:
     def __init__(
             self,
             physical_model,
-            batch_size,
             steps,
             pixels,
+            state_sizes=[4, 32, 128, 512],
             adam=True,
             kappalog=True,
             kappa_normalize=True,
@@ -25,7 +25,7 @@ class RIMUnet:
         self.pixels = pixels  # state size is not used, fixed in self.state_size_list
         self.steps = steps
         self._num_units = 32
-        self.state_size_list = [32, 32, 128, 512]
+        self.state_size_list = state_sizes
         self.source_model = UnetModel(self.state_size_list, **models_kwargs["source"])
         self.kappa_model = UnetModel(self.state_size_list, **models_kwargs["kappa"])
         # if checkpoint_manager_source is not None:
@@ -34,7 +34,6 @@ class RIMUnet:
         # if checkpoint_manager_kappa is not None:
         #     checkpoint_manager_kappa.checkpoint.restore(checkpoint_manager_kappa.latest_checkpoint)
         #     print(f"Initialized kappa model from {checkpoint_manager_kappa.latest_checkpoint}")
-        self.batch_size = batch_size
         self.adam = adam
         self.kappalog = kappalog
         self.kappa_normalize = kappa_normalize
@@ -42,33 +41,37 @@ class RIMUnet:
         self.beta_2 = beta_2
         self.epsilon = epsilon
 
-        #TODO move this into a function and into forward pass
-        self.source_init = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, 1))
+    def initial_states(self, batch_size):
+        source_init = tf.zeros(shape=(batch_size, self.pixels, self.pixels, 1))
         if self.kappalog:
-            self.kappa_init = -tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1))
+            if self.kappa_normalize:
+                kappa_init = tf.zeros(shape=(batch_size, self.pixels, self.pixels, 1))
+            else:
+                kappa_init = -tf.ones(shape=(batch_size, self.pixels, self.pixels, 1))
         else:
-            self.kappa_init = tf.ones(shape=(self.batch_size, self.pixels, self.pixels, 1)) / 10
+            kappa_init = tf.ones(shape=(batch_size, self.pixels, self.pixels, 1)) / 10
 
         strides = self.source_model.strides
         numfeat_1, numfeat_2, numfeat_3, numfeat_4 = self.state_size_list
-        state_11 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, numfeat_1))
+        state_11 = tf.zeros(shape=(batch_size, self.pixels, self.pixels, numfeat_1))
         state_12 = tf.zeros(
-            shape=(self.batch_size, self.pixels // strides ** 1, self.pixels // strides ** 1, numfeat_2))
+            shape=(batch_size, self.pixels // strides ** 1, self.pixels // strides ** 1, numfeat_2))
         state_13 = tf.zeros(
-            shape=(self.batch_size, self.pixels // strides ** 2, self.pixels // strides ** 2, numfeat_3))
+            shape=(batch_size, self.pixels // strides ** 2, self.pixels // strides ** 2, numfeat_3))
         state_14 = tf.zeros(
-            shape=(self.batch_size, self.pixels // strides ** 3, self.pixels // strides ** 3, numfeat_4))
-        self.state_1 = [state_11, state_12, state_13, state_14]
+            shape=(batch_size, self.pixels // strides ** 3, self.pixels // strides ** 3, numfeat_4))
+        state_1 = [state_11, state_12, state_13, state_14]
 
         strides = self.kappa_model.strides
-        state_21 = tf.zeros(shape=(self.batch_size, self.pixels, self.pixels, numfeat_1))
+        state_21 = tf.zeros(shape=(batch_size, self.pixels, self.pixels, numfeat_1))
         state_22 = tf.zeros(
-            shape=(self.batch_size, self.pixels // strides ** 1, self.pixels // strides ** 1, numfeat_2))
+            shape=(batch_size, self.pixels // strides ** 1, self.pixels // strides ** 1, numfeat_2))
         state_23 = tf.zeros(
-            shape=(self.batch_size, self.pixels // strides ** 2, self.pixels // strides ** 2, numfeat_3))
+            shape=(batch_size, self.pixels // strides ** 2, self.pixels // strides ** 2, numfeat_3))
         state_24 = tf.zeros(
-            shape=(self.batch_size, self.pixels // strides ** 3, self.pixels // strides ** 3, numfeat_4))
-        self.state_2 = [state_21, state_22, state_23, state_24]
+            shape=(batch_size, self.pixels // strides ** 3, self.pixels // strides ** 3, numfeat_4))
+        state_2 = [state_21, state_22, state_23, state_24]
+        return source_init, state_1, kappa_init, state_2
 
     @property
     def state_size(self):
@@ -123,18 +126,20 @@ class RIMUnet:
         return xt_1, ht_1, xt_2, ht_2
 
     def forward_pass(self, data):
+        batch_size = data.shape[0]
+        source_init, state_1, kappa_init, state_2 = self.initial_states(batch_size)
         # 1=source, 2=kappa
         output_series_1 = []
         output_series_2 = []
         with tf.GradientTape() as g:
-            g.watch(self.source_init)
-            g.watch(self.kappa_init)
-            cost = self.physical_model.log_likelihood(y_true=data, source=self.source_init, kappa=self.kappa_inverse_link(self.kappa_init))
-        grads = g.gradient(cost, [self.source_init, self.kappa_init])
+            g.watch(source_init)
+            g.watch(kappa_init)
+            cost = self.physical_model.log_likelihood(y_true=data, source=source_init, kappa=self.kappa_inverse_link(kappa_init))
+        grads = g.gradient(cost, [source_init, kappa_init])
         grads = self.grad_update(*grads, 0)
 
-        output_1, state_1, output_2, state_2 = self.__call__(self.source_init, self.state_1, grads[0], self.kappa_init,
-                                                             self.state_2, grads[1])
+        output_1, state_1, output_2, state_2 = self.__call__(source_init, state_1, grads[0], kappa_init,
+                                                             state_2, grads[1])
         output_series_1.append(output_1)
         output_series_2.append(output_2)
 
