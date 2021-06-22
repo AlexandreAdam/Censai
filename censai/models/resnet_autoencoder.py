@@ -337,6 +337,5 @@ class Autoencoder(tf.keras.Model):
         x = tf.signal.rfft2d(x[..., 0])
         x_pred = tf.signal.rfft2d(x_pred[..., 0])
 
-        # added a safety net in the division, even if tfrecords were generated to ensure
-        chi_squared = 0.5 * tf.reduce_mean(tf.abs((x - x_pred)**2 / tf.complex(tf.exp(ps)[..., 0] + 1e-8, 0.) / (2 * pi) ** 2), axis=[1, 2])
+        chi_squared = 0.5 * tf.reduce_mean(tf.abs((x - x_pred))**2 / (tf.exp(ps)[..., 0] + 1e-8) / (2 * pi) ** 2, axis=[1, 2])
         return chi_squared + bottleneck_l2_cost + apo_loss + tv_loss

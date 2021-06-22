@@ -21,7 +21,7 @@ python ../4_train_rim_unet.py\
   --state_size_4=512\
   --forward_method=conv2d\
   --batch_size=10\
-  --dataset=$HOME/scratch/Censai/data/lenses_TNG100_testset/\
+  --datasets=$HOME/scratch/Censai/data/lenses_TNG100_testset/\
   --train_split=0.9\
   --total_items=5000\
   --num_parallel_reads=5\
