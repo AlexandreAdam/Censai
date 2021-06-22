@@ -2,10 +2,10 @@
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
-#SBATCH --mem=8G			     # memory per node
-#SBATCH --time=0-05:00		# time (DD-HH:MM)
+#SBATCH --mem=32G			     # memory per node
+#SBATCH --time=1-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RayTracer_SmokeTest
+#SBATCH --job-name=Train_RayTracer_TNG100
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../3_train_raytracer.py\
@@ -21,7 +21,7 @@ python ../3_train_raytracer.py\
   --kappalog=True\
   --normalize=True\
   --batch_size=10\
-  --dataset=$HOME/scratch/Censai/data/kappa612_TNG100_64neighbors/\
+  --dataset=$HOME/scratch/Censai/data/alpha512_TNG100/\
   --total_items=45360\
   --train_split=0.9\
   --num_parallel_reads=10\
