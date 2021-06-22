@@ -63,12 +63,16 @@ def main(args):
             device=PHYSICAL_MODEL_DEVICE,
             **raytracer_hparams
         )
-    rim = RIMUnet(phys, args.time_steps, args.pixels, adam=args.adam,
-                  kappalog=args.kappalog, normalize=args.normalize,
-                  state_sizes=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4],
-                  **{"source": {"strides": args.source_strides},
-                     "kappa": {"strides": args.kappa_strides}}
-                  )
+    rim = RIMUnet(
+        phys=phys,
+        steps=args.time_steps,
+        adam=args.adam,
+        kappalog=args.kappalog,
+        normalize=args.normalize,
+        state_sizes=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4],
+         **{"source": {"strides": args.source_strides},
+            "kappa": {"strides": args.kappa_strides}}
+    )
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.initial_learning_rate,
         decay_rate=args.decay_rate,

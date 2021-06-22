@@ -1,6 +1,7 @@
 import tensorflow as tf
 from .models.rim_unet_model import UnetModel
 from censai.definitions import logkappa_normalization, log_kappa
+from censai import PhysicalModel
 
 LOG10 = tf.math.log(10.)
 
@@ -8,9 +9,8 @@ LOG10 = tf.math.log(10.)
 class RIMUnet:
     def __init__(
             self,
-            physical_model,
+            physical_model: PhysicalModel,
             steps,
-            pixels,
             state_sizes=[4, 32, 128, 512],
             adam=True,
             kappalog=True,
@@ -22,7 +22,8 @@ class RIMUnet:
             # checkpoint_manager_kappa=None,
             **models_kwargs):
         self.physical_model = physical_model
-        self.pixels = pixels  # state size is not used, fixed in self.state_size_list
+        self.kappa_pixels = physical_model.pixels
+        self.source_pixels = physical_model.src_pixels
         self.steps = steps
         self._num_units = 32
         self.state_size_list = state_sizes
@@ -42,34 +43,34 @@ class RIMUnet:
         self.epsilon = epsilon
 
     def initial_states(self, batch_size):
-        source_init = tf.zeros(shape=(batch_size, self.pixels, self.pixels, 1))
+        source_init = tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1))
         if self.kappalog:
             if self.kappa_normalize:
-                kappa_init = tf.zeros(shape=(batch_size, self.pixels, self.pixels, 1))
+                kappa_init = tf.zeros(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1))
             else:
-                kappa_init = -tf.ones(shape=(batch_size, self.pixels, self.pixels, 1))
+                kappa_init = -tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1))
         else:
-            kappa_init = tf.ones(shape=(batch_size, self.pixels, self.pixels, 1)) / 10
+            kappa_init = tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) / 10
 
         strides = self.source_model.strides
         numfeat_1, numfeat_2, numfeat_3, numfeat_4 = self.state_size_list
-        state_11 = tf.zeros(shape=(batch_size, self.pixels, self.pixels, numfeat_1))
+        state_11 = tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, numfeat_1))
         state_12 = tf.zeros(
-            shape=(batch_size, self.pixels // strides ** 1, self.pixels // strides ** 1, numfeat_2))
+            shape=(batch_size, self.source_pixels // strides ** 1, self.source_pixels // strides ** 1, numfeat_2))
         state_13 = tf.zeros(
-            shape=(batch_size, self.pixels // strides ** 2, self.pixels // strides ** 2, numfeat_3))
+            shape=(batch_size, self.source_pixels // strides ** 2, self.source_pixels // strides ** 2, numfeat_3))
         state_14 = tf.zeros(
-            shape=(batch_size, self.pixels // strides ** 3, self.pixels // strides ** 3, numfeat_4))
+            shape=(batch_size, self.source_pixels // strides ** 3, self.source_pixels // strides ** 3, numfeat_4))
         state_1 = [state_11, state_12, state_13, state_14]
 
         strides = self.kappa_model.strides
-        state_21 = tf.zeros(shape=(batch_size, self.pixels, self.pixels, numfeat_1))
+        state_21 = tf.zeros(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, numfeat_1))
         state_22 = tf.zeros(
-            shape=(batch_size, self.pixels // strides ** 1, self.pixels // strides ** 1, numfeat_2))
+            shape=(batch_size, self.kappa_pixels // strides ** 1, self.kappa_pixels // strides ** 1, numfeat_2))
         state_23 = tf.zeros(
-            shape=(batch_size, self.pixels // strides ** 2, self.pixels // strides ** 2, numfeat_3))
+            shape=(batch_size, self.kappa_pixels // strides ** 2, self.kappa_pixels // strides ** 2, numfeat_3))
         state_24 = tf.zeros(
-            shape=(batch_size, self.pixels // strides ** 3, self.pixels // strides ** 3, numfeat_4))
+            shape=(batch_size, self.kappa_pixels // strides ** 3, self.kappa_pixels // strides ** 3, numfeat_4))
         state_2 = [state_21, state_22, state_23, state_24]
         return source_init, state_1, kappa_init, state_2
 
