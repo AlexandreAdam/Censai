@@ -74,6 +74,8 @@ def main(args):
     optim = tf.optimizers.Adam(learning_rate=learning_rate_schedule)
     if args.model_id.lower() != "none":
         logname = args.model_id
+    elif args.logname is not None:
+        logname = args.logname
     else:
         logname = "UnetRIM_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     if args.logdir.lower() != "none":
@@ -252,6 +254,8 @@ if __name__ == "__main__":
     # logs
     parser.add_argument("--logdir",                  default="None",
                         help="Path of logs directory. Default if None, no logs recorded.")
+    parser.add_argument("--logname",                 default=None,
+                        help="Name of the logs, default is 'RT_' + date")
     parser.add_argument("--model_dir",               default="None",
                         help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,

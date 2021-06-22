@@ -5,6 +5,7 @@ from censai.data.alpha_tng import decode_train
 from censai.utils import nullwriter
 import os, glob
 import numpy as np
+from datetime import datetime
 try:
     import wandb
     wandb.init(project="censai_ray_tracer", entity="adam-alexandre01123", sync_tensorboard=True)
@@ -63,9 +64,15 @@ def main(args):
         staircase=True)
     optim = tf.keras.optimizers.Adam(learning_rate=lr_schedule, beta_1=0.9, beta_2=0.999)
 
+    if args.model_id.lower() != "none":
+        logname = args.model_id
+    elif args.logname is not None:
+        logname = args.logname
+    else:
+        logname = "RayTracer_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     # setup tensorboard writer (nullwriter in case we do not want to sync)
     if args.logdir.lower() != "none":
-        logdir = os.path.join(args.logdir, args.logname)
+        logdir = os.path.join(args.logdir, logname)
         traindir = os.path.join(logdir, "train")
         testdir = os.path.join(logdir, "test")
         if not os.path.isdir(logdir):
@@ -81,7 +88,7 @@ def main(args):
         test_writer = nullwriter()
 
     if args.model_dir.lower() != "none":
-        models_dir = os.path.join(args.model_dir, args.logname)
+        models_dir = os.path.join(args.model_dir, logname)
         if not os.path.isdir(models_dir):
             os.mkdir(models_dir)
         checkpoints_dir = os.path.join(models_dir, "source_checkpoints")
@@ -165,7 +172,6 @@ def main(args):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    from datetime import datetime
     import json
     date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     parser = ArgumentParser()
@@ -202,7 +208,7 @@ if __name__ == "__main__":
 
     # Logs
     parser.add_argument("--logdir",                         default="None",        help="Path of logs directory.")
-    parser.add_argument("--logname",                        default="RayTracer_" + date,  help="Name of the logs, default is 'RT_' + date")
+    parser.add_argument("--logname",                        default=None,          help="Name of the logs, default is 'RT_' + date")
     parser.add_argument("--model_dir",                      default="None",        help="Directory where to save model weights")
     parser.add_argument("--checkpoints",                    default=10, type=int,  help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3, type=int,   help="Max model checkpoint to keep")
