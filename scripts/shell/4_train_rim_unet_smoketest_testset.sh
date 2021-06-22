@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=10 # maximum cpu per task is 3.5 per gpus
-#SBATCH --gres=gpu:10
+#SBATCH --gres=gpu:4
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=0-01:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
@@ -21,7 +21,7 @@ python ../4_train_rim_unet.py\
   --state_size_3=128\
   --state_size_4=512\
   --forward_method=conv2d\
-  --batch_size=10\
+  --batch_size=4\
   --datasets=$HOME/scratch/Censai/data/lenses_TNG100_testset/\
   --train_split=0.9\
   --total_items=500\
