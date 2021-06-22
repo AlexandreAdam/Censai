@@ -20,7 +20,7 @@ class PhysicalModel:
             kappa_fov=7.68,
             method="conv2d",
             noise_rms=1,
-            logkappa=False,
+            kappalog=False,
             normalize_logkappa=False,
             checkpoint_path=None,
             device=nullcontext(),
@@ -36,7 +36,7 @@ class PhysicalModel:
         self.kappa_fov = kappa_fov
         self.method = method
         self.noise_rms = noise_rms
-        self.logkappa = logkappa
+        self.kappalog = kappalog
         self.normalize_logkappa = normalize_logkappa
         self.device = device
         if method == "unet":
@@ -113,7 +113,7 @@ class PhysicalModel:
 
     def forward(self, source, kappa):
         with self.device:
-            if self.logkappa:
+            if self.kappalog:
                 if self.normalize_logkappa:  # undo normalization
                     kappa = logkappa_normalization(kappa, forward=False)
                 kappa = 10**kappa
@@ -123,7 +123,7 @@ class PhysicalModel:
 
     def noisy_forward(self, source, kappa, noise_rms):
         with self.device:
-            if self.logkappa:
+            if self.kappalog:
                 if self.normalize_logkappa:  # undo normalization
                     kappa = logkappa_normalization(kappa, forward=False)
                 kappa = 10**kappa

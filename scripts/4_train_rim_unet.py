@@ -55,7 +55,7 @@ def main(args):
             kappa_fov=params["kappa fov"].numpy(),
             method=args.forward_method,
             noise_rms=params["noise rms"].numpy(),
-            logkappa=args.logkappa,
+            kappalog=args.kappalog,
             checkpoint_path=args.raytracer,
             device=PHYSICAL_MODEL_DEVICE,
             **raytracer_hparams
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     parser.add_argument("--adam",               default=True,   type=bool,
                         help="ADAM update for the log-likelihood gradient.")
     # ... for kappa model
-    parser.add_argument("--logkappa",           default=True,   type=bool)
+    parser.add_argument("--kappalog",           default=True,   type=bool)
     parser.add_argument("--normalize",          default=False,  type=bool)
     parser.add_argument("--kappa_strides",      default=4,      type=int,
                         help="Value of the stride parameter in the 3 downsampling and upsampling layers "
