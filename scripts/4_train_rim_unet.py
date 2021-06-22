@@ -36,6 +36,8 @@ def main(args):
     files = []
     for dataset in args.datasets:
         files.append(glob.glob(os.path.join(dataset, "*.tfrecords")))
+    if args.smoketest:
+        files = files[0]  # just take one file, hope user provided correct dataset size!
     dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
     # Read off global parameters from first example in dataset
     for params in dataset.map(decode_physical_model_info):
@@ -240,6 +242,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_id", type=str, default="None",
                         help="Start from this model id checkpoint. None means start from scratch")
     parser.add_argument("--load_checkpoint", default="best", help="One of 'best', 'lastest' or the specific checkpoint index.")
+    parser.add_argument("--smoketest", action="store_true")
 
     # RIM hyperparameters
     parser.add_argument("--time_steps",         default=16,     type=int, help="Number of time steps of RIM")
