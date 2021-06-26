@@ -88,10 +88,7 @@ def main(args):
         test_writer = nullwriter()
 
     if args.model_dir.lower() != "none":
-        models_dir = os.path.join(args.model_dir, logname)
-        if not os.path.isdir(models_dir):
-            os.mkdir(models_dir)
-        checkpoints_dir = os.path.join(models_dir, "source_checkpoints")
+        checkpoints_dir = os.path.join(args.model_dir, logname)
         if not os.path.isdir(checkpoints_dir):
             os.mkdir(checkpoints_dir)
             # save script parameter for future reference
@@ -161,7 +158,7 @@ def main(args):
             checkpoint_manager.checkpoint.step.assign_add(1)  # a bit of a hack
             if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
                 with open(os.path.join(checkpoints_dir, "score_sheet.txt"), mode="a") as f:
-                    np.savetxt(f, np.array([lastest_checkpoint, val_cost]))
+                    np.savetxt(f, np.array([[lastest_checkpoint, val_cost]]))
                 lastest_checkpoint += 1
                 checkpoint_manager.save()
                 print("Saved checkpoint for step {}: {}".format(int(checkpoint_manager.checkpoint.step), checkpoint_manager.latest_checkpoint))

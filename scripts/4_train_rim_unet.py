@@ -222,9 +222,9 @@ def main(args):
             kappa_checkpoint_manager.checkpoint.step.assign_add(1)
             if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
                 with open(os.path.join(kappa_checkpoints_dir, "score_sheet.txt"), mode="a") as f:
-                    np.savetxt(f, np.array([lastest_checkpoint, val_cost]))
+                    np.savetxt(f, np.array([[lastest_checkpoint, val_cost]]))
                 with open(os.path.join(source_checkpoints_dir, "score_sheet.txt"), mode="a") as f:
-                    np.savetxt(f, np.array([lastest_checkpoint, val_cost]))
+                    np.savetxt(f, np.array([[lastest_checkpoint, val_cost]]))
                 lastest_checkpoint += 1
                 source_checkpoint_manager.save()
                 kappa_checkpoint_manager.save()
