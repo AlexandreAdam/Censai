@@ -38,7 +38,7 @@ def main(args):
     else:
         files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
         dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
-        dataset = dataset.map(decode_train).batch(args.batch)
+        dataset = dataset.map(decode_train).batch(args.batch_size)
         if args.cache_file is not None:
             dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
         else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
