@@ -36,16 +36,15 @@ def draw_and_encode_stamp(gal, psf, stamp_size, pixel_scale, attributes=None):
     Nk = stamp_size*interp_factor*padding_factor
     bounds = galsim.BoundsI(0, Nk//2, -Nk//2, Nk//2-1)
     imCp = psf.drawKImage(bounds=bounds,
-                         scale=2.*np.pi/(Nk * pixel_scale / interp_factor),
-                         recenter=False)
+                          scale=2.*np.pi/(Nk * pixel_scale / interp_factor),
+                          recenter=False)
 
     # Transform the psf array into proper format, remove the phase
     im_psf = np.abs(np.fft.fftshift(imCp.array, axes=0)).astype('float32')
 
     # Compute noise power spectrum, at the resolution and stamp size of target
     # image
-    ps = gal.noise._get_update_rootps((stamp_size, stamp_size),
-                                       wcs=galsim.PixelScale(pixel_scale))
+    ps = gal.noise._get_update_rootps((stamp_size, stamp_size), wcs=galsim.PixelScale(pixel_scale))
 
     # The following comes from correlatednoise.py
     rt2 = np.sqrt(2.)

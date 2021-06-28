@@ -5,7 +5,7 @@
 #SBATCH --mem=16G			     # memory per node
 #SBATCH --time=0-02:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RayTracer_TNG100
+#SBATCH --job-name=Train_RayTracer_NIS
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../3_train_raytracer.py\
@@ -22,6 +22,7 @@ python ../3_train_raytracer.py\
   --normalize=False\
   --batch_size=16\
   --dataset=$HOME/scratch/Censai/data/alpha512_NIS/\
+  --compression_type=GZIP\
   --total_items=5000\
   --train_split=0.9\
   --num_parallel_reads=4\
