@@ -8,11 +8,11 @@ def decode(record_bytes):
           record_bytes,
           # Schema
           features={
+              'image': tf.io.FixedLenFeature([], tf.string),
               'height': tf.io.FixedLenFeature([], tf.int64),
               'width': tf.io.FixedLenFeature([], tf.int64),
-              'image': tf.io.FixedLenFeature([], tf.string),
-              'ps': tf.io.FixedLenFeature([], tf.string),
               'psf': tf.io.FixedLenFeature([], tf.string),
+              'ps': tf.io.FixedLenFeature([], tf.string)
           })
     #  decode raw data to float tensors, assuming everything was encoded as float32
     image = tf.io.decode_raw(example["image"], tf.float32)
