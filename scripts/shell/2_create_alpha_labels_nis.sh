@@ -6,7 +6,7 @@
 #SBATCH --mem=16G			     # memory per node
 #SBATCH --time=0-1:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Create-Alpha-Labels-Kappa612_TNG100
+#SBATCH --job-name=Create-Alpha-Labels-Kappa612_NIS
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../2_create_alpha_analytical_kappa_maps.py\
