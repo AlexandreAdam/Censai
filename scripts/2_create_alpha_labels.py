@@ -51,7 +51,8 @@ def distributed_strategy(args):
     else:
         dataset_size = len(kappa_files)
 
-    with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{THIS_WORKER}.tfrecords")) as writer:
+    options = tf.io.TFRecordOptions(compression_type=args.compression_type)
+    with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{THIS_WORKER}.tfrecords"), options=options) as writer:
         print(f"Started worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
         for i in range((THIS_WORKER - 1) * args.batch, dataset_size, N_WORKERS * args.batch):
             if args.augment:
@@ -78,50 +79,36 @@ def distributed_strategy(args):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument("--kappa_dir", required=True, help="Path to kappa fits files directory")
-    parser.add_argument("--output_dir", required=True, help="Path where tfrecords are stored")
-    parser.add_argument("--smoke_test", action="store_true")
+    parser.add_argument("--kappa_dir",      required=True, help="Path to kappa fits files directory")
+    parser.add_argument("--output_dir",     required=True, help="Path where tfrecords are stored")
+    parser.add_argument("--smoke_test",     action="store_true")
+    parser.add_argument("--compression_type", default=None, help="Default is no compression. Use 'GZIP' to compress data")
 
     # Physical Model params
-    parser.add_argument("--image_fov", default=20, type=float,
-                        help="Field of view of the image (lens plane) in arc seconds")
+    parser.add_argument("--image_fov",      default=20,     type=float,     help="Field of view of the image (lens plane) in arc seconds")
 
     # Data generation params
-    parser.add_argument("--batch", default=1, type=int,
-                        help="Number of label maps to be computed at the same time")
-    parser.add_argument("--crop", default=0, type=int,
-                        help="Crop kappa map by N pixels. After crop, the size of the kappa map "
-                             "should correspond to pixel argument "
-                             "(e.g. kappa of 612 pixels cropped by N=50 on each side -> 512 pixels)")
-    parser.add_argument("--augment", default=0., type=float,
-                        help="Percentage by which to augment the data. (0=no augmentation)"
-                             "Random shift of the position of the "
-                             "kappa maps if crops > 0, and random rescaling.")
-    parser.add_argument("--shift", action="store_true", help="Shift center of kappa map with a budget defined by "
-                                                             "the crop argument.")
-    parser.add_argument("--rotate", action="store_true", help="If augment, we rotate the kappa map")
-    parser.add_argument("--rotate_by", default="90",
-                        help="'90': will rotate by a multiple of 90 degrees. 'uniform' will rotate by any angle, "
-                             "with nearest neighbor interpolation and zero padding")
-    parser.add_argument("--bins", default=10, type=int,
-                        help="Number of bins to estimate Einstein radius distribution of a kappa given "
-                             "a set of rescaling factors.")
-    parser.add_argument("--rescaling_size", default=100, type=int,
-                        help="Number of rescaling factors to try for a given kappa map")
-    parser.add_argument("--max_theta_e", default=None, type=float,
-                        help="Maximum allowed Einstein radius, default is 35% of image fov")
-    parser.add_argument("--min_theta_e", default=None, type=float,
-                        help="Minimum allowed Einstein radius, default is 1 arcsec")
+    parser.add_argument("--batch",          default=1,      type=int,       help="Number of label maps to be computed at the same time")
+    parser.add_argument("--crop",           default=0,      type=int,       help="Crop kappa map by N pixels. After crop, the size of the kappa map should correspond to pixel argument "
+                                                                                 "(e.g. kappa of 612 pixels cropped by N=50 on each side -> 512 pixels)")
+    parser.add_argument("--augment",        default=0.,     type=float,     help="Percentage by which to augment the data. (0=no augmentation)."
+                                                                                 "Random shift of the position of the kappa maps if crops > 0, and random rescaling.")
+    parser.add_argument("--shift",          action="store_true",            help="Shift center of kappa map with a budget defined by the crop argument.")
+    parser.add_argument("--rotate",         action="store_true",            help="If augment, we rotate the kappa map")
+    parser.add_argument("--rotate_by",      default="90",                   help="'90': will rotate by a multiple of 90 degrees. 'uniform' will rotate by any angle, "
+                                                                                 "with nearest neighbor interpolation and zero padding")
+    parser.add_argument("--bins",           default=10,     type=int,       help="Number of bins to estimate Einstein radius distribution of a kappa given a set of rescaling factors.")
+    parser.add_argument("--rescaling_size", default=100,    type=int,       help="Number of rescaling factors to try for a given kappa map")
+    parser.add_argument("--max_theta_e",    default=None,   type=float,     help="Maximum allowed Einstein radius, default is 35% of image fov")
+    parser.add_argument("--min_theta_e",    default=None,   type=float,     help="Minimum allowed Einstein radius, default is 1 arcsec")
 
     # Physics params
-    parser.add_argument("--z_source", default=2.379, type=float)
-    parser.add_argument("--z_lens", default=0.4457, type=float)
+    parser.add_argument("--z_source",       default=2.379,  type=float)
+    parser.add_argument("--z_lens",         default=0.4457, type=float)
 
     # Reproducibility params
-    parser.add_argument("--seed", default=None, type=int, help="Random seed for numpy and tensorflow")
-    parser.add_argument("--json_override", default=None,
-                        help="A json filepath that will override every command line parameters. "
-                             "Useful for reproducibility")
+    parser.add_argument("--seed",           default=None,   type=int,       help="Random seed for numpy and tensorflow")
+    parser.add_argument("--json_override",  default=None,                   help="A json filepath that will override every command line parameters. Useful for reproducibility")
 
     args = parser.parse_args()
     if args.seed is not None:

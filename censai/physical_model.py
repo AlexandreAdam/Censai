@@ -40,8 +40,7 @@ class PhysicalModel:
         self.normalize_logkappa = normalize_logkappa
         self.device = device
         if method == "unet":
-            self.RT = RayTracer(trainable=False, **raytracer_hparams)
-            self.RT.load_weights(checkpoint_path)
+            self.RayTracer = RayTracer(trainable=False, **raytracer_hparams)
         self.set_deflection_angle_vars()
         self.PSF = self.psf_model()
 
@@ -53,7 +52,7 @@ class PhysicalModel:
             y_src = self.yimage - alpha_y
 
         elif self.method == "unet":
-            alpha = self.RT(kappa)
+            alpha = self.RayTracer(kappa)
             alpha_x, alpha_y = tf.split(alpha, axis=3)
             x_src = self.ximage - alpha_x
             y_src = self.yimage - alpha_y

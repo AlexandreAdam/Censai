@@ -55,7 +55,8 @@ def distributed_strategy(args):
                          image_fov=args.image_fov, src_fov=args.source_fov, pixels=kappa_gen.crop_pixels,
                          src_pixels=args.src_pixels, kappa_fov=kappa_gen.kappa_fov, method="conv2d")
 
-    with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords")) as writer:
+    options = tf.io.TFRecordOptions(compression_type=args.compression_type)
+    with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
         print(f"Started worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
         for i in range((THIS_WORKER - 1) * args.batch, args.len_dataset, N_WORKERS * args.batch):
             batch_index = np.random.randint(0, n_galaxies//args.batch)
@@ -93,64 +94,53 @@ def distributed_strategy(args):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument("--output_dir",  required=True, type=str, help="Path to output directory")
-    parser.add_argument("--len_dataset", required=True, type=int, help="Size of the dataset")
-    parser.add_argument("--kappa_dir",   required=True, type=str, help="Path to directory of kappa fits files")
-    parser.add_argument("--cosmos_dir",  required=True, type=str,
+    parser.add_argument("--output_dir",     required=True,      type=str,   help="Path to output directory")
+    parser.add_argument("--len_dataset",    required=True,      type=int,   help="Size of the dataset")
+    parser.add_argument("--kappa_dir",      required=True,      type=str,   help="Path to directory of kappa fits files")
+    parser.add_argument("--cosmos_dir",     required=True,      type=str,
                         help="Path to directory of galaxy brightness distribution tfrecords "
                              "(output of cosmos_to_tfrecors.py)")
+    parser.add_argument("--compression_type", default=None, help="Default is no compression. Use 'GZIP' to compress data")
+
     # Physical model params
-    parser.add_argument("--src_pixels",  default=128,    type=int, help="Size of Cosmos postage stamps")
-    parser.add_argument("--image_fov",   default=20,     type=float,
-                        help="Field of view of the image (lens plane) in arc seconds")
-    parser.add_argument("--source_fov",  default=3,      type=float,
+    parser.add_argument("--src_pixels",     default=128,        type=int,   help="Size of Cosmos postage stamps")
+    parser.add_argument("--image_fov",      default=20,         type=float, help="Field of view of the image (lens plane) in arc seconds")
+    parser.add_argument("--source_fov",     default=3,          type=float,
                         help="Field of view of the source plane in arc seconds")
-    parser.add_argument("--noise_rms",   default=0.3e-3, type=float,
+    parser.add_argument("--noise_rms",      default=0.3e-3,     type=float,
                         help="White noise RMS added to lensed image")
-    parser.add_argument("--psf_sigma",   default=0.06,   type=float, help="Sigma of psf in arcseconds")
+    parser.add_argument("--psf_sigma",      default=0.06,       type=float, help="Sigma of psf in arcseconds")
 
     # Data generation params
-    parser.add_argument("--crop",           default=0,      type=int,
-                        help="Crop kappa map by 2*N pixels. After crop, the size of the kappa map "
-                             "should correspond to pixel argument "
-                             "(e.g. kappa of 612 pixels cropped by N=50 on each side -> 512 pixels)")
-    parser.add_argument("--max_shift",      default=1.,    type=float,
-                        help="Maximum allowed shift of kappa map center in arcseconds")
-    parser.add_argument("--rotate",         action="store_true", help="Rotate the kappa map")
-    parser.add_argument("--rotate_by",      default="90",
-                        help="'90': will rotate by a multiple of 90 degrees. 'uniform' will rotate by any angle, "
-                             "with nearest neighbor interpolation and zero padding")
-    parser.add_argument("--shuffle_cosmos", action="store_true", help="Shuffle indices of cosmos dataset")
-    parser.add_argument("--buffer_size",    default=1000,   type=int,
-                        help="Should match example_per_shard when tfrecords were produced "
-                             "(only used if shuffle_cosmos is called)")
-    parser.add_argument("--batch",          default=1,      type=int,
-                        help="Number of examples worked out in a single pass by a worker")
-    parser.add_argument("--tukey_alpha",    default=0.6,    type=float,  # help from scipy own documentation
-                        help="Shape parameter of the Tukey window, representing the fraction of the "
-                             "window inside the cosine tapered region. "
-                             "If 0, the Tukey window is equivalent to a rectangular window. "
-                             "If 1, the Tukey window is equivalent to a Hann window. "
-                             "This window is used on cosmos postage stamps.")
-    parser.add_argument("--bins",           default=10,     type=int,
-                        help="Number of bins to estimate Einstein radius distribution of a kappa given "
-                             "a set of rescaling factors.")
-    parser.add_argument("--rescaling_size", default=100,    type=int,
-                        help="Number of rescaling factors to try for a given kappa map")
-    parser.add_argument("--max_theta_e",    default=None,   type=float,
-                        help="Maximum allowed Einstein radius, default is 35% of image fov")
-    parser.add_argument("--min_theta_e",    default=None,   type=float,
-                        help="Minimum allowed Einstein radius, default is 1 arcsec")
+    parser.add_argument("--crop",           default=0,          type=int,   help="Crop kappa map by 2*N pixels. After crop, the size of the kappa map should correspond to pixel argument "
+                                                                                 "(e.g. kappa of 612 pixels cropped by N=50 on each side -> 512 pixels)")
+    parser.add_argument("--max_shift",      default=1.,         type=float, help="Maximum allowed shift of kappa map center in arcseconds")
+    parser.add_argument("--rotate",         action="store_true",            help="Rotate the kappa map")
+    parser.add_argument("--rotate_by",      default="90",                   help="'90': will rotate by a multiple of 90 degrees. 'uniform' will rotate by any angle, "
+                                                                                 "with nearest neighbor interpolation and zero padding")
+    parser.add_argument("--shuffle_cosmos", action="store_true",            help="Shuffle indices of cosmos dataset")
+    parser.add_argument("--buffer_size",    default=1000,       type=int,   help="Should match example_per_shard when tfrecords were produced "
+                                                                                 "(only used if shuffle_cosmos is called)")
+    parser.add_argument("--batch",          default=1,          type=int,   help="Number of examples worked out in a single pass by a worker")
+    parser.add_argument("--tukey_alpha",    default=0.6,        type=float, help="Shape parameter of the Tukey window, representing the fraction of the "
+                                                                                 "window inside the cosine tapered region. "
+                                                                                 "If 0, the Tukey window is equivalent to a rectangular window. "
+                                                                                 "If 1, the Tukey window is equivalent to a Hann window. "
+                                                                                 "This window is used on cosmos postage stamps.")
+    parser.add_argument("--bins",           default=10,         type=int,   help="Number of bins to estimate Einstein radius distribution of a kappa given "
+                                                                                 "a set of rescaling factors.")
+    parser.add_argument("--rescaling_size", default=100,        type=int,   help="Number of rescaling factors to try for a given kappa map")
+    parser.add_argument("--max_theta_e",    default=None,       type=float, help="Maximum allowed Einstein radius, default is 35% of image fov")
+    parser.add_argument("--min_theta_e",    default=None,       type=float, help="Minimum allowed Einstein radius, default is 1 arcsec")
 
     # Physics params
-    parser.add_argument("--z_source",   default=2.379,  type=float)
-    parser.add_argument("--z_lens",     default=0.4457, type=float)
+    parser.add_argument("--z_source",       default=2.379,      type=float)
+    parser.add_argument("--z_lens",         default=0.4457,     type=float)
 
     # Reproducibility params
-    parser.add_argument("--seed", default=None, type=int, help="Random seed for numpy and tensorflow")
-    parser.add_argument("--json_override", default=None,
-                        help="A json filepath that will override every command line parameters. "
-                             "Useful for reproducibility")
+    parser.add_argument("--seed",           default=None,       type=int,   help="Random seed for numpy and tensorflow")
+    parser.add_argument("--json_override",  default=None,                   help="A json filepath that will override every command line parameters. "
+                                                                                 "Useful for reproducibility")
 
     args = parser.parse_args()
     if args.seed is not None:
