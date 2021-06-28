@@ -111,11 +111,16 @@ if __name__ == '__main__':
     parser.add_argument("--pixels",             default=512,        type=int,   help="Number of pixels on a side of the kappa map.")
     parser.add_argument("--max_shift",          default=1.,         type=float, help="Maximum allowed shift of kappa map center in arcseconds")
     parser.add_argument("--max_ellipticity",    default=0.6,        type=float, help="Maximum ellipticty of density profile.")
-    parser.add_argument("--max_theta_e",        default=None,       type=float, help="Maximum allowed Einstein radius, default is 35% of image fov")
+    parser.add_argument("--max_theta_e",        default=None,       type=float, help="Maximum allowed Einstein radius, default is 35 percent of image fov")
     parser.add_argument("--min_theta_e",        default=None,       type=float, help="Minimum allowed Einstein radius, default is 1 arcsec")
     parser.add_argument("--shuffle_cosmos",     action="store_true",            help="Shuffle indices of cosmos dataset")
     parser.add_argument("--buffer_size",        default=1000,       type=int,   help="Should match example_per_shard when tfrecords were produced "
                                                                                      "(only used if shuffle_cosmos is called)")
+    parser.add_argument("--tukey_alpha",        default=0.6,        type=float, help="Shape parameter of the Tukey window, representing the fraction of the "
+                                                                                     "window inside the cosine tapered region. "
+                                                                                     "If 0, the Tukey window is equivalent to a rectangular window. "
+                                                                                     "If 1, the Tukey window is equivalent to a Hann window. "
+                                                                                     "This window is used on cosmos postage stamps.")
 
     # Physics params
     parser.add_argument("--z_source",           default=2.379,      type=float)
@@ -124,7 +129,7 @@ if __name__ == '__main__':
     # Reproducibility params
     parser.add_argument("--seed",               default=None,       type=int,   help="Random seed for numpy and tensorflow")
     parser.add_argument("--json_override",      default=None,                   help="A json filepath that will override every command line parameters. "
-                                                                                 "Useful for reproducibility")
+                                                                                     "Useful for reproducibility")
 
     args = parser.parse_args()
     if args.seed is not None:

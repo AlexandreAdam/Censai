@@ -99,7 +99,7 @@ if __name__ == '__main__':
                                                                                  "with nearest neighbor interpolation and zero padding")
     parser.add_argument("--bins",           default=10,     type=int,       help="Number of bins to estimate Einstein radius distribution of a kappa given a set of rescaling factors.")
     parser.add_argument("--rescaling_size", default=100,    type=int,       help="Number of rescaling factors to try for a given kappa map")
-    parser.add_argument("--max_theta_e",    default=None,   type=float,     help="Maximum allowed Einstein radius, default is 35% of image fov")
+    parser.add_argument("--max_theta_e",    default=None,   type=float,     help="Maximum allowed Einstein radius, default is 35 percent of image fov")
     parser.add_argument("--min_theta_e",    default=None,   type=float,     help="Minimum allowed Einstein radius, default is 1 arcsec")
 
     # Physics params
