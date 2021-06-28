@@ -1,10 +1,7 @@
 import tensorflow as tf
 import os, glob
 import numpy as np
-from astropy.constants import M_sun, G, c
-from astropy import units as u
 from censai import PhysicalModel
-from censai.definitions import COSMO
 from censai.data.cosmos import preprocess, decode
 from censai.data import NISGenerator
 from censai.data.lenses_tng import encode_examples
@@ -43,8 +40,8 @@ def distributed_strategy(args):
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
     phys = PhysicalModel(psf_sigma=args.psf_sigma,
-                         image_fov=args.image_fov, src_fov=args.source_fov, pixels=kappa_gen.crop_pixels,
-                         src_pixels=args.src_pixels, kappa_fov=kappa_gen.kappa_fov, method="conv2d")
+                         image_fov=args.image_fov, src_fov=args.source_fov, pixels=args.pixels,
+                         src_pixels=args.src_pixels, kappa_fov=args.kappa_fov, method="conv2d")
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
@@ -116,6 +113,9 @@ if __name__ == '__main__':
     parser.add_argument("--max_ellipticity",    default=0.6,        type=float, help="Maximum ellipticty of density profile.")
     parser.add_argument("--max_theta_e",        default=None,       type=float, help="Maximum allowed Einstein radius, default is 35% of image fov")
     parser.add_argument("--min_theta_e",        default=None,       type=float, help="Minimum allowed Einstein radius, default is 1 arcsec")
+    parser.add_argument("--shuffle_cosmos",     action="store_true",            help="Shuffle indices of cosmos dataset")
+    parser.add_argument("--buffer_size",        default=1000,       type=int,   help="Should match example_per_shard when tfrecords were produced "
+                                                                                     "(only used if shuffle_cosmos is called)")
 
     # Physics params
     parser.add_argument("--z_source",           default=2.379,      type=float)

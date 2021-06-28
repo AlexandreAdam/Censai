@@ -3,6 +3,8 @@ import tensorflow_addons as tfa
 import numpy as np
 import math
 from censai.definitions import COSMO
+from astropy.constants import G, c, M_sun
+from astropy import units as u
 
 pi = np.pi
 
@@ -43,7 +45,7 @@ class NISGenerator(tf.keras.utils.Sequence):
         self.x_source, self.y_source = [xx * src_fov/ 2 for xx in tf.meshgrid(x, x)]
         self.theta1, self.theta2 = [xx * kappa_fov / 2 for xx in tf.meshgrid(x, x)]
         self.dy_k = (x[1] - x[0]) * kappa_fov / 2
-        self.angular_diameter_distances(z_source, z_lens)
+        self._physical_info(z_source, z_lens)
         self.set_deflection_angles_vars()
 
     @property
@@ -197,11 +199,11 @@ class NISGenerator(tf.keras.utils.Sequence):
     def _rotate(self, x, y, angle):
         return x * tf.math.cos(angle) + y * tf.math.sin(angle), -x * tf.math.sin(angle) + y * tf.math.cos(angle)
 
-    def angular_diameter_distances(self, z_source, z_lens):
-        self.Dls = tf.constant(COSMO.angular_diameter_distance_z1z2(z_lens, z_source).value,
-                               dtype=tf.float32)  # value in Mpc
+    def _physical_info(self, z_source, z_lens):
+        self.Dls = tf.constant(COSMO.angular_diameter_distance_z1z2(z_lens, z_source).value, dtype=tf.float32)  # value in Mpc
         self.Ds = tf.constant(COSMO.angular_diameter_distance(z_source).value, dtype=tf.float32)
         self.Dl = tf.constant(COSMO.angular_diameter_distance(z_lens).value, dtype=tf.float32)
+        self.Sigma_crit = tf.constant((c ** 2 * self.Ds / (4 * np.pi * G * self.Dl * self.Dls) / (1e10 * M_sun)).to(u.Mpc ** (-2)).value, tf.float32)
 
     def set_deflection_angles_vars(self):
         self.kernel_side_l = 2 * self.pixels + 1  # this number should be odd

@@ -14,6 +14,7 @@ python ../2_create_rim_dataset.py\
   --len_dataset=5000\
   --kappa_dir=$HOME/scratch/Censai/data/kappa612_TNG100_64neighbors\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
+  --compression_type=GZIP\
   --src_pixels=128\
   --image_fov=20\
   --source_fov=3\
