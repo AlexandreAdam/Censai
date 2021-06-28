@@ -2,7 +2,6 @@ import tensorflow as tf
 import os, glob
 import numpy as np
 from astropy.constants import M_sun
-from astropy import units as u
 from censai import PhysicalModel
 from censai.data.cosmos import preprocess, decode
 from censai.data import AugmentedTNGKappaGenerator
@@ -96,6 +95,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--output_dir",     required=True,      type=str,   help="Path to output directory")
     parser.add_argument("--len_dataset",    required=True,      type=int,   help="Size of the dataset")
+    parser.add_argument("--batch",          default=1,          type=int,   help="Number of examples worked out in a single pass by a worker")
     parser.add_argument("--kappa_dir",      required=True,      type=str,   help="Path to directory of kappa fits files")
     parser.add_argument("--cosmos_dir",     required=True,      type=str,
                         help="Path to directory of galaxy brightness distribution tfrecords "
@@ -121,7 +121,6 @@ if __name__ == '__main__':
     parser.add_argument("--shuffle_cosmos", action="store_true",            help="Shuffle indices of cosmos dataset")
     parser.add_argument("--buffer_size",    default=1000,       type=int,   help="Should match example_per_shard when tfrecords were produced "
                                                                                  "(only used if shuffle_cosmos is called)")
-    parser.add_argument("--batch",          default=1,          type=int,   help="Number of examples worked out in a single pass by a worker")
     parser.add_argument("--tukey_alpha",    default=0.6,        type=float, help="Shape parameter of the Tukey window, representing the fraction of the "
                                                                                  "window inside the cosine tapered region. "
                                                                                  "If 0, the Tukey window is equivalent to a rectangular window. "

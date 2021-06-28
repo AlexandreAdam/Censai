@@ -12,6 +12,7 @@ source $HOME/environments/censai3.8/bin/activate
 python ../2_create_alpha_labels.py \
   --kappa_dir=$HOME/scratch/Censai/data/kappa512_100kpc \
   --output_dir=$HOME/scratch/Censai/data/\
+  --compression_type=GZIP\
   --augment=1.\
   --batch=2\
   --bins=10\

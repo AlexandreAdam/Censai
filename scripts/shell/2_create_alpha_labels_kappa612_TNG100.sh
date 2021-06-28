@@ -12,6 +12,7 @@ source $HOME/environments/censai3.8/bin/activate
 python ../2_create_alpha_labels.py \
   --kappa_dir=$HOME/scratch/Censai/data/kappa612_TNG100_64neighbors\
   --output_dir=$HOME/scratch/Censai/data/alpha512_TNG100\
+  --compression_type=GZIP\
   --crop=50\
   --augment=10\
   --batch=20\
