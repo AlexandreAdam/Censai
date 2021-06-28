@@ -203,7 +203,7 @@ class NISGenerator(tf.keras.utils.Sequence):
         self.Dls = tf.constant(COSMO.angular_diameter_distance_z1z2(z_lens, z_source).value, dtype=tf.float32)  # value in Mpc
         self.Ds = tf.constant(COSMO.angular_diameter_distance(z_source).value, dtype=tf.float32)
         self.Dl = tf.constant(COSMO.angular_diameter_distance(z_lens).value, dtype=tf.float32)
-        self.Sigma_crit = tf.constant((c ** 2 * self.Ds / (4 * np.pi * G * self.Dl * self.Dls) / (1e10 * M_sun)).to(u.Mpc ** (-2)).value, tf.float32)
+        self.Sigma_crit = tf.constant((c ** 2 * self.Ds / (4 * np.pi * G * self.Dl * self.Dls) / (1e10 * M_sun) / u.Mpc).to(u.Mpc ** (-2)).value, tf.float32)
 
     def set_deflection_angles_vars(self):
         self.kernel_side_l = 2 * self.pixels + 1  # this number should be odd
