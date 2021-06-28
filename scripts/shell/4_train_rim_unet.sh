@@ -15,7 +15,11 @@ python ../4_train_rim.py\
   --normalize=False\
   --kappa_strides=4\
   --source_strides=2\
-  --forward_method=fft\
+  --state_size_1=4\
+  --state_size_2=32\
+  --state_size_3=128\
+  --state_size_4=512\
+  --forward_method=conv2d\
   --batch_size=10\
   --dataset=$HOME/scratch/Censai/data/lenses_TNG100/\
   --train_split=0.9\

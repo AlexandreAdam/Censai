@@ -30,6 +30,10 @@ except ImportError:
     wndb = False
     print("wandb not installed, package ignored")
 
+RIM_HPARAMS = ["state_sizes"]
+SOURCE_MODEL_HPARAMS = ["strides"]
+KAPPA_MODEL_HPARAMS = ["strides"]
+
 
 def main(args):
     if wndb:
