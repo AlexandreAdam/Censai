@@ -62,7 +62,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--output_dir",         required=True,                  help="Path where tfrecords are stored")
     parser.add_argument("--compression_type",   default=None,                   help="Default is no compression. Use 'GZIP' to compress data")
-    parser.add_argument("--len_dataset",        required=True,                  help="Size of the dataset")
+    parser.add_argument("--len_dataset",        required=True,  type=int,       help="Size of the dataset")
 
     # Physical Model params
     parser.add_argument("--image_fov",          default=20,     type=float,     help="Field of view of the image (lens plane) in arc seconds")
