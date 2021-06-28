@@ -71,7 +71,7 @@ if __name__ == '__main__':
     # Data generation params
     parser.add_argument("--pixels",             default=512,    type=int,       help="Size of the tensors.")
     parser.add_argument("--batch",              default=1,      type=int,       help="Number of label maps to be computed at the same time")
-    parser.add_argument("--max_shift",          default=1.5,    type=int,       help="Max shift for the center of the kappa map.")
+    parser.add_argument("--max_shift",          default=1.5,    type=float,       help="Max shift for the center of the kappa map.")
     parser.add_argument("--max_ellipticity",    default=0.6,    type=float,     help="Maximum ellipticty of density profile.")
     parser.add_argument("--max_theta_e",        default=None,   type=float,     help="Maximum allowed Einstein radius, default is 35 percent of image fov")
     parser.add_argument("--min_theta_e",        default=None,   type=float,     help="Minimum allowed Einstein radius, default is 1 arcsec")
