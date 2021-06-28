@@ -24,7 +24,9 @@ python ../3_train_raytracer.py\
   --dataset=$HOME/scratch/Censai/data/alpha512_TNG100/\
   --total_items=45360\
   --train_split=0.9\
-  --num_parallel_reads=20\
+  --num_parallel_reads=4\
+  --cycle_length=4\
+  --block_length=1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models/\
