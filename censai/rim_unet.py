@@ -27,6 +27,10 @@ class RIMUnet:
         self.steps = steps
         self._num_units = 32
         self.state_size_list = state_sizes
+        if "source" not in models_kwargs:  # temporary solution
+            models_kwargs.update({"source": {"strides": 4}})
+        if "kappa" not in models_kwargs:
+            models_kwargs.update({"source": {"strides": 4}})
         self.source_model = UnetModel(self.state_size_list, **models_kwargs["source"])
         self.kappa_model = UnetModel(self.state_size_list, **models_kwargs["kappa"])
         # if checkpoint_manager_source is not None:
@@ -157,7 +161,7 @@ class RIMUnet:
             output_series_2.append(output_2)
         return output_series_1, output_series_2, cost
 
-    def cost_function(self, data, source, kappa, reduction=False):
+    def cost_function(self, data, source, kappa, reduction=True):
         """
 
         Args:
