@@ -2,14 +2,16 @@ import tensorflow as tf
 import numpy as np
 from censai import PhysicalModel, RIMUnet
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
-from censai.data import NISGenerator
 from censai.utils import nullwriter
 import os, glob
 from datetime import datetime
-MIRRORED_STRATEGY = tf.distribute.MirroredStrategy() # Strategy for data parallelism -> Consider using n gpu for a batch size of size n
-# ============================== Strategy for model parrallelism required manual placement of ops on devices =========
-# THIS STRATEGY DOES NOT WORK BECAUSE OF BACKPROP! USEFUL IN FORWARD MODE ONLY WHEN USING FFT FOR DEFLECTION ANGLES
+import random
+MIRRORED_STRATEGY = tf.distribute.MirroredStrategy() # Strategy for data parallelism
 # gpus = tf.config.list_physical_devices('GPU')
+# ============================== Strategy for model parallelism requires manual placement of ops on devices =========
+# THIS STRATEGY DOES NOT WORK BECAUSE OF BACKPROP! USEFUL IN FORWARD MODE ONLY WHEN USING FFT FOR DEFLECTION ANGLES
+# We could investigate computing the gradients on a 3rd device though,
+# but the tape will require a copy of all variable on the device where it computes gradients and thus might fail.
 # if gpus:
 #     if len(gpus) == 2:
 #         PHYSICAL_MODEL_DEVICE = tf.device("/device:GPU:1")
@@ -35,25 +37,28 @@ def main(args):
         config.update(vars(args))
     files = []
     for dataset in args.datasets:
-        files.append(glob.glob(os.path.join(dataset, "*.tfrecords")))
-    if args.smoketest:
-        files = files[0]  # just take one file, hope user provided correct dataset size!
-    dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
+        files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
+    random.shuffle(files)
+    # Read concurrently from multiple records
+    files = tf.data.Dataset.from_tensor_slices(files)
+    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
+                               cycle_length=args.cycle_length, block_length=args.block_length)
     # Read off global parameters from first example in dataset
     for params in dataset.map(decode_physical_model_info):
         break
     dataset = dataset.map(decode_train).batch(args.batch_size)
+    # Do not prefetch in this script. Memory is more precious than latency
     if args.cache_file is not None:
-        dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
-    else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
-        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+        dataset = dataset.cache(args.cache_file)#.prefetch(tf.data.experimental.AUTOTUNE)
+    # else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
+    #     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     train_dataset = dataset.take(int(args.train_split * args.total_items))
-    val_dataset = dataset.skip(int(args.train_split * args.total_items))
+    val_dataset = dataset.skip(int(args.train_split * args.total_items)).take(int((1 - args.train_split) * args.total_items))
     train_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(val_dataset)
-    if args.raytracer_hparams is not None:
+    if args.raytracer is not None:
         import json
-        with open(args.raytracer_hparams, "r") as f:
+        with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
             raytracer_hparams = json.load(f)
     else:
         raytracer_hparams = {}
@@ -70,6 +75,11 @@ def main(args):
             device=PHYSICAL_MODEL_DEVICE,
             **raytracer_hparams
         )
+        if args.raytracer is not None:
+            # load last checkpoint in the checkpoint directory
+            checkpoint = tf.train.Checkpoint(net=phys.RayTracer)
+            manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
+            checkpoint.restore(manager.latest_checkpoint)
         rim = RIMUnet(
             physical_model=phys,
             steps=args.time_steps,
@@ -239,91 +249,65 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     import json
     parser = ArgumentParser()
-    parser.add_argument("--model_id", type=str, default="None",
-                        help="Start from this model id checkpoint. None means start from scratch")
-    parser.add_argument("--load_checkpoint", default="best", help="One of 'best', 'lastest' or the specific checkpoint index.")
-    parser.add_argument("--smoketest", action="store_true")
+    parser.add_argument("--model_id",           default="None",     help="Start from this model id checkpoint. None means start from scratch")
+    parser.add_argument("--load_checkpoint",    default="best",     help="One of 'best', 'lastest' or the specific checkpoint index.")
+    parser.add_argument("--datasets",           required=True, nargs="+",   help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
+    parser.add_argument("--compression_type",   default=None,       help="Compression type used to write data. Default assumes no compression.")
+
 
     # RIM hyperparameters
-    parser.add_argument("--time_steps",         default=16,     type=int, help="Number of time steps of RIM")
-    parser.add_argument("--adam",               default=True,   type=bool,
-                        help="ADAM update for the log-likelihood gradient.")
+    parser.add_argument("--time_steps",         default=16,     type=int,   help="Number of time steps of RIM")
+    parser.add_argument("--adam",               default=True,   type=bool,  help="ADAM update for the log-likelihood gradient.")
     # ... for kappa model
     parser.add_argument("--kappalog",           default=True,   type=bool)
     parser.add_argument("--normalize",          default=False,  type=bool)
-    parser.add_argument("--kappa_strides",      default=4,      type=int,
-                        help="Value of the stride parameter in the 3 downsampling and upsampling layers "
-                             "for the kappa model.")
+    parser.add_argument("--kappa_strides",      default=4,      type=int,   help="Value of the stride parameter in the 3 downsampling and upsampling layers "
+                                                                                 "for the kappa model.")
     # ... for the source model
-    parser.add_argument("--source_strides",     default=2,      type=int,
-                        help="Value of the stride parameter in the 3 downsampling and upsampling layers "
-                             "for the source model.")
+    parser.add_argument("--source_strides",     default=2,      type=int,   help="Value of the stride parameter in the 3 downsampling and upsampling layers "
+                                                                                 "for the source model.")
     # ... for both
-    parser.add_argument("--state_size_1",       default=4,      type=int,
-                        help="Size of the hidden state for block-layer 1")
-    parser.add_argument("--state_size_2",       default=32,     type=int,
-                        help="Size of the hidden state for block-layer 2")
-    parser.add_argument("--state_size_3",       default=128,    type=int,
-                        help="Size of the hidden state for block-layer 3")
-    parser.add_argument("--state_size_4",       default=512,    type=int,
-                        help="Size of the hidden state for block-layer 4")
+    parser.add_argument("--state_size_1",       default=4,      type=int,   help="Size of the hidden state for block-layer 1")
+    parser.add_argument("--state_size_2",       default=32,     type=int,   help="Size of the hidden state for block-layer 2")
+    parser.add_argument("--state_size_3",       default=128,    type=int,   help="Size of the hidden state for block-layer 3")
+    parser.add_argument("--state_size_4",       default=512,    type=int,   help="Size of the hidden state for block-layer 4")
 
     # ... for the physical model
-    parser.add_argument("--forward_method",     default="conv2d",
-                        help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
-                             "'--raytracer' must be provided and point to model checkpoint directory.")
-    parser.add_argument("--raytracer",          default=None,
-                        help="Path to raytracer checkpoint dir if method 'unet' is used.")
-    parser.add_argument("--raytracer_hparams",  default=None,
-                        help="Path to raytracer json that describe hyper parameters")
+    parser.add_argument("--forward_method",     default="conv2d",           help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
+                                                                                 "'--raytracer' must be provided and point to model checkpoint directory.")
+    parser.add_argument("--raytracer",          default=None,               help="Path to raytracer checkpoint dir if method 'unet' is used.")
 
     # Training set params
-    parser.add_argument("-b", "--batch_size",   default=1,     type=int,    help="Number of images in a batch. ")
-    parser.add_argument("--datasets",            required=True, nargs="+",
-                        help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
+    parser.add_argument("-b", "--batch_size",   default=1,      type=int,    help="Number of images in a batch. ")
     parser.add_argument("--train_split",        default=0.8,    type=float, help="Fraction of the training set.")
     parser.add_argument("--total_items",        required=True,  type=int,   help="Total images in an epoch.")
-    # ... for NIS dataset
-    parser.add_argument("--pixels",             default=512,    type=int,   help="When using NIS, size of the image to generate.")
-    parser.add_argument("--noise_rms",          default=1e-3,   type=float, help="Pixel value rms of lensed image.")
     # ... for tfrecord dataset
-    parser.add_argument("--num_parallel_reads", default=10,     type=int,
-                        help="TFRecord dataset number of parallel reads when loading data.")
-    parser.add_argument("--cache_file",         default=None,
-                        help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
+    parser.add_argument("--num_parallel_reads", default=10,     type=int,   help="TFRecord dataset number of parallel reads when loading data.")
+    parser.add_argument("--cache_file",         default=None,               help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
+    parser.add_argument("--cycle_length",       default=4,      type=int,   help="Number of files to read concurrently.")
+    parser.add_argument("--block_length",       default=1,      type=int,   help="Number of example to read from each files.")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,   help="Number of epochs for training.")
     parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float, help="Initial learning rate.")
-    parser.add_argument("--decay_rate",             default=1.,     type=float,
-                        help="Exponential decay rate of learning rate (1=no decay).")
-    parser.add_argument("--decay_steps",            default=1000,   type=int,
-                        help="Decay steps of exponential decay of the learning rate.")
+    parser.add_argument("--decay_rate",             default=1.,     type=float, help="Exponential decay rate of learning rate (1=no decay).")
+    parser.add_argument("--decay_steps",            default=1000,   type=int,   help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",        help="Learning rate schedule only change after decay steps if enabled.")
-    parser.add_argument("--clipping",               default=True,   type=bool, help="Clip backprop gradients between -10 and 10.")
-    parser.add_argument("--patience",               default=np.inf, type=int,
-                        help="Number of step at which training is stopped if no improvement is recorder.")
-    parser.add_argument("--tolerance",              default=0,      type=float,
-                        help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
+    parser.add_argument("--clipping",               default=True,   type=bool,  help="Clip backprop gradients between -10 and 10.")
+    parser.add_argument("--patience",               default=np.inf, type=int,   help="Number of step at which training is stopped if no improvement is recorder.")
+    parser.add_argument("--tolerance",              default=0,      type=float, help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
 
     # logs
-    parser.add_argument("--logdir",                  default="None",
-                        help="Path of logs directory. Default if None, no logs recorded.")
-    parser.add_argument("--logname",                 default=None,
-                        help="Name of the logs, default is 'RT_' + date")
-    parser.add_argument("--model_dir",               default="None",
-                        help="Path to the directory where to save models checkpoints.")
-    parser.add_argument("--checkpoints",             default=10,    type=int,
-                        help="Save a checkpoint of the models each {%} iteration.")
-    parser.add_argument("--max_to_keep",             default=3,     type=int,
-                        help="Max model checkpoint to keep.")
+    parser.add_argument("--logdir",                  default="None",            help="Path of logs directory. Default if None, no logs recorded.")
+    parser.add_argument("--logname",                 default=None,              help="Name of the logs, default is 'RT_' + date")
+    parser.add_argument("--model_dir",               default="None",            help="Path to the directory where to save models checkpoints.")
+    parser.add_argument("--checkpoints",             default=10,    type=int,   help="Save a checkpoint of the models each {%} iteration.")
+    parser.add_argument("--max_to_keep",             default=3,     type=int,   help="Max model checkpoint to keep.")
 
     # Reproducibility params
-    parser.add_argument("--seed",                   default=None,   type=int,
-                        help="Random seed for numpy and tensorflow.")
-    parser.add_argument("--json_override",          default=None,
-                        help="A json filepath that will override every command line parameters. "
-                             "Useful for reproducibility")
+    parser.add_argument("--seed",                   default=None,   type=int,   help="Random seed for numpy and tensorflow.")
+    parser.add_argument("--json_override",          default=None,               help="A json filepath that will override every command line parameters. "
+                                                                                     "Useful for reproducibility")
 
     args = parser.parse_args()
     if args.seed is not None:

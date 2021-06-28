@@ -6,6 +6,8 @@ from censai.utils import nullwriter
 import os, glob
 import numpy as np
 from datetime import datetime
+import random
+MIRRORED_STRATEGY = tf.distribute.MirroredStrategy()
 try:
     import wandb
     wandb.init(project="censai_ray_tracer", entity="adam-alexandre01123", sync_tensorboard=True)
@@ -32,38 +34,43 @@ def main(args):
     if wndb:
         config = wandb.config
         config.update(vars(args))
-    if args.dataset == "NIS":
-        train_dataset = NISGenerator(int(args.train_split * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
-        val_dataset = NISGenerator(int((1 - args.train_split) * args.total_items), batch_size=args.batch_size, pixels=args.pixels)
-    else:
-        files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
-        dataset = tf.data.TFRecordDataset(files, num_parallel_reads=args.num_parallel_reads)
-        dataset = dataset.map(decode_train).batch(args.batch_size)
-        if args.cache_file is not None:
-            dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
-        else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
-            dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-        train_dataset = dataset.take(int(args.train_split * args.total_items))
-        val_dataset = dataset.skip(int(args.train_split * args.total_items))
-    ray_tracer = RayTracer(
-        initializer=args.initializer,
-        bottleneck_kernel_size=args.bottleneck_kernel_size,
-        bottleneck_strides=args.bottleneck_strides,
-        pre_bottleneck_kernel_size=args.pre_bottleneck_kernel_size,
-        decoder_encoder_kernel_size=args.decoder_encoder_kernel_size,
-        decoder_encoder_filters=args.decoder_encoder_filters,
-        upsampling_interpolation=args.upsampling_interpolation,  # use strided transposed convolution if false
-        kernel_regularizer_amp=args.kernel_regularizer_amp,
-        activation=args.activation,
-        filter_scaling=args.filter_scaling
-    )
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        args.initial_learning_rate,
-        decay_steps=args.decay_steps,
-        decay_rate=args.decay_rate,
-        staircase=True)
-    optim = tf.keras.optimizers.Adam(learning_rate=lr_schedule, beta_1=0.9, beta_2=0.999)
+    files = []
+    for dataset in args.datasets:
+        files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
+    random.shuffle(files)
+    files = tf.data.Dataset.from_tensor_slices(files)
+    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
+                               cycle_length=args.cycle_length, block_length=args.block_length)
+    dataset = dataset.map(decode_train).batch(args.batch_size)
+    if args.cache_file is not None:
+        dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
+    else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
+        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    train_dataset = dataset.take(int(args.train_split * args.total_items))
+    val_dataset = dataset.skip(int(args.train_split * args.total_items)).take(int((1 - args.train_split) * args.total_items))
+    train_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(train_dataset)
+    val_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(val_dataset)
+    with MIRRORED_STRATEGY.scope():  # Replicate ops accross gpus
+        ray_tracer = RayTracer(
+            initializer=args.initializer,
+            bottleneck_kernel_size=args.bottleneck_kernel_size,
+            bottleneck_strides=args.bottleneck_strides,
+            pre_bottleneck_kernel_size=args.pre_bottleneck_kernel_size,
+            decoder_encoder_kernel_size=args.decoder_encoder_kernel_size,
+            decoder_encoder_filters=args.decoder_encoder_filters,
+            upsampling_interpolation=args.upsampling_interpolation,  # use strided transposed convolution if false
+            kernel_regularizer_amp=args.kernel_regularizer_amp,
+            activation=args.activation,
+            filter_scaling=args.filter_scaling
+        )
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            args.initial_learning_rate,
+            decay_steps=args.decay_steps,
+            decay_rate=args.decay_rate,
+            staircase=True)
+        optim = tf.keras.optimizers.Adam(learning_rate=lr_schedule, beta_1=0.9, beta_2=0.999)
 
+    # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         logname = args.model_id
     elif args.logname is not None:
@@ -86,7 +93,7 @@ def main(args):
     else:
         train_writer = nullwriter()
         test_writer = nullwriter()
-
+    # ===== Make sure directory and checkpoint manager are created to save model ===================================
     if args.model_dir.lower() != "none":
         checkpoints_dir = os.path.join(args.model_dir, logname)
         if not os.path.isdir(checkpoints_dir):
@@ -101,6 +108,7 @@ def main(args):
         ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=ray_tracer)
         checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
+        # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
             if args.load_checkpoint == "lastest":
                 checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
@@ -114,6 +122,40 @@ def main(args):
                 checkpoint_manager.checkpoint.restore(checkpoint)
     else:
         save_checkpoint = False
+    # =================================================================================================================
+    def train_step(inputs):
+        kappa, alpha = inputs
+        with tf.GradientTape(watch_accessed_variables=True) as tape:
+            tape.watch(ray_tracer.trainable_weights)
+            cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha), axis=(1, 2, 3))
+            cost = cost + tf.reduce_sum(ray_tracer.losses)  # add L2 regularizer loss
+            cost = tf.reduce_sum(cost) / args.batch_size    # normalize by global batch size
+        gradient = tape.gradient(cost, ray_tracer.trainable_weights)
+        if args.clipping:
+            clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
+        else:
+            clipped_gradient = gradient
+        optim.apply_gradients(zip(clipped_gradient, ray_tracer.trainable_variables))
+        return cost
+
+    @tf.function
+    def distributed_train_step(dist_inputs):
+        per_replica_losses = MIRRORED_STRATEGY.run(train_step, args=(dist_inputs,))
+        # Replica losses are aggregated by summing them
+        return MIRRORED_STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+
+    def test_step(inputs):
+        cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha))
+        cost = cost + tf.reduce_sum(ray_tracer.losses)  # add L2 regularizer loss
+        cost = tf.reduce_sum(cost) / args.batch_size    # normalize by global batch size
+        return cost
+
+    @tf.function
+    def distributed_test_step(dist_inputs):
+        per_replica_losses = MIRRORED_STRATEGY.run(test_step, args=(dist_inputs,))
+        # Replica losses are aggregated by summing them
+        return MIRRORED_STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+    # =================================================================================================================
     epoch_loss = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
     best_loss = np.inf
@@ -123,28 +165,17 @@ def main(args):
     for epoch in range(1, args.epochs + 1):
         epoch_loss.reset_states()
         with train_writer.as_default():
-            for batch, (kappa, alpha) in enumerate(train_dataset):
-                # ========== Forward and backprop ==========
-                with tf.GradientTape(watch_accessed_variables=True) as tape:
-                    tape.watch(ray_tracer.trainable_weights)
-                    cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha))
-                    cost += tf.reduce_sum(ray_tracer.losses)  # add L2 regularizer loss
-                gradient = tape.gradient(cost, ray_tracer.trainable_weights)
-                if args.clipping:
-                    clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
-                else:
-                    clipped_gradient = gradient
-                optim.apply_gradients(zip(clipped_gradient, ray_tracer.trainable_variables))
+            for batch, distributed_inputs in enumerate(train_dataset):
+                cost = distributed_train_step(distributed_inputs)
         # ========== Summary and logs ==========
                 epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
         with test_writer.as_default():
             val_loss.reset_states()
-            for kappa, alpha in val_dataset:
-                cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha))
-                cost += tf.reduce_sum(ray_tracer.losses)
-                val_loss.update_state([cost])
+            for distributed_inputs in val_dataset:
+                test_cost = distributed_test_step(distributed_inputs)
+                val_loss.update_state([test_cost])
         train_cost = epoch_loss.result().numpy()
         val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e}")
@@ -172,9 +203,12 @@ if __name__ == "__main__":
     import json
     date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     parser = ArgumentParser()
-    parser.add_argument("--model_id",        default="None", help="Start training from previous "
-                                                           "checkpoint of this model if provided")
-    parser.add_argument("--load_checkpoint", default="best", help="One of 'best', 'lastest' or the specific checkpoint index")
+    parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
+                                                                                          "checkpoint of this model if provided")
+    parser.add_argument("--load_checkpoint",            default="best",              help="One of 'best', 'lastest' or the specific checkpoint index")
+    parser.add_argument("--datasets",                   required=True,  nargs="+",   help="Datasets to use, paths that contains tfrecords of dataset. User can provide multiple "
+                                                                                          "directories to mix datasets")
+    parser.add_argument("--compression_type",           default=None,                help="Compression type used to write data. Default assumes no compression.")
 
     # Model hyper parameters
     parser.add_argument("--initializer",                    default="glorot_uniform", type=str,   help="Weight initializer")
@@ -192,16 +226,13 @@ if __name__ == "__main__":
 
     # Training set params
     parser.add_argument("-b", "--batch_size",               default=10,     type=int,       help="Number of images in a batch")
-    parser.add_argument("--dataset",                        default="NIS",
-                        help="Dataset to use, either path to directory that contains alpha labels tfrecords "
-                             "or the name of the dataset tu use. Options are ['NIS'].")
     parser.add_argument("--train_split",                    default=0.8,    type=float,     help="Fraction of the training set")
-    parser.add_argument("--total_items", required=True,                     type=int,       help="Total images in an epoch.")
-    # ... for NIS dataset
-    parser.add_argument("--pixels",                         default=512,    type=int,       help="When using NIS, size of the image to generate")
+    parser.add_argument("--total_items",                    required=True,  type=int,       help="Total images in an epoch.")
     # ... for tfrecord dataset
     parser.add_argument("--num_parallel_reads",             default=10,     type=int,       help="TFRecord dataset number of parallel reads when loading data")
     parser.add_argument("--cache_file",                     default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
+    parser.add_argument("--cycle_length",       default=4,      type=int,   help="Number of files to read concurrently.")
+    parser.add_argument("--block_length",       default=1,      type=int,   help="Number of example to read from each files.")
 
     # Logs
     parser.add_argument("--logdir",                         default="None",        help="Path of logs directory.")

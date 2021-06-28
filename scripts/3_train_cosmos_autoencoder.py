@@ -56,7 +56,7 @@ def main(args):
         filenames = filenames[:-args.test_shards]
     filenames = [os.path.join(args.data, file) for file in filenames]
     train_size = len(filenames) * args.examples_per_shard  # estimate the length of the dataset
-    dataset = tf.data.TFRecordDataset(filenames, num_parallel_reads=args.num_parallel_reads)
+    dataset = tf.data.TFRecordDataset(filenames, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type)
     dataset = dataset.map(decode_cosmos)
     dataset = dataset.map(preprocess)
     dataset = dataset.shuffle(buffer_size=args.examples_per_shard)  # shuffle images inside a shard
@@ -216,95 +216,66 @@ if __name__ == "__main__":
     date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument("--model_id", type=str, default="None",
-                        help="Start from this model id checkpoint. None means start from scratch")
-    parser.add_argument("--pixels", default=128, type=int, help="Number of pixels on a side, should be fixed for a given cosmos tfrecord")
-    parser.add_argument("--num_parallel_reads", default=1, type=int, help="TF dataset number of parallel processes loading the data while training")
-    parser.add_argument("--data", required=True, help="Path to the data root directory, containing tf records files")
+    parser.add_argument("--model_id",                   default="None",             help="Start from this model id checkpoint. None means start from scratch")
+    parser.add_argument("--pixels",                     default=128,    type=int,   help="Number of pixels on a side, should be fixed for a given cosmos tfrecord")
+    parser.add_argument("--num_parallel_reads",         default=1,      type=int,   help="TF dataset number of parallel processes loading the data while training")
+    parser.add_argument("--data",                       required=True,              help="Path to the data root directory, containing tf records files")
+    parser.add_argument("--compression_type",           default=None,               help="Compression type used to write data. Default assumes no compression.")
 
     # training params
-    parser.add_argument("--split", default=0.8, type=float, help="Training split, number in the range [0.5, 1)")
-    parser.add_argument("--test_shards", default=2, type=int, help="Number of shards to keep as a test set. The largest shard index are kept")
-    parser.add_argument("--examples_per_shard", default=1000, type=int,
+    parser.add_argument("--split",                      default=0.8,    type=float, help="Training split, number in the range [0.5, 1)")
+    parser.add_argument("--test_shards",                default=2,      type=int,   help="Number of shards to keep as a test set. The largest shard index are kept")
+    parser.add_argument("--examples_per_shard",         default=1000,   type=int,
                         help="Number of example on a given COSMO shard. Should match the parameter of cosmo_to_tfrecords with which it was generated")
-    parser.add_argument("-b", "--batch_size", default=100, type=int, required=False, help="Number of images in a batch")
-    parser.add_argument("-e", "--epochs", default=1, type=int, help="Number of epochs for training")
-    parser.add_argument("--patience", default=np.inf, type=float, help="Number of epoch at which "
-                                                                "training is stop if no improvement have been made")
-    parser.add_argument("--tolerance", default=0, type=float,
-                        help="Percentage [0-1] of improvement required for patience to reset. The most lenient "
-                                                        "value is 0 (any improvement reset patience)")
-    parser.add_argument("--learning_rate", default=1e-4, type=float,
-                        help="Initial value of the learning rate")
-    parser.add_argument("--decay_rate", type=float, default=1,
-                        help="Decay rate of the exponential decay schedule of the learning rate. 1=no decay")
-    parser.add_argument("--decay_steps", type=int, default=100)
-    parser.add_argument("--staircase", action="store_true", help="Learning schedule is a staircase "
-                                                                 "function if added to arguments")
-    parser.add_argument("--apodization_alpha", default=0.5, type=float,
-                        help="Shape parameter of the Tukey window (Tapered cosine Window),"\
-                        "representing the fraction of the window inside the cosine tapered region."\
-                        "If zero, the Tukey window is equivalent to a rectangular window (no apodization)"\
-                        "If one, the Tukey window is equivalent to a Hann window.")
-    parser.add_argument("--apodization_factor", default=1e-2, type=float,
-                        help="Lagrange multiplier of apodization loss")
-    parser.add_argument("--tv_factor", default=1e-2, type=float,
-                        help="Lagrange multiplier of Total Variation (TV) loss. Penalize high spatial frequency"
-                             "components in the predicted image")
-    parser.add_argument("--l2_bottleneck", default=1, type=float,
-                        help="Initial value of l2 penalty in bottleneck identity "
-                             "map of encoder/decoder latent representation")
-    parser.add_argument("--l2_bottleneck_decay_steps", default=1000, type=int,
-                        help="Number of steps until l2 bottleneck penalty factor reaches 0")
-    parser.add_argument("--l2_bottleneck_decay_power", default=0.2, type=float,
-                        help="Control the shape of the decay of l2_bottlenck schedule (0.5=square root decay, etc.)")
-    parser.add_argument("--skip_strength", default=0.5, type=float,
-                        help="Initial value of the multiplicative factor in front of the Unet additive skip between "
-                             "encoder and decoder layers.")
-    parser.add_argument("--skip_strength_decay_steps", default=1000, type=int,
-                        help="Number of steps until skip_strength reaches 0")
-    parser.add_argument("--skip_strength_decay_power", default=0.5, type=float,
-                        help="Control the shape of the decay for skip_strength schedule")
+    parser.add_argument("-b", "--batch_size",           default=100,    type=int,   help="Number of images in a batch")
+    parser.add_argument("-e", "--epochs",               default=1,      type=int,   help="Number of epochs for training")
+    parser.add_argument("--patience",                   default=np.inf, type=float, help="Number of epoch at which "
+                                                                                         "training is stop if no improvement have been made")
+    parser.add_argument("--tolerance",                  default=0,      type=float, help="Percentage [0-1] of improvement required for patience to reset. The most lenient "
+                                                                                         "value is 0 (any improvement reset patience)")
+    parser.add_argument("--learning_rate",              default=1e-4,   type=float, help="Initial value of the learning rate")
+    parser.add_argument("--decay_rate", type=float,     default=1,                  help="Decay rate of the exponential decay schedule of the learning rate. 1=no decay")
+    parser.add_argument("--decay_steps", type=int,      default=100)
+    parser.add_argument("--staircase", action="store_true",                         help="Learning schedule is a staircase function if added to arguments")
+    parser.add_argument("--apodization_alpha",          default=0.5,    type=float, help="Shape parameter of the Tukey window (Tapered cosine Window), "
+                                                                                         "representing the fraction of the window inside the cosine tapered region."
+                                                                                         "If zero, the Tukey window is equivalent to a rectangular window (no apodization) "
+                                                                                         "If one, the Tukey window is equivalent to a Hann window.")
+    parser.add_argument("--apodization_factor",         default=1e-2,   type=float, help="Lagrange multiplier of apodization loss")
+    parser.add_argument("--tv_factor",                  default=1e-2,   type=float, help="Lagrange multiplier of Total Variation (TV) loss. Penalize high spatial frequency "
+                                                                                         "components in the predicted image")
+    parser.add_argument("--l2_bottleneck",              default=1,      type=float, help="Initial value of l2 penalty in bottleneck identity "
+                                                                                         "map of encoder/decoder latent representation")
+    parser.add_argument("--l2_bottleneck_decay_steps",  default=1000,   type=int,   help="Number of steps until l2 bottleneck penalty factor reaches 0")
+    parser.add_argument("--l2_bottleneck_decay_power",  default=0.2,    type=float, help="Control the shape of the decay of l2_bottlenck schedule (0.5=square root decay, etc.)")
+    parser.add_argument("--skip_strength",              default=0.5,    type=float, help="Initial value of the multiplicative factor in front of the Unet additive skip between "
+                                                                                         "encoder and decoder layers.")
+    parser.add_argument("--skip_strength_decay_steps",  default=1000,   type=int,   help="Number of steps until skip_strength reaches 0")
+    parser.add_argument("--skip_strength_decay_power",  default=0.5,    type=float, help="Control the shape of the decay for skip_strength schedule")
 
 
     # model hyperparameters
-    parser.add_argument("--res_layers", default=7, type=int,
-                        help="Number of downsampling block in encoder (symmetric in decoder")
-    parser.add_argument("--conv_layers_in_res_block", default=2, type=int,
-                        help="Number of conv layers in a Residual block")
-    parser.add_argument("--filter_scaling", default=2, type=float,
-                        help="Filters scale by {filter_scaling}^{res_layer_index}, generally number between (1, 2]")
-    parser.add_argument("--filter_init", default=8, type=int,
-                        help="Number of filters in the first residual block (before last for decoder)")
-    parser.add_argument("--kernel_size", default=3, type=int,
-                        help="Size of the kernels throughout model")
-    parser.add_argument("--kernel_reg_amp", default=1e-2, type=float,
-                        help="Amplitude of l2 regularization for kernel weights in the model")
-    parser.add_argument("--bias_reg_amp", default=1e-2, type=float,
-                        help="Amplitude of l2 regularization for bias variables in the model")
-    parser.add_argument("--relu_alpha", default=0.1, type=float,
-                        help="Slope of LeakyReLu in the negative plane")
-    parser.add_argument("--resblock_dropout_rate", default=None, type=float,
-                        help="Number between [0, 1), number of filters to drop at each call. Default is to not use dropout")
-    parser.add_argument("--latent_size", default=16, type=int,
-                        help="Size of the latent vector space")
-    parser.add_argument("--res_architecture", default="bare", type=str, 
-                        help="Name of the Resnet Block architecture. Options are "\
-                             "'bare', 'original', 'bn_after_addition', "\
-                             "'relu_before_addition', 'relu_only_pre_activation', "\
-                             "'full_pre_activation', 'full_pre_activation_rescale'")
+    parser.add_argument("--res_layers",                 default=7,      type=int,   help="Number of downsampling block in encoder (symmetric in decoder")
+    parser.add_argument("--conv_layers_in_res_block",   default=2,      type=int,   help="Number of conv layers in a Residual block")
+    parser.add_argument("--filter_scaling",             default=2,      type=float, help="Filters scale by {filter_scaling}^{res_layer_index}, generally number between (1, 2]")
+    parser.add_argument("--filter_init",                default=8,      type=int,   help="Number of filters in the first residual block (before last for decoder)")
+    parser.add_argument("--kernel_size",                default=3,      type=int,   help="Size of the kernels throughout model")
+    parser.add_argument("--kernel_reg_amp",             default=1e-2,   type=float, help="Amplitude of l2 regularization for kernel weights in the model")
+    parser.add_argument("--bias_reg_amp",               default=1e-2,   type=float, help="Amplitude of l2 regularization for bias variables in the model")
+    parser.add_argument("--relu_alpha",                 default=0.1,    type=float, help="Slope of LeakyReLu in the negative plane")
+    parser.add_argument("--resblock_dropout_rate",      default=None,   type=float, help="Number between [0, 1), number of filters to drop at each call. Default is to not use dropout")
+    parser.add_argument("--latent_size",                default=16,     type=int,   help="Size of the latent vector space")
+    parser.add_argument("--res_architecture",           default="bare", type=str,   help="Name of the Resnet Block architecture. Options are "
+                                                                                         "'bare', 'original', 'bn_after_addition', "
+                                                                                         "'relu_before_addition', 'relu_only_pre_activation', "
+                                                                                         "'full_pre_activation', 'full_pre_activation_rescale'")
 
     # logs
-    parser.add_argument("--logdir", default="None",
-                        help="Path of logs directory. Default if None, no logs recorded")
-    parser.add_argument("--model_dir", default="None",
-                        help="Path to the directory where to save models checkpoints")
-    parser.add_argument("--checkpoints", default=10, type=int,
-                        help="Save a checkpoint of the models each {%} iteration")
-    parser.add_argument("--max_to_keep", default=3, type=int,
-                        help="Max model checkpoint to keep")
-    parser.add_argument("--logname", default="cosmosAE_" + date,
-                        help="Name of the logs, default is the local date + time")
+    parser.add_argument("--logdir",                     default="None",             help="Path of logs directory. Default if None, no logs recorded")
+    parser.add_argument("--model_dir",                  default="None",             help="Path to the directory where to save models checkpoints")
+    parser.add_argument("--checkpoints",                default=10,     type=int,   help="Save a checkpoint of the models each {%} iteration")
+    parser.add_argument("--max_to_keep",                default=3,      type=int,   help="Max model checkpoint to keep")
+    parser.add_argument("--logname",                    default="cosmosAE_" + date, help="Name of the logs, default is the local date + time")
 
     args = parser.parse_args()
 
