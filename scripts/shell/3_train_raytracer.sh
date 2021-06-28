@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:4
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=1-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../3_train_raytracer.py\
-  --initializer=random_uniform\
+  --initializer=glorot_uniform\
   --decoder_encoder_kernel_size=3\
   --pre_bottleneck_kernel_size=6\
   --bottleneck_strides=4\
@@ -19,12 +19,12 @@ python ../3_train_raytracer.py\
   --upsampling_interpolation=True\
   --kernel_regularizer_amp=1e-4\
   --kappalog=True\
-  --normalize=True\
-  --batch_size=10\
+  --normalize=False\
+  --batch_size=16\
   --dataset=$HOME/scratch/Censai/data/alpha512_TNG100/\
   --total_items=45360\
   --train_split=0.9\
-  --num_parallel_reads=10\
+  --num_parallel_reads=20\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models/\
