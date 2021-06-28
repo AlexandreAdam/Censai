@@ -20,11 +20,11 @@ python ../3_train_raytracer.py\
   --kernel_regularizer_amp=1e-4\
   --kappalog=True\
   --normalize=False\
-  --batch_size=10\
+  --batch_size=16\
   --dataset=$HOME/scratch/Censai/data/alpha512_TNG100/\
   --total_items=45360\
   --train_split=0.9\
-  --num_parallel_reads=10\
+  --num_parallel_reads=20\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models/\
