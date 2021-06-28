@@ -6,17 +6,6 @@ from censai.utils import nullwriter
 import os
 from datetime import datetime
 import re
-# gpus = tf.config.list_physical_devices('GPU')
-# if gpus:
-#     try:
-#     # Currently, memory growth needs to be the same across GPUs
-#         for gpu in gpus:
-#             tf.config.experimental.set_memory_growth(gpu, True)
-#         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-#         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-#     except RuntimeError as e:
-#     # Memory growth must be set before GPUs have been initialized
-#         print(e)
 
 
 class PolynomialSchedule:
@@ -46,9 +35,6 @@ def natural_keys(text):
 
 
 def main(args):
-    train_cache_file = os.path.join(os.getenv("SLURM_TMPDIR"), "train_cache")
-    test_cache_file = os.path.join(os.getenv("SLURM_TMPDIR"), "test_cache")
-
     filenames = os.listdir(args.data)
     filenames.sort(key=natural_keys)
     # keep the n last files as a test set
@@ -60,15 +46,13 @@ def main(args):
     dataset = dataset.map(decode_cosmos)
     dataset = dataset.map(preprocess)
     dataset = dataset.shuffle(buffer_size=args.examples_per_shard)  # shuffle images inside a shard
+    dataset = dataset.batch(args.batch_size, drop_remainder=False)
+    if args.cache_file is not None:
+        dataset = dataset.cache(args.cache_file) # save the dataset in a temporary file on SSD disc
+    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+
     train_dataset = dataset.take(int(train_size * args.split))
     test_dataset = dataset.skip(int(train_size * args.split))
-    train_dataset = train_dataset.batch(args.batch_size, drop_remainder=False)
-    test_dataset = test_dataset.batch(args.batch_size, drop_remainder=True)
-    train_dataset = train_dataset.enumerate()
-    # save the dataset in a temporary file on SSD disc
-    train_dataset = train_dataset.cache(train_cache_file)
-    test_dataset = test_dataset.cache(test_cache_file)
-    train_dataset = train_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.learning_rate,
@@ -105,7 +89,7 @@ def main(args):
         latent_size=args.latent_size
     )
 
-    # setup tensorboard writer (nullwriter in case we do not want to sync)
+    # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         logname = args.model_id
     else:
@@ -125,6 +109,7 @@ def main(args):
     else:
         test_writer = nullwriter()
         train_writer = nullwriter()
+    # ===== Make sure directory and checkpoint manager are created to save model ===================================
     if args.model_dir.lower() != "none":
         models_dir = os.path.join(args.model_dir, logname)
         if not os.path.isdir(models_dir):
@@ -140,11 +125,13 @@ def main(args):
         decoder_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=AE.decoder)
         decoder_checkpoint_manager = tf.train.CheckpointManager(decoder_ckpt, decoder_checkpoints_dir, max_to_keep=3)
         save_checkpoint = True
+        # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
             encoder_checkpoint_manager.checkpoint.restore(encoder_checkpoint_manager.latest_checkpoint)
             decoder_checkpoint_manager.checkpoint.restore(decoder_checkpoint_manager.latest_checkpoint)
     else:
         save_checkpoint = False
+    # =================================================================================================================
 
     epoch_loss = tf.metrics.Mean()
     test_loss = tf.metrics.Mean()
@@ -172,7 +159,6 @@ def main(args):
                 gradient = tape.gradient(cost, AE.trainable_variables)
                 # clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
                 optim.apply_gradients(zip(gradient, AE.trainable_variables)) # backprop
-
                 #========== Summary and logs ==========
                 epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
@@ -227,6 +213,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_shards",                default=2,      type=int,   help="Number of shards to keep as a test set. The largest shard index are kept")
     parser.add_argument("--examples_per_shard",         default=1000,   type=int,
                         help="Number of example on a given COSMO shard. Should match the parameter of cosmo_to_tfrecords with which it was generated")
+    parser.add_argument("--cache_file",                 default=None,               help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
     parser.add_argument("-b", "--batch_size",           default=100,    type=int,   help="Number of images in a batch")
     parser.add_argument("-e", "--epochs",               default=1,      type=int,   help="Number of epochs for training")
     parser.add_argument("--patience",                   default=np.inf, type=float, help="Number of epoch at which "

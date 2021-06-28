@@ -193,7 +193,7 @@ class CosmosAutoencoder(tf.keras.Model):
             image_floor=1e-8,
             **kwargs
     ):
-        super(Autoencoder, self).__init__()
+        super(CosmosAutoencoder, self).__init__()
         self.image_floor = image_floor
         self.encoder = Encoder(
             res_layers=res_layers,
