@@ -174,7 +174,7 @@ class Decoder(tf.keras.Model):
         return x, bottleneck_l2_cost
 
 
-class Autoencoder(tf.keras.Model):
+class CosmosAutoencoder(tf.keras.Model):
     def __init__(
             self,
             pixels=128,  # side length of the input image, used to compute shape of bottleneck mainly
@@ -279,7 +279,7 @@ class Autoencoder(tf.keras.Model):
         chi_squared = 0.5 * tf.reduce_mean(tf.abs((x - x_pred)**2 / tf.complex(tf.exp(ps) + 1e-8, 0.) / (2 * pi) ** 2), axis=[1, 2])
         return chi_squared
 
-    def training_cost_function(self, x, psf, ps, skip_strength, l2_bottleneck, apodization_alpha, apodization_factor, tv_factor):
+    def training_cost_function(self, image, psf, ps, skip_strength, l2_bottleneck, apodization_alpha, apodization_factor, tv_factor):
         """
 
         Args:
@@ -298,34 +298,32 @@ class Autoencoder(tf.keras.Model):
         Returns: Chi squared and added regularization loss
 
         """
-        input_shape = x.shape
+        input_shape = image.shape
         psf_image = tf.signal.irfft2d(tf.cast(psf[..., 0], tf.complex64))[..., tf.newaxis]
         # Roll the image to undo the fftshift, assuming x1 zero padding and x2 subsampling
         psf_image = tf.roll(psf_image, shift=[input_shape[1], input_shape[2]], axis=[1, 2])
         psf_image = tf.image.resize_with_crop_or_pad(psf_image, input_shape[1], input_shape[2])
-        x = tf.concat([x, psf_image], axis=-1)
+        x = tf.concat([image, psf_image], axis=-1)  # stack psf information in input
 
         z, skips = self.encoder.call_with_skip_connections(x)
         x_pred, bottleneck_l2_cost = self.decoder.call_with_skip_connections(z, skips, skip_strength, l2_bottleneck)
         x_pred = convolve(x_pred, tf.cast(psf[..., 0], tf.complex64), zero_padding_factor=1) # we already padded psf with noise in data preprocessing
 
-        # We apply an optional apodization of the output before taking the
+        # apply optional apodization loss
         if apodization_alpha > 0 and apodization_factor > 0:
             nx = x_pred.shape[1]
             alpha = 2 * apodization_alpha / nx
-            # Create a tukey window
             w = tukey(nx, alpha)
             w = np.outer(w, w).reshape((1, nx, nx, 1)).astype('float32')
-            # And penalize non zero things at the border
+            # Penalize non zero pixels near the border
             apo_loss = apodization_factor * tf.reduce_mean(tf.reduce_sum(((1. - w) * x_pred) ** 2, axis=[1, 2, 3]))
-        else:  # rectangular window
+        else:
             w = 1.0
             apo_loss = 0.
 
-        # We apply the window
         x_pred = x_pred * w
 
-        # apply tv loss
+        # apply optional tv loss (penalize high frequencies features in the output)
         if tv_factor > 0:
             tv_loss = tv_factor * tf.image.total_variation(x_pred)
             # Smoothed Isotropic TV:
@@ -334,8 +332,9 @@ class Autoencoder(tf.keras.Model):
         else:
             tv_loss = 0.
 
-        x = tf.signal.rfft2d(x[..., 0])
+        # compute loss in Fourier space (where covariance matrix is diagonal)
+        x_true = tf.signal.rfft2d(image[..., 0])
         x_pred = tf.signal.rfft2d(x_pred[..., 0])
 
-        chi_squared = 0.5 * tf.reduce_mean(tf.abs((x - x_pred))**2 / (tf.exp(ps)[..., 0] + 1e-8) / (2 * pi) ** 2, axis=[1, 2])
+        chi_squared = 0.5 * tf.reduce_mean(tf.abs((x_true - x_pred))**2 / (tf.exp(ps)[..., 0] + 1e-8) / (2 * pi) ** 2, axis=[1, 2])
         return chi_squared + bottleneck_l2_cost + apo_loss + tv_loss
