@@ -19,10 +19,11 @@ def decode_all(record_bytes):
     theta_e = example['Einstein radius']
     pixels = example['pixels']
     kappa_id = example['kappa_id']
+    rescale_factor = example['rescale']
 
     kappa = tf.reshape(kappa, [pixels, pixels, 1])
     alpha = tf.reshape(alpha, [pixels, pixels, 2])
-    return kappa, alpha, theta_e, kappa_id
+    return kappa, alpha, theta_e, rescale_factor, kappa_id
 
 
 def decode_train(record_bytes):
