@@ -22,6 +22,7 @@ python ../4_train_rim_unet.py\
   --forward_method=conv2d\
   --batch_size=4\
   --datasets=$HOME/scratch/Censai/data/lenses_NIS/\
+  --compression_type=GZIP\
   --train_split=0.9\
   --total_items=2000\
   --num_parallel_reads=4\

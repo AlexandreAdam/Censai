@@ -71,7 +71,7 @@ def convolve(
         interp_factor=2):
     """
     Convolution of input images with provided k-space psf tensor.
-    This function assumes that the k-space PSF is already prodided with the
+    This function assumes that the k-space PSF is already provided with the
     stepk and maxk corresponding to the specified interpolation and zero padding
     factors.
     """
