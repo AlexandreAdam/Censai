@@ -20,7 +20,7 @@ python ../3_train_raytracer.py\
   --kernel_regularizer_amp=1e-4\
   --kappalog=True\
   --normalize=False\
-  --dataset=$HOME/scratch/Censai/data/alpha512_NIS/\
+  --datasets=$HOME/scratch/Censai/data/alpha512_NIS/\
   --compression_type=GZIP\
   --total_items=5000\
   --train_split=0.9\
