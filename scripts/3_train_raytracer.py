@@ -58,8 +58,9 @@ def main(args):
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
     else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
         dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = dataset.take(int(args.train_split * args.total_items))
-    val_dataset = dataset.skip(int(args.train_split * args.total_items)).take(int((1 - args.train_split) * args.total_items))
+    train_dataset = dataset.take(int(args.train_split * args.total_items) // args.batch_size) # dont forget to divide by batch size!
+    val_dataset = dataset.skip(int(args.train_split * args.total_items) // args.batch_size)
+    val_dataset = val_dataset.take(int((1 - args.train_split) * args.total_items) // args.batch_size)
     train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     with STRATEGY.scope():  # Replicate ops accross gpus
@@ -140,7 +141,6 @@ def main(args):
         with tf.GradientTape(watch_accessed_variables=True) as tape:
             tape.watch(ray_tracer.trainable_weights)
             cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha), axis=(1, 2, 3))
-            cost = cost + tf.reduce_sum(ray_tracer.losses)  # add L2 regularizer loss
             cost = tf.reduce_sum(cost) / args.batch_size    # normalize by global batch size
         gradient = tape.gradient(cost, ray_tracer.trainable_weights)
         if args.clipping:
@@ -153,13 +153,13 @@ def main(args):
     @tf.function
     def distributed_train_step(dist_inputs):
         per_replica_losses = STRATEGY.run(train_step, args=(dist_inputs,))
-        # Replica losses are aggregated by summing them
-        return STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        cost += tf.reduce_sum(ray_tracer.losses)
+        return cost
 
     def test_step(inputs):
         kappa, alpha = inputs
         cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha))
-        cost = cost + tf.reduce_sum(ray_tracer.losses)  # add L2 regularizer loss
         cost = tf.reduce_sum(cost) / args.batch_size    # normalize by global batch size
         return cost
 
@@ -167,7 +167,9 @@ def main(args):
     def distributed_test_step(dist_inputs):
         per_replica_losses = STRATEGY.run(test_step, args=(dist_inputs,))
         # Replica losses are aggregated by summing them
-        return STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        cost += tf.reduce_sum(ray_tracer.losses)
+        return cost
     # =================================================================================================================
     epoch_loss = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()

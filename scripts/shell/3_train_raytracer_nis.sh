@@ -20,11 +20,11 @@ python ../3_train_raytracer.py\
   --kernel_regularizer_amp=1e-4\
   --kappalog=True\
   --normalize=False\
-  --batch_size=16\
   --dataset=$HOME/scratch/Censai/data/alpha512_NIS/\
   --compression_type=GZIP\
   --total_items=5000\
   --train_split=0.9\
+  --batch_size=16\
   --num_parallel_reads=4\
   --cycle_length=4\
   --block_length=4\
