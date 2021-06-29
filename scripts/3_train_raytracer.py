@@ -191,7 +191,7 @@ def main(args):
 
     def test_step(inputs):
         kappa, alpha = inputs
-        cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha))
+        cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha), axis=(1, 2, 3))
         cost = tf.reduce_sum(cost) / args.batch_size    # normalize by global batch size
         return cost
 
