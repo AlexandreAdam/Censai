@@ -2,7 +2,7 @@ import tensorflow as tf
 from censai import RayTracer512 as RayTracer
 from censai.data import NISGenerator
 from censai.data.alpha_tng import decode_train
-from censai.utils import nullwriter
+from censai.utils import nullwriter, plot_to_image
 import os, glob
 import numpy as np
 from datetime import datetime
@@ -43,30 +43,36 @@ RAYTRACER_HPARAMS = [
     "normalize"
 ]
 
-def residual_plot(x_true, x_pred):
-    # use single example, so there should be no batch dimension
-    fig, axs = plt.subplots(2, 3, figsize=(16, 8))
+def residual_plot(y_true, y_pred):
+    fig, axs = plt.subplots(2, 3, figsize=(12, 8))
     for i in range(2):
-        im = axs[i, 0].imshow(alp.numpy()[ind, ..., i], cmap="jet", origin="lower")
+        im = axs[i, 0].imshow(y_true.numpy()[..., i], cmap="jet", origin="lower")
         divider = make_axes_locatable(axs[i, 0])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
-        axs[i, 0].set_title("Ground Truth")
         axs[i, 0].axis("off")
 
-        im = axs[i, 1].imshow(alpha_pred.numpy()[ind, ..., i], cmap="jet", origin="lower")
+        im = axs[i, 1].imshow(y_pred.numpy()[..., i], cmap="jet", origin="lower")
         divider = make_axes_locatable(axs[i, 1])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
-        axs[i, 1].set_title("Prediction")
+        axs[i, 1].axis("off")
 
-        residual = np.abs(alpha_pred.numpy()[ind, ..., i] - alp.numpy()[ind, ..., i])
-        #     residual = np.abs(alpha_pred.numpy()[ind, ..., i] - link(kap[ind, ..., 0]))
+        residual = np.abs(y_true.numpy()[..., i] - y_pred.numpy()[..., i])
         im = axs[i, 2].imshow(residual, cmap="jet", origin="lower")
         divider = make_axes_locatable(axs[i, 2])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
-        axs[i, 2].set_title("Residual")
+        axs[i, 2].axis("off")
+
+    axs[0, 0].set_title("Ground Truth")
+    axs[0, 1].set_title("Prediction")
+    axs[0, 2].set_title("Residual")
+    plt.subplots_adjust(wspace=.2, hspace=.0)
+    plt.figtext(0.1, 0.7, r"$\alpha_x$", va="center", ha="center", size=15, rotation=90)
+    plt.figtext(0.1, 0.3, r"$\alpha_y$", va="center", ha="center", size=15, rotation=90)
+    return fig
+
 
 def main(args):
     if wndb:
@@ -217,11 +223,21 @@ def main(args):
                 epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
+            # last batch we make a summary of residuals
+            for res_idx in range(args.n_resiudals): # this number should stay low since it add overhead to training
+                y_true = distributed_inputs[1][res_idx, ...]
+                y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
+                tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
         with test_writer.as_default():
             val_loss.reset_states()
             for distributed_inputs in val_dataset:
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
+            # last batch of test we make a summary of residuals
+            for res_idx in range(args.n_resiudals):
+                y_true = distributed_inputs[1][res_idx, ...]
+                y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
+                tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
         train_cost = epoch_loss.result().numpy()
         val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
