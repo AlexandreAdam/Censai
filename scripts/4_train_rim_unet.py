@@ -56,8 +56,9 @@ def main(args):
         dataset = dataset.cache(args.cache_file)#.prefetch(tf.data.experimental.AUTOTUNE)
     # else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
     #     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = dataset.take(int(args.train_split * args.total_items))
-    val_dataset = dataset.skip(int(args.train_split * args.total_items)).take(int((1 - args.train_split) * args.total_items))
+    train_dataset = dataset.take(int(args.train_split * args.total_items) // args.batch_size) # dont forget to divide by batch size!
+    val_dataset = dataset.skip(int(args.train_split * args.total_items) // args.batch_size)
+    val_dataset = val_dataset.take(int((1 - args.train_split) * args.total_items) // args.batch_size)
     train_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
