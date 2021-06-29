@@ -7,7 +7,19 @@ import os, glob
 import numpy as np
 from datetime import datetime
 import random
-MIRRORED_STRATEGY = tf.distribute.MirroredStrategy()
+gpus = tf.config.list_physical_devices('GPU')
+# NOTE ON THE USE OF MULTIPLE GPUS
+"""
+Double the number of gpus will not speed up the code. In fact, doubling the number of gpus and mirroring 
+the ops accross replicas means the code is TWICE as slow.
+
+In fact, using multiple gpus means one should at least multiply the batch size by the number of gpus introduced, 
+and optimize hyperparameters accordingly (learning rate should be scaled similarly).
+"""
+if len(gpus) == 1:
+    STRATEGY = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+elif len(gpus) > 1:
+    STRATEGY = tf.distribute.MirroredStrategy()
 try:
     import wandb
     wandb.init(project="censai_ray_tracer", entity="adam-alexandre01123", sync_tensorboard=True)
