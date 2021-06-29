@@ -224,7 +224,7 @@ def main(args):
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
             # last batch we make a summary of residuals
-            for res_idx in range(args.n_resiudals): # this number should stay low since it add overhead to training
+            for res_idx in range(args.n_residuals): # this number should stay low since it add overhead to training
                 y_true = distributed_inputs[1][res_idx, ...]
                 y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
@@ -234,7 +234,7 @@ def main(args):
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
             # last batch of test we make a summary of residuals
-            for res_idx in range(args.n_resiudals):
+            for res_idx in range(args.n_residuals):
                 y_true = distributed_inputs[1][res_idx, ...]
                 y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
