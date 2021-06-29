@@ -20,7 +20,7 @@ python ../3_train_raytracer.py\
   --kernel_regularizer_amp=1e-4\
   --kappalog=True\
   --normalize=False\
-  --datasets=$HOME/scratch/Censai/data/alpha512_TNG100/\
+  --datasets $HOME/scratch/Censai/data/alpha512_TNG100/\
   --total_items=10000\
   --train_split=0.9\
   --batch_size=16\
@@ -31,6 +31,7 @@ python ../3_train_raytracer.py\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models/\
   --max_to_keep=10\
+  --checkpoints=5\
   --epochs=50\
   --initial_learning_rate=1e-3\
   --decay_rate=0.9\
