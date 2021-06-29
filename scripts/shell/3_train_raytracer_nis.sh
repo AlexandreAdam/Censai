@@ -27,7 +27,7 @@ python ../3_train_raytracer.py\
   --train_split=0.9\
   --num_parallel_reads=4\
   --cycle_length=4\
-  --block_length=1\
+  --block_length=4\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models/\
