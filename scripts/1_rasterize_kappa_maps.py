@@ -18,7 +18,7 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 
 # this worker's array index. Assumes slurm array job is zero-indexed
 # defaults to zero if not running under SLURM
-this_worker = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
+THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
 
 
 def numpy_dataset(coords, masses, ell_hat, batch_size):
@@ -251,7 +251,7 @@ def distributed_strategy(args):
         box_size = dict(f['Header'].attrs.items())["BoxSize"]/1e3  # box size in Mpc
 
     # start hard work here
-    for i in range(this_worker-1, subhalo_ids.size, N_WORKERS):
+    for i in range(THIS_WORKER-1, subhalo_ids.size, N_WORKERS):
         subhalo_id = subhalo_ids[i]
         if subhalo_id in done:  # logic here is skipped if done.txt not in output_dir
             _done = done[done[:, 0] == subhalo_id]
@@ -354,31 +354,28 @@ def distributed_strategy(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("--offsets", required=True, type=str, help="Path to offset file (hfd5)")
-    parser.add_argument("--groupcat_dir", required=True, type=str,
-                        help="Directory of of groupcat files for the snapshot of interest")
-    parser.add_argument("--snapshot_dir", required=True, help="Root directory of the snapshot")
-    parser.add_argument("--snapshot_id", required=True, type=int,
-                        help="Should match id of snapshot given in snapshot argument")
-    parser.add_argument("--output_dir", required=True, type=str,
-                        help="Directory where to save raster images (fits file)")
-    parser.add_argument("--subhalo_id", required=True, type=str,
-                        help="npy file that contains array of int32 index of subhalos to rasterize")
-    parser.add_argument("--projection", required=True, type=str,
-                        help="2 characters, a combination of x, y and z (e.g. 'xy')")
-    parser.add_argument("--base_filenames", default="kappa")
-    parser.add_argument("--pixels", default=512, type=int, help="Number of pixels in the raster image")
-    parser.add_argument("--n_neighbors", default=10, type=int, help="Number of neighbors used to compute kernel length")
-    parser.add_argument("--fw_param", default=2, type=float,
-                        help="Mean distance of neighbors is interpreted as "
-                             "FW at (1/fw_param) of the maximum of the gaussian")
-    parser.add_argument("--fov", default=1, type=float, help="Field of view of a scene in comoving Mpc")
-    parser.add_argument("--z_source", default=1.5, type=float)
-    parser.add_argument("--z_lens", default=0.5, type=float)
-    parser.add_argument("--use_gpu", action="store_true", help="Will rasterize with tensorflow.experimental.numpy")
-    parser.add_argument("--batch_size", default=1, type=int, help="Number of particles to rasterize at the same time")
-    parser.add_argument("--smoke_test", action="store_true")
-    parser.add_argument("--smoke_test_id", default=10, type=int, help="Subhalo to do smoke test on")
+    parser.add_argument("--offsets",            required=True,              help="Path to offset file (hfd5)")
+    parser.add_argument("--groupcat_dir",       required=True,              help="Directory of of groupcat files for the snapshot of interest")
+    parser.add_argument("--snapshot_dir",       required=True,              help="Root directory of the snapshot")
+    parser.add_argument("--snapshot_id",        required=True, type=int,    help="Should match id of snapshot given in snapshot argument")
+    parser.add_argument("--output_dir",         required=True, type=str,    help="Directory where to save raster images (fits file)")
+    parser.add_argument("--subhalo_id",         required=True, type=str,    help="npy file that contains array of int32 index of subhalos to rasterize")
+    parser.add_argument("--projection",         required=True, type=str,    help="2 characters, a combination of x, y and z (e.g. 'xy')")
+    parser.add_argument("--base_filenames",     default="kappa")
+    parser.add_argument("--pixels",             default=512,    type=int,   help="Number of pixels in the raster image")
+    parser.add_argument("--n_neighbors",        default=10,     type=int,   help="Number of neighbors used to compute kernel length")
+    parser.add_argument("--fw_param",           default=2,      type=float, help="Mean distance of neighbors is interpreted as "
+                                                                                 "FW at (1/fw_param) of the maximum of the gaussian")
+    parser.add_argument("--fov",                default=1,      type=float, help="Field of view of a scene in comoving Mpc")
+    parser.add_argument("--z_source",           default=1.5, type=float)
+    parser.add_argument("--z_lens",             default=0.5, type=float)
+    parser.add_argument("--use_gpu",            action="store_true",        help="Will rasterize with tensorflow.experimental.numpy")
+    parser.add_argument("--batch_size",         default=1, type=int,        help="Number of particles to rasterize at the same time")
+    parser.add_argument("--smoke_test",         action="store_true")
+    parser.add_argument("--smoke_test_id",      default=10, type=int,       help="Subhalo to do smoke test on")
     args = parser.parse_args()
+
+    if not os.path.isdir(args.output_dir) and THIS_WORKER <= 1:
+        os.mkdir(args.output_dir)
 
     distributed_strategy(args)

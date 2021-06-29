@@ -27,7 +27,7 @@ def distributed_strategy(args):
         z_lens=args.z_lens
     )
 
-    min_theta_e = 1 if args.min_theta_e is None else args.min_theta_e
+    min_theta_e = 0.05 * args.image_fov if args.min_theta_e is None else args.min_theta_e
     max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
 
     cosmos_files = glob.glob(os.path.join(args.cosmos_dir, "*.tfrecords"))
@@ -112,7 +112,7 @@ if __name__ == '__main__':
     parser.add_argument("--max_shift",          default=1.,         type=float, help="Maximum allowed shift of kappa map center in arcseconds")
     parser.add_argument("--max_ellipticity",    default=0.6,        type=float, help="Maximum ellipticty of density profile.")
     parser.add_argument("--max_theta_e",        default=None,       type=float, help="Maximum allowed Einstein radius, default is 35 percent of image fov")
-    parser.add_argument("--min_theta_e",        default=None,       type=float, help="Minimum allowed Einstein radius, default is 1 arcsec")
+    parser.add_argument("--min_theta_e",        default=None,       type=float, help="Minimum allowed Einstein radius, default is 5 percent of image fov")
     parser.add_argument("--shuffle_cosmos",     action="store_true",            help="Shuffle indices of cosmos dataset")
     parser.add_argument("--buffer_size",        default=1000,       type=int,   help="Should match example_per_shard when tfrecords were produced "
                                                                                      "(only used if shuffle_cosmos is called)")
@@ -132,6 +132,8 @@ if __name__ == '__main__':
                                                                                      "Useful for reproducibility")
 
     args = parser.parse_args()
+    if not os.path.isdir(args.output_dir) and THIS_WORKER <= 1:
+        os.mkdir(args.output_dir)
     if args.seed is not None:
         tf.random.set_seed(args.seed)
         np.random.seed(args.seed)
