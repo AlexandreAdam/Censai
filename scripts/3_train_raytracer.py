@@ -7,9 +7,11 @@ import os, glob
 import numpy as np
 from datetime import datetime
 import random, time
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 gpus = tf.config.list_physical_devices('GPU')
-# NOTE ON THE USE OF MULTIPLE GPUS
-"""
+
+""" # NOTE ON THE USE OF MULTIPLE GPUS #
 Double the number of gpus will not speed up the code. In fact, doubling the number of gpus and mirroring 
 the ops accross replicas means the code is TWICE as slow.
 
@@ -41,6 +43,30 @@ RAYTRACER_HPARAMS = [
     "normalize"
 ]
 
+def residual_plot(x_true, x_pred):
+    # use single example, so there should be no batch dimension
+    fig, axs = plt.subplots(2, 3, figsize=(16, 8))
+    for i in range(2):
+        im = axs[i, 0].imshow(alp.numpy()[ind, ..., i], cmap="jet", origin="lower")
+        divider = make_axes_locatable(axs[i, 0])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        axs[i, 0].set_title("Ground Truth")
+        axs[i, 0].axis("off")
+
+        im = axs[i, 1].imshow(alpha_pred.numpy()[ind, ..., i], cmap="jet", origin="lower")
+        divider = make_axes_locatable(axs[i, 1])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        axs[i, 1].set_title("Prediction")
+
+        residual = np.abs(alpha_pred.numpy()[ind, ..., i] - alp.numpy()[ind, ..., i])
+        #     residual = np.abs(alpha_pred.numpy()[ind, ..., i] - link(kap[ind, ..., 0]))
+        im = axs[i, 2].imshow(residual, cmap="jet", origin="lower")
+        divider = make_axes_locatable(axs[i, 2])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        axs[i, 2].set_title("Residual")
 
 def main(args):
     if wndb:
@@ -261,6 +287,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_dir",                      default="None",                         help="Directory where to save model weights")
     parser.add_argument("--checkpoints",                    default=10,     type=int,               help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3,      type=int,               help="Max model checkpoint to keep")
+    parser.add_argument("--n_residuals",                    default=1,      type=int,               help="Number of residual plots to save")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",                   default=10,     type=int,               help="Number of epochs for training.")
