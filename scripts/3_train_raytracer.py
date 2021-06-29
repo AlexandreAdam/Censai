@@ -60,9 +60,9 @@ def main(args):
         dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     train_dataset = dataset.take(int(args.train_split * args.total_items))
     val_dataset = dataset.skip(int(args.train_split * args.total_items)).take(int((1 - args.train_split) * args.total_items))
-    train_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(train_dataset)
-    val_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(val_dataset)
-    with MIRRORED_STRATEGY.scope():  # Replicate ops accross gpus
+    train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
+    val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
+    with STRATEGY.scope():  # Replicate ops accross gpus
         ray_tracer = RayTracer(
             initializer=args.initializer,
             bottleneck_kernel_size=args.bottleneck_kernel_size,
@@ -152,9 +152,9 @@ def main(args):
 
     @tf.function
     def distributed_train_step(dist_inputs):
-        per_replica_losses = MIRRORED_STRATEGY.run(train_step, args=(dist_inputs,))
+        per_replica_losses = STRATEGY.run(train_step, args=(dist_inputs,))
         # Replica losses are aggregated by summing them
-        return MIRRORED_STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        return STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
 
     def test_step(inputs):
         kappa, alpha = inputs
@@ -165,9 +165,9 @@ def main(args):
 
     @tf.function
     def distributed_test_step(dist_inputs):
-        per_replica_losses = MIRRORED_STRATEGY.run(test_step, args=(dist_inputs,))
+        per_replica_losses = STRATEGY.run(test_step, args=(dist_inputs,))
         # Replica losses are aggregated by summing them
-        return MIRRORED_STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        return STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
     # =================================================================================================================
     epoch_loss = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
