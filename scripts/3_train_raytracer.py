@@ -145,6 +145,7 @@ def main(args):
         return MIRRORED_STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
 
     def test_step(inputs):
+        kappa, alpha = inputs
         cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha))
         cost = cost + tf.reduce_sum(ray_tracer.losses)  # add L2 regularizer loss
         cost = tf.reduce_sum(cost) / args.batch_size    # normalize by global batch size

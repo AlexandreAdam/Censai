@@ -143,7 +143,7 @@ class Decoder(tf.keras.Model):
             filters=1,
             kernel_size=3,
             padding="SAME",
-            activation=tf.keras.activations.softplus,  # ensures output positivity
+            activation="linear",
             kernel_initializer=kernel_initializer,
         )
 
