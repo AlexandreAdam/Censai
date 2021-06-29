@@ -215,14 +215,16 @@ def main(args):
         time_per_step.reset_states()
         with train_writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
-                if batch != 0:
-                    time_per_step.update_state([time.time() - start])
                 start = time.time()
                 cost = distributed_train_step(distributed_inputs)
         # ========== Summary and logs ==========
+                _time = time.time() - start
+                tf.summary.scalar("Time per step", _time)
+                time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
+            tf.summary.scalar("Learning rate", optim.lr(step), step=step)
             # last batch we make a summary of residuals
             for res_idx in range(args.n_residuals): # this number should stay low since it add overhead to training
                 y_true = distributed_inputs[1][res_idx, ...]
@@ -233,7 +235,6 @@ def main(args):
             for distributed_inputs in val_dataset:
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
-            # last batch of test we make a summary of residuals
             for res_idx in range(args.n_residuals):
                 y_true = distributed_inputs[1][res_idx, ...]
                 y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
