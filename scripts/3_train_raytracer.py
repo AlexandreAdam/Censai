@@ -6,7 +6,7 @@ from censai.utils import nullwriter
 import os, glob
 import numpy as np
 from datetime import datetime
-import random
+import random, time
 gpus = tf.config.list_physical_devices('GPU')
 # NOTE ON THE USE OF MULTIPLE GPUS
 """
@@ -173,14 +173,19 @@ def main(args):
     # =================================================================================================================
     epoch_loss = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
+    time_per_step = tf.metrics.Mean()
     best_loss = np.inf
     patience = args.patience
     step = 1
     lastest_checkpoint = 1
     for epoch in range(1, args.epochs + 1):
         epoch_loss.reset_states()
+        time_per_step.reset_states()
         with train_writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
+                if step != 1:
+                    time_per_step.update_state([time.time() - start])
+                start = time.time()
                 cost = distributed_train_step(distributed_inputs)
         # ========== Summary and logs ==========
                 epoch_loss.update_state([cost])
@@ -193,7 +198,8 @@ def main(args):
                 val_loss.update_state([test_cost])
         train_cost = epoch_loss.result().numpy()
         val_cost = val_loss.result().numpy()
-        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e}")
+        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
+              f"time per step {time_per_step.result():.2e} s")
         if val_cost < best_loss * (1 - args.tolerance):
             best_loss = val_cost
             patience = args.patience
