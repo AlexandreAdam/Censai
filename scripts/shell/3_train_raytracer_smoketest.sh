@@ -20,7 +20,7 @@ python ../3_train_raytracer.py\
   --kernel_regularizer_amp=1e-4\
   --kappalog=True\
   --normalize=False\
-  --datasets $HOME/scratch/Censai/data/alpha512_NIS/\
+  --datasets $HOME/scratch/Censai/data/alpha512_NIS/ $HOME/scratch/Censai/data/alpha512_TNG100\
   --compression_type=GZIP\
   --total_items=500\
   --train_split=0.9\
@@ -32,6 +32,7 @@ python ../3_train_raytracer.py\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models/\
   --max_to_keep=10\
+  --n_residuals=10\
   --checkpoints=1\
   --epochs=10\
   --initial_learning_rate=1e-3\
@@ -40,4 +41,5 @@ python ../3_train_raytracer.py\
   --clipping=True\
   --patience=10\
   --tolerance=0.01\
-  --seed=42
+  --seed=42\
+  --profile
