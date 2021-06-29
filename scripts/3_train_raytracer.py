@@ -9,6 +9,7 @@ from datetime import datetime
 import random, time
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from tensorboard.plugins.hparams import api as hp
 gpus = tf.config.list_physical_devices('GPU')
 
 """ # NOTE ON THE USE OF MULTIPLE GPUS #
@@ -78,6 +79,7 @@ def main(args):
     if wndb:
         config = wandb.config
         config.update(vars(args))
+    # ========= Dataset=================================================================================================
     files = []
     for dataset in args.datasets:
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
@@ -95,6 +97,8 @@ def main(args):
     val_dataset = val_dataset.take(int((1 - args.train_split) * args.total_items) // args.batch_size)
     train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
+
+    # ========== Model and Physical Model =============================================================================
     with STRATEGY.scope():  # Replicate ops accross gpus
         ray_tracer = RayTracer(
             initializer=args.initializer,
@@ -217,7 +221,7 @@ def main(args):
             for batch, distributed_inputs in enumerate(train_dataset):
                 start = time.time()
                 cost = distributed_train_step(distributed_inputs)
-        # ========== Summary and logs ==========
+        # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
                 tf.summary.scalar("Time per step", _time, step=step)
                 time_per_step.update_state([_time])
@@ -226,16 +230,21 @@ def main(args):
                 step += 1
             tf.summary.scalar("Learning rate", optim.lr(step), step=step)
             # last batch we make a summary of residuals
-            for res_idx in range(args.n_residuals): # this number should stay low since it add overhead to training
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
                 y_true = distributed_inputs[1][res_idx, ...]
                 y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
+        if args.profile and epoch == 1:
+            # redo the last training step for debugging purposes
+            tf.profiler.experimental.start(logdir=logdir)
+            cost = distributed_train_step(distributed_inputs)
+            tf.profiler.experimental.stop()
         with test_writer.as_default():
             val_loss.reset_states()
             for distributed_inputs in val_dataset:
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
-            for res_idx in range(args.n_residuals):
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
                 y_true = distributed_inputs[1][res_idx, ...]
                 y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
@@ -243,6 +252,7 @@ def main(args):
         val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
               f"time per step {time_per_step.result():.2e} s")
+        # =============================================================================================================
         if val_cost < best_loss * (1 - args.tolerance):
             best_loss = val_cost
             patience = args.patience
@@ -260,7 +270,12 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
-
+    # at the end of training, log hyperparameters for future tuning
+    with tf.summary.create_file_writer(os.path.join(args.logdir, "RayTracer_hparams")).as_default():
+        hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
+        hp.HParam(hparams_dict)
+        tf.summary.scalar("Test MSE", best_loss, step=step)
+        tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -304,7 +319,8 @@ if __name__ == "__main__":
     parser.add_argument("--model_dir",                      default="None",                         help="Directory where to save model weights")
     parser.add_argument("--checkpoints",                    default=10,     type=int,               help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3,      type=int,               help="Max model checkpoint to keep")
-    parser.add_argument("--n_residuals",                    default=1,      type=int,               help="Number of residual plots to save")
+    parser.add_argument("--n_residuals",                    default=1,      type=int,               help="Number of residual plots to save. Add overhead at the end of an epoch only.")
+    parser.add_argument("--profile",                        action="store_true",                    help="If added, we will profile the last training step of the first epoch")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",                   default=10,     type=int,               help="Number of epochs for training.")
