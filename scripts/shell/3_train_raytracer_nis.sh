@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --tasks=1
-#SBATCH --cpus-per-task=5 # maximum cpu per task is 3.5 per gpus
+#SBATCH --cpus-per-task=10 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:4
-#SBATCH --mem=16G			     # memory per node
+#SBATCH --mem=32G			     # memory per node
 #SBATCH --time=0-02:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RayTracer_NIS
@@ -27,7 +27,7 @@ python ../3_train_raytracer.py\
   --train_split=0.9\
   --num_parallel_reads=4\
   --cycle_length=4\
-  --block_length=1\
+  --block_length=4\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models/\
