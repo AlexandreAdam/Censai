@@ -219,7 +219,7 @@ def main(args):
                 cost = distributed_train_step(distributed_inputs)
         # ========== Summary and logs ==========
                 _time = time.time() - start
-                tf.summary.scalar("Time per step", _time)
+                tf.summary.scalar("Time per step", _time, step=step)
                 time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
