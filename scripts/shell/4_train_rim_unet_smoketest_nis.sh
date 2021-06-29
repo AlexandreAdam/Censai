@@ -1,15 +1,15 @@
 #!/bin/bash
 #SBATCH --tasks=1
-#SBATCH --cpus-per-task=5 # maximum cpu per task is 3.5 per gpus
+#SBATCH --cpus-per-task=8 	# maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:4
-#SBATCH --mem=16G			     # memory per node
+#SBATCH --mem=32G		# memory per node
 #SBATCH --time=0-05:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RIM_SmokeTest_NIS
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../4_train_rim_unet.py\
-  --time_steps=16\
+  --time_steps=12\
   --adam=True\
   --kappalog=True\
   --normalize=False\
@@ -18,7 +18,7 @@ python ../4_train_rim_unet.py\
   --state_size_1=4\
   --state_size_2=32\
   --state_size_3=128\
-  --state_size_4=512\
+  --state_size_4=256\
   --forward_method=conv2d\
   --batch_size=4\
   --datasets=$HOME/scratch/Censai/data/lenses_NIS/\
