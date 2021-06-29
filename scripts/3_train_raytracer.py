@@ -215,7 +215,7 @@ def main(args):
         time_per_step.reset_states()
         with train_writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
-                if step != 1:
+                if batch != 0:
                     time_per_step.update_state([time.time() - start])
                 start = time.time()
                 cost = distributed_train_step(distributed_inputs)
