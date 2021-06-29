@@ -20,7 +20,7 @@ python ../3_train_raytracer.py\
   --kernel_regularizer_amp=1e-4\
   --kappalog=True\
   --normalize=False\
-  --dataset=$HOME/scratch/Censai/data/alpha512_TNG100/\
+  --datasets=$HOME/scratch/Censai/data/alpha512_TNG100/\
   --total_items=10000\
   --train_split=0.9\
   --batch_size=16\

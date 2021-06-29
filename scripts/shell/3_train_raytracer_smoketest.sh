@@ -9,16 +9,30 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../3_train_raytracer.py\
-  --batch_size=16\
-  --dataset=$HOME/scratch/Censai/data/alpha512_TNG100/\
-  --total_items=200\
+  --initializer=glorot_uniform\
+  --decoder_encoder_kernel_size=3\
+  --pre_bottleneck_kernel_size=6\
+  --bottleneck_strides=4\
+  --bottleneck_kernel_size=16\
+  --decoder_encoder_filters=32\
+  --filter_scaling=1\
+  --upsampling_interpolation=True\
+  --kernel_regularizer_amp=1e-4\
+  --kappalog=True\
+  --normalize=False\
+  --datasets=$HOME/scratch/Censai/data/alpha512_NIS/ $HOME/scratch/Censai/data/alpha512_NIS\
+  --compression_type=GZIP\
+  --total_items=500\
   --train_split=0.9\
-  --num_parallel_reads=10\
+  --batch_size=16\
+  --num_parallel_reads=4\
+  --cycle_length=4\
+  --block_length=4\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --model_dir=$HOME/scratch/Censai/models/\
   --max_to_keep=10\
-  --epochs=50\
+  --epochs=10\
   --initial_learning_rate=1e-3\
   --decay_rate=0.9\
   --decay_steps=1000\
