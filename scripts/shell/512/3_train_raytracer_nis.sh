@@ -30,6 +30,7 @@ python ../../3_train_raytracer512.py\
   --block_length=10\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
+  --logname_prefixe=RayTracer512_NIS\
   --model_dir=$HOME/scratch/Censai/models/\
   --max_to_keep=10\
   --checkpoints=5\
