@@ -1,21 +1,21 @@
 #!/bin/bash
 #SBATCH --tasks=1
-#SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
+#SBATCH --cpus-per-task=3 	# maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32G			     # memory per node
-#SBATCH --time=1-00:00		# time (DD-HH:MM)
+#SBATCH --mem=32G		# memory per node
+#SBATCH --time=0-05:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_TNG100_256
+#SBATCH --job-name=Train_RIM_NIS_256
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../../4_train_rim_unet.py\
-  --datasets $HOME/scratch/Censai/data/lenses256_TNG100 $HOME/scratch/Censai/data/lenses256_NIS\
+  --datasets $HOME/scratch/Censai/data/lenses256_NIS\
   --compression_type=GZIP\
   --forward_method=fft\
   --epochs=200\
   --initial_learning_rate=1e-3\
   --decay_rate=0.9\
-  --decay_steps=10000\
+  --decay_steps=5000\
   --staircase\
   --clipping=True\
   --patience=20\
@@ -56,7 +56,8 @@ python ../../4_train_rim_unet.py\
   --source_initializer=glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
-  --logname_prefixe=RIM_Unet256\
+  --logname_prefixe=RIM_Unet256_NIS\
   --model_dir=$HOME/scratch/Censai/models\
   --checkpoints=5\
   --max_to_keep=10
+

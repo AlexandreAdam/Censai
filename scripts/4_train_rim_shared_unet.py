@@ -3,8 +3,8 @@ import numpy as np
 from censai import PhysicalModel, RIMSharedUnet
 from censai.models import SharedUnetModel
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
-from censai.utils import nullwriter
-import os, glob
+from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
+import os, glob, time
 from datetime import datetime
 import random
 """ # NOTE ON THE USE OF MULTIPLE GPUS #
@@ -81,11 +81,10 @@ def main(args):
     for params in dataset.map(decode_physical_model_info):
         break
     dataset = dataset.map(decode_train).batch(args.batch_size)
-    # Do not prefetch in this script. Memory is more precious than latency
     if args.cache_file is not None:
-        dataset = dataset.cache(args.cache_file)#.prefetch(tf.data.experimental.AUTOTUNE)
-    # else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
-    #     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+        dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
+    else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
+        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     train_dataset = dataset.take(int(args.train_split * args.total_items) // args.batch_size) # dont forget to divide by batch size!
     val_dataset = dataset.skip(int(args.train_split * args.total_items) // args.batch_size)
     val_dataset = val_dataset.take(int((1 - args.train_split) * args.total_items) // args.batch_size)
@@ -146,10 +145,10 @@ def main(args):
         rim = RIMSharedUnet(
             physical_model=phys,
             unet=unet,
-            steps=args.rim_time_steps,
-            adam=args.rim_adam,
-            kappalog=args.rim_kappalog,
-            kappa_normalize=args.rim_kappa_normalize
+            steps=args.steps,
+            adam=args.adam,
+            kappalog=args.kappalog,
+            kappa_normalize=args.kappa_normalize
         )
         learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=args.initial_learning_rate,
@@ -246,6 +245,7 @@ def main(args):
 
     # ====== Training loop ============================================================================================
     epoch_loss = tf.metrics.Mean()
+    time_per_step = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
     best_loss = np.inf
     patience = args.patience
@@ -255,17 +255,44 @@ def main(args):
         epoch_loss.reset_states()
         with train_writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
+                start = time.time()
                 cost = distributed_train_step(distributed_inputs)
                 #========== Summary and logs ==========
+                _time = time.time() - start
+                tf.summary.scalar("Time per step", _time, step=step)
+                time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
+            # last batch we make a summary of residuals
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
+                lens_true = distributed_inputs[0][res_idx, ...]
+                source_true = distributed_inputs[1][res_idx, ...]
+                kappa_true = distributed_inputs[2][res_idx, ...]
+                source_pred, kappa_pred, chi_squared = rim.call(lens_true[None, ...])
+                lens_pred = phys.forward(source_pred, kappa_pred)[0, ...]
+                tf.summary.image(f"Residual {res_idx}",
+                                 plot_to_image(
+                                     residual_plot(
+                                         lens_true, source_true, kappa_true, lens_pred, source_pred[0, ...], kappa_pred[0, ...], chi_squared
+                                     )), step=step)
         with test_writer.as_default():
             val_loss.reset_states()
             for distributed_inputs in val_dataset:
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
+                lens_true = distributed_inputs[0][res_idx, ...]
+                source_true = distributed_inputs[1][res_idx, ...]
+                kappa_true = distributed_inputs[2][res_idx, ...]
+                source_pred, kappa_pred, chi_squared = rim.call(lens_true[None, ...])
+                lens_pred = phys.forward(source_pred, kappa_pred)[0, ...]
+                tf.summary.image(f"Residual {res_idx}",
+                                 plot_to_image(
+                                     residual_plot(
+                                         lens_true, source_true, kappa_true, lens_pred, source_pred[0, ...], kappa_pred[0, ...], chi_squared
+                                     )), step=step)
             tf.summary.scalar("MSE", test_cost, step=step)
         val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {val_cost:.3e} "
@@ -298,7 +325,7 @@ if __name__ == "__main__":
     parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
 
     # RIM hyperparameters
-    parser.add_argument("--time_steps",         default=16,     type=int,       help="Number of time steps of RIM")
+    parser.add_argument("--steps",              default=16,     type=int,       help="Number of time steps of RIM")
     parser.add_argument("--adam",               default=True,   type=bool,      help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",           default=True,   type=bool)
     parser.add_argument("--kappa_normalize",    default=False,  type=bool)
@@ -359,6 +386,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
+    parser.add_argument("--n_residuals",             default=1,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
