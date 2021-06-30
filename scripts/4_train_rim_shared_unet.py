@@ -222,7 +222,7 @@ def main(args):
 
     def train_step(inputs):
         X, source, kappa = inputs
-        with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
+        with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
             cost = rim.cost_function(X, source, kappa, reduction=False)
             cost = tf.reduce_sum(cost) / args.batch_size  # Reduce by the global batch size, not the replica batch size
