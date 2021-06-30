@@ -10,12 +10,12 @@
 source $HOME/environments/censai3.8/bin/activate
 python ../../3_train_raytracer512.py\
   --initializer=glorot_uniform\
-  --decoder_encoder_kernel_size=3\
-  --pre_bottleneck_kernel_size=6\
+  --decoder_encoder_kernel_size=5\
+  --pre_bottleneck_kernel_size=7\
   --bottleneck_strides=4\
   --bottleneck_kernel_size=16\
-  --decoder_encoder_filters=8\
-  --filter_scaling=2\
+  --decoder_encoder_filters=16\
+  --filter_scaling=1\
   --upsampling_interpolation=True\
   --kernel_regularizer_amp=0\
   --kappalog=True\

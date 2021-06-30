@@ -271,9 +271,9 @@ def main(args):
             print("Reached patience")
             break
     # at the end of training, log hyperparameters for future tuning
-    with tf.summary.create_file_writer(os.path.join(args.logdir, "RayTracer_hparams")).as_default():
+    with tf.summary.create_file_writer(os.path.join(args.logdir, "RayTracer512_hparams", logname)).as_default():
         hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
-        hp.HParam(hparams_dict)
+        hp.hparams(hparams_dict)
         tf.summary.scalar("Test MSE", best_loss, step=step)
         tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
