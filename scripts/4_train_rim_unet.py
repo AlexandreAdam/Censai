@@ -310,12 +310,12 @@ def main(args):
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
                 source_pred, kappa_pred, chi_squared = rim.call(lens_true[None, ...])
-                lens_pred = phys.forward(source_pred, kappa_pred)[0, ...]
+                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
                 tf.summary.image(f"Residual {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[0, ...],
-                                         kappa_pred[0, ...], chi_squared
+                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
+                                         kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
         with test_writer.as_default():
             val_loss.reset_states()
@@ -327,12 +327,12 @@ def main(args):
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
                 source_pred, kappa_pred, chi_squared = rim.call(lens_true[None, ...])
-                lens_pred = phys.forward(source_pred, kappa_pred)[0, ...]
+                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
                 tf.summary.image(f"Residual {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[0, ...],
-                                         kappa_pred[0, ...], chi_squared
+                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
+                                         kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
             tf.summary.scalar("MSE", test_cost, step=step)
         val_cost = val_loss.result().numpy()
