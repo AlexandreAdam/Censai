@@ -109,9 +109,39 @@ def deflection_angles_residual_plot(y_true, y_pred):
     return fig
 
 
+def lens_residual_plot(lens_true, lens_pred, title=""):
+    fig, axs = plt.subplots(1, 3, figsize=(4, 8))
+    ax = axs[0]
+    im = ax.imshow(lens_true.numpy()[..., 0], cmap="hot", origin="lower")
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    ax.axis("off")
+
+    ax = axs[1]
+    im = ax.imshow(lens_pred.numpy()[..., 0], cmap="hot", origin="lower")
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    ax.axis("off")
+
+    ax = axs[2]
+    im = ax.imshow((lens_true - lens_pred).numpy()[..., 0], cmap="jet", origin="lower")
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    ax.axis("off")
+
+    fig.suptitle(f"{title}", size=20)
+    axs[0].set_title("Ground Truth", size=15)
+    axs[1].set_title("Predictions", size=15)
+    axs[2].set_title("Residuals", size=15)
+    plt.subplots_adjust(wspace=0, hspace=0)
+    return fig
+
+
 def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred, kappa_pred, chi_squared):
     fig, axs = plt.subplots(3, 3, figsize=(12, 12))
-    fig.sup
 
     ax = axs[0, 0]
     im = ax.imshow(lens_true.numpy()[..., 0], cmap="hot", origin="lower")
