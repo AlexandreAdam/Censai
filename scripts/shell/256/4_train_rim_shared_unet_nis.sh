@@ -5,7 +5,7 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=0-10:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_TNG100_256
+#SBATCH --job-name=Train_RIM_ShareUnet_NIS_256
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../../4_train_rim_shared_unet.py\
@@ -33,7 +33,7 @@ python ../../4_train_rim_shared_unet.py\
   --filters=32\
   --filter_scaling=1\
   --kernel_size=3\
-  --layers=3\
+  --layers=4\
   --block_conv_layers=2\
   --kernel_size=3\
   --resampling_kernel_size=5\
@@ -51,4 +51,6 @@ python ../../4_train_rim_shared_unet.py\
   --logname_prefixe=RIM_SharedUnet256_NIS\
   --model_dir=$HOME/scratch/Censai/models\
   --checkpoints=5\
-  --max_to_keep=10
+  --max_to_keep=10\
+  --n_residuals=5
+

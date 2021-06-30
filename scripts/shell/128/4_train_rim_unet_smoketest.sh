@@ -25,5 +25,7 @@ python ../../4_train_rim_unet.py\
   --logname=RIM_Unet128_SmokeTest\
   --model_dir=$HOME/scratch/Censai/models\
   --checkpoints=5\
-  --max_to_keep=10
+  --max_to_keep=10\
+  --n_residuals=5
+
 
