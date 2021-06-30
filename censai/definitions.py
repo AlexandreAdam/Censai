@@ -7,12 +7,12 @@ from astropy.cosmology import Planck18 as cosmo
 COSMO = cosmo
 DTYPE = tf.float32
 LOG10 = tf.constant(np.log(10.), DTYPE)
-LOGFLOOR = tf.constant(1e-10, DTYPE)
+LOGFLOOR = tf.constant(1e-5, DTYPE)
 # some estimate of kappa statistics (after rescaling for theta_e ~ Uniform(1, 7))
 KAPPA_MEAN = 0.3
 KAPPA_STD = 0.5
 KAPPA_MAX = 1e3
-KAPPA_MIN = 1e-10  # this is the log floor, not actual min, which is 0
+KAPPA_MIN = LOGFLOOR  # not actual min, which is 0
 
 
 def theta_einstein(kappa, rescaling, physical_pixel_scale, sigma_crit, Dds, Ds, Dd):
