@@ -5,7 +5,7 @@
 #SBATCH --mem=32G		# memory per node
 #SBATCH --time=0-05:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_TNG100_128
+#SBATCH --job-name=Train_RIM_NIS_128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../../4_train_rim_unet.py\
