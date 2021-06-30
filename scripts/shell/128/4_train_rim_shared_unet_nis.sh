@@ -3,24 +3,29 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
-#SBATCH --time=0-01:00		# time (DD-HH:MM)
+#SBATCH --time=0-10:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_SharedUnet256-SmokeTest
+#SBATCH --job-name=Train_RIM_SharedUnet_NIS_128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../../4_train_rim_shared_unet.py\
   --datasets $HOME/scratch/Censai/lenses256_NIS\
   --compression_type=GZIP\
   --forward_method=fft\
-  --epochs=20\
+  --epochs=200\
   --initial_learning_rate=1e-3\
+  --decay_rate=0.9\
+  --decay_steps=10000\
+  --staircase\
+  --clipping=True\
   --patience=20\
-  --batch_size=16\
+  --tolerance=0.01\
+  --batch_size=8\
   --train_split=0.9\
-  --total_items=100\
+  --total_items=1000\
   --num_parallel_reads=4\
   --cycle_length=4\
-  --block_length=4\
+  --block_length=2\
   --steps=16\
   --adam=True\
   --kappalog=True\
@@ -28,7 +33,7 @@ python ../../4_train_rim_shared_unet.py\
   --filters=32\
   --filter_scaling=1\
   --kernel_size=3\
-  --layers=4\
+  --layers=3\
   --block_conv_layers=2\
   --kernel_size=3\
   --resampling_kernel_size=5\
@@ -43,8 +48,9 @@ python ../../4_train_rim_shared_unet.py\
   --kappa_resize_separate_grade_downsampling=False\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
-  --logname=RIM_SharedUnet256_SmokeTest\
+  --logname_prefixe=RIM_SharedUnet128_NIS\
   --model_dir=$HOME/scratch/Censai/models\
   --checkpoints=5\
-  --max_to_keep=10\
+  --max_to_keep=10
   --n_residuals=5
+
