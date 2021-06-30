@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorlayer.layers import UpSampling2d
 
 
 class UpsamplingLayer(tf.keras.Model):
@@ -25,9 +24,9 @@ class UpsamplingLayer(tf.keras.Model):
                         padding="SAME",
                     )
                 )
-            if method in ["bilinear", "nearest", "bicubic", "area"]:
+            if method in ["bilinear", "nearest"]:
                 self._layers.append(
-                    UpSampling2d(strides, method=method)
+                    tf.keras.layers.UpSampling2D(strides, interpolation=method)
                 )
             elif method == "conv":
                 self._layers.append(
@@ -39,7 +38,7 @@ class UpsamplingLayer(tf.keras.Model):
                     )
                 )
             else:
-                raise NotImplemented(f"{method} not in [bilinear, nearest, bicubic, area, conv]")
+                raise NotImplemented(f"{method} not in [bilinear, nearest, conv]")
 
     def call(self, kappa):
         for layer in self._layers:
