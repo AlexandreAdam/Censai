@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_RIM_TNG100_256
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../../4_train_rim_unet.py\
+python $CENSAI_PATH/scripts/4_train_rim_unet.py\
   --datasets $HOME/scratch/Censai/data/lenses256_TNG100 $HOME/scratch/Censai/data/lenses256_NIS\
   --compression_type=GZIP\
   --forward_method=fft\

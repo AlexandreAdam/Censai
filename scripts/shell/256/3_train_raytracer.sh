@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_RayTracer256_TNG100
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../../3_train_raytracer.py\
+python $CENSAI_PATH/scripts/3_train_raytracer.py\
   --datasets $HOME/scratch/Censai/data/alpha256_TNG100 $HOME/scratch/Censai/data/alpha256_NIS\
   --compression_type=GZIP\
   --total_items=5000\

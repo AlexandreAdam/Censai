@@ -9,7 +9,7 @@
 #SBATCH --job-name=Create-Alpha-Labels-512-TNG100
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../../2_create_alpha_labels.py \
+python $CENSAI_PATH/scripts/2_create_alpha_labels.py \
   --kappa_dir=$HOME/scratch/Censai/data/kappa612_TNG100\
   --output_dir=$HOME/scratch/Censai/data/alpha512_TNG100\
   --compression_type=GZIP\
