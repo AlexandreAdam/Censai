@@ -1,4 +1,4 @@
-from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel
+from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer
 from censai import RIMUnet, RIMSharedUnet, RIMUnet512, PhysicalModel
 import tensorflow as tf
 
@@ -28,6 +28,23 @@ def test_resnet_autoencoder():
                                            apodization_factor=1,
                                            tv_factor=1
                     )
+
+
+def test_raytracer():
+    model = RayTracer(
+        pixels=128,
+        filters=32
+    )
+    X = tf.random.uniform(shape=[10, 128, 128, 1])
+    alpha = model(X)
+    assert alpha.shape[-1] == 2
+
+    model = RayTracer(
+        pixels=128,
+        layers=6,
+        filters=32
+    )
+    alpha = model(X)
 
 
 def test_unet_model():
@@ -111,6 +128,7 @@ def test_rim_shared_unet():
 
 if __name__ == '__main__':
     test_ray_tracer_512()
+    test_raytracer()
     test_resnet_autoencoder()
     test_unet_model()
     test_shared_unet_model()

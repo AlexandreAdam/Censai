@@ -11,6 +11,7 @@
 source $HOME/environments/censai3.8/bin/activate
 python ../../2_create_alpha_labels_analytical_kappa_maps.py\
   --output_dir=$HOME/scratch/Censai/data/alpha256_NIS\
+  --pixels=256\
   --len_dataset=5000\
   --compression_type=GZIP\
   --batch=20\

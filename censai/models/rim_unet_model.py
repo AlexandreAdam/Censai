@@ -129,13 +129,11 @@ class UnetModel(tf.keras.Model):
             c_i, new_state = self.gated_recurrent_blocks[i](skip_connections[i], states[i])
             skip_connections[i] = c_i
             new_states.append(new_state)
-        c_b, new_state = self.bottleneck_gru(delta_xt, states[-1])
-        skip_connections.append(c_b)
-        new_states.append(new_state)
         skip_connections = skip_connections[::-1]
+        delta_xt, new_state = self.bottleneck_gru(delta_xt, states[-1])
+        new_states.append(new_state)
         for i in range(len(self.decoding_layers)):
-            delta_xt = tf.concat([delta_xt, skip_connections[i]], axis=-1)
-            delta_xt = self.decoding_layers[i](delta_xt)
+            delta_xt = self.decoding_layers[i](delta_xt, skip_connections[i])
         delta_xt = self.output_layer(delta_xt)
 
         xt_1 = xt + delta_xt  # update image

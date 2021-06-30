@@ -53,8 +53,9 @@ class UnetDecodingLayer(tf.keras.layers.Layer):
                 **common_params
             )
 
-    def call(self, x):
+    def call(self, x, c_i):  # c_i is the skip connection
         x = self.upsampling_layer(x)
+        x = tf.concat([x, c_i], axis=-1)
         for layer in self.conv_layers:
             x = layer(x)
         return x

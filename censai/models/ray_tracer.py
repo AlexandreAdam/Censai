@@ -116,8 +116,7 @@ class RayTracer(tf.keras.Model):
         z = self.bottleneck_layer1(z)
         z = self.bottleneck_layer2(z)
         for i in range(len(self.decoding_layers)):
-            z = tf.concat([z, skip_connections[i]], axis=-1)
-            z = self.encoding_layers[i](z)
+            z = self.decoding_layers[i](z, skip_connections[i])
         z = self.output_layer(z)
         return z
 
