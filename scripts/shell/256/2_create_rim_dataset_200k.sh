@@ -16,18 +16,18 @@ python ../../2_create_rim_dataset.py\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
   --compression_type=GZIP\
   --src_pixels=128\
-  --image_fov=20\
+  --image_fov=15\
   --source_fov=3\
   --noise_rms=0.3e-3\
-  --psf_sigma=0.06\
+  --psf_sigma=0.07\
   --crop=50\
-  --max_shift=2\
+  --max_shift=1\
   --rotate\
   --rotate_by=90\
   --shuffle_cosmos\
   --buffer_size=1000\
   --batch=20\
-  --tukey_alpha=0.6\
+  --tukey_alpha=0.5\
   --bins=10\
   --rescaling_size=100\
   --z_source=2.379\
