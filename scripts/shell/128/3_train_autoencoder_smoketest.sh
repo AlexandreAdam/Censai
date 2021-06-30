@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_Autoencoder
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../../3_train_cosmos_autoencoder.py\
+python $CENSAI_PATH/scripts/3_train_cosmos_autoencoder.py\
   --pixels=128\
   --num_parallel_read=3\
   --data=$HOME/scratch/Censai/data/cosmos_25.2\

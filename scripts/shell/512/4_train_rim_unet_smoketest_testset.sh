@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_RIM_SmokeTest
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../../4_train_rim_unet512.py\
+python $CENSAI_PATH/scripts/4_train_rim_unet512.py\
   --time_steps=16\
   --adam=True\
   --kappalog=True\

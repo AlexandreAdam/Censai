@@ -9,7 +9,7 @@
 #SBATCH --job-name=Create-RIM-Dataset-200k-512
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../../2_create_rim_dataset.py\
+python $CENSAI_PATH/scripts/2_create_rim_dataset.py\
   --output_dir=$HOME/scratch/Censai/data/lenses512_TNG100/\
   --len_dataset=200000\
   --kappa_dir=$HOME/scratch/Censai/data/kappa612_TNG100\
