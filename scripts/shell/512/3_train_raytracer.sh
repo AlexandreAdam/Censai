@@ -21,6 +21,7 @@ python ../../3_train_raytracer512.py\
   --kappalog=True\
   --normalize=False\
   --datasets $HOME/scratch/Censai/data/alpha512_TNG100/ $HOME/scratch/Censai/data/alpha512_NIS\
+  --compression_type=GZIP\
   --total_items=5000\
   --train_split=0.9\
   --batch_size=16\
