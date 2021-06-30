@@ -52,7 +52,13 @@ UNET_MODEL_HPARAMS = [
     "bias_regularizer_amp",
     "activation",
     "alpha",
-    "initializer"
+    "initializer",
+    "kappa_resize_filters",
+    "kappa_resize_method",
+    "kappa_resize_conv_layers",
+    "kappa_resize_strides",
+    "kappa_resize_kernel_size",
+    "kappa_resize_separate_grad_downsampling"
 ]
 
 
@@ -140,7 +146,8 @@ def main(args):
             kappa_resize_strides=args.kappa_resize_strides,
             kappa_resize_conv_layers=args.kappa_resize_conv_layers,
             kappa_resize_kernel_size=args.kappa_resize_kernel_size,
-            kappa_resize_method=args.kappa_resize_method
+            kappa_resize_method=args.kappa_resize_method,
+            kappa_resize_separate_grad_downsampling=args.kappa_resize_separate_grad_downsampling
         )
         rim = RIMSharedUnet(
             physical_model=phys,

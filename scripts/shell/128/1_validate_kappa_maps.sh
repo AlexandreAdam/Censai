@@ -4,7 +4,7 @@
 #SBATCH --mem=16G			     # memory per node
 #SBATCH --time=0-02:00		 # time (DD-HH:MM)
 #SBATCH --account=def-lplevass
-#SBATCH --job-name=Validate_Kappa_Maps_512
+#SBATCH --job-name=Validate_Kappa_Maps_128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../../1_validate_kappa_maps.py\

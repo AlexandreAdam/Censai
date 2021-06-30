@@ -28,7 +28,7 @@ class SharedUnetModel(tf.keras.Model):
             use_bias=True,
             trainable=True,
             initializer="glorot_uniform",
-            separate_grad_downsampling=False,
+            kappa_resize_separate_grad_downsampling=False,
             kappa_resize_method="bilinear",
             kappa_resize_filters=4,
             kappa_resize_kernel_size=3,
@@ -118,7 +118,7 @@ class SharedUnetModel(tf.keras.Model):
         )
 
         # Some logic here to support 2 modes of downsampling
-        self.separate_grad_downsampling = separate_grad_downsampling
+        self.separate_grad_downsampling = kappa_resize_separate_grad_downsampling
         if kappa_resize_layers == 0:
             self.upsampling_layer = tf.identity
             self.downsampling_layer = tf.identity
@@ -140,9 +140,9 @@ class SharedUnetModel(tf.keras.Model):
                 kernel_size=kappa_resize_kernel_size,
                 strides=kappa_resize_strides,
                 filters=kappa_resize_filters,
-                output_filters=1 if separate_grad_downsampling else 2
+                output_filters=1 if self.separate_grad_downsampling else 2
             )
-            if separate_grad_downsampling:
+            if self.separate_grad_downsampling:
                 self.grad_downsampling_layer = DownsamplingLayer(
                     method=kappa_resize_method,
                     layers=kappa_resize_layers,
