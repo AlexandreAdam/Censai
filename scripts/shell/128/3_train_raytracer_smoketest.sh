@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../../3_train_raytracer.py\
-  --datasets $HOME/scratch/Censai/data/lenses128_NIS\
+  --datasets $HOME/scratch/Censai/data/alpha128_NIS\
   --total_items=100\
   --epochs=20\
   --train_split=0.9\
