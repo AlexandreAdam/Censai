@@ -1,12 +1,12 @@
 import tensorflow as tf
-from .models.rim_unet_model import UnetModel
+from .models.rim_unet_model512 import UnetModel512
 from censai.definitions import logkappa_normalization, log_kappa
 from censai import PhysicalModel
 
 LOG10 = tf.math.log(10.)
 
 
-class RIMUnetShared:
+class RIMUnet512:
     def __init__(
             self,
             physical_model: PhysicalModel,
@@ -18,6 +18,8 @@ class RIMUnetShared:
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
+            # checkpoint_manager_source=None,
+            # checkpoint_manager_kappa=None,
             **models_kwargs):
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.pixels
@@ -25,7 +27,18 @@ class RIMUnetShared:
         self.steps = steps
         self._num_units = 32
         self.state_size_list = state_sizes
-        self.model = UnetModel(self.state_size_list, **models_kwargs["source"])
+        if "source" not in models_kwargs:  # temporary solution
+            models_kwargs.update({"source": {"strides": 4}})
+        if "kappa" not in models_kwargs:
+            models_kwargs.update({"source": {"strides": 4}})
+        self.source_model = UnetModel512(self.state_size_list, **models_kwargs["source"])
+        self.kappa_model = UnetModel512(self.state_size_list, **models_kwargs["kappa"])
+        # if checkpoint_manager_source is not None:
+        #     checkpoint_manager_source.checkpoint.restore(checkpoint_manager_source.latest_checkpoint)
+        #     print(f"Initialized source model from {checkpoint_manager_source.latest_checkpoint}")
+        # if checkpoint_manager_kappa is not None:
+        #     checkpoint_manager_kappa.checkpoint.restore(checkpoint_manager_kappa.latest_checkpoint)
+        #     print(f"Initialized kappa model from {checkpoint_manager_kappa.latest_checkpoint}")
         self.adam = adam
         self.kappalog = kappalog
         self.kappa_normalize = kappa_normalize
@@ -54,6 +67,16 @@ class RIMUnetShared:
             shape=(batch_size, self.source_pixels // strides ** 3, self.source_pixels // strides ** 3, numfeat_4))
         state_1 = [state_11, state_12, state_13, state_14]
 
+        strides = self.kappa_model.strides
+        state_21 = tf.zeros(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, numfeat_1))
+        state_22 = tf.zeros(
+            shape=(batch_size, self.kappa_pixels // strides ** 1, self.kappa_pixels // strides ** 1, numfeat_2))
+        state_23 = tf.zeros(
+            shape=(batch_size, self.kappa_pixels // strides ** 2, self.kappa_pixels // strides ** 2, numfeat_3))
+        state_24 = tf.zeros(
+            shape=(batch_size, self.kappa_pixels // strides ** 3, self.kappa_pixels // strides ** 3, numfeat_4))
+        state_2 = [state_21, state_22, state_23, state_24]
+        return source_init, state_1, kappa_init, state_2
 
     @property
     def state_size(self):

@@ -1,44 +1,29 @@
 import tensorflow as tf
-from .models.rim_unet_model import UnetModel
+from censai.models import UnetModel
 from censai.definitions import logkappa_normalization, log_kappa
 from censai import PhysicalModel
-
-LOG10 = tf.math.log(10.)
 
 
 class RIMUnet:
     def __init__(
             self,
             physical_model: PhysicalModel,
-            steps,
-            state_sizes=[4, 32, 128, 512],
+            source_model: UnetModel,
+            kappa_model: UnetModel,
+            steps: int,
             adam=True,
             kappalog=True,
             kappa_normalize=True,
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
-            # checkpoint_manager_source=None,
-            # checkpoint_manager_kappa=None,
-            **models_kwargs):
+    ):
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.pixels
         self.source_pixels = physical_model.src_pixels
         self.steps = steps
-        self._num_units = 32
-        self.state_size_list = state_sizes
-        if "source" not in models_kwargs:  # temporary solution
-            models_kwargs.update({"source": {"strides": 4}})
-        if "kappa" not in models_kwargs:
-            models_kwargs.update({"source": {"strides": 4}})
-        self.source_model = UnetModel(self.state_size_list, **models_kwargs["source"])
-        self.kappa_model = UnetModel(self.state_size_list, **models_kwargs["kappa"])
-        # if checkpoint_manager_source is not None:
-        #     checkpoint_manager_source.checkpoint.restore(checkpoint_manager_source.latest_checkpoint)
-        #     print(f"Initialized source model from {checkpoint_manager_source.latest_checkpoint}")
-        # if checkpoint_manager_kappa is not None:
-        #     checkpoint_manager_kappa.checkpoint.restore(checkpoint_manager_kappa.latest_checkpoint)
-        #     print(f"Initialized kappa model from {checkpoint_manager_kappa.latest_checkpoint}")
+        self.source_model = source_model
+        self.kappa_model = kappa_model
         self.adam = adam
         self.kappalog = kappalog
         self.kappa_normalize = kappa_normalize
@@ -56,35 +41,9 @@ class RIMUnet:
         else:
             kappa_init = tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) / 10
 
-        strides = self.source_model.strides
-        numfeat_1, numfeat_2, numfeat_3, numfeat_4 = self.state_size_list
-        state_11 = tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, numfeat_1))
-        state_12 = tf.zeros(
-            shape=(batch_size, self.source_pixels // strides ** 1, self.source_pixels // strides ** 1, numfeat_2))
-        state_13 = tf.zeros(
-            shape=(batch_size, self.source_pixels // strides ** 2, self.source_pixels // strides ** 2, numfeat_3))
-        state_14 = tf.zeros(
-            shape=(batch_size, self.source_pixels // strides ** 3, self.source_pixels // strides ** 3, numfeat_4))
-        state_1 = [state_11, state_12, state_13, state_14]
-
-        strides = self.kappa_model.strides
-        state_21 = tf.zeros(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, numfeat_1))
-        state_22 = tf.zeros(
-            shape=(batch_size, self.kappa_pixels // strides ** 1, self.kappa_pixels // strides ** 1, numfeat_2))
-        state_23 = tf.zeros(
-            shape=(batch_size, self.kappa_pixels // strides ** 2, self.kappa_pixels // strides ** 2, numfeat_3))
-        state_24 = tf.zeros(
-            shape=(batch_size, self.kappa_pixels // strides ** 3, self.kappa_pixels // strides ** 3, numfeat_4))
-        state_2 = [state_21, state_22, state_23, state_24]
-        return source_init, state_1, kappa_init, state_2
-
-    @property
-    def state_size(self):
-        return self._num_units
-
-    @property
-    def output_size(self):
-        return self._num_units
+        source_states = self.source_model.init_hidden_states(self.source_pixels, batch_size)
+        kappa_states = self.kappa_model.init_hidden_states(self.kappa_pixels, batch_size)
+        return source_init, source_states, kappa_init, kappa_states
 
     @tf.function
     def kappa_link(self, kappa):
@@ -125,13 +84,16 @@ class RIMUnet:
         else:
             return grad1, grad2
 
-    def __call__(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2, scope=None):
+    def time_step(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2, scope=None):
         xt_1, ht_1 = self.source_model(inputs_1, state_1, grad_1)
         xt_2, ht_2 = self.kappa_model(inputs_2, state_2, grad_2)
         return xt_1, ht_1, xt_2, ht_2
 
-    def forward_pass(self, data):
-        batch_size = data.shape[0]
+    def __call__(self, lensed_image):
+        return self.call(lensed_image)
+
+    def call(self, lensed_image):
+        batch_size = lensed_image.shape[0]
         source_init, state_1, kappa_init, state_2 = self.initial_states(batch_size)
         # 1=source, 2=kappa
         output_series_1 = []
@@ -139,12 +101,11 @@ class RIMUnet:
         with tf.GradientTape() as g:
             g.watch(source_init)
             g.watch(kappa_init)
-            cost = self.physical_model.log_likelihood(y_true=data, source=source_init, kappa=self.kappa_inverse_link(kappa_init))
+            cost = self.physical_model.log_likelihood(y_true=lensed_image, source=source_init, kappa=self.kappa_inverse_link(kappa_init))
         grads = g.gradient(cost, [source_init, kappa_init])
         grads = self.grad_update(*grads, 0)
 
-        output_1, state_1, output_2, state_2 = self.__call__(source_init, state_1, grads[0], kappa_init,
-                                                             state_2, grads[1])
+        output_1, state_1, output_2, state_2 = self.time_step(source_init, state_1, grads[0], kappa_init, state_2, grads[1])
         output_series_1.append(output_1)
         output_series_2.append(output_2)
 
@@ -152,11 +113,10 @@ class RIMUnet:
             with tf.GradientTape() as g:
                 g.watch(output_1)
                 g.watch(output_2)
-                cost = self.physical_model.log_likelihood(y_true=data, source=output_1, kappa=self.kappa_inverse_link(output_2))
+                cost = self.physical_model.log_likelihood(y_true=lensed_image, source=output_1, kappa=self.kappa_inverse_link(output_2))
             grads = g.gradient(cost, [output_1, output_2])
             grads = self.grad_update(*grads, current_step)
-            output_1, state_1, output_2, state_2 = self.__call__(output_1, state_1, grads[0], output_2, state_2,
-                                                                 grads[1])
+            output_1, state_1, output_2, state_2 = self.time_step(output_1, state_1, grads[0], output_2, state_2, grads[1])
             output_series_1.append(output_1)
             output_series_2.append(output_2)
         return output_series_1, output_series_2, cost

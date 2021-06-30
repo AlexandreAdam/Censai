@@ -11,6 +11,7 @@ class UnetDecodingLayer(tf.keras.layers.Layer):
     def __init__(
             self,
             kernel_size=3,
+            upsampling_kernel_size=None,
             filters=32,
             conv_layers=2,
             activation="linear",
@@ -22,6 +23,10 @@ class UnetDecodingLayer(tf.keras.layers.Layer):
     ):
         super(UnetDecodingLayer, self).__init__(name=name, dtype=DTYPE)
         self.kernel_size = tuple([kernel_size]*2)
+        if upsampling_kernel_size is None:
+            self.upsampling_kernel_size = self.kernel_size
+        else:
+            self.upsampling_kernel_size = tuple([upsampling_kernel_size]*2)
         self.num_conv_layers = conv_layers
         self.filters = filters
         self.strides = tuple([strides]*2)
@@ -42,7 +47,7 @@ class UnetDecodingLayer(tf.keras.layers.Layer):
         else:
             self.upsampling_layer = tf.keras.layers.Conv2DTranspose(
                 filters=self.filters,
-                kernel_size=self.kernel_size,
+                kernel_size=self.upsampling_kernel_size,
                 strides=self.strides,
                 activation=self.activation,
                 **common_params
