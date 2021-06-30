@@ -15,6 +15,7 @@ class UnetModel(tf.keras.Model):
             layers=2,                        # before bottleneck
             block_conv_layers=2,
             strides=2,
+            output_filters=1,
             bottleneck_kernel_size=None,     # use kernel_size as default
             bottleneck_filters=None,
             resampling_kernel_size=None,
@@ -105,7 +106,7 @@ class UnetModel(tf.keras.Model):
         )
 
         self.output_layer = tf.keras.layers.Conv2D(
-            filters=2,
+            filters=output_filters,
             kernel_size=(1, 1),
             activation="linear",
             **common_params

@@ -4,12 +4,43 @@ from censai.definitions import logkappa_normalization, log_kappa
 from censai import PhysicalModel
 
 
-class RIMUnet:
+def is_power_of_two(n):
+    while n > 1:
+        n /= 2
+        if int(n) != n:
+            return False
+        elif n == 2:
+            return True
+
+class UpsamplingLayer(tf.keras.layers.Layer):
+    def __init__(self, use_bilinear: bool, layers: int, strides: int):
+        super(UpsamplingLayer, self).__init__()
+        self.upsamplings = []
+        for i in range(layers):
+            if use_bilinear:
+                self.upsamplings.append(
+                    tf.keras.layers.UpSampling2D(strides)
+                )
+
+    def call(self, kappa):
+
+
+class RIMSharedUnet:
+    """
+    Architecture has only 1 Unet. Source and kappa information are stacked along channel dimension.
+
+    There are 2 intended structures:
+        1. Kappa has a larger shape than Source tensor:
+            1 - Use a half-strided convolution to upsample the output of the Unet
+            3 - Use bilinear interpolation to upsample
+        2. Kappa and Source have the same tensor shape -> Identity layer
+
+    In any case, we use the Source shape for the Unet
+    """
     def __init__(
             self,
             physical_model: PhysicalModel,
-            source_model: UnetModel,
-            kappa_model: UnetModel,
+            unet: UnetModel,
             steps: int,
             adam=True,
             kappalog=True,
@@ -21,15 +52,21 @@ class RIMUnet:
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.pixels
         self.source_pixels = physical_model.src_pixels
+        self.unet = unet
         self.steps = steps
-        self.source_model = source_model
-        self.kappa_model = kappa_model
         self.adam = adam
         self.kappalog = kappalog
         self.kappa_normalize = kappa_normalize
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
+
+        assert is_power_of_two(self.kappa_pixels)
+        assert is_power_of_two(self.source_pixels)
+
+        if self.source_pixels
+        self.kappa_resample_layers
+
 
     def initial_states(self, batch_size):
         source_init = tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1))
@@ -41,9 +78,9 @@ class RIMUnet:
         else:
             kappa_init = tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) / 10
 
-        source_states = self.source_model.init_hidden_states(self.source_pixels, batch_size)
-        kappa_states = self.kappa_model.init_hidden_states(self.kappa_pixels, batch_size)
-        return source_init, source_states, kappa_init, kappa_states
+        init_tensor = tf.concat([source_init, kappa_init], axis=-1)
+        states = self.unet.init_hidden_states(self.source_pixels, batch_size)
+        return init_tensor, states
 
     @tf.function
     def kappa_link(self, kappa):
@@ -64,62 +101,60 @@ class RIMUnet:
         else:
             return eta
 
-    def grad_update(self, grad1, grad2, time_step):
+    def resize_kappa(self, kappa):
+
+
+    def grad_update(self, grad, time_step):
         if self.adam:
             if time_step == 0:  # reset mean and variance for time t=-1
-                self._grad_mean1 = tf.zeros_like(grad1)
-                self._grad_var1 = tf.zeros_like(grad1)
-                self._grad_mean2 = tf.zeros_like(grad2)
-                self._grad_var2 = tf.zeros_like(grad2)
-            self._grad_mean1 = self. beta_1 * self._grad_mean1 + (1 - self.beta_1) * grad1
-            self._grad_var1  = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad1)
-            self._grad_mean2 = self. beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
-            self._grad_var2  = self.beta_2 * self._grad_var2 + (1 - self.beta_2) * tf.square(grad2)
+                self._grad_mean1 = tf.zeros_like(grad)
+                self._grad_var1 = tf.zeros_like(grad)
+            self._grad_mean1 = self. beta_1 * self._grad_mean1 + (1 - self.beta_1) * grad
+            self._grad_var1  = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad)
             # for grad update, unbias the moments
             m_hat1 = self._grad_mean1 / (1 - self.beta_1**(time_step + 1))
             v_hat1 = self._grad_var1 / (1 - self.beta_2**(time_step + 1))
-            m_hat2 = self._grad_mean2 / (1 - self.beta_1**(time_step + 1))
-            v_hat2 = self._grad_var2 / (1 - self.beta_2**(time_step + 1))
-            return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon), m_hat2 / (tf.sqrt(v_hat2) + self.epsilon)
+            return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon)
         else:
-            return grad1, grad2
+            return grad
 
-    def time_step(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2, scope=None):
-        xt_1, ht_1 = self.source_model(inputs_1, state_1, grad_1)
-        xt_2, ht_2 = self.kappa_model(inputs_2, state_2, grad_2)
-        return xt_1, ht_1, xt_2, ht_2
+    def time_step(self, xt, states, grad, scope=None):
+        xt_1, ht_1 = self.unet(xt, states, grad)
+        return xt_1, ht_1
 
     def __call__(self, lensed_image):
         return self.call(lensed_image)
 
     def call(self, lensed_image):
         batch_size = lensed_image.shape[0]
-        source_init, state_1, kappa_init, state_2 = self.initial_states(batch_size)
-        # 1=source, 2=kappa
-        output_series_1 = []
-        output_series_2 = []
-        with tf.GradientTape() as g:
-            g.watch(source_init)
-            g.watch(kappa_init)
-            cost = self.physical_model.log_likelihood(y_true=lensed_image, source=source_init, kappa=self.kappa_inverse_link(kappa_init))
-        grads = g.gradient(cost, [source_init, kappa_init])
-        grads = self.grad_update(*grads, 0)
+        X, states = self.initial_states(batch_size)
 
-        output_1, state_1, output_2, state_2 = self.time_step(source_init, state_1, grads[0], kappa_init, state_2, grads[1])
-        output_series_1.append(output_1)
-        output_series_2.append(output_2)
+        source_series = []
+        kappa_series  = []
+        with tf.GradientTape() as g:
+            g.watch(X)
+            source, kappa = tf.split(X, 2, axis=-1)
+            cost = self.physical_model.log_likelihood(y_true=lensed_image, source=source, kappa=self.kappa_inverse_link(kappa))
+        grad = g.gradient(cost, X)
+        grad = self.grad_update(grad, 0)
+
+        X, states = self.time_step(X, states, grad)
+        source, kappa = tf.split(X, 2, axis=-1)
+        source_series.append(source)
+        kappa_series.append(kappa)
 
         for current_step in range(1, self.steps):
             with tf.GradientTape() as g:
-                g.watch(output_1)
-                g.watch(output_2)
-                cost = self.physical_model.log_likelihood(y_true=lensed_image, source=output_1, kappa=self.kappa_inverse_link(output_2))
-            grads = g.gradient(cost, [output_1, output_2])
-            grads = self.grad_update(*grads, current_step)
-            output_1, state_1, output_2, state_2 = self.time_step(output_1, state_1, grads[0], output_2, state_2, grads[1])
-            output_series_1.append(output_1)
-            output_series_2.append(output_2)
-        return output_series_1, output_series_2, cost
+                g.watch(X)
+                source, kappa = tf.split(X, 2, axis=-1)
+                cost = self.physical_model.log_likelihood(y_true=lensed_image, source=source, kappa=self.kappa_inverse_link(kappa))
+            grad = g.gradient(cost, X)
+            grad = self.grad_update(grad, current_step)
+            X, states = self.time_step(X, states, grad)
+            source, kappa = tf.split(X, 2, axis=-1)
+            source_series.append(source)
+            kappa_series.append(kappa)
+        return source_series, kappa_series, cost
 
     def cost_function(self, lensed_image, source, kappa, reduction=True):
         """
@@ -140,3 +175,4 @@ class RIMUnet:
             return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)
         else:
             return tf.reduce_mean(chi1, axis=(1, 2, 3)) + tf.reduce_mean(chi2, axis=(1, 2, 3))
+

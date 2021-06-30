@@ -10,6 +10,7 @@
 source $HOME/environments/censai3.8/bin/activate
 python ../../3_train_raytracer.py\
   --datasets $HOME/scratch/Censai/data/lenses256_NIS\
+  --compression_type=GZIP\
   --total_items=100\
   --epochs=20\
   --train_split=0.9\
