@@ -44,7 +44,7 @@ class RayTracer(tf.keras.Model):
         activation = get_activation(activation)
 
         # compute size of bottleneck here
-        bottleneck_size = pixels / strides**(layers)
+        bottleneck_size = pixels // strides**(layers)
 
         self.encoding_layers = []
         self.decoding_layers = []
