@@ -159,7 +159,7 @@ class SharedUnetModel(tf.keras.Model):
         return self.call(source, kappa, source_grad, kappa_grad, states)
 
     def call(self, source, kappa, source_grad, kappa_grad, states):
-        if not self.separate_grad_downsampling_layer:
+        if not self.separate_grad_downsampling:
             kappa, kappa_grad = tf.split(
                 self.downsampling_layer(
                     tf.concat([kappa, kappa_grad], axis=-1)
