@@ -1,7 +1,7 @@
 import tensorflow as tf
-from censai import RayTracer
+from censai import RayTracer, AnalyticalPhysicalModel
 from censai.data.alpha_tng import decode_train
-from censai.utils import nullwriter, plot_to_image, deflection_angles_residual_plot as residual_plot
+from censai.utils import nullwriter, plot_to_image, deflection_angles_residual_plot as residual_plot, lens_residual_plot
 import os, glob
 import numpy as np
 from datetime import datetime
@@ -71,6 +71,8 @@ def main(args):
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
 
     # ========== Model and Physical Model =============================================================================
+    # setup an analytical physical model to compare lenses from raytracer and analytical deflection angles.
+    phys = AnalyticalPhysicalModel(pixels=args.pixels)
     with STRATEGY.scope():  # Replicate ops accross gpus
         ray_tracer = RayTracer(
             pixels=args.pixels,
@@ -209,9 +211,16 @@ def main(args):
             tf.summary.scalar("Learning rate", optim.lr(step), step=step)
             # last batch we make a summary of residuals
             for res_idx in range(min(args.n_residuals, args.batch_size)):
+                # Deflection angle residual
                 y_true = distributed_inputs[1][res_idx, ...]
                 y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
+            # Lens residual
+            for ellipticity in [0., 0.1, 0.4, 0.6]:
+                lens_true = phys.lens_source_func(e=ellipticity)
+                alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)
+                tf.summary.image(f"Lens residual with ellipticity={ellipticity}", plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")))
         if args.profile and epoch == 1:
             # redo the last training step for debugging purposes
             tf.profiler.experimental.start(logdir=logdir)
@@ -226,6 +235,12 @@ def main(args):
                 y_true = distributed_inputs[1][res_idx, ...]
                 y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
+            # Lens residual
+            for ellipticity in [0., 0.1, 0.4, 0.6]:
+                lens_true = phys.lens_source_func(e=ellipticity)
+                alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)
+                tf.summary.image(f"Lens residual with ellipticity={ellipticity}", plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")))
         train_cost = epoch_loss.result().numpy()
         val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
@@ -249,7 +264,7 @@ def main(args):
             print("Reached patience")
             break
     # at the end of training, log hyperparameters for future tuning
-    with tf.summary.create_file_writer(os.path.join(args.logdir, "RayTracer_hparams", logname)).as_default():
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefix + "_hparams")).as_default():
         hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
         hp.hparams(hparams_dict)
         tf.summary.scalar("Test MSE", best_loss, step=step)

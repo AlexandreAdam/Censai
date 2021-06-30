@@ -1,5 +1,4 @@
 import numpy as np
-
 from censai.physical_model import PhysicalModel, AnalyticalPhysicalModel
 import tensorflow as tf
 
@@ -67,20 +66,24 @@ def test_log_likelihood():
 def test_analytical_lensing():
     phys = AnalyticalPhysicalModel()
     source = tf.random.normal([1, 256, 256, 1])
-    params = [1, 0.1, 0, 0.1, -0.1, 0.01, 3.14]
+    params = [1., 0.1, 0., 0.1, -0.1, 0.01, 3.14]
     im = phys.lens_source(source, *params)
+
+    im = phys.lens_source_func(e=0.6)
+
+    kap = phys.kappa_field(e=0.2)
     return im.numpy()[0, ..., 0]
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
-    # im = test_analytical_lensing()
+    im = test_analytical_lensing()
     # im = test_lens_source_conv2()[0, ..., 0]
     im1, im2 = test_alpha_method_fft()
-    # plt.imshow(im)
-    # plt.colorbar()
-    # plt.show()
+    plt.imshow(im)
+    plt.colorbar()
+    plt.show()
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
 
