@@ -2,7 +2,7 @@
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
-#SBATCH --mem=16G			     # memory per node
+#SBATCH --mem=32G			     # memory per node
 #SBATCH --time=1-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RayTracer256_TNG100
@@ -11,27 +11,27 @@ source $HOME/environments/censai3.8/bin/activate
 python ../../3_train_raytracer.py\
   --datasets $HOME/scratch/Censai/data/lenses256_TNG100 $HOME/scratch/Censai/data/lenses256_NIS\
   --compression_type=GZIP\
-  --total_items=1000\
-  --epochs=50\
+  --total_items=5000\
+  --epochs=500\
   --train_split=0.9\
   --compression_type=GZIP\
   --pixels=256\
   --kernel_size=3\
   --filters=8\
   --filter_scaling=2\
-  --layers=5\
+  --layers=4\
   --block_conv_layers=2\
   --strides=2\
   --resampling_kernel_size=5\
   --kappalog=True\
   --normalize=False\
   --upsampling_interpolation=True\
-  --kernel_regularizer_amp=0\
+  --kernel_regularizer_amp=1e-5\
   --initializer=glorot_uniform\
-  --batch_size=10\
-  --num_parallel_reads=10\
-  --cycle_length=10\
-  --block_length=1\
+  --batch_size=20\
+  --num_parallel_reads=5\
+  --cycle_length=5\
+  --block_length=4\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --logname_prefixe=RayTracer256\
@@ -39,6 +39,6 @@ python ../../3_train_raytracer.py\
   --checkpoints=5\
   --max_to_keep=10\
   --n_residuals=5\
-  --patience=10\
+  --patience=50\
   --tolerance=0.01\
   --seed=42\

@@ -8,8 +8,8 @@
 #SBATCH --job-name=Train_RIM_TNG100_256
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../../4_train_rim_unet.py\
-  --datasets $HOME/scratch/Censai/data/lenses256_TNG100 $HOME/scratch/Censai/data/lenses256_NIS\
+python ../../4_train_rim_shared_unet.py\
+  --datasets $HOME/scratch/Censai/lenses256_TNG100 $HOME/scratch/Censai/lenses256_NIS\
   --compression_type=GZIP\
   --forward_method=fft\
   --epochs=200\
@@ -30,33 +30,25 @@ python ../../4_train_rim_unet.py\
   --adam=True\
   --kappalog=True\
   --kappa_normalize=False\
-  --kappa_filters=32\
-  --kappa_filter_scaling=1\
-  --kappa_kernel_size=3\
-  --kappa_layers=4\
-  --kappa_block_conv_layers=2\
-  --kappa_strides=2\
-  --kappa_upsampling_interpolation=False\
-  --kappa_kernel_regularizer_amp=1e-4\
-  --kappa_bias_regularizer_amp=1e-4\
-  --kappa_activatio=leaky_relu\
-  --kappa_alpha=0.1\
-  --kappa_initializer=glorot_normal\
-  --source_filters=32\
-  --source_filter_scaling=1\
-  --source_kernel_size=3\
-  --source_layers=3\
-  --source_block_conv_layers=2\
-  --source_strides=2\
-  --source_upsampling_interpolation=False\
-  --source_kernel_regularizer_amp=1e-4\
-  --source_bias_regularizer_amp=1e-4\
-  --source_activatio=leaky_relu\
-  --source_alpha=0.1\
-  --source_initializer=glorot_normal\
+  --filters=32\
+  --filter_scaling=1\
+  --kernel_size=3\
+  --layers=3\
+  --block_conv_layers=2\
+  --kernel_size=3\
+  --resampling_kernel_size=5\
+  --gru_kernel_size=5\
+  --kernel_regularizer_amp=1e-4\
+  --bias_regularizer_amp=1e-4\
+  --alpha=0.1\
+  --kappa_resize_filters=8\
+  --kappa_resize_method=bilinear\
+  --kappa_resize_conv_layers=1\
+  --kappa_resize_kernel_size=7\
+  --kappa_resize_separate_grade_downsampling=False\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
-  --logname_prefixe=RIM_Unet256\
+  --logname_prefixe=RIM_SharedUnet256\
   --model_dir=$HOME/scratch/Censai/models\
   --checkpoints=5\
   --max_to_keep=10

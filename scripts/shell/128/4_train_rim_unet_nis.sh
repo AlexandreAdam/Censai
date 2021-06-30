@@ -1,15 +1,15 @@
 #!/bin/bash
 #SBATCH --tasks=1
-#SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
+#SBATCH --cpus-per-task=3 	# maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32G			     # memory per node
-#SBATCH --time=1-00:00		# time (DD-HH:MM)
+#SBATCH --mem=32G		# memory per node
+#SBATCH --time=0-05:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_TNG100_256
+SBATCH --job-name=Train_RIM_TNG100_128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../../4_train_rim_unet.py\
-  --datasets $HOME/scratch/Censai/data/lenses256_TNG100 $HOME/scratch/Censai/data/lenses256_NIS\
+  --datasets $HOME/scratch/Censai/data/lenses128_TNG100 $HOME/scratch/Censai/data/lenses128_NIS\
   --compression_type=GZIP\
   --forward_method=fft\
   --epochs=200\
@@ -20,12 +20,12 @@ python ../../4_train_rim_unet.py\
   --clipping=True\
   --patience=20\
   --tolerance=0.01\
-  --batch_size=8\
+  --batch_size=16\
   --train_split=0.9\
   --total_items=5000\
   --num_parallel_reads=4\
   --cycle_length=4\
-  --block_length=2\
+  --block_length=4\
   --steps=16\
   --adam=True\
   --kappalog=True\
@@ -33,7 +33,7 @@ python ../../4_train_rim_unet.py\
   --kappa_filters=32\
   --kappa_filter_scaling=1\
   --kappa_kernel_size=3\
-  --kappa_layers=4\
+  --kappa_layers=3\
   --kappa_block_conv_layers=2\
   --kappa_strides=2\
   --kappa_upsampling_interpolation=False\
@@ -56,7 +56,8 @@ python ../../4_train_rim_unet.py\
   --source_initializer=glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
-  --logname_prefixe=RIM_Unet256\
+  --logname_prefixe=RIM_Unet128_NIS\
   --model_dir=$HOME/scratch/Censai/models\
   --checkpoints=5\
   --max_to_keep=10
+

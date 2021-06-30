@@ -316,7 +316,7 @@ if __name__ == "__main__":
     # Logs
     parser.add_argument("--logdir",                         default="None",                         help="Path of logs directory.")
     parser.add_argument("--logname",                        default=None,                           help="Name of the logs, default is 'RT_' + date")
-    parser.add_argument("--logname_prefixe",                default="RayTracer",                    help="If name of the log is not provided, this prefix is prepended to the date")
+    parser.add_argument("--logname_prefixe",                default="RayTracer512",                 help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",                      default="None",                         help="Directory where to save model weights")
     parser.add_argument("--checkpoints",                    default=10,     type=int,               help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3,      type=int,               help="Max model checkpoint to keep")
