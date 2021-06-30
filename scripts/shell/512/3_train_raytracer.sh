@@ -2,7 +2,7 @@
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
-#SBATCH --mem=16G			     # memory per node
+#SBATCH --mem=32G			     # memory per node
 #SBATCH --time=1-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RayTracer_TNG100
@@ -14,14 +14,14 @@ python ../../3_train_raytracer512.py\
   --pre_bottleneck_kernel_size=6\
   --bottleneck_strides=4\
   --bottleneck_kernel_size=16\
-  --decoder_encoder_filters=32\
-  --filter_scaling=1\
+  --decoder_encoder_filters=8\
+  --filter_scaling=2\
   --upsampling_interpolation=True\
-  --kernel_regularizer_amp=1e-4\
+  --kernel_regularizer_amp=0\
   --kappalog=True\
   --normalize=False\
-  --datasets $HOME/scratch/Censai/data/alpha512_TNG100/\
-  --total_items=10000\
+  --datasets $HOME/scratch/Censai/data/alpha512_TNG100/ $HOME/scratch/Censai/data/alpha512_NIS\
+  --total_items=5000\
   --train_split=0.9\
   --batch_size=16\
   --num_parallel_reads=4\
@@ -32,11 +32,11 @@ python ../../3_train_raytracer512.py\
   --model_dir=$HOME/scratch/Censai/models/\
   --max_to_keep=10\
   --checkpoints=5\
-  --epochs=50\
+  --epochs=200\
   --initial_learning_rate=1e-3\
   --decay_rate=0.9\
   --decay_steps=1000\
   --clipping=True\
-  --patience=10\
+  --patience=15\
   --tolerance=0.01\
   --seed=42
