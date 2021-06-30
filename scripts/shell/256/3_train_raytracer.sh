@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../../3_train_raytracer.py\
-  --datasets $HOME/scratch/Censai/data/lenses256_TNG100 $HOME/scratch/Censai/data/lenses256_NIS\
+  --datasets $HOME/scratch/Censai/data/alpha256_TNG100 $HOME/scratch/Censai/data/alpha256_NIS\
   --compression_type=GZIP\
   --total_items=5000\
   --epochs=500\
