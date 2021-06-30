@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python ../../2_create_alpha_labels.py\
-  --kappa_dir=$HOME/scratch/Censai/data/kappa228-TNG100\
+  --kappa_dir=$HOME/scratch/Censai/data/kappa228_TNG100\
   --output_dir=$HOME/scratch/Censai/data/\
   --compression_type=GZIP\
   --augment=1.\

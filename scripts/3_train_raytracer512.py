@@ -1,11 +1,13 @@
 import tensorflow as tf
-from censai import RayTracer
+from censai import RayTracer512 as RayTracer
 from censai.data.alpha_tng import decode_train
 from censai.utils import nullwriter, plot_to_image, deflection_angles_residual_plot as residual_plot
 import os, glob
 import numpy as np
 from datetime import datetime
 import random, time
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tensorboard.plugins.hparams import api as hp
 gpus = tf.config.list_physical_devices('GPU')
 
@@ -29,22 +31,48 @@ except ImportError:
     print("wandb not installed, package ignored")
 
 RAYTRACER_HPARAMS = [
-    "pixels",
+    "decoder_encoder_kernel_size",
+    "pre_bottleneck_kernel_size",
+    "bottleneck_kernel_size",
+    "bottleneck_strides",
+    "decoder_encoder_filters",
     "filter_scaling",
-    "layers",
-    "block_conv_layers",
-    "kernel_size",
-    "filters",
-    "strides",
-    "bottleneck_filters",
-    "resampling_kernel_size",
     "upsampling_interpolation",
-    "kernel_regularizer_amp",
     "activation",
-    "initializer",
     "kappalog",
-    "normalize",
+    "normalize"
 ]
+
+
+def residual_plot(y_true, y_pred):
+    fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+    for i in range(2):
+        im = axs[i, 0].imshow(y_true.numpy()[..., i], cmap="jet", origin="lower")
+        divider = make_axes_locatable(axs[i, 0])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        axs[i, 0].axis("off")
+
+        im = axs[i, 1].imshow(y_pred.numpy()[..., i], cmap="jet", origin="lower")
+        divider = make_axes_locatable(axs[i, 1])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        axs[i, 1].axis("off")
+
+        residual = np.abs(y_true.numpy()[..., i] - y_pred.numpy()[..., i])
+        im = axs[i, 2].imshow(residual, cmap="jet", origin="lower")
+        divider = make_axes_locatable(axs[i, 2])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        axs[i, 2].axis("off")
+
+    axs[0, 0].set_title("Ground Truth")
+    axs[0, 1].set_title("Prediction")
+    axs[0, 2].set_title("Residual")
+    plt.subplots_adjust(wspace=.2, hspace=.0)
+    plt.figtext(0.1, 0.7, r"$\alpha_x$", va="center", ha="center", size=15, rotation=90)
+    plt.figtext(0.1, 0.3, r"$\alpha_y$", va="center", ha="center", size=15, rotation=90)
+    return fig
 
 
 def main(args):
@@ -73,23 +101,17 @@ def main(args):
     # ========== Model and Physical Model =============================================================================
     with STRATEGY.scope():  # Replicate ops accross gpus
         ray_tracer = RayTracer(
-            pixels=args.pixels,
-            filter_scaling=args.filter_scaling,
-            layers=args.layers,
-            block_conv_layers=args.block_conv_layers,
-            kernel_size=args.kernel_size,
-            filters=args.filters,
-            strides=args.strides,
-            bottleneck_filters=args.bottleneck_filters,
-            resampling_kernel_size=args.resampling_kernel_size,
-            upsampling_interpolation=args.upsampling_interpolation,
+            initializer=args.initializer,
+            bottleneck_kernel_size=args.bottleneck_kernel_size,
+            bottleneck_strides=args.bottleneck_strides,
+            pre_bottleneck_kernel_size=args.pre_bottleneck_kernel_size,
+            decoder_encoder_kernel_size=args.decoder_encoder_kernel_size,
+            decoder_encoder_filters=args.decoder_encoder_filters,
+            upsampling_interpolation=args.upsampling_interpolation,  # use strided transposed convolution if false
             kernel_regularizer_amp=args.kernel_regularizer_amp,
             activation=args.activation,
-            initializer=args.initializer,
-            kappalog=args.kappalog,
-            normalize=args.normalize,
+            filter_scaling=args.filter_scaling
         )
-
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             args.initial_learning_rate,
             decay_steps=args.decay_steps,
@@ -255,7 +277,6 @@ def main(args):
         tf.summary.scalar("Test MSE", best_loss, step=step)
         tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
-
 if __name__ == "__main__":
     from argparse import ArgumentParser
     import json
@@ -269,21 +290,18 @@ if __name__ == "__main__":
     parser.add_argument("--compression_type",           default=None,                help="Compression type used to write data. Default assumes no compression.")
 
     # Model hyper parameters
-    parser.add_argument("--pixels",                         required=True,            type=int,     help="Size of input tensors, need to match dataset size!!")
-    parser.add_argument("--kernel_size",                    default=3,                type=int,     help="Main kernel size of U-net")
-    parser.add_argument("--filters",                        default=32,               type=int,     help="Number of filters of conv layers")
+    parser.add_argument("--initializer",                    default="glorot_uniform", type=str,     help="Weight initializer")
+    parser.add_argument("--decoder_encoder_kernel_size",    default=3,                type=int,     help="Main kernel size")
+    parser.add_argument("--pre_bottleneck_kernel_size",     default=6,                type=int,     help="Kernel size of layer before bottleneck")
+    parser.add_argument("--bottleneck_kernel_size",         default=16,               type=int,     help="Kernel size of bottleneck layr, should be twice bottleneck feature map size")
+    parser.add_argument("--bottleneck_strides",             default=4,                type=int,     help="Strided of the downsampling convolutional layer before bottleneck")
+    parser.add_argument("--decoder_encoder_filters",        default=32,               type=int,     help="Number of filters of conv layers")
     parser.add_argument("--filter_scaling",                 default=1,                type=float,   help="Scaling of the number of filters at each layers (1=no scaling)")
-    parser.add_argument("--layers",                         default=2,                type=int,     help="Number of layers of Unet (number of downsampling and upsampling")
-    parser.add_argument("--block_conv_layers",              default=2,                type=int,     help="Number of convolutional layers in a unet layer")
-    parser.add_argument("--strides",                        default=2,                type=int,     help="Strides of downsampling and upsampling layers")
-    parser.add_argument("--bottleneck_filters",             default=None,             type=int,     help="Number of filters of bottleneck layers. Default None, use normal scaling of filters.")
-    parser.add_argument("--resampling_kernel_size",         default=None,             type=int,     help="Kernel size of downsampling and upsampling layers. None, use same kernel size as the others.")
     parser.add_argument("--upsampling_interpolation",       default=False,            type=bool,    help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
+    parser.add_argument("--activation",                     default="linear",         type=str,     help="Non-linearity of layers")
     parser.add_argument("--kernel_regularizer_amp",         default=1e-3,             type=float,   help="l2 regularization on weights")
     parser.add_argument("--kappalog",                       default=True,             type=bool,    help="Input is log of kappa")
     parser.add_argument("--normalize",                      default=False,            type=bool,    help="Normalize log of kappa with max and minimum values defined in definitions.py")
-    parser.add_argument("--activation",                     default="linear",         type=str,     help="Non-linearity of layers")
-    parser.add_argument("--initializer",                    default="glorot_uniform", type=str,     help="Weight initializer")
 
     # Training set params
     parser.add_argument("-b", "--batch_size",               default=10,     type=int,               help="Number of images in a batch")

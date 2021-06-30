@@ -1,8 +1,10 @@
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
 import io
 import collections
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 try:
     from contextlib import nullcontext  # python > 3.7 needed for this
 except ImportError:
@@ -74,3 +76,34 @@ def plot_to_image(figure):
       # Add the batch dimension
       image = tf.expand_dims(image, 0)
       return image
+
+
+def deflection_angles_residual_plot(y_true, y_pred):
+    fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+    for i in range(2):
+        im = axs[i, 0].imshow(y_true.numpy()[..., i], cmap="jet", origin="lower")
+        divider = make_axes_locatable(axs[i, 0])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        axs[i, 0].axis("off")
+
+        im = axs[i, 1].imshow(y_pred.numpy()[..., i], cmap="jet", origin="lower")
+        divider = make_axes_locatable(axs[i, 1])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        axs[i, 1].axis("off")
+
+        residual = np.abs(y_true.numpy()[..., i] - y_pred.numpy()[..., i])
+        im = axs[i, 2].imshow(residual, cmap="jet", origin="lower")
+        divider = make_axes_locatable(axs[i, 2])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        axs[i, 2].axis("off")
+
+    axs[0, 0].set_title("Ground Truth")
+    axs[0, 1].set_title("Prediction")
+    axs[0, 2].set_title("Residual")
+    plt.subplots_adjust(wspace=.2, hspace=.0)
+    plt.figtext(0.1, 0.7, r"$\alpha_x$", va="center", ha="center", size=15, rotation=90)
+    plt.figtext(0.1, 0.3, r"$\alpha_y$", va="center", ha="center", size=15, rotation=90)
+    return fig

@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_RayTracer_SmokeTest
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python ../../3_train_raytracer.py\
+python ../../3_train_raytracer512.py\
   --initializer=glorot_uniform\
   --decoder_encoder_kernel_size=3\
   --pre_bottleneck_kernel_size=6\
@@ -41,5 +41,4 @@ python ../../3_train_raytracer.py\
   --clipping=True\
   --patience=10\
   --tolerance=0.01\
-  --seed=42\
-  --profile
+  --seed=42

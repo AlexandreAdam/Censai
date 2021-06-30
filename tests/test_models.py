@@ -1,4 +1,4 @@
-from censai.models import Autoencoder, RayTracer512
+from censai.models import CosmosAutoencoder, RayTracer512, UnetModel
 import tensorflow as tf
 
 
@@ -15,7 +15,7 @@ def test_ray_tracer_512():
 
 def test_resnet_autoencoder():
     pixels = 128
-    AE = Autoencoder(pixels)
+    AE = CosmosAutoencoder(pixels)
     image = tf.random.uniform(shape=[1, 128, 128, 1])
     psf = tf.abs(tf.signal.rfft2d(tf.random.normal(shape=[1, 256, 256]))[..., tf.newaxis])
     ps = tf.abs(tf.signal.rfft2d(tf.random.normal(shape=[1, 128, 128]))[..., tf.newaxis])
@@ -27,8 +27,43 @@ def test_resnet_autoencoder():
                                            apodization_factor=1,
                                            tv_factor=1
                     )
-    pass
+
+
+def test_unet_model():
+    # test out the plumbing
+    model = UnetModel(filters=32, layers=1)
+    X = tf.random.normal([10, 128, 128, 1])
+    grad = tf.random.normal([10, 128, 128, 1])
+    states = model.init_hidden_states(input_pixels=128, batch_size=10)
+    model(X, states, grad)
+
+    model = UnetModel(filters=32, layers=2)
+    X = tf.random.normal([10, 128, 128, 1])
+    grad = tf.random.normal([10, 128, 128, 1])
+    states = model.init_hidden_states(input_pixels=128, batch_size=10)
+    model(X, states, grad)
+
+    model = UnetModel(filters=32, bottleneck_filters=32, filter_scaling=2)
+    X = tf.random.normal([10, 128, 128, 1])
+    grad = tf.random.normal([10, 128, 128, 1])
+    states = model.init_hidden_states(input_pixels=128, batch_size=10)
+    model(X, states, grad)
+
+    model = UnetModel(filters=4, bottleneck_filters=32, filter_scaling=2, resampling_kernel_size=5, gru_kernel_size=5, upsampling_interpolation=True)
+    X = tf.random.normal([10, 128, 128, 1])
+    grad = tf.random.normal([10, 128, 128, 1])
+    states = model.init_hidden_states(input_pixels=128, batch_size=10)
+    model(X, states, grad)
+
+    model = UnetModel(filters=4, layers=6)
+    X = tf.random.normal([10, 128, 128, 1])
+    grad = tf.random.normal([10, 128, 128, 1])
+    states = model.init_hidden_states(input_pixels=128, batch_size=10)
+    model(X, states, grad)
+
+
 
 if __name__ == '__main__':
-    # test_ray_tracer_512()
+    test_ray_tracer_512()
     test_resnet_autoencoder()
+    test_unet_model()

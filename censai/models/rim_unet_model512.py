@@ -3,9 +3,9 @@ from censai.definitions import DTYPE, lrelu4p
 from .layers.conv_gru_component import ConvGRUBlock
 
 
-class SharedBottleneckModel(tf.keras.Model):
+class UnetModel512(tf.keras.Model):
     def __init__(self, num_cell_features, strides=4):
-        super(SharedBottleneckModel, self).__init__(dtype=DTYPE)
+        super(UnetModel512, self).__init__(dtype=DTYPE)
         numfeat_1, numfeat_2, numfeat_3, numfeat_4 = num_cell_features
 
         activation = lrelu4p

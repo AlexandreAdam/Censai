@@ -9,17 +9,15 @@ class ConvGRUBlock(tf.keras.Model):
     """
     def __init__(
             self,
-            conv_filters,
+            filters,
             kernel_size=5,
-            gru_filters=None,  # by default twice conv_filters
             activation="leaky_relu",
             **kwargs
     ):
-        if gru_filters is None:
-            gru_filters = conv_filters/2
+        gru_filters = filters//2
         super(ConvGRUBlock, self).__init__()
         self.conv1 = tf.keras.layers.Conv2D(
-            filters=conv_filters,
+            filters=filters,
             kernel_size=kernel_size,
             strides=1,
             activation=get_activation(activation, **kwargs),
