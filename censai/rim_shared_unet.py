@@ -1,28 +1,7 @@
 import tensorflow as tf
-from censai.models import UnetModel
+from censai.models import SharedUnetModel
 from censai.definitions import logkappa_normalization, log_kappa
 from censai import PhysicalModel
-
-
-def is_power_of_two(n):
-    while n > 1:
-        n /= 2
-        if int(n) != n:
-            return False
-        elif n == 2:
-            return True
-
-class UpsamplingLayer(tf.keras.layers.Layer):
-    def __init__(self, use_bilinear: bool, layers: int, strides: int):
-        super(UpsamplingLayer, self).__init__()
-        self.upsamplings = []
-        for i in range(layers):
-            if use_bilinear:
-                self.upsamplings.append(
-                    tf.keras.layers.UpSampling2D(strides)
-                )
-
-    def call(self, kappa):
 
 
 class RIMSharedUnet:
@@ -40,7 +19,7 @@ class RIMSharedUnet:
     def __init__(
             self,
             physical_model: PhysicalModel,
-            unet: UnetModel,
+            unet: SharedUnetModel,
             steps: int,
             adam=True,
             kappalog=True,
@@ -61,12 +40,6 @@ class RIMSharedUnet:
         self.beta_2 = beta_2
         self.epsilon = epsilon
 
-        assert is_power_of_two(self.kappa_pixels)
-        assert is_power_of_two(self.source_pixels)
-
-        if self.source_pixels
-        self.kappa_resample_layers
-
 
     def initial_states(self, batch_size):
         source_init = tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1))
@@ -78,9 +51,8 @@ class RIMSharedUnet:
         else:
             kappa_init = tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) / 10
 
-        init_tensor = tf.concat([source_init, kappa_init], axis=-1)
         states = self.unet.init_hidden_states(self.source_pixels, batch_size)
-        return init_tensor, states
+        return source_init, kappa_init, states
 
     @tf.function
     def kappa_link(self, kappa):
@@ -101,57 +73,47 @@ class RIMSharedUnet:
         else:
             return eta
 
-    def resize_kappa(self, kappa):
-
-
-    def grad_update(self, grad, time_step):
+    def grad_update(self, grad1, grad2, time_step):
         if self.adam:
             if time_step == 0:  # reset mean and variance for time t=-1
-                self._grad_mean1 = tf.zeros_like(grad)
-                self._grad_var1 = tf.zeros_like(grad)
-            self._grad_mean1 = self. beta_1 * self._grad_mean1 + (1 - self.beta_1) * grad
-            self._grad_var1  = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad)
+                self._grad_mean1 = tf.zeros_like(grad1)
+                self._grad_var1 = tf.zeros_like(grad1)
+                self._grad_mean2 = tf.zeros_like(grad2)
+                self._grad_var2 = tf.zeros_like(grad2)
+            self._grad_mean1 = self. beta_1 * self._grad_mean1 + (1 - self.beta_1) * grad1
+            self._grad_var1  = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad1)
+            self._grad_mean2 = self. beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
+            self._grad_var2  = self.beta_2 * self._grad_var2 + (1 - self.beta_2) * tf.square(grad2)
             # for grad update, unbias the moments
             m_hat1 = self._grad_mean1 / (1 - self.beta_1**(time_step + 1))
             v_hat1 = self._grad_var1 / (1 - self.beta_2**(time_step + 1))
-            return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon)
+            m_hat2 = self._grad_mean2 / (1 - self.beta_1**(time_step + 1))
+            v_hat2 = self._grad_var2 / (1 - self.beta_2**(time_step + 1))
+            return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon), m_hat2 / (tf.sqrt(v_hat2) + self.epsilon)
         else:
-            return grad
+            return grad1, grad2
 
-    def time_step(self, xt, states, grad, scope=None):
-        xt_1, ht_1 = self.unet(xt, states, grad)
-        return xt_1, ht_1
+    def time_step(self, source, kappa, source_grad, kappa_grad, states, scope=None):
+        source, kappa, states = self.unet(source, kappa, source_grad, kappa_grad, states)
+        return source, kappa, states
 
     def __call__(self, lensed_image):
         return self.call(lensed_image)
 
     def call(self, lensed_image):
         batch_size = lensed_image.shape[0]
-        X, states = self.initial_states(batch_size)
+        source, kappa, states = self.initial_states(batch_size)
 
         source_series = []
         kappa_series  = []
-        with tf.GradientTape() as g:
-            g.watch(X)
-            source, kappa = tf.split(X, 2, axis=-1)
-            cost = self.physical_model.log_likelihood(y_true=lensed_image, source=source, kappa=self.kappa_inverse_link(kappa))
-        grad = g.gradient(cost, X)
-        grad = self.grad_update(grad, 0)
-
-        X, states = self.time_step(X, states, grad)
-        source, kappa = tf.split(X, 2, axis=-1)
-        source_series.append(source)
-        kappa_series.append(kappa)
-
-        for current_step in range(1, self.steps):
+        for current_step in range(self.steps):
             with tf.GradientTape() as g:
-                g.watch(X)
-                source, kappa = tf.split(X, 2, axis=-1)
+                g.watch(source)
+                g.watch(kappa)
                 cost = self.physical_model.log_likelihood(y_true=lensed_image, source=source, kappa=self.kappa_inverse_link(kappa))
-            grad = g.gradient(cost, X)
-            grad = self.grad_update(grad, current_step)
-            X, states = self.time_step(X, states, grad)
-            source, kappa = tf.split(X, 2, axis=-1)
+            source_grad, kappa_grad = g.gradient(cost, [source, kappa])
+            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
             source_series.append(source)
             kappa_series.append(kappa)
         return source_series, kappa_series, cost

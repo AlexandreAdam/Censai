@@ -15,17 +15,17 @@ python ../../2_create_rim_dataset_analytical_kappa_maps.py\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
   --compression_type=GZIP\
   --src_pixels=128\
-  --pixels=512\
-  --image_fov=20\
-  --kappa_fov=22.2\
+  --pixels=256\
+  --image_fov=15\
+  --kappa_fov=17\
   --source_fov=3\
   --noise_rms=0.3e-3\
-  --psf_sigma=0.06\
-  --max_shift=1.5\
-  --max_ellipticity=0.6\
+  --psf_sigma=0.07\
+  --max_shift=1\
+  --max_ellipticity=0.5\
   --shuffle_cosmos\
   --buffer_size=1000\
-  --tukey_alpha=0.6\
+  --tukey_alpha=0.5\
   --batch=20\
   --z_source=2.379\
   --z_lens=0.4457
