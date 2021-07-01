@@ -140,7 +140,7 @@ class PhysicalModel:
         return im
 
     def lens_source_func(self, kappa, xs=0., ys=0., es=0., w=0.1):
-        alpha1, alpha2 = tf.split(self.deflection_angle(kappa), 2, axis=-1)
+        _, _, alpha1, alpha2 = self.deflection_angle(kappa)
         # lens equation
         beta1 = self.ximage - alpha1
         beta2 = self.yimage - alpha2
