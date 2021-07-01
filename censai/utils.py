@@ -136,7 +136,7 @@ def lens_residual_plot(lens_true, lens_pred, title=""):
     axs[0].set_title("Ground Truth", size=15)
     axs[1].set_title("Predictions", size=15)
     axs[2].set_title("Residuals", size=15)
-    plt.subplots_adjust(wspace=0, hspace=0)
+    plt.subplots_adjust(wspace=.2, hspace=.2)
     return fig
 
 
@@ -210,7 +210,7 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     axs[0, 1].set_title("Predictions", size=15)
     axs[0, 2].set_title("Residuals", size=15)
     fig.suptitle(fr"$\chi^2$ = {chi_squared: .3e}", size=20)
-    plt.subplots_adjust(wspace=0, hspace=.1)
+    plt.subplots_adjust(wspace=.2, hspace=.1)
     plt.figtext(0.1, 0.75, r"Lens", va="center", ha="center", size=15, rotation=90)
     plt.figtext(0.1, 0.5, r"Source", va="center", ha="center", size=15, rotation=90)
     plt.figtext(0.1, 0.22, r"$\kappa$", va="center", ha="center", size=15, rotation=90)
