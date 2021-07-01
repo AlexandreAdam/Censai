@@ -1,6 +1,6 @@
 import tensorflow as tf
-from censai import RayTracer, AnalyticalPhysicalModel
-from censai.data.alpha_tng import decode_train
+from censai import RayTracer, PhysicalModel
+from censai.data.alpha_tng import decode_train, decode_physical_info
 from censai.utils import nullwriter, plot_to_image, deflection_angles_residual_plot as residual_plot, lens_residual_plot
 import os, glob
 import numpy as np
@@ -59,6 +59,9 @@ def main(args):
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
                                cycle_length=args.cycle_length, block_length=args.block_length)
+    # extract physical info from first example
+    for image_fov, kappa_fov in dataset.map(decode_physical_info):
+        break
     dataset = dataset.map(decode_train).batch(args.batch_size)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
@@ -72,7 +75,8 @@ def main(args):
 
     # ========== Model and Physical Model =============================================================================
     # setup an analytical physical model to compare lenses from raytracer and analytical deflection angles.
-    phys = AnalyticalPhysicalModel(pixels=args.pixels)
+
+    phys = PhysicalModel(pixels=args.pixels, image_fov=image_fov, kappa_fov=kappa_fov, src_fov=args.source_fov, psf_sigma=args.psf_sigma)
     with STRATEGY.scope():  # Replicate ops accross gpus
         ray_tracer = RayTracer(
             pixels=args.pixels,
@@ -215,13 +219,13 @@ def main(args):
                 y_true = distributed_inputs[1][res_idx, ...]
                 y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
-            # Lens residual
-            for ellipticity in [0., 0.1, 0.4, 0.6]:
-                lens_true = phys.lens_source_func(e=ellipticity)[0, ...]
-                alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
-                tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")), step=step)
+                # Lens residual
+                kappa = distributed_inputs[0][res_idx, ...][None, ...]
+                lens_true = phys.lens_source_func(kappa)[0, ...]
+                alpha_pred = ray_tracer(kappa)
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
+                tf.summary.image(f"Lens residual {res_idx}",
+                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title="")), step=step)
         if args.profile and epoch == 1:
             # redo the last training step for debugging purposes
             tf.profiler.experimental.start(logdir=logdir)
@@ -236,13 +240,13 @@ def main(args):
                 y_true = distributed_inputs[1][res_idx, ...]
                 y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
-            # Lens residual
-            for ellipticity in [0., 0.1, 0.4, 0.6]:
-                lens_true = phys.lens_source_func(e=ellipticity)[0, ...]
-                alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
-                tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")), step=step)
+                # Lens residual
+                kappa = distributed_inputs[0][res_idx, ...][None, ...]
+                lens_true = phys.lens_source_func(kappa)[0, ...]
+                alpha_pred = ray_tracer(kappa)
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
+                tf.summary.image(f"Lens residual {res_idx}",
+                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title="")), step=step)
         train_cost = epoch_loss.result().numpy()
         val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
@@ -320,7 +324,10 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoints",                    default=10,     type=int,               help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3,      type=int,               help="Max model checkpoint to keep")
     parser.add_argument("--n_residuals",                    default=1,      type=int,               help="Number of residual plots to save. Add overhead at the end of an epoch only.")
-    parser.add_argument("--profile",                        action="store_true",                    help="If added, we will profile the last training step of the first epoch")
+    parser.add_argument("--profile",                        action="store_true",                    help="If added, we will profile the last training step of the first epochAnalyticalPhysicalModel")
+    parser.add_argument("--source_fov",                     default=3,      type=float,             help="Source fov for lens residuals")
+    parser.add_argument("--source_w",                       default=0.1,    type=float,             help="Width of gaussian of source gaussian")
+    parser.add_argument("--psf_sigma",                      default=0.04,   type=float,             help="Sigma of PSF for lens resiudal")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",                   default=10,     type=int,               help="Number of epochs for training.")

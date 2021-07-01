@@ -70,7 +70,9 @@ def distributed_strategy(args):
                 alpha=alpha,
                 rescalings=rescaling_factors,
                 kappa_ids=kappa_ids,
-                einstein_radius=einstein_radius
+                einstein_radius=einstein_radius,
+                image_fov=args.image_fov,
+                kappa_fov=kappa_gen.kappa_fov
             )
             for record in records:
                 writer.write(record)
