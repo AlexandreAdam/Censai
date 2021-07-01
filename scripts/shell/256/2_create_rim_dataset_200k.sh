@@ -27,7 +27,7 @@ python $CENSAI_PATH/scripts/2_create_rim_dataset.py\
   --shuffle_cosmos\
   --buffer_size=1000\
   --batch=20\
-  --tukey_alpha=0.5\
+  --tukey_alpha=0.6\
   --bins=10\
   --rescaling_size=100\
   --z_source=2.379\
