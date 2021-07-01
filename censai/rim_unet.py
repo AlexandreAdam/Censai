@@ -31,6 +31,22 @@ class RIMUnet:
         self.beta_2 = beta_2
         self.epsilon = epsilon
 
+        if self.kappalog:
+            if self.kappa_normalize:
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_kappa(x), forward=True))
+            else:
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_kappa(x))
+        else:
+            self.kappa_link = tf.identity
+
+        if self.kappalog:
+            if self.kappa_normalize:
+                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**logkappa_normalization(x, forward=False))
+            else:
+                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**x)
+        else:
+            self.kappa_inverse_link = tf.identity
+
     def initial_states(self, batch_size):
         source_init = tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1))
         if self.kappalog:
@@ -44,25 +60,6 @@ class RIMUnet:
         source_states = self.source_model.init_hidden_states(self.source_pixels, batch_size)
         kappa_states = self.kappa_model.init_hidden_states(self.kappa_pixels, batch_size)
         return source_init, source_states, kappa_init, kappa_states
-
-    @tf.function
-    def kappa_link(self, kappa):
-        if self.kappalog:
-            kappa = log_kappa(kappa)
-            if self.kappa_normalize:
-                return logkappa_normalization(kappa, forward=True)
-            return kappa
-        else:
-            return kappa
-
-    @tf.function
-    def kappa_inverse_link(self, eta):
-        if self.kappalog:
-            if self.kappa_normalize:
-                eta = logkappa_normalization(eta, forward=False)
-            return 10**(eta)
-        else:
-            return eta
 
     def grad_update(self, grad1, grad2, time_step):
         if self.adam:

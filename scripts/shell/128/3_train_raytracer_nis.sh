@@ -25,9 +25,8 @@ python $CENSAI_PATH/scripts/3_train_raytracer.py\
   --block_conv_layers=3\
   --strides=2\
   --resampling_kernel_size=5\
-  --kappalog=True\
-  --normalize=False\
-  --upsampling_interpolation=True\
+  --kappalog\
+  --upsampling_interpolation\
   --kernel_regularizer_amp=0\
   --initializer=glorot_uniform\
   --batch_size=10\

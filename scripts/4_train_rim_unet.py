@@ -391,9 +391,9 @@ if __name__ == "__main__":
 
     # RIM hyperparameters
     parser.add_argument("--steps",                  default=16,     type=int,       help="Number of time steps of RIM")
-    parser.add_argument("--adam",                   default=True,   type=bool,      help="ADAM update for the log-likelihood gradient.")
-    parser.add_argument("--kappalog",               default=True,   type=bool)
-    parser.add_argument("--kappa_normalize",        default=False,  type=bool)
+    parser.add_argument("--adam",                   action="store_true",            help="ADAM update for the log-likelihood gradient.")
+    parser.add_argument("--kappalog",               action="store_true")
+    parser.add_argument("--kappa_normalize",        action="store_true")
     
     # Kappa model hyperparameters
     parser.add_argument("--kappa_filters",                  default=32,     type=int)
@@ -406,7 +406,7 @@ if __name__ == "__main__":
     parser.add_argument("--kappa_bottleneck_filters",       default=None,   type=int)
     parser.add_argument("--kappa_resampling_kernel_size",   default=None,   type=int)
     parser.add_argument("--kappa_gru_kernel_size",          default=None,   type=int)
-    parser.add_argument("--kappa_upsampling_interpolation", default=False,  type=bool)
+    parser.add_argument("--kappa_upsampling_interpolation", action="store_true")
     parser.add_argument("--kappa_kernel_regularizer_amp",   default=1e-4,   type=float)
     parser.add_argument("--kappa_bias_regularizer_amp",     default=1e-4,   type=float)
     parser.add_argument("--kappa_activation",               default="leaky_relu")
@@ -424,7 +424,7 @@ if __name__ == "__main__":
     parser.add_argument("--source_bottleneck_filters",       default=None,   type=int)
     parser.add_argument("--source_resampling_kernel_size",   default=None,   type=int)
     parser.add_argument("--source_gru_kernel_size",          default=None,   type=int)
-    parser.add_argument("--source_upsampling_interpolation", default=False,  type=bool)
+    parser.add_argument("--source_upsampling_interpolation", action="store_true")
     parser.add_argument("--source_kernel_regularizer_amp",   default=1e-4,   type=float)
     parser.add_argument("--source_bias_regularizer_amp",     default=1e-4,   type=float)
     parser.add_argument("--source_activation",               default="leaky_relu")
@@ -452,7 +452,7 @@ if __name__ == "__main__":
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
-    parser.add_argument("--clipping",               default=True,   type=bool,      help="Clip backprop gradients between -10 and 10.")
+    parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
 

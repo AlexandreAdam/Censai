@@ -280,11 +280,11 @@ if __name__ == "__main__":
     parser.add_argument("--bottleneck_strides",             default=4,                type=int,     help="Strided of the downsampling convolutional layer before bottleneck")
     parser.add_argument("--decoder_encoder_filters",        default=32,               type=int,     help="Number of filters of conv layers")
     parser.add_argument("--filter_scaling",                 default=1,                type=float,   help="Scaling of the number of filters at each layers (1=no scaling)")
-    parser.add_argument("--upsampling_interpolation",       default=False,            type=bool,    help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
+    parser.add_argument("--upsampling_interpolation",       action="store_true",                    help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
     parser.add_argument("--activation",                     default="linear",         type=str,     help="Non-linearity of layers")
     parser.add_argument("--kernel_regularizer_amp",         default=1e-3,             type=float,   help="l2 regularization on weights")
-    parser.add_argument("--kappalog",                       default=True,             type=bool,    help="Input is log of kappa")
-    parser.add_argument("--normalize",                      default=False,            type=bool,    help="Normalize log of kappa with max and minimum values defined in definitions.py")
+    parser.add_argument("--kappalog",                       action="store_true",                    help="Input is log of kappa")
+    parser.add_argument("--normalize",                      action="store_true",                    help="Normalize log of kappa with max and minimum values defined in definitions.py")
 
     # Training set params
     parser.add_argument("-b", "--batch_size",               default=10,     type=int,               help="Number of images in a batch")
@@ -311,7 +311,7 @@ if __name__ == "__main__":
     parser.add_argument("--initial_learning_rate",          default=1e-3,   type=float,             help="Initial learning rate.")
     parser.add_argument("--decay_rate",                     default=1.,     type=float,             help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",                    default=1000,   type=int,               help="Decay steps of exponential decay of the learning rate.")
-    parser.add_argument("--clipping",                       default=True,   type=bool,              help="Clip backprop gradients between -10 and 10")
+    parser.add_argument("--clipping",                       action="store_true",                    help="Clip backprop gradients between -10 and 10")
     parser.add_argument("--patience",                       default=np.inf, type=int,               help="Number of step at which training is stopped if no improvement is recorder")
     parser.add_argument("--tolerance",                      default=0,      type=float,             help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
 

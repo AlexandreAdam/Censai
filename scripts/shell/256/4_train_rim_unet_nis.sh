@@ -17,7 +17,7 @@ python $CENSAI_PATH/scripts/4_train_rim_unet.py\
   --decay_rate=0.9\
   --decay_steps=5000\
   --staircase\
-  --clipping=True\
+  --clipping\
   --patience=20\
   --tolerance=0.01\
   --batch_size=4\
@@ -27,16 +27,15 @@ python $CENSAI_PATH/scripts/4_train_rim_unet.py\
   --cycle_length=4\
   --block_length=1\
   --steps=16\
-  --adam=True\
-  --kappalog=True\
-  --kappa_normalize=False\
+  --adam\
+  --kappalog\
   --kappa_filters=32\
   --kappa_filter_scaling=1\
   --kappa_kernel_size=3\
   --kappa_layers=4\
   --kappa_block_conv_layers=2\
   --kappa_strides=2\
-  --kappa_upsampling_interpolation=False\
+  --kappa_upsampling_interpolation\
   --kappa_kernel_regularizer_amp=1e-4\
   --kappa_bias_regularizer_amp=1e-4\
   --kappa_activatio=leaky_relu\
@@ -48,7 +47,7 @@ python $CENSAI_PATH/scripts/4_train_rim_unet.py\
   --source_layers=3\
   --source_block_conv_layers=2\
   --source_strides=2\
-  --source_upsampling_interpolation=False\
+  --source_upsampling_interpolation\
   --source_kernel_regularizer_amp=1e-4\
   --source_bias_regularizer_amp=1e-4\
   --source_activatio=leaky_relu\
