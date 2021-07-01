@@ -16,6 +16,9 @@ python $CENSAI_PATH/scripts/3_train_raytracer.py\
   --train_split=0.9\
   --compression_type=GZIP\
   --pixels=256\
+  --initial_learning_rate=1e-4\
+  --decay_rate=0.9\
+  --decay_steps=1000\
   --kernel_size=3\
   --filters=8\
   --filter_scaling=2\

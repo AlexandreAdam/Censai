@@ -10,11 +10,14 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/3_train_raytracer.py\
   --datasets $HOME/scratch/Censai/data/alpha128_NIS\
+  --compression_type=GZIP\
   --total_items=1000\
   --epochs=500\
   --train_split=0.9\
-  --compression_type=GZIP\
   --pixels=128\
+  --initial_learning_rate=1e-4\
+  --decay_rate=0.9\
+  --decay_steps=1000\
   --kernel_size=3\
   --filters=32\
   --filter_scaling=1\
