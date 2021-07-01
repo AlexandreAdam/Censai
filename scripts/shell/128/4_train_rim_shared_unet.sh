@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/4_train_rim_shared_unet.py\
-  --datasets $HOME/scratch/Censai/lenses128_TNG100 $HOME/scratch/Censai/lenses128_NIS\
+  --datasets $HOME/scratch/Censai/data/lenses128_TNG100 $HOME/scratch/Censai/data/lenses128_NIS\
   --compression_type=GZIP\
   --forward_method=fft\
   --epochs=200\
