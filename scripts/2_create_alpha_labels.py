@@ -88,8 +88,7 @@ if __name__ == '__main__':
     parser.add_argument("--compression_type", default=None, help="Default is no compression. Use 'GZIP' to compress data")
 
     # Physical Model params
-    parser.add_argument("--image_fov", default=20, type=float,
-                        help="Field of view of the image (lens plane) in arc seconds")
+    parser.add_argument("--image_fov",      default=20,     type=float,     help="Field of view of the image (lens plane) in arc seconds")
 
     # Data generation params
     parser.add_argument("--batch",          default=1,      type=int,       help="Number of label maps to be computed at the same time")
