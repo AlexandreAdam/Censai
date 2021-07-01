@@ -20,12 +20,12 @@ python $CENSAI_PATH/scripts/4_train_rim_shared_unet.py\
   --clipping=True\
   --patience=20\
   --tolerance=0.01\
-  --batch_size=8\
+  --batch_size=4\
   --train_split=0.9\
-  --total_items=1000\
+  --total_items=500\
   --num_parallel_reads=4\
   --cycle_length=4\
-  --block_length=2\
+  --block_length=1\
   --steps=16\
   --adam=True\
   --kappalog=True\

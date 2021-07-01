@@ -15,12 +15,12 @@ python $CENSAI_PATH/scripts/4_train_rim_shared_unet.py\
   --epochs=20\
   --initial_learning_rate=1e-3\
   --patience=20\
-  --batch_size=16\
+  --batch_size=4\
   --train_split=0.9\
-  --total_items=100\
+  --total_items=500\
   --num_parallel_reads=4\
   --cycle_length=4\
-  --block_length=4\
+  --block_length=1\
   --steps=16\
   --adam=True\
   --kappalog=True\
