@@ -25,7 +25,7 @@ python $CENSAI_PATH/scripts/2_create_rim_dataset_analytical_kappa_maps.py\
   --max_ellipticity=0.5\
   --shuffle_cosmos\
   --buffer_size=1000\
-  --tukey_alpha=0.5\
+  --tukey_alpha=0.6\
   --batch=20\
   --z_source=2.379\
   --z_lens=0.4457

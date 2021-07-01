@@ -11,10 +11,10 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/4_train_rim_shared_unet.py\
   --datasets $HOME/scratch/Censai/data/lenses128_NIS\
   --compression_type=GZIP\
-  --forward_method=fft\
+  --forward_method=conv2d\
   --epochs=20\
-  --initial_learning_rate=1e-3\
-  --patience=20\
+  --initial_learning_rate=1e-4\
+  --patience=40\
   --batch_size=1\
   --train_split=0.9\
   --total_items=100\

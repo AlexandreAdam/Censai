@@ -13,6 +13,7 @@ python $CENSAI_PATH/scripts/2_create_alpha_labels.py \
   --kappa_dir=$HOME/scratch/Censai/data/kappa356_TNG100\
   --output_dir=$HOME/scratch/Censai/data/alpha256_TNG100\
   --compression_type=GZIP\
+  --max_shift=0.5\
   --crop=50\
   --augment=10.\
   --batch=20\
