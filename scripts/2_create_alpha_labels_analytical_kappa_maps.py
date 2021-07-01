@@ -50,7 +50,9 @@ def distributed_strategy(args):
                 alpha=alpha,
                 rescalings=[1] * args.batch,
                 kappa_ids=[-1] * args.batch,
-                einstein_radius=einstein_radius.numpy().squeeze()
+                einstein_radius=einstein_radius.numpy().squeeze(),
+                image_fov=args.image_fov,
+                kappa_fov=args.kappa_fov
             )
             for record in records:
                 writer.write(record)
