@@ -7,7 +7,9 @@ def encode_examples(
         alpha: tf.Tensor,
         rescalings: list,
         kappa_ids: list,
-        einstein_radius: list
+        einstein_radius: list,
+        image_fov: float,
+        kappa_fov: float
 ):
     batch_size = kappa.shape[0]
     pixels = kappa.shape[1]
@@ -19,7 +21,9 @@ def encode_examples(
             "alpha": _bytes_feature(alpha[j].numpy().tobytes()),
             "rescale": _float_feature(rescalings[j]),
             "kappa_id": _int64_feature(kappa_ids[j]),
-            "Einstein radius": _float_feature(einstein_radius[j])
+            "Einstein radius": _float_feature(einstein_radius[j]),
+            "image_fov": _float_feature(image_fov),
+            "kappa_fov": _float_feature(kappa_fov)
         }
 
         serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
