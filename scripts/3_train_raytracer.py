@@ -105,7 +105,7 @@ def main(args):
     elif args.logname is not None:
         logname = args.logname
     else:
-        logname = args.logname_prefixe + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     # setup tensorboard writer (nullwriter in case we do not want to sync)
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
@@ -266,7 +266,7 @@ def main(args):
             print("Reached patience")
             break
     # at the end of training, log hyperparameters for future tuning
-    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefix + "_hparams")).as_default():
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_hparams")).as_default():
         hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
         hp.hparams(hparams_dict)
         tf.summary.scalar("Test MSE", best_loss, step=step)

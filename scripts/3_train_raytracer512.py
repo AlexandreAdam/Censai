@@ -6,8 +6,6 @@ import os, glob
 import numpy as np
 from datetime import datetime
 import random, time
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tensorboard.plugins.hparams import api as hp
 gpus = tf.config.list_physical_devices('GPU')
 
@@ -42,37 +40,6 @@ RAYTRACER_HPARAMS = [
     "kappalog",
     "normalize"
 ]
-
-
-def residual_plot(y_true, y_pred):
-    fig, axs = plt.subplots(2, 3, figsize=(12, 8))
-    for i in range(2):
-        im = axs[i, 0].imshow(y_true.numpy()[..., i], cmap="jet", origin="lower")
-        divider = make_axes_locatable(axs[i, 0])
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
-        axs[i, 0].axis("off")
-
-        im = axs[i, 1].imshow(y_pred.numpy()[..., i], cmap="jet", origin="lower")
-        divider = make_axes_locatable(axs[i, 1])
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
-        axs[i, 1].axis("off")
-
-        residual = np.abs(y_true.numpy()[..., i] - y_pred.numpy()[..., i])
-        im = axs[i, 2].imshow(residual, cmap="jet", origin="lower")
-        divider = make_axes_locatable(axs[i, 2])
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
-        axs[i, 2].axis("off")
-
-    axs[0, 0].set_title("Ground Truth")
-    axs[0, 1].set_title("Prediction")
-    axs[0, 2].set_title("Residual")
-    plt.subplots_adjust(wspace=.2, hspace=.0)
-    plt.figtext(0.1, 0.7, r"$\alpha_x$", va="center", ha="center", size=15, rotation=90)
-    plt.figtext(0.1, 0.3, r"$\alpha_y$", va="center", ha="center", size=15, rotation=90)
-    return fig
 
 
 def main(args):
@@ -126,7 +93,7 @@ def main(args):
     elif args.logname is not None:
         logname = args.logname
     else:
-        logname = args.logname_prefixe + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     # setup tensorboard writer (nullwriter in case we do not want to sync)
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
@@ -287,7 +254,7 @@ def main(args):
             print("Reached patience")
             break
     # at the end of training, log hyperparameters for future tuning
-    with tf.summary.create_file_writer(os.path.join(args.logdir, "RayTracer512_hparams", logname)).as_default():
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_hparams")).as_default():
         hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
         hp.hparams(hparams_dict)
         tf.summary.scalar("Test MSE", best_loss, step=step)
