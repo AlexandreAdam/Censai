@@ -16,7 +16,7 @@ python $CENSAI_PATH/scripts/2_create_rim_dataset.py\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
   --compression_type=GZIP\
   --src_pixels=128\
-  --image_fov=15\
+  --image_fov=10\
   --source_fov=3\
   --noise_rms=0.3e-3\
   --psf_sigma=0.07\
