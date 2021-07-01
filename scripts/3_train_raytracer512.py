@@ -238,9 +238,9 @@ def main(args):
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
             # Lens residual
             for ellipticity in [0., 0.1, 0.4, 0.6]:
-                lens_true = phys.lens_source_func(e=ellipticity)
+                lens_true = phys.lens_source_func(e=ellipticity)[0, ...]
                 alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
                 tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
                                  plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")))
         if args.profile and epoch == 1:
@@ -259,9 +259,9 @@ def main(args):
                 tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
             # Lens residual
             for ellipticity in [0., 0.1, 0.4, 0.6]:
-                lens_true = phys.lens_source_func(e=ellipticity)
+                lens_true = phys.lens_source_func(e=ellipticity)[0, ...]
                 alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
                 tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
                                  plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")))
         train_cost = epoch_loss.result().numpy()
