@@ -5,6 +5,7 @@ from censai.models import UnetModel
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 import os, glob, time
+from tensorboard.plugins.hparams import api as hp
 from datetime import datetime
 import random
 """ # NOTE ON THE USE OF MULTIPLE GPUS #
@@ -336,8 +337,9 @@ def main(args):
                                      )), step=step)
             tf.summary.scalar("MSE", test_cost, step=step)
         val_cost = val_loss.result().numpy()
-        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {val_cost:.3e} "
-              f"| learning rate {optim.lr(step).numpy():.2e}")
+        train_cost = epoch_loss.result().numpy()
+        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
+              f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
         if val_cost < (1 - args.tolerance) * best_loss:
             best_loss = val_cost
             patience = args.patience
@@ -359,6 +361,23 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
+        with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_source_hparams")).as_default():
+            hparams_dict = {key: vars(args)["source_" +key] for key in SOURCE_MODEL_HPARAMS}
+            hp.hparams(hparams_dict)
+            tf.summary.scalar("Test MSE", best_loss, step=step)
+            tf.summary.scalar("Final Train MSE", train_cost, step=step)
+
+        with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_kappa_hparams")).as_default():
+            hparams_dict = {key: vars(args)["kappa_" + key] for key in KAPPA_MODEL_HPARAMS}
+            hp.hparams(hparams_dict)
+            tf.summary.scalar("Test MSE", best_loss, step=step)
+            tf.summary.scalar("Final Train MSE", train_cost, step=step)
+
+        with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_rim_hparams")).as_default():
+            hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
+            hp.hparams(hparams_dict)
+            tf.summary.scalar("Test MSE", best_loss, step=step)
+            tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
 
 if __name__ == "__main__":
