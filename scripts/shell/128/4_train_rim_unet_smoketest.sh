@@ -14,12 +14,12 @@ python $CENSAI_PATH/scripts/4_train_rim_unet.py\
   --forward_method=fft\
   --epochs=20\
   --initial_learning_rate=1e-3\
-  --batch_size=16\
+  --batch_size=1\
   --train_split=0.9\
   --total_items=100\
-  --num_parallel_reads=4\
-  --cycle_length=4\
-  --block_length=2\
+  --num_parallel_reads=1\
+  --cycle_length=1\
+  --block_length=1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --logname=RIM_Unet128_SmokeTest\

@@ -242,7 +242,7 @@ def main(args):
                 alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
                 lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
                 tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")))
+                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")), step=step)
         if args.profile and epoch == 1:
             # redo the last training step for debugging purposes
             tf.profiler.experimental.start(logdir=logdir)
@@ -263,7 +263,7 @@ def main(args):
                 alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
                 lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
                 tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")))
+                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")), step=step)
         train_cost = epoch_loss.result().numpy()
         val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
