@@ -16,10 +16,9 @@ python $CENSAI_PATH/scripts/3_train_raytracer512.py\
   --bottleneck_kernel_size=16\
   --decoder_encoder_filters=8\
   --filter_scaling=2\
-  --upsampling_interpolation=True\
+  --upsampling_interpolation\
   --kernel_regularizer_amp=0\
-  --kappalog=True\
-  --normalize=False\
+  --kappalog\
   --datasets $HOME/scratch/Censai/data/alpha512_NIS/\
   --compression_type=GZIP\
   --total_items=5000\
@@ -38,7 +37,7 @@ python $CENSAI_PATH/scripts/3_train_raytracer512.py\
   --initial_learning_rate=1e-3\
   --decay_rate=1\
   --decay_steps=1000\
-  --clipping=False\
+  --clipping\
   --patience=15\
   --tolerance=0.\
   --seed=42

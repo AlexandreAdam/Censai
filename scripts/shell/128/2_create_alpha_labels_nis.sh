@@ -16,6 +16,8 @@ python $CENSAI_PATH/scripts/2_create_alpha_labels_analytical_kappa_maps.py\
   --compression_type=GZIP\
   --batch=20\
   --max_shift=0.5\
+  --image_fov=5\
+  --kappa_fov=6\
   --max_ellipticity=0.6\
   --z_source=2.379\
   --z_lens=0.4457\

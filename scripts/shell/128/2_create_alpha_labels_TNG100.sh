@@ -14,6 +14,7 @@ python $CENSAI_PATH/scripts/2_create_alpha_labels.py\
   --output_dir=$HOME/scratch/Censai/data/alpha128_TNG100\
   --compression_type=GZIP\
   --max_shift=0.5\
+  --image_fov=5\
   --crop=50\
   --augment=10\
   --batch=20\
