@@ -1,7 +1,7 @@
 import tensorflow as tf
 from censai import RayTracer, PhysicalModel
 from censai.data.alpha_tng import decode_train, decode_physical_info
-from censai.utils import nullwriter, plot_to_image, deflection_angles_residual_plot as residual_plot, lens_residual_plot
+from censai.utils import nullwriter, plot_to_image, raytracer_residual_plot as residual_plot
 import os, glob
 import numpy as np
 from datetime import datetime
@@ -216,16 +216,14 @@ def main(args):
             # last batch we make a summary of residuals
             for res_idx in range(min(args.n_residuals, args.batch_size)):
                 # Deflection angle residual
-                y_true = distributed_inputs[1][res_idx, ...]
-                y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
-                tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
+                alpha_true = distributed_inputs[1][res_idx, ...]
+                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 # Lens residual
                 kappa = distributed_inputs[0][res_idx, ...][None, ...]
                 lens_true = phys.lens_source_func(kappa)[0, ...]
-                alpha_pred = ray_tracer(kappa)
                 lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
-                tf.summary.image(f"Lens residual {res_idx}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title="")), step=step)
+                tf.summary.image(f"Residuals {res_idx}",
+                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
         if args.profile and epoch == 1:
             # redo the last training step for debugging purposes
             tf.profiler.experimental.start(logdir=logdir)
@@ -237,16 +235,15 @@ def main(args):
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
             for res_idx in range(min(args.n_residuals, args.batch_size)):
-                y_true = distributed_inputs[1][res_idx, ...]
-                y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
-                tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
+                # Deflection angle residual
+                alpha_true = distributed_inputs[1][res_idx, ...]
+                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
                 # Lens residual
                 kappa = distributed_inputs[0][res_idx, ...][None, ...]
                 lens_true = phys.lens_source_func(kappa)[0, ...]
-                alpha_pred = ray_tracer(kappa)
                 lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
-                tf.summary.image(f"Lens residual {res_idx}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title="")), step=step)
+                tf.summary.image(f"Residuals {res_idx}",
+                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
         train_cost = epoch_loss.result().numpy()
         val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "

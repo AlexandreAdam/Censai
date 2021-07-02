@@ -150,7 +150,7 @@ class PhysicalModel:
         lens = self.convolve_with_psf(lens)
         return lens
 
-    def lens_source_func_given_alpha(self, alpha, x0=0., y0=0., xs=0., ys=0., es=0., w=0.1):
+    def lens_source_func_given_alpha(self, alpha, xs=0., ys=0., es=0., w=0.1):
         alpha1, alpha2 = tf.split(alpha, 2, axis=-1)
         # lens equation
         beta1 = self.ximage - alpha1
