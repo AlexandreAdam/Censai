@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/4_train_rim_shared_unet.py\
-  --datasets $HOME/scratch/Censai/lenses256_NIS\
+  --datasets $HOME/scratch/Censai/data/lenses256_NIS\
   --compression_type=GZIP\
   --forward_method=fft\
   --epochs=20\
@@ -22,9 +22,8 @@ python $CENSAI_PATH/scripts/4_train_rim_shared_unet.py\
   --cycle_length=4\
   --block_length=1\
   --steps=16\
-  --adam=True\
-  --kappalog=True\
-  --kappa_normalize=False\
+  --adam\
+  --kappalog\
   --filters=32\
   --filter_scaling=1\
   --kernel_size=3\
@@ -40,7 +39,7 @@ python $CENSAI_PATH/scripts/4_train_rim_shared_unet.py\
   --kappa_resize_method=bilinear\
   --kappa_resize_conv_layers=1\
   --kappa_resize_kernel_size=7\
-  --kappa_resize_separate_grad_downsampling=False\
+  --kappa_resize_separate_grad_downsampling\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --logname=RIM_SharedUnet256_SmokeTest\

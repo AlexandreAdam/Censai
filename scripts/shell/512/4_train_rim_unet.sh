@@ -10,9 +10,8 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/4_train_rim_unet512.py\
   --time_steps=16\
-  --adam=True\
-  --kappalog=True\
-  --normalize=False\
+  --adam\
+  --kappalog\
   --kappa_strides=4\
   --source_strides=2\
   --state_size_1=4\
@@ -33,7 +32,7 @@ python $CENSAI_PATH/scripts/4_train_rim_unet512.py\
   --decay_rate=0.9\
   --decay_step=20000\
   --staircase\
-  --clipping=True\
+  --clipping\
   --logdir=$HOME/scratch/Censai/logs/\
   --model_dir=$HOME/scratch/Censai/models/\
   --logname=RIM_SmokeTest\

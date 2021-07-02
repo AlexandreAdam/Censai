@@ -1,2 +1,2 @@
-from .decode_deflection_angle import decode_all, decode_train
+from .decode_deflection_angle import decode_all, decode_train, decode_physical_info
 from .encode_deflection_angle import encode_examples

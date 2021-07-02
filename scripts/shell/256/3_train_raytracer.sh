@@ -16,6 +16,9 @@ python $CENSAI_PATH/scripts/3_train_raytracer.py\
   --train_split=0.9\
   --compression_type=GZIP\
   --pixels=256\
+  --initial_learning_rate=1e-4\
+  --decay_rate=0.9\
+  --decay_steps=1000\
   --kernel_size=3\
   --filters=8\
   --filter_scaling=2\
@@ -23,9 +26,8 @@ python $CENSAI_PATH/scripts/3_train_raytracer.py\
   --block_conv_layers=2\
   --strides=2\
   --resampling_kernel_size=5\
-  --kappalog=True\
-  --normalize=False\
-  --upsampling_interpolation=True\
+  --kappalog\
+  --upsampling_interpolation\
   --kernel_regularizer_amp=1e-5\
   --initializer=glorot_uniform\
   --batch_size=20\

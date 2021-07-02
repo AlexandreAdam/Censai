@@ -92,21 +92,19 @@ class RayTracer(tf.keras.Model):
             **common_params
         )
 
-    @tf.function
-    def kappa_link(self, kappa):
         if self.kappalog:
-            kappa = log_kappa(kappa)
             if self.kappa_normalize:
-                return logkappa_normalization(kappa, forward=True)
-            return kappa
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_kappa(logkappa_normalization(x, forward=True)))
+            else:
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_kappa(x))
         else:
-            return kappa
+            self.kappa_link = tf.identity
 
     def __call__(self, kappa):
         return self.call(kappa)
 
     def call(self, kappa):
-        kappa = self.kappa_link(kappa)  # preprocessing
+        kappa = self.kappa_link(kappa)
         skip_connections = []
         z = kappa
         for i in range(len(self.encoding_layers)):

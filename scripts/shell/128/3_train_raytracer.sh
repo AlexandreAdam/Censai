@@ -10,21 +10,23 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/3_train_raytracer.py\
   --datasets $HOME/scratch/Censai/data/alpha128_TNG100 $HOME/scratch/Censai/data/alpha128_NIS\
-  --total_items=5000\
+  --compression_type=GZIP\
+  --total_items=1000\
   --epochs=500\
   --train_split=0.9\
-  --compression_type=GZIP\
   --pixels=128\
   --kernel_size=5\
+  --initial_learning_rate=1e-4\
+  --decay_rate=0.9\
+  --decay_steps=1000\
   --filters=32\
   --filter_scaling=1\
   --layers=4\
   --block_conv_layers=3\
   --strides=2\
-  --resampling_kernel_size=7\
-  --kappalog=True\
-  --normalize=False\
-  --upsampling_interpolation=True\
+  --resampling_kernel_size=5\
+  --kappalog\
+  --upsampling_interpolation\
   --kernel_regularizer_amp=0\
   --initializer=glorot_uniform\
   --batch_size=10\
