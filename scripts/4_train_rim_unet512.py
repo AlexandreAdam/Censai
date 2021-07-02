@@ -210,6 +210,7 @@ def main(args):
     lastest_checkpoint = 1
     for epoch in range(args.epochs):
         epoch_loss.reset_states()
+        # time_per_step.reset_states()
         with train_writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
                 cost = distributed_train_step(distributed_inputs)
