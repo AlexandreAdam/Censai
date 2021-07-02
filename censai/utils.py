@@ -190,7 +190,6 @@ def raytracer_residual_plot(y_true, y_pred, lens_true, lens_pred):
     plt.figtext(0.1, 0.75, r"$\alpha_x$", va="center", ha="center", size=15, rotation=90)
     plt.figtext(0.1, 0.5,  r"$\alpha_y$", va="center", ha="center", size=15, rotation=90)
     plt.figtext(0.1, 0.25, r"Lens", va="center", ha="center", size=15, rotation=90)
->>>>>>> a4d851477f327f04d691c27f1fe855b2c6475550
     return fig
 
 
