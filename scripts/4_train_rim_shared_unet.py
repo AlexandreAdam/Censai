@@ -283,7 +283,7 @@ def main(args):
                 tf.summary.image(f"Residual {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
+                                         lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
         with test_writer.as_default():
@@ -300,7 +300,7 @@ def main(args):
                 tf.summary.image(f"Residual {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
+                                         lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
         val_cost = val_loss.result().numpy()
@@ -372,7 +372,7 @@ if __name__ == "__main__":
     parser.add_argument("--kappa_resize_conv_layers",                   default=1,      type=int)
     parser.add_argument("--kappa_resize_strides",                       default=2,      type=int)
     parser.add_argument("--kappa_resize_kernel_size",                   default=3,      type=int)
-    parser.add_argument("--kappa_resize_separate_grad_downsampling",    default=False,  type=bool)
+    parser.add_argument("--kappa_resize_separate_grad_downsampling",    action="store_true")
 
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
@@ -395,7 +395,7 @@ if __name__ == "__main__":
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
-    parser.add_argument("--clipping",               action="True",                  help="Clip backprop gradients between -10 and 10.")
+    parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
 

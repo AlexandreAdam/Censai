@@ -315,7 +315,7 @@ def main(args):
                 tf.summary.image(f"Residual {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
+                                         lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
         with test_writer.as_default():
@@ -332,7 +332,7 @@ def main(args):
                 tf.summary.image(f"Residual {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
+                                         lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
             tf.summary.scalar("MSE", test_cost, step=step)
