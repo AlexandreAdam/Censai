@@ -101,15 +101,13 @@ class RayTracer512(tf.keras.Model):
 
         self.Loutputs = tf.keras.layers.Conv2D(2, (1, 1), activation="linear", **common_params)  # rescaling of ouptut
 
-    @tf.function
-    def kappa_link(self, kappa):
         if self.kappalog:
-            kappa = log_kappa(kappa)
             if self.kappa_normalize:
-                return logkappa_normalization(kappa, forward=True)
-            return kappa
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_kappa(logkappa_normalization(x, forward=True)))
+            else:
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_kappa(x))
         else:
-            return kappa
+            self.kappa_link = tf.identity
 
     def call(self, kappa):
         kappa = self.kappa_link(kappa)  # preprocessing

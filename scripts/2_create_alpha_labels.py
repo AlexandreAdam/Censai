@@ -32,6 +32,7 @@ def distributed_strategy(args):
         crop=args.crop,
         min_theta_e=min_theta_e,
         max_theta_e=max_theta_e,
+        max_shift=args.max_shift,
         rescaling_size=args.rescaling_size,
         rescaling_theta_bins=args.bins
     )
@@ -69,7 +70,9 @@ def distributed_strategy(args):
                 alpha=alpha,
                 rescalings=rescaling_factors,
                 kappa_ids=kappa_ids,
-                einstein_radius=einstein_radius
+                einstein_radius=einstein_radius,
+                image_fov=args.image_fov,
+                kappa_fov=kappa_gen.kappa_fov
             )
             for record in records:
                 writer.write(record)
@@ -101,6 +104,7 @@ if __name__ == '__main__':
     parser.add_argument("--rescaling_size", default=100,    type=int,       help="Number of rescaling factors to try for a given kappa map")
     parser.add_argument("--max_theta_e",    default=None,   type=float,     help="Maximum allowed Einstein radius, default is 35 percent of image fov")
     parser.add_argument("--min_theta_e",    default=None,   type=float,     help="Minimum allowed Einstein radius, default is 5 percent of image fov")
+    parser.add_argument("--max_shift",      default=1.,     type=float,     help="Maximum allowed shift in arcsecond.")
 
     # Physics params
     parser.add_argument("--z_source",       default=2.379,  type=float)

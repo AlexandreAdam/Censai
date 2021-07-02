@@ -1,7 +1,7 @@
 import tensorflow as tf
-from censai import RayTracer, AnalyticalPhysicalModel
-from censai.data.alpha_tng import decode_train
-from censai.utils import nullwriter, plot_to_image, deflection_angles_residual_plot as residual_plot, lens_residual_plot
+from censai import RayTracer, PhysicalModel
+from censai.data.alpha_tng import decode_train, decode_physical_info
+from censai.utils import nullwriter, plot_to_image, raytracer_residual_plot as residual_plot
 import os, glob
 import numpy as np
 from datetime import datetime
@@ -59,6 +59,9 @@ def main(args):
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
                                cycle_length=args.cycle_length, block_length=args.block_length)
+    # extract physical info from first example
+    for image_fov, kappa_fov in dataset.map(decode_physical_info):
+        break
     dataset = dataset.map(decode_train).batch(args.batch_size)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
@@ -72,7 +75,8 @@ def main(args):
 
     # ========== Model and Physical Model =============================================================================
     # setup an analytical physical model to compare lenses from raytracer and analytical deflection angles.
-    phys = AnalyticalPhysicalModel(pixels=args.pixels)
+
+    phys = PhysicalModel(pixels=args.pixels, image_fov=image_fov, kappa_fov=kappa_fov, src_fov=args.source_fov, psf_sigma=args.psf_sigma)
     with STRATEGY.scope():  # Replicate ops accross gpus
         ray_tracer = RayTracer(
             pixels=args.pixels,
@@ -105,7 +109,7 @@ def main(args):
     elif args.logname is not None:
         logname = args.logname
     else:
-        logname = args.logname_prefixe + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     # setup tensorboard writer (nullwriter in case we do not want to sync)
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
@@ -212,16 +216,14 @@ def main(args):
             # last batch we make a summary of residuals
             for res_idx in range(min(args.n_residuals, args.batch_size)):
                 # Deflection angle residual
-                y_true = distributed_inputs[1][res_idx, ...]
-                y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
-                tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
-            # Lens residual
-            for ellipticity in [0., 0.1, 0.4, 0.6]:
-                lens_true = phys.lens_source_func(e=ellipticity)[0, ...]
-                alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
-                tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")), step=step)
+                alpha_true = distributed_inputs[1][res_idx, ...]
+                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
+                # Lens residual
+                kappa = distributed_inputs[0][res_idx, ...][None, ...]
+                lens_true = phys.lens_source_func(kappa)[0, ...]
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
+                tf.summary.image(f"Residuals {res_idx}",
+                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
         if args.profile and epoch == 1:
             # redo the last training step for debugging purposes
             tf.profiler.experimental.start(logdir=logdir)
@@ -233,16 +235,15 @@ def main(args):
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
             for res_idx in range(min(args.n_residuals, args.batch_size)):
-                y_true = distributed_inputs[1][res_idx, ...]
-                y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
-                tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
-            # Lens residual
-            for ellipticity in [0., 0.1, 0.4, 0.6]:
-                lens_true = phys.lens_source_func(e=ellipticity)[0, ...]
-                alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
-                tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")), step=step)
+                # Deflection angle residual
+                alpha_true = distributed_inputs[1][res_idx, ...]
+                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
+                # Lens residual
+                kappa = distributed_inputs[0][res_idx, ...][None, ...]
+                lens_true = phys.lens_source_func(kappa)[0, ...]
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
+                tf.summary.image(f"Residuals {res_idx}",
+                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
         train_cost = epoch_loss.result().numpy()
         val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
@@ -295,10 +296,10 @@ if __name__ == "__main__":
     parser.add_argument("--strides",                        default=2,                type=int,     help="Strides of downsampling and upsampling layers")
     parser.add_argument("--bottleneck_filters",             default=None,             type=int,     help="Number of filters of bottleneck layers. Default None, use normal scaling of filters.")
     parser.add_argument("--resampling_kernel_size",         default=None,             type=int,     help="Kernel size of downsampling and upsampling layers. None, use same kernel size as the others.")
-    parser.add_argument("--upsampling_interpolation",       default=False,            type=bool,    help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
+    parser.add_argument("--upsampling_interpolation",       action="store_true",                    help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
     parser.add_argument("--kernel_regularizer_amp",         default=1e-3,             type=float,   help="l2 regularization on weights")
-    parser.add_argument("--kappalog",                       default=True,             type=bool,    help="Input is log of kappa")
-    parser.add_argument("--normalize",                      default=False,            type=bool,    help="Normalize log of kappa with max and minimum values defined in definitions.py")
+    parser.add_argument("--kappalog",                       action="store_true",                    help="Input is log of kappa")
+    parser.add_argument("--normalize",                      action="store_true",                    help="Normalize log of kappa with max and minimum values defined in definitions.py")
     parser.add_argument("--activation",                     default="linear",         type=str,     help="Non-linearity of layers")
     parser.add_argument("--initializer",                    default="glorot_uniform", type=str,     help="Weight initializer")
 
@@ -320,14 +321,17 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoints",                    default=10,     type=int,               help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3,      type=int,               help="Max model checkpoint to keep")
     parser.add_argument("--n_residuals",                    default=1,      type=int,               help="Number of residual plots to save. Add overhead at the end of an epoch only.")
-    parser.add_argument("--profile",                        action="store_true",                    help="If added, we will profile the last training step of the first epoch")
+    parser.add_argument("--profile",                        action="store_true",                    help="If added, we will profile the last training step of the first epochAnalyticalPhysicalModel")
+    parser.add_argument("--source_fov",                     default=3,      type=float,             help="Source fov for lens residuals")
+    parser.add_argument("--source_w",                       default=0.1,    type=float,             help="Width of gaussian of source gaussian")
+    parser.add_argument("--psf_sigma",                      default=0.04,   type=float,             help="Sigma of PSF for lens resiudal")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",                   default=10,     type=int,               help="Number of epochs for training.")
     parser.add_argument("--initial_learning_rate",          default=1e-3,   type=float,             help="Initial learning rate.")
     parser.add_argument("--decay_rate",                     default=1.,     type=float,             help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",                    default=1000,   type=int,               help="Decay steps of exponential decay of the learning rate.")
-    parser.add_argument("--clipping",                       default=True,   type=bool,              help="Clip backprop gradients between -10 and 10")
+    parser.add_argument("--clipping",                       action="store_true",                    help="Clip backprop gradients between -10 and 10")
     parser.add_argument("--patience",                       default=np.inf, type=int,               help="Number of step at which training is stopped if no improvement is recorder")
     parser.add_argument("--tolerance",                      default=0,      type=float,             help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
 

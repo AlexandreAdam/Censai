@@ -16,8 +16,8 @@ python $CENSAI_PATH/scripts/2_create_rim_dataset_analytical_kappa_maps.py\
   --compression_type=GZIP\
   --src_pixels=128\
   --pixels=256\
-  --image_fov=15\
-  --kappa_fov=17\
+  --image_fov=10\
+  --kappa_fov=11\
   --source_fov=3\
   --noise_rms=0.3e-3\
   --psf_sigma=0.07\
@@ -25,7 +25,7 @@ python $CENSAI_PATH/scripts/2_create_rim_dataset_analytical_kappa_maps.py\
   --max_ellipticity=0.5\
   --shuffle_cosmos\
   --buffer_size=1000\
-  --tukey_alpha=0.5\
+  --tukey_alpha=0.6\
   --batch=20\
   --z_source=2.379\
   --z_lens=0.4457

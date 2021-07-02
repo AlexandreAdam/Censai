@@ -6,8 +6,6 @@ import os, glob
 import numpy as np
 from datetime import datetime
 import random, time
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tensorboard.plugins.hparams import api as hp
 gpus = tf.config.list_physical_devices('GPU')
 
@@ -42,37 +40,6 @@ RAYTRACER_HPARAMS = [
     "kappalog",
     "normalize"
 ]
-
-
-def residual_plot(y_true, y_pred):
-    fig, axs = plt.subplots(2, 3, figsize=(12, 8))
-    for i in range(2):
-        im = axs[i, 0].imshow(y_true.numpy()[..., i], cmap="jet", origin="lower")
-        divider = make_axes_locatable(axs[i, 0])
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
-        axs[i, 0].axis("off")
-
-        im = axs[i, 1].imshow(y_pred.numpy()[..., i], cmap="jet", origin="lower")
-        divider = make_axes_locatable(axs[i, 1])
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
-        axs[i, 1].axis("off")
-
-        residual = np.abs(y_true.numpy()[..., i] - y_pred.numpy()[..., i])
-        im = axs[i, 2].imshow(residual, cmap="jet", origin="lower")
-        divider = make_axes_locatable(axs[i, 2])
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
-        axs[i, 2].axis("off")
-
-    axs[0, 0].set_title("Ground Truth")
-    axs[0, 1].set_title("Prediction")
-    axs[0, 2].set_title("Residual")
-    plt.subplots_adjust(wspace=.2, hspace=.0)
-    plt.figtext(0.1, 0.7, r"$\alpha_x$", va="center", ha="center", size=15, rotation=90)
-    plt.figtext(0.1, 0.3, r"$\alpha_y$", va="center", ha="center", size=15, rotation=90)
-    return fig
 
 
 def main(args):
@@ -126,7 +93,7 @@ def main(args):
     elif args.logname is not None:
         logname = args.logname
     else:
-        logname = args.logname_prefixe + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     # setup tensorboard writer (nullwriter in case we do not want to sync)
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
@@ -313,11 +280,11 @@ if __name__ == "__main__":
     parser.add_argument("--bottleneck_strides",             default=4,                type=int,     help="Strided of the downsampling convolutional layer before bottleneck")
     parser.add_argument("--decoder_encoder_filters",        default=32,               type=int,     help="Number of filters of conv layers")
     parser.add_argument("--filter_scaling",                 default=1,                type=float,   help="Scaling of the number of filters at each layers (1=no scaling)")
-    parser.add_argument("--upsampling_interpolation",       default=False,            type=bool,    help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
+    parser.add_argument("--upsampling_interpolation",       action="store_true",                    help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
     parser.add_argument("--activation",                     default="linear",         type=str,     help="Non-linearity of layers")
     parser.add_argument("--kernel_regularizer_amp",         default=1e-3,             type=float,   help="l2 regularization on weights")
-    parser.add_argument("--kappalog",                       default=True,             type=bool,    help="Input is log of kappa")
-    parser.add_argument("--normalize",                      default=False,            type=bool,    help="Normalize log of kappa with max and minimum values defined in definitions.py")
+    parser.add_argument("--kappalog",                       action="store_true",                    help="Input is log of kappa")
+    parser.add_argument("--normalize",                      action="store_true",                    help="Normalize log of kappa with max and minimum values defined in definitions.py")
 
     # Training set params
     parser.add_argument("-b", "--batch_size",               default=10,     type=int,               help="Number of images in a batch")
@@ -344,7 +311,7 @@ if __name__ == "__main__":
     parser.add_argument("--initial_learning_rate",          default=1e-3,   type=float,             help="Initial learning rate.")
     parser.add_argument("--decay_rate",                     default=1.,     type=float,             help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",                    default=1000,   type=int,               help="Decay steps of exponential decay of the learning rate.")
-    parser.add_argument("--clipping",                       default=True,   type=bool,              help="Clip backprop gradients between -10 and 10")
+    parser.add_argument("--clipping",                       action="store_true",                    help="Clip backprop gradients between -10 and 10")
     parser.add_argument("--patience",                       default=np.inf, type=int,               help="Number of step at which training is stopped if no improvement is recorder")
     parser.add_argument("--tolerance",                      default=0,      type=float,             help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
 

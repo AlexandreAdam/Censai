@@ -139,6 +139,28 @@ class PhysicalModel:
             im = tfa.image.resampler(source, wrap)  # bilinear interpolation of source on wrap grid
         return im
 
+    def lens_source_func(self, kappa, xs=0., ys=0., es=0., w=0.1):
+        _, _, alpha1, alpha2 = self.deflection_angle(kappa)
+        # lens equation
+        beta1 = self.ximage - alpha1
+        beta2 = self.yimage - alpha2
+        # sample intensity directly from the functional form
+        rho_sq = (beta1 - xs) ** 2 / (1 - es) + (beta2 - ys) ** 2 * (1 - es)
+        lens = tf.math.exp(-0.5 * rho_sq / w ** 2)  # / 2 / np.pi / w**2
+        lens = self.convolve_with_psf(lens)
+        return lens
+
+    def lens_source_func_given_alpha(self, alpha, xs=0., ys=0., es=0., w=0.1):
+        alpha1, alpha2 = tf.split(alpha, 2, axis=-1)
+        # lens equation
+        beta1 = self.ximage - alpha1
+        beta2 = self.yimage - alpha2
+        # sample intensity directly from the functional form
+        rho_sq = (beta1 - xs) ** 2 / (1 - es) + (beta2 - ys) ** 2 * (1 - es)
+        lens = tf.math.exp(-0.5 * rho_sq / w ** 2)  # / 2 / np.pi / w**2
+        lens = self.convolve_with_psf(lens)
+        return lens
+
     def lens_source_and_compute_jacobian(self, source, kappa):
         """
         Note: this method will return a different picture than forward if image_fov != kappa_fov

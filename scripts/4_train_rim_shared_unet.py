@@ -6,6 +6,7 @@ from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 import os, glob, time
 from datetime import datetime
+from tensorboard.plugins.hparams import api as hp
 import random
 """ # NOTE ON THE USE OF MULTIPLE GPUS #
 Double the number of gpus will not speed up the code. In fact, doubling the number of gpus and mirroring 
@@ -36,7 +37,6 @@ RIM_HPARAMS = [
     "kappa_normalize"
 ]
 UNET_MODEL_HPARAMS = [
-    ""
     "filters",
     "filter_scaling",
     "kernel_size",
@@ -171,7 +171,7 @@ def main(args):
     elif args.logname is not None:
         logname = args.logname
     else:
-        logname = args.logname_prefixe + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
         traindir = os.path.join(logdir, "train")
@@ -260,6 +260,7 @@ def main(args):
     lastest_checkpoint = 1
     for epoch in range(args.epochs):
         epoch_loss.reset_states()
+        time_per_step.reset_states()
         with train_writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
                 start = time.time()
@@ -283,7 +284,7 @@ def main(args):
                 tf.summary.image(f"Residual {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
+                                         lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
         with test_writer.as_default():
@@ -300,12 +301,13 @@ def main(args):
                 tf.summary.image(f"Residual {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
+                                         lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
         val_cost = val_loss.result().numpy()
-        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {val_cost:.3e} "
-              f"| learning rate {optim.lr(step).numpy():.2e}")
+        train_cost = epoch_loss.result().numpy()
+        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
+              f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
         if val_cost < (1 - args.tolerance) * best_loss:
             best_loss = val_cost
             patience = args.patience
@@ -322,7 +324,17 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_rim_hparams")).as_default():
+        hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
+        hp.hparams(hparams_dict)
+        tf.summary.scalar("Test MSE", best_loss, step=step)
+        tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_unet_hparams")).as_default():
+        hparams_dict = {key: vars(args)[key] for key in UNET_MODEL_HPARAMS}
+        hp.hparams(hparams_dict)
+        tf.summary.scalar("Test MSE", best_loss, step=step)
+        tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -335,9 +347,9 @@ if __name__ == "__main__":
 
     # RIM hyperparameters
     parser.add_argument("--steps",              default=16,     type=int,       help="Number of time steps of RIM")
-    parser.add_argument("--adam",               default=True,   type=bool,      help="ADAM update for the log-likelihood gradient.")
-    parser.add_argument("--kappalog",           default=True,   type=bool)
-    parser.add_argument("--kappa_normalize",    default=False,  type=bool)
+    parser.add_argument("--adam",               action="store_true",            help="ADAM update for the log-likelihood gradient.")
+    parser.add_argument("--kappalog",           action="store_true")
+    parser.add_argument("--kappa_normalize",    action="store_true")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32,     type=int)
@@ -350,7 +362,7 @@ if __name__ == "__main__":
     parser.add_argument("--bottleneck_filters",                         default=None,   type=int)
     parser.add_argument("--resampling_kernel_size",                     default=None,   type=int)
     parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
-    parser.add_argument("--upsampling_interpolation",                   default=False,  type=bool)
+    parser.add_argument("--upsampling_interpolation",                   action="store_true")
     parser.add_argument("--kernel_regularizer_amp",                     default=1e-4,   type=float)
     parser.add_argument("--bias_regularizer_amp",                       default=1e-4,   type=float)
     parser.add_argument("--activation",                                 default="leaky_relu")
@@ -361,7 +373,7 @@ if __name__ == "__main__":
     parser.add_argument("--kappa_resize_conv_layers",                   default=1,      type=int)
     parser.add_argument("--kappa_resize_strides",                       default=2,      type=int)
     parser.add_argument("--kappa_resize_kernel_size",                   default=3,      type=int)
-    parser.add_argument("--kappa_resize_separate_grad_downsampling",    default=False,  type=bool)
+    parser.add_argument("--kappa_resize_separate_grad_downsampling",    action="store_true")
 
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
@@ -384,7 +396,7 @@ if __name__ == "__main__":
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
-    parser.add_argument("--clipping",               default=True,   type=bool,      help="Clip backprop gradients between -10 and 10.")
+    parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
 

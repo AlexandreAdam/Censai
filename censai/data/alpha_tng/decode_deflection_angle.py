@@ -12,37 +12,26 @@ def decode_all(record_bytes):
               'alpha': tf.io.FixedLenFeature([], tf.string),
               'rescale': tf.io.FixedLenFeature([], tf.float32),
               'kappa_id': tf.io.FixedLenFeature([], tf.int64),
-              'Einstein radius': tf.io.FixedLenFeature([], tf.float32)
+              'Einstein radius': tf.io.FixedLenFeature([], tf.float32),
+              'image_fov': tf.io.FixedLenFeature([], tf.float32),
+              'kappa_fov': tf.io.FixedLenFeature([], tf.float32)
           })
     kappa = tf.io.decode_raw(example['kappa'], tf.float32)
     alpha = tf.io.decode_raw(example['alpha'], tf.float32)
-    theta_e = example['Einstein radius']
     pixels = example['pixels']
-    kappa_id = example['kappa_id']
-    rescale_factor = example['rescale']
 
-    kappa = tf.reshape(kappa, [pixels, pixels, 1])
-    alpha = tf.reshape(alpha, [pixels, pixels, 2])
-    return kappa, alpha, theta_e, rescale_factor, kappa_id
+    example['kappa'] = tf.reshape(kappa, [pixels, pixels, 1])
+    example['alpha'] = tf.reshape(alpha, [pixels, pixels, 2])
+    return example
 
 
 def decode_train(record_bytes):
-    example = tf.io.parse_single_example(
-        # Data
-        record_bytes,
-        # Schema
-        features={
-            'kappa': tf.io.FixedLenFeature([], tf.string),
-            'pixels': tf.io.FixedLenFeature([], tf.int64),
-            'alpha': tf.io.FixedLenFeature([], tf.string),
-            'rescale': tf.io.FixedLenFeature([], tf.float32),
-            'kappa_id': tf.io.FixedLenFeature([], tf.int64),
-            'Einstein radius': tf.io.FixedLenFeature([], tf.float32)
-        })
-    kappa = tf.io.decode_raw(example['kappa'], tf.float32)
-    alpha = tf.io.decode_raw(example['alpha'], tf.float32)
-    pixels = example['pixels']
+    params_keys = ['kappa', 'alpha']
+    example = decode_all(record_bytes)
+    return [example[key] for key in params_keys]
 
-    kappa = tf.reshape(kappa, [pixels, pixels, 1])
-    alpha = tf.reshape(alpha, [pixels, pixels, 2])
-    return kappa, alpha
+
+def decode_physical_info(record_bytes):
+    params_keys = ['image_fov', 'kappa_fov']
+    example = decode_all(record_bytes)
+    return [example[key] for key in params_keys]
