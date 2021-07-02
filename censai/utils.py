@@ -110,7 +110,7 @@ def deflection_angles_residual_plot(y_true, y_pred):
 
 
 def lens_residual_plot(lens_true, lens_pred, title=""):
-    fig, axs = plt.subplots(1, 3, figsize=(4, 8))
+    fig, axs = plt.subplots(1, 3, figsize=(12, 4))
     ax = axs[0]
     im = ax.imshow(lens_true.numpy()[..., 0], cmap="hot", origin="lower")
     divider = make_axes_locatable(ax)
@@ -136,7 +136,7 @@ def lens_residual_plot(lens_true, lens_pred, title=""):
     axs[0].set_title("Ground Truth", size=15)
     axs[1].set_title("Predictions", size=15)
     axs[2].set_title("Residuals", size=15)
-    plt.subplots_adjust(wspace=0, hspace=0)
+    plt.subplots_adjust(wspace=0.2, hspace=0)
     return fig
 
 
@@ -210,7 +210,7 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     axs[0, 1].set_title("Predictions", size=15)
     axs[0, 2].set_title("Residuals", size=15)
     fig.suptitle(fr"$\chi^2$ = {chi_squared: .3e}", size=20)
-    plt.subplots_adjust(wspace=0, hspace=.1)
+    plt.subplots_adjust(wspace=0.2, hspace=0.1)
     plt.figtext(0.1, 0.75, r"Lens", va="center", ha="center", size=15, rotation=90)
     plt.figtext(0.1, 0.5, r"Source", va="center", ha="center", size=15, rotation=90)
     plt.figtext(0.1, 0.22, r"$\kappa$", va="center", ha="center", size=15, rotation=90)
