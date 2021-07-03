@@ -1,6 +1,7 @@
 import numpy as np
 from censai.physical_model import PhysicalModel, AnalyticalPhysicalModel
 import tensorflow as tf
+from censai.utils import raytracer_residual_plot
 
 
 def test_deflection_angle_conv2():
@@ -75,9 +76,25 @@ def test_analytical_lensing():
     return im.numpy()[0, ..., 0]
 
 
+def test_lens_func_given_alpha():
+    phys = PhysicalModel(pixels=128)
+    phys_a = AnalyticalPhysicalModel(pixels=128)
+    alpha = phys_a.approximate_deflection_angles(x0=0.5, y0=0.5, e=0., phi=0., r_ein=1.)
+    lens_true = phys_a.lens_source_func(x0=0.5, y0=0.5, xs=0.5, ys=0.5)
+    lens_pred = phys_a.lens_source_func_given_alpha(alpha, xs=0.5, ys=0.5)
+    lens_pred2 = phys.lens_source_func_given_alpha(alpha, xs=0.5, ys=0.5)
+    fig = raytracer_residual_plot(alpha[0], alpha[0], lens_true[0], lens_pred[0])
+    cost1 = tf.reduce_mean(tf.cast(tf.math.equal(lens_true, lens_pred), tf.float32))
+    cost2 = tf.reduce_mean(tf.cast(tf.math.equal(lens_true, lens_pred2), tf.float32))
+    # assert cost1 == 1.0, cost1
+    # assert cost2 == 1.0, cost2
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
+    test_lens_func_given_alpha()
+    plt.show()
     im = test_analytical_lensing()
     # im = test_lens_source_conv2()[0, ..., 0]
     im1, im2 = test_alpha_method_fft()
