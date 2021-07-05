@@ -1,7 +1,9 @@
 import tensorflow as tf
 from censai.models import UnetModel
-from censai.definitions import logkappa_normalization, log_kappa
+from censai.definitions import logkappa_normalization, log_10, DTYPE, LOGFLOOR
 from censai import PhysicalModel
+from scipy.signal import tukey
+import numpy as np
 
 
 class RIMUnet:
@@ -14,6 +16,8 @@ class RIMUnet:
             adam=True,
             kappalog=True,
             kappa_normalize=True,
+            source_tukey_alpha=0.6,
+            sourcelog=True,
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
@@ -27,28 +31,39 @@ class RIMUnet:
         self.adam = adam
         self.kappalog = kappalog
         self.kappa_normalize = kappa_normalize
+        self.tukey_alpha = source_tukey_alpha
+        self.sourcelog = sourcelog
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
 
-        if self.kappalog:
-            if self.kappa_normalize:
-                self.kappa_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_kappa(x), forward=True))
-            else:
-                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_kappa(x))
-        else:
-            self.kappa_link = tf.identity
+        window = tukey(128, alpha=0.6)
+        window = np.outer(window, window)
+        window = tf.constant(window[np.newaxis, ..., np.newaxis], dtype=DTYPE)
 
         if self.kappalog:
             if self.kappa_normalize:
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_10(x), forward=True))
                 self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**logkappa_normalization(x, forward=False))
             else:
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_10(x))
                 self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**x)
         else:
+            self.kappa_link = tf.identity
             self.kappa_inverse_link = tf.identity
 
+        if self.sourcelog:
+            self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.log(x + LOGFLOOR))
+            self.source_inverse_link = tf.keras.layers.Lambda(lambda x: tf.math.exp(x))
+        else:
+            self.source_link = tf.identity
+            self.source_inverse_link = tf.identity
+
     def initial_states(self, batch_size):
-        source_init = tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1))
+        if self.sourcelog:
+            source_init = tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * tf.math.log(1e-2)
+        else:
+            source_init = tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) / 100
         if self.kappalog:
             if self.kappa_normalize:
                 kappa_init = tf.zeros(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1))
@@ -98,7 +113,8 @@ class RIMUnet:
         with tf.GradientTape() as g:
             g.watch(source_init)
             g.watch(kappa_init)
-            cost = self.physical_model.log_likelihood(y_true=lensed_image, source=source_init, kappa=self.kappa_inverse_link(kappa_init))
+            cost = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source_init),
+                                                      kappa=self.kappa_inverse_link(kappa_init))
         grads = g.gradient(cost, [source_init, kappa_init])
         grads = self.grad_update(*grads, 0)
 
@@ -110,7 +126,8 @@ class RIMUnet:
             with tf.GradientTape() as g:
                 g.watch(output_1)
                 g.watch(output_2)
-                cost = self.physical_model.log_likelihood(y_true=lensed_image, source=output_1, kappa=self.kappa_inverse_link(output_2))
+                cost = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source_init),
+                                                          kappa=self.kappa_inverse_link(output_2))
             grads = g.gradient(cost, [output_1, output_2])
             grads = self.grad_update(*grads, current_step)
             output_1, state_1, output_2, state_2 = self.time_step(output_1, state_1, grads[0], output_2, state_2, grads[1])
@@ -131,7 +148,7 @@ class RIMUnet:
 
         """
         source_series, kappa_series, _ = self.call(lensed_image)
-        chi1 = sum([tf.square(source_series[i] - source) for i in range(self.steps)]) / self.steps
+        chi1 = sum([tf.square(source_series[i] - self.source_link(source)) for i in range(self.steps)]) / self.steps
         chi2 = sum([tf.square(kappa_series[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
         if reduction:
             return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)

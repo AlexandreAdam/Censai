@@ -1,6 +1,6 @@
 import tensorflow as tf
 from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer
-from censai.definitions import logkappa_normalization, log_kappa
+from censai.definitions import logkappa_normalization, log_10
 from .utils import get_activation
 
 
@@ -94,9 +94,9 @@ class RayTracer(tf.keras.Model):
 
         if self.kappalog:
             if self.kappa_normalize:
-                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_kappa(logkappa_normalization(x, forward=True)))
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_10(logkappa_normalization(x, forward=True)))
             else:
-                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_kappa(x))
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_10(x))
         else:
             self.kappa_link = tf.identity
 
