@@ -48,14 +48,10 @@ class PhysicalModel:
         if self.method == "conv2d":
             alpha_x = tf.nn.conv2d(kappa, self.xconv_kernel, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
             alpha_y = tf.nn.conv2d(kappa, self.yconv_kernel, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
-            x_src = self.ximage - alpha_x
-            y_src = self.yimage - alpha_y
 
         elif self.method == "unet":
             alpha = self.RayTracer(kappa)
-            alpha_x, alpha_y = tf.split(alpha, axis=3)
-            x_src = self.ximage - alpha_x
-            y_src = self.yimage - alpha_y
+            alpha_x, alpha_y = tf.split(alpha, 2, axis=-1)
         elif self.method == "fft":
             """
             The convolution using the Convolution Theorem.
@@ -99,11 +95,9 @@ class PhysicalModel:
                                                     offset_width=self.pixels,
                                                     target_width=self.pixels,
                                                     target_height=self.pixels)
-            x_src = self.ximage - alpha_x
-            y_src = self.yimage - alpha_y
         else:
             raise ValueError(f"{self.method} is not in [conv2d, unet, fft]")
-        return x_src, y_src, alpha_x, alpha_y
+        return alpha_x, alpha_y
 
     def log_likelihood(self, source, kappa, y_true):
         with self.device:
@@ -133,14 +127,16 @@ class PhysicalModel:
 
     def lens_source(self, source, kappa):
         with self.device:
-            x_src, y_src, _, _ = self.deflection_angle(kappa)
+            alpha_x, alpha_y = self.deflection_angle(kappa)
+            x_src = self.ximage - alpha_x
+            y_src = self.yimage - alpha_y
             x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
             wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
             im = tfa.image.resampler(source, wrap)  # bilinear interpolation of source on wrap grid
         return im
 
     def lens_source_func(self, kappa, xs=0., ys=0., es=0., w=0.1):
-        _, _, alpha1, alpha2 = self.deflection_angle(kappa)
+        alpha1, alpha2 = self.deflection_angle(kappa)
         # lens equation
         beta1 = self.ximage - alpha1
         beta2 = self.yimage - alpha2

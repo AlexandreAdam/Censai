@@ -1,0 +1,298 @@
+import tensorflow as tf
+from censai import RayTracer, PhysicalModel
+from censai.data.alpha_tng import decode_train, decode_physical_info
+from censai.utils import nullwriter, plot_to_image, raytracer_residual_plot as residual_plot
+import os, glob
+import numpy as np
+from datetime import datetime
+import random, time
+from tensorboard.plugins.hparams import api as hp
+gpus = tf.config.list_physical_devices('GPU')
+
+""" # NOTE ON THE USE OF MULTIPLE GPUS #
+Double the number of gpus will not speed up the code. In fact, doubling the number of gpus and mirroring 
+the ops accross replicas means the code is TWICE as slow.
+
+In fact, using multiple gpus means one should at least multiply the batch size by the number of gpus introduced, 
+and optimize hyperparameters accordingly (learning rate should be scaled similarly).
+"""
+if len(gpus) == 1:
+    STRATEGY = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+elif len(gpus) > 1:
+    STRATEGY = tf.distribute.MirroredStrategy()
+try:
+    import wandb
+    wandb.init(project="censai_ray_tracer", entity="adam-alexandre01123", sync_tensorboard=True)
+    wndb = True
+except ImportError:
+    wndb = False
+    print("wandb not installed, package ignored")
+
+RAYTRACER_HPARAMS = [
+    "pixels",
+    "filter_scaling",
+    "layers",
+    "block_conv_layers",
+    "kernel_size",
+    "filters",
+    "strides",
+    "bottleneck_filters",
+    "resampling_kernel_size",
+    "upsampling_interpolation",
+    "kernel_regularizer_amp",
+    "activation",
+    "initializer",
+    "kappalog",
+    "normalize",
+]
+
+
+def main(args):
+    if wndb:
+        config = wandb.config
+        config.update(vars(args))
+    # ========= Dataset=================================================================================================
+    files = []
+    for dataset in args.datasets:
+        files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
+    random.shuffle(files)
+    files = tf.data.Dataset.from_tensor_slices(files)
+    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
+                               cycle_length=args.cycle_length, block_length=args.block_length)
+    # extract physical info from first example
+    for image_fov, kappa_fov in dataset.map(decode_physical_info):
+        break
+    dataset = dataset.map(decode_train).batch(args.batch_size)
+    if args.cache_file is not None:
+        dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
+    else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
+        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    train_dataset = dataset.take(int(args.train_split * args.total_items) // args.batch_size) # dont forget to divide by batch size!
+    val_dataset = dataset.skip(int(args.train_split * args.total_items) // args.batch_size)
+    val_dataset = val_dataset.take(int((1 - args.train_split) * args.total_items) // args.batch_size)
+    train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
+    val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
+
+    # ========== Model and Physical Model =============================================================================
+    # setup an analytical physical model to compare lenses from raytracer and analytical deflection angles.
+
+    phys = PhysicalModel(pixels=args.pixels, image_fov=image_fov, kappa_fov=kappa_fov, src_fov=args.source_fov, psf_sigma=args.psf_sigma)
+    with STRATEGY.scope():  # Replicate ops accross gpus
+        ray_tracer = RayTracer(
+            pixels=args.pixels,
+            filter_scaling=args.filter_scaling,
+            layers=args.layers,
+            block_conv_layers=args.block_conv_layers,
+            kernel_size=args.kernel_size,
+            filters=args.filters,
+            strides=args.strides,
+            bottleneck_filters=args.bottleneck_filters,
+            resampling_kernel_size=args.resampling_kernel_size,
+            upsampling_interpolation=args.upsampling_interpolation,
+            kernel_regularizer_amp=args.kernel_regularizer_amp,
+            activation=args.activation,
+            initializer=args.initializer,
+            kappalog=args.kappalog,
+            normalize=args.normalize,
+        )
+
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            args.initial_learning_rate,
+            decay_steps=args.decay_steps,
+            decay_rate=args.decay_rate,
+            staircase=True)
+        optim = tf.keras.optimizers.Adam(learning_rate=lr_schedule, beta_1=0.9, beta_2=0.999)
+
+    # ==== Take care of where to write logs and stuff =================================================================
+    if args.model_id.lower() != "none":
+        logname = args.model_id
+    elif args.logname is not None:
+        logname = args.logname
+    else:
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+    # setup tensorboard writer (nullwriter in case we do not want to sync)
+    if args.logdir.lower() != "none":
+        logdir = os.path.join(args.logdir, logname)
+        traindir = os.path.join(logdir, "train")
+        testdir = os.path.join(logdir, "test")
+        if not os.path.isdir(logdir):
+            os.mkdir(logdir)
+        if not os.path.isdir(traindir):
+            os.mkdir(traindir)
+        if not os.path.isdir(testdir):
+            os.mkdir(testdir)
+        train_writer = tf.summary.create_file_writer(traindir)
+        test_writer = tf.summary.create_file_writer(testdir)
+    else:
+        train_writer = nullwriter()
+        test_writer = nullwriter()
+    # ===== Make sure directory and checkpoint manager are created to save model ===================================
+    if args.model_dir.lower() != "none":
+        checkpoints_dir = os.path.join(args.model_dir, logname)
+        if not os.path.isdir(checkpoints_dir):
+            os.mkdir(checkpoints_dir)
+            # save script parameter for future reference
+            import json
+            with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
+                json.dump(vars(args), f)
+            with open(os.path.join(checkpoints_dir, "ray_tracer_hparams.json"), "w") as f:
+                hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
+                json.dump(hparams_dict, f)
+        ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=ray_tracer)
+        checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
+        save_checkpoint = True
+        # ======= Load model if model_id is provided ===============================================================
+        if args.model_id.lower() != "none":
+            if args.load_checkpoint == "lastest":
+                checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
+            elif args.load_checkpoint == "best":
+                scores = np.loadtxt(os.path.join(checkpoints_dir, "score_sheet.txt"))
+                _checkpoint = scores[np.argmin(scores[:, 1]), 0]
+                checkpoint = checkpoint_manager.checkpoints[_checkpoint]
+                checkpoint_manager.checkpoint.restore(checkpoint)
+            else:
+                checkpoint = checkpoint_manager.checkpoints[int(args.load_checkpoint)]
+                checkpoint_manager.checkpoint.restore(checkpoint)
+    else:
+        save_checkpoint = False
+    # =================================================================================================================
+    def train_step(inputs):
+        kappa, alpha = inputs
+        with tf.GradientTape(watch_accessed_variables=True) as tape:
+            tape.watch(ray_tracer.trainable_weights)
+            cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha), axis=(1, 2, 3))
+            cost = tf.reduce_sum(cost) / args.batch_size    # normalize by global batch size
+        gradient = tape.gradient(cost, ray_tracer.trainable_weights)
+        if args.clipping:
+            clipped_gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
+        else:
+            clipped_gradient = gradient
+        optim.apply_gradients(zip(clipped_gradient, ray_tracer.trainable_variables))
+        return cost
+
+    @tf.function
+    def distributed_train_step(dist_inputs):
+        per_replica_losses = STRATEGY.run(train_step, args=(dist_inputs,))
+        cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        cost += tf.reduce_sum(ray_tracer.losses)
+        return cost
+
+    def test_step(inputs):
+        kappa, alpha = inputs
+        cost = tf.reduce_mean(tf.square(ray_tracer(kappa) - alpha), axis=(1, 2, 3))
+        cost = tf.reduce_sum(cost) / args.batch_size    # normalize by global batch size
+        return cost
+
+    @tf.function
+    def distributed_test_step(dist_inputs):
+        per_replica_losses = STRATEGY.run(test_step, args=(dist_inputs,))
+        # Replica losses are aggregated by summing them
+        cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        cost += tf.reduce_sum(ray_tracer.losses)
+        return cost
+    # =================================================================================================================
+    epoch_loss = tf.metrics.Mean()
+    val_loss = tf.metrics.Mean()
+    time_per_step = tf.metrics.Mean()
+    best_loss = np.inf
+    patience = args.patience
+    step = 1
+    lastest_checkpoint = 1
+    for epoch in range(1, args.epochs + 1):
+        epoch_loss.reset_states()
+        time_per_step.reset_states()
+        with train_writer.as_default():
+            for batch, distributed_inputs in enumerate(train_dataset):
+                start = time.time()
+                cost = distributed_train_step(distributed_inputs)
+        # ========== Summary and logs ==================================================================================
+                _time = time.time() - start
+                tf.summary.scalar("Time per step", _time, step=step)
+                time_per_step.update_state([_time])
+                epoch_loss.update_state([cost])
+                tf.summary.scalar("MSE", cost, step=step)
+                step += 1
+            tf.summary.scalar("Learning rate", optim.lr(step), step=step)
+            # last batch we make a summary of residuals
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
+                # Deflection angle residual
+                alpha_true = distributed_inputs[1][res_idx, ...]
+                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
+                # Lens residual
+                kappa = distributed_inputs[0][res_idx, ...][None, ...]
+                lens_true = phys.lens_source_func(kappa)[0, ...]
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
+                tf.summary.image(f"Residuals {res_idx}",
+                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
+        if args.profile and epoch == 1:
+            # redo the last training step for debugging purposes
+            tf.profiler.experimental.start(logdir=logdir)
+            cost = distributed_train_step(distributed_inputs)
+            tf.profiler.experimental.stop()
+        with test_writer.as_default():
+            val_loss.reset_states()
+            for distributed_inputs in val_dataset:
+                test_cost = distributed_test_step(distributed_inputs)
+                val_loss.update_state([test_cost])
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
+                # Deflection angle residual
+                alpha_true = distributed_inputs[1][res_idx, ...]
+                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
+                # Lens residual
+                kappa = distributed_inputs[0][res_idx, ...][None, ...]
+                lens_true = phys.lens_source_func(kappa)[0, ...]
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
+                tf.summary.image(f"Residuals {res_idx}",
+                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
+        train_cost = epoch_loss.result().numpy()
+        val_cost = val_loss.result().numpy()
+        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
+              f"time per step {time_per_step.result():.2e} s")
+        # =============================================================================================================
+        if val_cost < best_loss * (1 - args.tolerance):
+            best_loss = val_cost
+            patience = args.patience
+        else:
+            patience -= 1
+
+        if save_checkpoint:
+            checkpoint_manager.checkpoint.step.assign_add(1)  # a bit of a hack
+            if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
+                with open(os.path.join(checkpoints_dir, "score_sheet.txt"), mode="a") as f:
+                    np.savetxt(f, np.array([[lastest_checkpoint, val_cost]]))
+                lastest_checkpoint += 1
+                checkpoint_manager.save()
+                print("Saved checkpoint for step {}: {}".format(int(checkpoint_manager.checkpoint.step), checkpoint_manager.latest_checkpoint))
+        if patience == 0:
+            print("Reached patience")
+            break
+    # at the end of training, log hyperparameters for future tuning
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_hparams", logname)).as_default():
+        hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
+        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
+        hp.hparams(hparams_dict)
+        tf.summary.scalar("Test MSE", best_loss, step=step)
+        tf.summary.scalar("Final Train MSE", train_cost, step=step)
+
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+    import json
+    date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+    parser = ArgumentParser()
+    parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
+                                                                                          "checkpoint of this model if provided")
+    parser.add_argument("--load_checkpoint",            default="best",              help="One of 'best', 'lastest' or the specific checkpoint index")
+    parser.add_argument("--datasets",                   required=True,  nargs="+",   help="Datasets to use, paths that contains tfrecords of dataset. User can provide multiple "
+                                                                                          "directories to mix datasets")
+    parser.add_argument("--compression_type",           default=None,                help="Compression type used to write data. Default assumes no compression.")
+
+    # Model hyper parameters
+    parser.add_argument("--pixels",                         required=True,            type=int,     help="Size of input tensors, need to match dataset size!!")
+    parser.add_argument("--kernel_size",                    default=3,                type=int,     help="Main kernel size of U-net")
+    parser.add_argument("--filters",                        default=32,               type=int,     help="Number of filters of conv layers")
+    parser.add_argument("--filter_scaling",                 default=1,                type=float,   help="Scaling of the number of filters at each layers (1=no scaling)")
+    parser.add_argument("--layers",                         default=2,                type=int,     help="Number of layers of Unet (number of downsampling and upsampling")
+    parser.add_argument("--block_conv_layers",              default=2,                type=int,     help="Number of convolutional layers in a unet layer")
+    parser.add_argument("--strides",                        default=2,                type=int,     help="Strides of downsampling and upsampling layers")
+    parser.add_argument("--bottleneck_filters",             default=None,             type=int,     help="Num
