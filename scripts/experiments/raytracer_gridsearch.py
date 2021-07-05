@@ -67,19 +67,34 @@ def uniform_grid_search(args):
 
 
 def exhaustive_grid_search(args):
-    args_dict = vars(args)
-    gridsearch_id = 1
+    """
+    Lexicographic ordering of given parameter lists, up to n_models deep.
+    """
+    indexes = []
     for p in RAYTRACER_HPARAMS + EXTRA_PARAMS:
-        if isinstance(args_dict[p], list):
-            for i in range(len(args_dict[p])):
-                new_args = copy.deepcopy(args)
-                new_args_dict = vars(new_args)
-                new_args_dict.update({"logname": args.logname_prefixe + "_" + DATE + "_" + f"{gridsearch_id:03d}"})
-                new_args_dict[p] = args_dict[p][i]
-                yield new_args
-                if gridsearch_id == args.n_models:
-                    return
-                gridsearch_id += 1
+        if isinstance(vars(args)[p], list):
+            indexes.append(0)
+    for gridsearch_id in range(1, args.n_models + 1):
+        new_args = copy.deepcopy(args)
+        args_dict = vars(new_args)
+        args_dict.update({"logname": args.logname_prefixe + "_" + DATE + "_" + f"{gridsearch_id:03d}"})
+        i = 0
+        roll = True
+        for p in RAYTRACER_HPARAMS + EXTRA_PARAMS:
+            if isinstance(args_dict[p], list):
+                if roll:
+                    if indexes[i] < len(args_dict[p]):
+                        args_dict[p] = args_dict[p][indexes[i]]
+                        indexes[i] += 1
+                        roll = False
+                    else:
+                        if i + 1 <= len(indexes)-1:
+                            indexes[i + 1] += 1
+                        args_dict[p] = args_dict[p][0]
+                else:
+                    args_dict[p] = args_dict[p][0]
+                i += 1
+        yield new_args
 
 
 def distributed_strategy(args):
