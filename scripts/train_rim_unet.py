@@ -362,23 +362,26 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
-        with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_source_hparams")).as_default():
-            hparams_dict = {key: vars(args)["source_" +key] for key in SOURCE_MODEL_HPARAMS}
-            hp.hparams(hparams_dict)
-            tf.summary.scalar("Test MSE", best_loss, step=step)
-            tf.summary.scalar("Final Train MSE", train_cost, step=step)
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_source_hparams", logname)).as_default():
+        hparams_dict = {key: vars(args)["source_" +key] for key in SOURCE_MODEL_HPARAMS}
+        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
+        hp.hparams(hparams_dict)
+        tf.summary.scalar("Test MSE", best_loss, step=step)
+        tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
-        with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_kappa_hparams")).as_default():
-            hparams_dict = {key: vars(args)["kappa_" + key] for key in KAPPA_MODEL_HPARAMS}
-            hp.hparams(hparams_dict)
-            tf.summary.scalar("Test MSE", best_loss, step=step)
-            tf.summary.scalar("Final Train MSE", train_cost, step=step)
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_kappa_hparams", logname)).as_default():
+        hparams_dict = {key: vars(args)["kappa_" + key] for key in KAPPA_MODEL_HPARAMS}
+        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
+        hp.hparams(hparams_dict)
+        tf.summary.scalar("Test MSE", best_loss, step=step)
+        tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
-        with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_rim_hparams")).as_default():
-            hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
-            hp.hparams(hparams_dict)
-            tf.summary.scalar("Test MSE", best_loss, step=step)
-            tf.summary.scalar("Final Train MSE", train_cost, step=step)
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_rim_hparams", logname)).as_default():
+        hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
+        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
+        hp.hparams(hparams_dict)
+        tf.summary.scalar("Test MSE", best_loss, step=step)
+        tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
 
 if __name__ == "__main__":
