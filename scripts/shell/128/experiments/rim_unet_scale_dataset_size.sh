@@ -13,6 +13,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses128_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
+  --n_models=6\
   --forward_method=conv2d\
   --epochs=200\
   --initial_learning_rate=1e-4\

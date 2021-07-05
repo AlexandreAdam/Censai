@@ -13,6 +13,7 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --datasets $HOME/scratch/Censai/data/alpha128_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
+  --n_models=10\
   --total_items 10 100 500 1000 2000 5000 10000 30000 40000\
   --epochs=5000\
   --train_split=0.9\
