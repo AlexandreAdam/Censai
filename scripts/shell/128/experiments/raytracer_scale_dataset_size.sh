@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
-  --datasets $HOME/scratch/Censai/data/alpha128_TNG100\
+  --datasets $CENSAI_PATH/data/alpha128_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=10\
@@ -35,9 +35,9 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --cycle_length=10\
   --block_length=1\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$HOME/scratch/Censai/logs\
+  --logdir=$CENSAI_PATH/logs\
   --logname_prefixe=RayTracer128_ScaleDatasetSize\
-  --model_dir=$HOME/scratch/Censai/models\
+  --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\
   --n_residuals=5\
