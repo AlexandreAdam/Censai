@@ -9,7 +9,7 @@
 #SBATCH --job-name=Rasterize_Kappa_Maps_356_xz
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/1_rasterize_kappa_maps.py\
+python $CENSAI_PATH/scripts/rasterize_kappa_maps.py\
   --output_dir=$HOME/scratch/Censai/data/kappa356_TNG100\
   --subhalo_id=$HOME/scratch/Censai/data/subhalo_TNG100-1_id.npy\
   --groupcat_dir=$HOME/projects/rrg-lplevass/aadam/data/illustrisTNG100-1_snapshot99_groupcat/\
