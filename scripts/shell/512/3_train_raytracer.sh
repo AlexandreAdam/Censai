@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_RayTracer_TNG100
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/3_train_raytracer512.py\
+python $CENSAI_PATH/scripts/train_raytracer512.py\
   --initializer=glorot_uniform\
   --decoder_encoder_kernel_size=5\
   --pre_bottleneck_kernel_size=7\

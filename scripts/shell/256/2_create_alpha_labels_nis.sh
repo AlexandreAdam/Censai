@@ -9,7 +9,7 @@
 #SBATCH --job-name=Create-Alpha-Labels-256_NIS
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/2_create_alpha_labels_analytical_kappa_maps.py\
+python $CENSAI_PATH/scripts/create_alpha_labels_analytical_kappa_maps.py\
   --output_dir=$HOME/scratch/Censai/data/alpha256_NIS\
   --pixels=256\
   --len_dataset=5000\
