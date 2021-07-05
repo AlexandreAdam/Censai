@@ -22,7 +22,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --tolerance=0.01\
   --batch_size=4\
   --train_split=0.9\
-  --total_items 4 10 50 100\
+  --total_items 8 10 50 100\
   --num_parallel_reads=4\
   --cycle_length=4\
   --block_length=1\

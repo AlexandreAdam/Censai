@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=24\
-  --total_items 10 100 1000\
+  --total_items 20 100 1000\
   --epochs=5000\
   --train_split=0.9\
   --pixels=128\
