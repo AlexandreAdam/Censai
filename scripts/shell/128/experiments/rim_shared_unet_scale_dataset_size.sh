@@ -20,7 +20,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --tolerance=0.01\
   --batch_size=4\
   --train_split=0.9\
-  --total_items 4 10 50 100 200 500 1000 2000 3000 5000\
+  --total_items 8 10 50 100 200 500 1000 2000 3000 5000\
   --num_parallel_reads=4\
   --cycle_length=4\
   --block_length=1\
