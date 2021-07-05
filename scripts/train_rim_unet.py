@@ -1,12 +1,12 @@
 import tensorflow as tf
 import numpy as np
-from censai import PhysicalModel, RIMSharedUnet
-from censai.models import SharedUnetModel
+from censai import PhysicalModel, RIMUnet
+from censai.models import UnetModel
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 import os, glob, time
-from datetime import datetime
 from tensorboard.plugins.hparams import api as hp
+from datetime import datetime
 import random
 """ # NOTE ON THE USE OF MULTIPLE GPUS #
 Double the number of gpus will not speed up the code. In fact, doubling the number of gpus and mirroring 
@@ -36,14 +36,14 @@ RIM_HPARAMS = [
     "kappalog",
     "kappa_normalize"
 ]
-UNET_MODEL_HPARAMS = [
+SOURCE_MODEL_HPARAMS = [
     "filters",
     "filter_scaling",
     "kernel_size",
     "layers",
     "block_conv_layers",
     "strides",
-    "bottleneck_kernel_size"
+    "bottleneck_kernel_size",
     "bottleneck_filters",
     "resampling_kernel_size",
     "gru_kernel_size",
@@ -52,23 +52,26 @@ UNET_MODEL_HPARAMS = [
     "bias_regularizer_amp",
     "activation",
     "alpha",
-    "initializer",
-    "kappa_resize_filters",
-    "kappa_resize_method",
-    "kappa_resize_conv_layers",
-    "kappa_resize_strides",
-    "kappa_resize_kernel_size",
-    "kappa_resize_separate_grad_downsampling"
+    "initializer"
 ]
-
-
-def is_power_of_two(n):
-    while n > 1:
-        n /= 2
-        if int(n) != n:
-            return False
-        elif n == 2:
-            return True
+KAPPA_MODEL_HPARAMS = [
+    "filters",
+    "filter_scaling",
+    "kernel_size",
+    "layers",
+    "block_conv_layers",
+    "strides",
+    "bottleneck_kernel_size",
+    "bottleneck_filters",
+    "resampling_kernel_size",
+    "gru_kernel_size",
+    "upsampling_interpolation",
+    "kernel_regularizer_amp",
+    "bias_regularizer_amp",
+    "activation",
+    "alpha",
+    "initializer"
+]
 
 
 def main(args):
@@ -87,10 +90,11 @@ def main(args):
     for params in dataset.map(decode_physical_model_info):
         break
     dataset = dataset.map(decode_train).batch(args.batch_size)
+    # Do not prefetch in this script. Memory is more precious than latency
     if args.cache_file is not None:
-        dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
-    else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
-        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+        dataset = dataset.cache(args.cache_file)#.prefetch(tf.data.experimental.AUTOTUNE)
+    # else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
+    #     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     train_dataset = dataset.take(int(args.train_split * args.total_items) // args.batch_size) # dont forget to divide by batch size!
     val_dataset = dataset.skip(int(args.train_split * args.total_items) // args.batch_size)
     val_dataset = val_dataset.take(int((1 - args.train_split) * args.total_items) // args.batch_size)
@@ -115,43 +119,51 @@ def main(args):
             device=PHYSICAL_MODEL_DEVICE,
             **raytracer_hparams
         )
-        assert is_power_of_two(phys.pixels)
-        assert is_power_of_two(phys.src_pixels)
-        kappa_resize_layers = (phys.pixels // phys.src_pixels) // args.kappa_resize_strides
-        vars(args).update({"kappa_resize_layers": kappa_resize_layers})
         if args.raytracer is not None:
             # load last checkpoint in the checkpoint directory
             checkpoint = tf.train.Checkpoint(net=phys.RayTracer)
             manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
             checkpoint.restore(manager.latest_checkpoint)
-        unet = SharedUnetModel(
-            kappa_resize_layers=args.kappa_resize_layers,
-            filters=args.filters,
-            filter_scaling=args.filter_scaling,
-            kernel_size=args.kernel_size,
-            layers=args.layers,
-            block_conv_layers=args.block_conv_layers,
-            strides=args.strides,
-            bottleneck_kernel_size=args.bottleneck_kernel_size,
-            bottleneck_filters=args.bottleneck_filters,
-            resampling_kernel_size=args.resampling_kernel_size,
-            gru_kernel_size=args.gru_kernel_size,
-            upsampling_interpolation=args.upsampling_interpolation,
-            kernel_regularizer_amp=args.kernel_regularizer_amp,
-            bias_regularizer_amp=args.bias_regularizer_amp,
-            activation=args.activation,
-            alpha=args.alpha,
-            initializer=args.initializer,
-            kappa_resize_filters=args.kappa_resize_filters,
-            kappa_resize_strides=args.kappa_resize_strides,
-            kappa_resize_conv_layers=args.kappa_resize_conv_layers,
-            kappa_resize_kernel_size=args.kappa_resize_kernel_size,
-            kappa_resize_method=args.kappa_resize_method,
-            kappa_resize_separate_grad_downsampling=args.kappa_resize_separate_grad_downsampling
+        kappa_model = UnetModel(
+            filters=args.kappa_filters,
+            filter_scaling=args.kappa_filter_scaling,
+            kernel_size=args.kappa_kernel_size,
+            layers=args.kappa_layers,
+            block_conv_layers=args.kappa_block_conv_layers,
+            strides=args.kappa_strides,
+            bottleneck_kernel_size=args.kappa_bottleneck_kernel_size,
+            bottleneck_filters=args.kappa_bottleneck_filters,
+            resampling_kernel_size=args.kappa_resampling_kernel_size,
+            gru_kernel_size=args.kappa_gru_kernel_size,
+            upsampling_interpolation=args.kappa_upsampling_interpolation,
+            kernel_regularizer_amp=args.kappa_kernel_regularizer_amp,
+            bias_regularizer_amp=args.kappa_bias_regularizer_amp,
+            activation=args.kappa_activation,
+            alpha=args.kappa_alpha,  # for leaky relu
+            initializer=args.kappa_initializer,
         )
-        rim = RIMSharedUnet(
+        source_model = UnetModel(
+            filters=args.source_filters,
+            filter_scaling=args.source_filter_scaling,
+            kernel_size=args.source_kernel_size,
+            layers=args.source_layers,
+            block_conv_layers=args.source_block_conv_layers,
+            strides=args.source_strides,
+            bottleneck_kernel_size=args.source_bottleneck_kernel_size,
+            bottleneck_filters=args.source_bottleneck_filters,
+            resampling_kernel_size=args.source_resampling_kernel_size,
+            gru_kernel_size=args.source_gru_kernel_size,
+            upsampling_interpolation=args.source_upsampling_interpolation,
+            kernel_regularizer_amp=args.source_kernel_regularizer_amp,
+            bias_regularizer_amp=args.source_bias_regularizer_amp,
+            activation=args.source_activation,
+            alpha=args.source_alpha,  # for leaky relu
+            initializer=args.source_initializer,
+        )
+        rim = RIMUnet(
             physical_model=phys,
-            unet=unet,
+            source_model=source_model,
+            kappa_model=kappa_model,
             steps=args.steps,
             adam=args.adam,
             kappalog=args.kappalog,
@@ -171,7 +183,7 @@ def main(args):
     elif args.logname is not None:
         logname = args.logname
     else:
-        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
         traindir = os.path.join(logdir, "train")
@@ -189,47 +201,68 @@ def main(args):
         train_writer = nullwriter()
     # ===== Make sure directory and checkpoint manager are created to save model ===================================
     if args.model_dir.lower() != "none":
-        checkpoints_dir = os.path.join(args.model_dir, logname)
-        if not os.path.isdir(checkpoints_dir):
-            os.mkdir(checkpoints_dir)
+        models_dir = os.path.join(args.model_dir, logname)
+        if not os.path.isdir(models_dir):
+            os.mkdir(models_dir)
             import json
-            with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
+            with open(os.path.join(models_dir, "script_params.json"), "w") as f:
                 json.dump(vars(args), f)
-            with open(os.path.join(checkpoints_dir, "unet_hparams.json"), "w") as f:
-                hparams_dict = {key: vars(args)[key] for key in UNET_MODEL_HPARAMS}
+        source_checkpoints_dir = os.path.join(models_dir, "source_checkpoints")
+        if not os.path.isdir(source_checkpoints_dir):
+            os.mkdir(source_checkpoints_dir)
+            import json
+            with open(os.path.join(source_checkpoints_dir, "hparams.json"), "w") as f:
+                hparams_dict = {key: vars(args)["source_" + key] for key in SOURCE_MODEL_HPARAMS}
                 json.dump(hparams_dict, f)
-            with open(os.path.join(checkpoints_dir, "rim_hparams.json"), "w") as f:
-                hparams_dict = {key: vars(args)["rim_" + key] for key in RIM_HPARAMS}
+        kappa_checkpoints_dir = os.path.join(models_dir, "kappa_checkpoints")
+        if not os.path.isdir(kappa_checkpoints_dir):
+            os.mkdir(kappa_checkpoints_dir)
+            import json
+            with open(os.path.join(kappa_checkpoints_dir, "hparams.json"), "w") as f:
+                hparams_dict = {key: vars(args)["kappa_" + key] for key in KAPPA_MODEL_HPARAMS}
                 json.dump(hparams_dict, f)
-        ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.unet)
-        checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
+        source_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.source_model)
+        source_checkpoint_manager = tf.train.CheckpointManager(source_ckpt, source_checkpoints_dir, max_to_keep=args.max_to_keep)
+        kappa_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.kappa_model)
+        kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, kappa_checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
         # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
             if args.load_checkpoint == "lastest":
-                checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
+                kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint_manager.latest_checkpoint)
+                source_checkpoint_manager.checkpoint.restore(source_checkpoint_manager.latest_checkpoint)
             elif args.load_checkpoint == "best":
-                scores = np.loadtxt(os.path.join(checkpoints_dir, "score_sheet.txt"))
-                _checkpoint = scores[np.argmin(scores[:, 1]), 0]
-                checkpoint = checkpoint_manager.checkpoints[_checkpoint]
-                checkpoint_manager.checkpoint.restore(checkpoint)
+                kappa_scores = np.loadtxt(os.path.join(kappa_checkpoints_dir, "score_sheet.txt"))
+                source_scores = np.loadtxt(os.path.join(source_checkpoints_dir, "score_sheet.txt"))
+                _kappa_checkpoint = kappa_scores[np.argmin(kappa_scores[:, 1]), 0]
+                _source_checkpoint = source_scores[np.argmin(source_scores[:, 1]), 0]
+                kappa_checkpoint = kappa_checkpoint_manager.checkpoints[_kappa_checkpoint]
+                kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint)
+                source_checkpoint = kappa_checkpoint_manager.checkpoints[_source_checkpoint]
+                source_checkpoint_manager.checkpoint.restore(source_checkpoint)
             else:
-                checkpoint = checkpoint_manager.checkpoints[int(args.load_checkpoint)]
-                checkpoint_manager.checkpoint.restore(checkpoint)
+                kappa_checkpoint = kappa_checkpoint_manager.checkpoints[int(args.load_checkpoint)]
+                source_checkpoint = source_checkpoint_manager.checkpoints[int(args.load_checkpoint)]
+                kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint)
+                source_checkpoint_manager.checkpoint.restore(source_checkpoint)
     else:
         save_checkpoint = False
     # =================================================================================================================
 
     def train_step(inputs):
         X, source, kappa = inputs
-        with tf.GradientTape() as tape:
-            tape.watch(rim.unet.trainable_variables)
+        with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
+            tape.watch(rim.source_model.trainable_variables)
+            tape.watch(rim.kappa_model.trainable_variables)
             cost = rim.cost_function(X, source, kappa, reduction=False)
             cost = tf.reduce_sum(cost) / args.batch_size  # Reduce by the global batch size, not the replica batch size
-        gradient = tape.gradient(cost, rim.unet.trainable_variables)
+        gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
+        gradient2 = tape.gradient(cost, rim.kappa_model.trainable_variables)
         if args.clipping:
-            gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
-        optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
+            gradient1 = [tf.clip_by_value(grad, -10, 10) for grad in gradient1]
+            gradient2 = [tf.clip_by_value(grad, -10, 10) for grad in gradient2]
+        optim.apply_gradients(zip(gradient1, rim.source_model.trainable_variables))
+        optim.apply_gradients(zip(gradient2, rim.kappa_model.trainable_variables))
         return cost
 
     @tf.function
@@ -265,7 +298,7 @@ def main(args):
             for batch, distributed_inputs in enumerate(train_dataset):
                 start = time.time()
                 cost = distributed_train_step(distributed_inputs)
-                #========== Summary and logs ==========
+                # ========== Summary and logs ==========
                 _time = time.time() - start
                 tf.summary.scalar("Time per step", _time, step=step)
                 time_per_step.update_state([_time])
@@ -273,7 +306,6 @@ def main(args):
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
-            # last batch we make a summary of residuals
             # last batch we make a summary of residuals
             for res_idx in range(min(args.n_residuals, args.batch_size)):
                 lens_true = distributed_inputs[0][res_idx, ...]
@@ -304,6 +336,7 @@ def main(args):
                                          lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
+            tf.summary.scalar("MSE", test_cost, step=step)
         val_cost = val_loss.result().numpy()
         train_cost = epoch_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
@@ -314,27 +347,42 @@ def main(args):
         else:
             patience -= 1
         if save_checkpoint:
-            checkpoint_manager.checkpoint.step.assign_add(1) # a bit of a hack
+            source_checkpoint_manager.checkpoint.step.assign_add(1) # a bit of a hack
+            kappa_checkpoint_manager.checkpoint.step.assign_add(1)
             if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
-                with open(os.path.join(checkpoints_dir, "score_sheet.txt"), mode="a") as f:
+                with open(os.path.join(kappa_checkpoints_dir, "score_sheet.txt"), mode="a") as f:
+                    np.savetxt(f, np.array([[lastest_checkpoint, val_cost]]))
+                with open(os.path.join(source_checkpoints_dir, "score_sheet.txt"), mode="a") as f:
                     np.savetxt(f, np.array([[lastest_checkpoint, val_cost]]))
                 lastest_checkpoint += 1
-                checkpoint_manager.save()
-                print("Saved checkpoint for step {}: {}".format(int(checkpoint_manager.checkpoint.step), checkpoint_manager.latest_checkpoint))
+                source_checkpoint_manager.save()
+                kappa_checkpoint_manager.save()
+                print("Saved checkpoint for step {}: {}".format(int(source_checkpoint_manager.checkpoint.step),
+                                                                source_checkpoint_manager.latest_checkpoint))
         if patience == 0:
             print("Reached patience")
             break
-    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_rim_hparams")).as_default():
-        hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_source_hparams", logname)).as_default():
+        hparams_dict = {key: vars(args)["source_" +key] for key in SOURCE_MODEL_HPARAMS}
+        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
         hp.hparams(hparams_dict)
         tf.summary.scalar("Test MSE", best_loss, step=step)
         tf.summary.scalar("Final Train MSE", train_cost, step=step)
 
-    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_unet_hparams")).as_default():
-        hparams_dict = {key: vars(args)[key] for key in UNET_MODEL_HPARAMS}
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_kappa_hparams", logname)).as_default():
+        hparams_dict = {key: vars(args)["kappa_" + key] for key in KAPPA_MODEL_HPARAMS}
+        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
         hp.hparams(hparams_dict)
         tf.summary.scalar("Test MSE", best_loss, step=step)
         tf.summary.scalar("Final Train MSE", train_cost, step=step)
+
+    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_rim_hparams", logname)).as_default():
+        hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
+        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
+        hp.hparams(hparams_dict)
+        tf.summary.scalar("Test MSE", best_loss, step=step)
+        tf.summary.scalar("Final Train MSE", train_cost, step=step)
+
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -346,34 +394,46 @@ if __name__ == "__main__":
     parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
 
     # RIM hyperparameters
-    parser.add_argument("--steps",              default=16,     type=int,       help="Number of time steps of RIM")
-    parser.add_argument("--adam",               action="store_true",            help="ADAM update for the log-likelihood gradient.")
-    parser.add_argument("--kappalog",           action="store_true")
-    parser.add_argument("--kappa_normalize",    action="store_true")
-
-    # Shared Unet params
-    parser.add_argument("--filters",                                    default=32,     type=int)
-    parser.add_argument("--filter_scaling",                             default=1,      type=int)
-    parser.add_argument("--kernel_size",                                default=3,      type=int)
-    parser.add_argument("--layers",                                     default=2,      type=int)
-    parser.add_argument("--block_conv_layers",                          default=2,      type=int)
-    parser.add_argument("--strides",                                    default=2,      type=int)
-    parser.add_argument("--bottleneck_kernel_size",                     default=None,   type=int)
-    parser.add_argument("--bottleneck_filters",                         default=None,   type=int)
-    parser.add_argument("--resampling_kernel_size",                     default=None,   type=int)
-    parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
-    parser.add_argument("--upsampling_interpolation",                   action="store_true")
-    parser.add_argument("--kernel_regularizer_amp",                     default=1e-4,   type=float)
-    parser.add_argument("--bias_regularizer_amp",                       default=1e-4,   type=float)
-    parser.add_argument("--activation",                                 default="leaky_relu")
-    parser.add_argument("--alpha",                                      default=0.1,    type=float)
-    parser.add_argument("--initializer",                                default="glorot_normal")
-    parser.add_argument("--kappa_resize_filters",                       default=4,      type=int)
-    parser.add_argument("--kappa_resize_method",                        default="bilinear")
-    parser.add_argument("--kappa_resize_conv_layers",                   default=1,      type=int)
-    parser.add_argument("--kappa_resize_strides",                       default=2,      type=int)
-    parser.add_argument("--kappa_resize_kernel_size",                   default=3,      type=int)
-    parser.add_argument("--kappa_resize_separate_grad_downsampling",    action="store_true")
+    parser.add_argument("--steps",                  default=16,     type=int,       help="Number of time steps of RIM")
+    parser.add_argument("--adam",                   action="store_true",            help="ADAM update for the log-likelihood gradient.")
+    parser.add_argument("--kappalog",               action="store_true")
+    parser.add_argument("--kappa_normalize",        action="store_true")
+    
+    # Kappa model hyperparameters
+    parser.add_argument("--kappa_filters",                  default=32,     type=int)
+    parser.add_argument("--kappa_filter_scaling",           default=1,      type=int)
+    parser.add_argument("--kappa_kernel_size",              default=3,      type=int)
+    parser.add_argument("--kappa_layers",                   default=2,      type=int)
+    parser.add_argument("--kappa_block_conv_layers",        default=2,      type=int)
+    parser.add_argument("--kappa_strides",                  default=2,      type=int)
+    parser.add_argument("--kappa_bottleneck_kernel_size",   default=None,   type=int)
+    parser.add_argument("--kappa_bottleneck_filters",       default=None,   type=int)
+    parser.add_argument("--kappa_resampling_kernel_size",   default=None,   type=int)
+    parser.add_argument("--kappa_gru_kernel_size",          default=None,   type=int)
+    parser.add_argument("--kappa_upsampling_interpolation", action="store_true")
+    parser.add_argument("--kappa_kernel_regularizer_amp",   default=1e-4,   type=float)
+    parser.add_argument("--kappa_bias_regularizer_amp",     default=1e-4,   type=float)
+    parser.add_argument("--kappa_activation",               default="leaky_relu")
+    parser.add_argument("--kappa_alpha",                    default=0.1,    type=float)
+    parser.add_argument("--kappa_initializer",              default="glorot_normal")
+    
+    # Source model hyperparameters
+    parser.add_argument("--source_filters",                  default=32,     type=int)
+    parser.add_argument("--source_filter_scaling",           default=1,      type=int)
+    parser.add_argument("--source_kernel_size",              default=3,      type=int)
+    parser.add_argument("--source_layers",                   default=2,      type=int)
+    parser.add_argument("--source_block_conv_layers",        default=2,      type=int)
+    parser.add_argument("--source_strides",                  default=2,      type=int)
+    parser.add_argument("--source_bottleneck_kernel_size",   default=None,   type=int)
+    parser.add_argument("--source_bottleneck_filters",       default=None,   type=int)
+    parser.add_argument("--source_resampling_kernel_size",   default=None,   type=int)
+    parser.add_argument("--source_gru_kernel_size",          default=None,   type=int)
+    parser.add_argument("--source_upsampling_interpolation", action="store_true")
+    parser.add_argument("--source_kernel_regularizer_amp",   default=1e-4,   type=float)
+    parser.add_argument("--source_bias_regularizer_amp",     default=1e-4,   type=float)
+    parser.add_argument("--source_activation",               default="leaky_relu")
+    parser.add_argument("--source_alpha",                    default=0.1,    type=float)
+    parser.add_argument("--source_initializer",              default="glorot_normal")
 
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "

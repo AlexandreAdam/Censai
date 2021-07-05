@@ -84,10 +84,8 @@ def test_lens_func_given_alpha():
     lens_pred = phys_a.lens_source_func_given_alpha(alpha, xs=0.5, ys=0.5)
     lens_pred2 = phys.lens_source_func_given_alpha(alpha, xs=0.5, ys=0.5)
     fig = raytracer_residual_plot(alpha[0], alpha[0], lens_true[0], lens_pred[0])
-    cost1 = tf.reduce_mean(tf.cast(tf.math.equal(lens_true, lens_pred), tf.float32))
-    cost2 = tf.reduce_mean(tf.cast(tf.math.equal(lens_true, lens_pred2), tf.float32))
-    # assert cost1 == 1.0, cost1
-    # assert cost2 == 1.0, cost2
+    assert np.allclose(lens_pred2, lens_true, atol=1e-5)
+    assert np.allclose(lens_pred, lens_true, atol=1e-5)
 
 
 if __name__ == "__main__":
