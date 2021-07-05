@@ -199,6 +199,7 @@ if __name__ == '__main__':
     parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
+    parser.add_argument("--track_train",                    action="store_true")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
@@ -211,10 +212,11 @@ if __name__ == '__main__':
     # Make sure each model train on the same dataset
     parser.add_argument("--seed",                   default=42,   type=int,       help="Random seed for numpy and tensorflow.")
 
+    # Keep these as default, they need to be in Namespace but we dont use them for this script
+    parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
+                                                                                          "checkpoint of this model if provided")
+    parser.add_argument("--load_checkpoint",            default="best",              help="One of 'best', 'lastest' or the specific checkpoint index")
+    parser.add_argument("--json_override",                  default=None,             help="A json filepath that will override every command line parameters. "
+                                                                                           "Useful for reproducibility")
     args = parser.parse_args()
-
-    gridsearch_args = list(single_instance_args_generator(args))
-    from pprint import pprint
-    for a in gridsearch_args:
-        pprint(vars(a))
-    # distributed_strategy(args)
+    distributed_strategy(args)

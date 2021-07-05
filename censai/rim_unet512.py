@@ -1,6 +1,6 @@
 import tensorflow as tf
 from .models.rim_unet_model512 import UnetModel512
-from censai.definitions import logkappa_normalization, log_kappa
+from censai.definitions import logkappa_normalization, log_10
 from censai import PhysicalModel
 
 LOG10 = tf.math.log(10.)
@@ -48,9 +48,9 @@ class RIMUnet512:
 
         if self.kappalog:
             if self.kappa_normalize:
-                self.kappa_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_kappa(x), forward=True))
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_10(x), forward=True))
             else:
-                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_kappa(x))
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_10(x))
         else:
             self.kappa_link = tf.identity
 

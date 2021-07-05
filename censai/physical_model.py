@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from censai.models.ray_tracer import RayTracer
 import tensorflow_addons as tfa
-from censai.definitions import DTYPE, log_kappa, logkappa_normalization
+from censai.definitions import DTYPE, log_10, logkappa_normalization
 from censai.utils import nullcontext
 
 

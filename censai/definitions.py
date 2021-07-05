@@ -92,16 +92,16 @@ def xsquared(x):
 
 
 @tf.function
-def log_kappa(x):
+def log_10(x):
     return tf.math.log(x + LOGFLOOR) / LOG10
 
 
 @tf.function
 def logkappa_normalization(x, forward=True):
     if forward:
-        return (x - log_kappa(KAPPA_MEAN)) / log_kappa(KAPPA_STD)
+        return (x - log_10(KAPPA_MEAN)) / log_10(KAPPA_STD)
     else:
-        return log_kappa(KAPPA_STD) * x + log_kappa(KAPPA_MEAN)
+        return log_10(KAPPA_STD) * x + log_10(KAPPA_MEAN)
 
 
 def lrelu4p(x, alpha=0.04):
