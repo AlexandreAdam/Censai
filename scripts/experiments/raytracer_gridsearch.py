@@ -174,9 +174,4 @@ if __name__ == '__main__':
                                                                                            "Useful for reproducibility")
 
     args = parser.parse_args()
-    # distributed_strategy(args)
-    gridsearch_args = list(single_instance_args_generator(args))
-    print(gridsearch_args)
-    from pprint import pprint
-    for a in gridsearch_args:
-        pprint(vars(a))
+    distributed_strategy(args)
