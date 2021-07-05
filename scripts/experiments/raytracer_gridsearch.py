@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_unet import main
+from scripts.train_raytracer import main
 import copy
 
 # total number of slurm workers detected
