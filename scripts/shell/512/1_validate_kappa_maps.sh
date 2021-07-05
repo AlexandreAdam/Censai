@@ -7,6 +7,6 @@
 #SBATCH --job-name=Validate_Kappa_Maps_512
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/1_validate_kappa_maps.py\
+python $CENSAI_PATH/scripts/validate_kappa_maps.py\
   --kappa_dir=$HOME/scratch/Censai/data/kappa612_TNG100\
   --good_kappa_cutoff=1

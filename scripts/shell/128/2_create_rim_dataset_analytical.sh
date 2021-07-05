@@ -9,7 +9,7 @@
 #SBATCH --job-name=Create-RIM-Dataset-Analytical-128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/2_create_rim_dataset_analytical_kappa_maps.py\
+python $CENSAI_PATH/scripts/create_rim_dataset_analytical_kappa_maps.py\
   --output_dir=$HOME/scratch/Censai/data/lenses128_NIS/\
   --len_dataset=2000\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\

@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_RIM_SmokeTest_256
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/4_train_rim_unet.py\
+python $CENSAI_PATH/scripts/train_rim_unet.py\
   --datasets $HOME/scratch/Censai/data/lenses128_NIS\
   --compression_type=GZIP\
   --forward_method=fft\

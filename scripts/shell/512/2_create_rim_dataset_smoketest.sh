@@ -9,7 +9,7 @@
 #SBATCH --job-name=Create-RIM-Dataset-SmokeTest
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/2_create_rim_dataset.py\
+python $CENSAI_PATH/scripts/create_rim_dataset.py\
   --output_dir=$HOME/scratch/Censai/data/\
   --len_dataset=20\
   --kappa_dir=$HOME/scratch/Censai/data/kappa612_TNG100/\

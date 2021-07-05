@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_RayTracer128_SmokeTest
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/3_train_raytracer.py\
+python $CENSAI_PATH/scripts/train_raytracer.py\
   --datasets $HOME/scratch/Censai/data/alpha128_NIS\
   --total_items=100\
   --epochs=20\
