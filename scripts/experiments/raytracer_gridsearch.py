@@ -51,6 +51,8 @@ def single_instance_args_generator(args):
         return uniform_grid_search(args)
     elif args.strategy == "exhaustive":
         return exhaustive_grid_search(args)
+    else:
+        raise NotImplementedError(f"{args.strategy} not in ['uniform', 'exhaustive']")
 
 
 def uniform_grid_search(args):
