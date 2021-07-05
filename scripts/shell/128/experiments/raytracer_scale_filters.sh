@@ -19,8 +19,6 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --pixels=128\
   --initial_learning_rate=1e-4\
   --kernel_size 5\
-  --decay_rate=0.9\
-  --decay_steps=1000\
   --filters 8 16 32 64\
   --filter_scaling 1 2\
   --layers 4\

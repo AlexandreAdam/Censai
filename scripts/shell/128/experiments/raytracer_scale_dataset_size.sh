@@ -18,8 +18,6 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --train_split=0.9\
   --pixels=128\
   --initial_learning_rate=1e-4\
-  --decay_rate=0.9\
-  --decay_steps=1000\
   --kernel_size 5\
   --filters 32\
   --filter_scaling 1\
