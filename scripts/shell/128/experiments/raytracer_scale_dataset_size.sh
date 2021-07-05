@@ -43,3 +43,4 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --patience=50\
   --tolerance=0.0\
   --seed=42\
+  --track_train

@@ -226,10 +226,13 @@ def main(args):
                 val_loss.update_state([test_cost])
             tf.summary.scalar("MSE", test_cost, step=step)
         val_cost = val_loss.result().numpy()
-        print(f"epoch {epoch} | train loss {epoch_loss.result().numpy():.3e} | val loss {val_cost:.3e} "
+        train_cost = epoch_loss.result().numpy()
+        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e}")
-        if val_cost < (1 - args.tolerance) * best_loss:
-            best_loss = val_cost
+
+        cost = train_cost if args.track_train else val_cost
+        if cost < (1 - args.tolerance) * best_loss:
+            best_loss = cost
             patience = args.patience
         else:
             patience -= 1
@@ -238,9 +241,9 @@ def main(args):
             kappa_checkpoint_manager.checkpoint.step.assign_add(1)
             if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
                 with open(os.path.join(kappa_checkpoints_dir, "score_sheet.txt"), mode="a") as f:
-                    np.savetxt(f, np.array([[lastest_checkpoint, val_cost]]))
+                    np.savetxt(f, np.array([[lastest_checkpoint, cost]]))
                 with open(os.path.join(source_checkpoints_dir, "score_sheet.txt"), mode="a") as f:
-                    np.savetxt(f, np.array([[lastest_checkpoint, val_cost]]))
+                    np.savetxt(f, np.array([[lastest_checkpoint, cost]]))
                 lastest_checkpoint += 1
                 source_checkpoint_manager.save()
                 kappa_checkpoint_manager.save()
@@ -302,6 +305,7 @@ if __name__ == "__main__":
     parser.add_argument("--clipping",               action="store_true",        help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,   help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float, help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
+    parser.add_argument("--track_train",            action="store_true",        help="Track training metric instead of validation metric, in case we want to overfit")
 
     # logs
     parser.add_argument("--logdir",                  default="None",            help="Path of logs directory. Default if None, no logs recorded.")

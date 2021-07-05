@@ -236,8 +236,9 @@ def main(args):
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
               f"time per step {time_per_step.result():.2e} s")
         # =============================================================================================================
-        if val_cost < best_loss * (1 - args.tolerance):
-            best_loss = val_cost
+        cost = train_cost if args.track_train else val_cost
+        if cost < best_loss * (1 - args.tolerance):
+            best_loss = cost
             patience = args.patience
         else:
             patience -= 1
@@ -246,7 +247,7 @@ def main(args):
             checkpoint_manager.checkpoint.step.assign_add(1)  # a bit of a hack
             if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
                 with open(os.path.join(checkpoints_dir, "score_sheet.txt"), mode="a") as f:
-                    np.savetxt(f, np.array([[lastest_checkpoint, val_cost]]))
+                    np.savetxt(f, np.array([[lastest_checkpoint, cost]]))
                 lastest_checkpoint += 1
                 checkpoint_manager.save()
                 print("Saved checkpoint for step {}: {}".format(int(checkpoint_manager.checkpoint.step), checkpoint_manager.latest_checkpoint))
@@ -315,6 +316,7 @@ if __name__ == "__main__":
     parser.add_argument("--clipping",                       action="store_true",                    help="Clip backprop gradients between -10 and 10")
     parser.add_argument("--patience",                       default=np.inf, type=int,               help="Number of step at which training is stopped if no improvement is recorder")
     parser.add_argument("--tolerance",                      default=0,      type=float,             help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
+    parser.add_argument("--track_train",                    action="store_true",                    help="Track training metric instead of validation metric, in case we want to overfit")
 
     # Reproducibility params
     parser.add_argument("--seed",                           default=None,   type=int, help="Random seed for numpy and tensorflow")
