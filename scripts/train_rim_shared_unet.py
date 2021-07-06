@@ -43,7 +43,7 @@ UNET_MODEL_HPARAMS = [
     "layers",
     "block_conv_layers",
     "strides",
-    "bottleneck_kernel_size"
+    "bottleneck_kernel_size",
     "bottleneck_filters",
     "resampling_kernel_size",
     "gru_kernel_size",
