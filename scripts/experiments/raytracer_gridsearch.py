@@ -14,9 +14,8 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 DATE = datetime.now().strftime("%y-%m-%d_%H")
 
-# Parameters on which we do a grid search. Fixed parameter are commented out.
 RAYTRACER_HPARAMS = [
-    # "pixels",
+    "pixels",
     "filter_scaling",
     "layers",
     "block_conv_layers",
@@ -28,14 +27,29 @@ RAYTRACER_HPARAMS = [
     "upsampling_interpolation",
     "kernel_regularizer_amp",
     "activation",
-    # "initializer",
-    # "kappalog",
-    # "normalize",
+    "initializer",
+    "kappalog",
+    "normalize",
 ]
 
 EXTRA_PARAMS = [
     "total_items"
 ]
+
+from collections import OrderedDict
+PARAMS_NICKNAME = OrderedDict()
+PARAMS_NICKNAME["total_items"] = "TI"
+PARAMS_NICKNAME["filters"] = "F"
+PARAMS_NICKNAME["filter_scaling"] = "FS"
+PARAMS_NICKNAME["kernel_size"] = "K"
+PARAMS_NICKNAME["layers"] = "L"
+PARAMS_NICKNAME["block_conv_layers"] = "BCL"
+PARAMS_NICKNAME["strides"] = "S"
+PARAMS_NICKNAME["upsampling_interpolation"] = "BU"
+PARAMS_NICKNAME["resampling_kernel_size"] = "RK"
+PARAMS_NICKNAME["kernel_regularizer_amp"] = "RA"
+PARAMS_NICKNAME["kappalog"] = "KaL"
+PARAMS_NICKNAME["normalize"] = "KaN"
 
 
 def single_instance_args_generator(args):
@@ -59,10 +73,17 @@ def uniform_grid_search(args):
     for gridsearch_id in range(1, args.n_models + 1):
         new_args = copy.deepcopy(args)
         args_dict = vars(new_args)
-        args_dict.update({"logname": args.logname_prefixe + "_" + DATE + "_" + f"{gridsearch_id:03d}"})
+        nicknames = []
+        params = []
         for p in RAYTRACER_HPARAMS + EXTRA_PARAMS:
-            if isinstance(args_dict[p], list):
+            if len(args_dict[p]) > 1:
                 args_dict[p] = np.random.choice(args_dict[p], size=1)[0]
+                nicknames.append(PARAMS_NICKNAME[p])
+                params.append(args_dict[p])
+            else:
+                args_dict[p] = args_dict[p][0]
+        param_str = "_" + "_".join([f"{nickname}{param}" for nickname, param in zip(nicknames, params)])
+        args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str})
         yield new_args
 
 
@@ -77,9 +98,10 @@ def exhaustive_grid_search(args):
     for gridsearch_id in range(1, args.n_models + 1):
         new_args = copy.deepcopy(args)
         args_dict = vars(new_args)
-        args_dict.update({"logname": args.logname_prefixe + "_" + DATE + "_" + f"{gridsearch_id:03d}"})
         i = 0
         roll = True
+        nicknames = []
+        params = []
         for p in RAYTRACER_HPARAMS + EXTRA_PARAMS:
             if isinstance(args_dict[p], list):
                 if roll and len(args_dict[p]) > 1:
@@ -91,9 +113,13 @@ def exhaustive_grid_search(args):
                         if i + 1 <= len(indexes)-1:
                             indexes[i + 1] += 1
                         args_dict[p] = args_dict[p][0]
+                    nicknames.append(PARAMS_NICKNAME[p])
+                    params.append(args_dict[p])
                 else:
                     args_dict[p] = args_dict[p][0]
                 i += 1
+        param_str = "_" + "_".join([f"{nickname}{param}" for nickname, param in zip(nicknames, params)])
+        args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str})
         yield new_args
 
 
@@ -174,4 +200,9 @@ if __name__ == '__main__':
                                                                                            "Useful for reproducibility")
 
     args = parser.parse_args()
-    distributed_strategy(args)
+    # distributed_strategy(args)
+    gridsearch_args = list(single_instance_args_generator(args))
+    print(gridsearch_args)
+    from pprint import pprint
+    for a in gridsearch_args:
+        pprint(vars(a))

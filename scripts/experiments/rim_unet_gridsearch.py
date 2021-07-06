@@ -14,12 +14,11 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 DATE = datetime.now().strftime("%y-%m-%d_%H")
 
-# Parameters on which we do a grid search. Fixed parameter are commented out.
 RIM_HPARAMS = [
-    # "adam",
+    "adam",
     "steps",
-    # "kappalog",
-    # "kappa_normalize"
+    "kappalog",
+    "kappa_normalize"
 ]
 SOURCE_MODEL_HPARAMS = [
     "kappa_filters",
@@ -32,12 +31,12 @@ SOURCE_MODEL_HPARAMS = [
     "kappa_bottleneck_filters",
     "kappa_resampling_kernel_size",
     "kappa_gru_kernel_size",
-    # "kappa_upsampling_interpolation",
+    "kappa_upsampling_interpolation",
     "kappa_kernel_regularizer_amp",
     "kappa_bias_regularizer_amp",
     "kappa_activation",
     "kappa_alpha",
-    # "kappa_initializer"
+    "kappa_initializer"
 ]
 KAPPA_MODEL_HPARAMS = [
     "source_filters",
@@ -50,17 +49,48 @@ KAPPA_MODEL_HPARAMS = [
     "source_bottleneck_filters",
     "source_resampling_kernel_size",
     "source_gru_kernel_size",
-    # "source_upsampling_interpolation",
+    "source_upsampling_interpolation",
     "source_kernel_regularizer_amp",
     "source_bias_regularizer_amp",
     "source_activation",
     "source_alpha",
-    # "source_initializer"
+    "source_initializer"
 ]
 
 EXTRA_PARAMS = [
     "total_items"
 ]
+
+from collections import OrderedDict
+PARAMS_NICKNAME = OrderedDict()
+PARAMS_NICKNAME["total_items"] = "TI"
+
+PARAMS_NICKNAME["kappa_filters"] = "KF"
+PARAMS_NICKNAME["kappa_filter_scaling"] = "KFS"
+PARAMS_NICKNAME["kappa_kernel_size"] = "KK"
+PARAMS_NICKNAME["kappa_layers"] = "KL"
+PARAMS_NICKNAME["kappa_block_conv_layers"] = "KBCL"
+PARAMS_NICKNAME["kappa_strides"] = "KS"
+PARAMS_NICKNAME["kappa_upsampling_interpolation"] = "KBU"
+PARAMS_NICKNAME["kappa_resampling_kernel_size"] = "KRK"
+PARAMS_NICKNAME["kappa_gru_kernel_size"] = "KGK"
+PARAMS_NICKNAME["kappa_kernel_regularizer_amp"] = "KRA"
+
+PARAMS_NICKNAME["source_filters"] = "SF"
+PARAMS_NICKNAME["source_filter_scaling"] = "SFS"
+PARAMS_NICKNAME["source_kernel_size"] = "SK"
+PARAMS_NICKNAME["source_layers"] = "SL"
+PARAMS_NICKNAME["source_block_conv_layers"] = "SBCL"
+PARAMS_NICKNAME["source_strides"] = "SS"
+PARAMS_NICKNAME["source_upsampling_interpolation"] = "SBU"
+PARAMS_NICKNAME["source_resampling_kernel_size"] = "SRK"
+PARAMS_NICKNAME["source_gru_kernel_size"] = "SGK"
+PARAMS_NICKNAME["source_kernel_regularizer_amp"] = "SRA"
+
+PARAMS_NICKNAME["steps"] = "TS"
+PARAMS_NICKNAME["kappalog"] = "KaL"
+PARAMS_NICKNAME["kappa_normalize"] = "KaN"
+PARAMS_NICKNAME["adam"] = "A"
 
 
 def single_instance_args_generator(args):
@@ -82,10 +112,15 @@ def uniform_grid_search(args):
     for gridsearch_id in range(1, args.n_models + 1):
         new_args = copy.deepcopy(args)
         args_dict = vars(new_args)
-        args_dict.update({"logname": args.logname_prefixe + "_" + DATE + "_" + f"{gridsearch_id:03d}"})
+        nicknames = []
+        params = []
         for p in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS:
-            if isinstance(args_dict[p], list):
+            if len(args_dict[p]) > 1:
                 args_dict[p] = np.random.choice(args_dict[p], size=1)[0]
+                nicknames.append(PARAMS_NICKNAME[p])
+                params.append(args_dict[p])
+        param_str = "_" + "_".join([f"{nickname}{param}" for nickname, param in zip(nicknames, params)])
+        args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str})
         yield new_args
 
 
@@ -100,23 +135,28 @@ def exhaustive_grid_search(args):
     for gridsearch_id in range(1, args.n_models + 1):
         new_args = copy.deepcopy(args)
         args_dict = vars(new_args)
-        args_dict.update({"logname": args.logname_prefixe + "_" + DATE + "_" + f"{gridsearch_id:03d}"})
         i = 0
         roll = True
+        nicknames = []
+        params = []
         for p in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS:
             if isinstance(args_dict[p], list):
-                if roll and len(args_dict[p]) > 1:
+                if roll and len(args_dict[p]) > 1:  # update parameter and prevent update of other ones
                     if indexes[i] < len(args_dict[p]):
                         args_dict[p] = args_dict[p][indexes[i]]
                         indexes[i] += 1
                         roll = False
-                    else:
+                    else:  # end of grid for rolling parameter, we roll next parameter if there is one
                         if i + 1 <= len(indexes)-1:
                             indexes[i + 1] += 1
-                        args_dict[p] = args_dict[p][0]
+                        args_dict[p] = args_dict[p][0]  # reset rolling param to starting position
+                    nicknames.append(PARAMS_NICKNAME[p])
+                    params.append(args_dict[p])
                 else:
                     args_dict[p] = args_dict[p][0]
                 i += 1
+        param_str = "_" + "_".join([f"{nickname}{param}" for nickname, param in zip(nicknames, params)])
+        args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str})
         yield new_args
 
 
