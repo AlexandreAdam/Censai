@@ -55,7 +55,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --source_initializer glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logs\
-  --logname_prefixe=RIM_Unet128_ScaleDatasetSize\
+  --logname_prefixe=RIMDU128_SDS\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\

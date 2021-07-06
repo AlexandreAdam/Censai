@@ -36,7 +36,7 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --block_length=1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logs\
-  --logname_prefixe=RayTracer128_ScaleDatasetSize\
+  --logname_prefixe=RT128_SDS\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\

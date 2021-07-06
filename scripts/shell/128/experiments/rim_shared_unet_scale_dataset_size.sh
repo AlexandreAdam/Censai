@@ -46,7 +46,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --kappa_resize_kernel_size 7\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logs\
-  --logname_prefixe=RIM_SharedUnet128\
+  --logname_prefixe=RIMSU128_SDS\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\
