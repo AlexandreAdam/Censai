@@ -20,11 +20,11 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --batch_size=4\
-  --train_split=0.9\
+  --batch_size=1\
+  --train_split=0.85\
   --total_items 8 10 50 100\
-  --num_parallel_reads=4\
-  --cycle_length=4\
+  --num_parallel_reads=1\
+  --cycle_length=1\
   --block_length=1\
   --steps=16\
   --adam\
