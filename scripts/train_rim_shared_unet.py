@@ -189,7 +189,7 @@ def main(args):
                 hparams_dict = {key: vars(args)[key] for key in UNET_MODEL_HPARAMS}
                 json.dump(hparams_dict, f, indent=4)
             with open(os.path.join(checkpoints_dir, "rim_hparams.json"), "w") as f:
-                hparams_dict = {key: vars(args)["rim_" + key] for key in RIM_HPARAMS}
+                hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
                 json.dump(hparams_dict, f, indent=4)
         ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.unet)
         checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
