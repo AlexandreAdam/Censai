@@ -113,19 +113,11 @@ def main(args):
     # setup tensorboard writer (nullwriter in case we do not want to sync)
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
-        traindir = os.path.join(logdir, "train")
-        testdir = os.path.join(logdir, "test")
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
-        if not os.path.isdir(traindir):
-            os.mkdir(traindir)
-        if not os.path.isdir(testdir):
-            os.mkdir(testdir)
-        train_writer = tf.summary.create_file_writer(traindir)
-        test_writer = tf.summary.create_file_writer(testdir)
+        writer = tf.summary.create_file_writer(logdir)
     else:
-        train_writer = nullwriter()
-        test_writer = nullwriter()
+        writer = nullwriter()
     # ===== Make sure directory and checkpoint manager are created to save model ===================================
     if args.model_dir.lower() != "none":
         checkpoints_dir = os.path.join(args.model_dir, logname)
@@ -201,7 +193,7 @@ def main(args):
     for epoch in range(1, args.epochs + 1):
         epoch_loss.reset_states()
         time_per_step.reset_states()
-        with train_writer.as_default():
+        with writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
                 start = time.time()
                 cost = distributed_train_step(distributed_inputs)
@@ -213,8 +205,7 @@ def main(args):
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
             tf.summary.scalar("Learning rate", optim.lr(step), step=step)
-            # last batch we make a summary of residuals
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
+            for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in train set
                 # Deflection angle residual
                 alpha_true = distributed_inputs[1][res_idx, ...]
                 alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
@@ -223,29 +214,31 @@ def main(args):
                 lens_true = phys.lens_source_func(kappa)[0, ...]
                 lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
                 tf.summary.image(f"Residuals {res_idx}",
+                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
+
+        # ========== Validation set ===================
+            val_loss.reset_states()
+            for distributed_inputs in val_dataset:  # Cost of val set
+                test_cost = distributed_test_step(distributed_inputs)
+                val_loss.update_state([test_cost])
+            val_cost = val_loss.result().numpy()
+            tf.summary.scalar("Val MSE", val_cost, step=step)
+            for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in val set
+                # Deflection angle residual
+                alpha_true = distributed_inputs[1][res_idx, ...]
+                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
+                # Lens residual
+                kappa = distributed_inputs[0][res_idx, ...][None, ...]
+                lens_true = phys.lens_source_func(kappa)[0, ...]
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
+                tf.summary.image(f"Val Residuals {res_idx}",
                                  plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
         if args.profile and epoch == 1:
             # redo the last training step for debugging purposes
             tf.profiler.experimental.start(logdir=logdir)
             cost = distributed_train_step(distributed_inputs)
             tf.profiler.experimental.stop()
-        with test_writer.as_default():
-            val_loss.reset_states()
-            for distributed_inputs in val_dataset:
-                test_cost = distributed_test_step(distributed_inputs)
-                val_loss.update_state([test_cost])
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
-                # Deflection angle residual
-                alpha_true = distributed_inputs[1][res_idx, ...]
-                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
-                # Lens residual
-                kappa = distributed_inputs[0][res_idx, ...][None, ...]
-                lens_true = phys.lens_source_func(kappa)[0, ...]
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
-                tf.summary.image(f"Residuals {res_idx}",
-                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
         train_cost = epoch_loss.result().numpy()
-        val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
               f"time per step {time_per_step.result():.2e} s")
         # =============================================================================================================
@@ -272,8 +265,8 @@ def main(args):
         hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
         hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
         hp.hparams(hparams_dict)
-        tf.summary.scalar("Test MSE", best_loss, step=step)
-        tf.summary.scalar("Final Train MSE", train_cost, step=step)
+        tf.summary.scalar("Best MSE", best_loss, step=step)
+        tf.summary.scalar("Final MSE", cost, step=step)
 
 
 if __name__ == "__main__":
