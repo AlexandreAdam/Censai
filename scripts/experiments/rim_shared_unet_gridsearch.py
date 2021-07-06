@@ -108,7 +108,7 @@ def uniform_grid_search(args):
                 else:
                     args_dict[p] = args_dict[p][0]
         param_str = "_" + "_".join([f"{nickname}{param}" for nickname, param in zip(nicknames, params)])
-        args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str})
+        args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str + "_" + DATE})
         yield new_args
 
 
@@ -144,7 +144,7 @@ def exhaustive_grid_search(args):
                     args_dict[p] = args_dict[p][0]
                 i += 1
         param_str = "_" + "_".join([f"{nickname}{param}" for nickname, param in zip(nicknames, params)])
-        args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str})
+        args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str + "_" + DATE})
         yield new_args
 
 

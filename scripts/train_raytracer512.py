@@ -1,7 +1,7 @@
 import tensorflow as tf
-from censai import RayTracer512 as RayTracer, AnalyticalPhysicalModel
-from censai.data.alpha_tng import decode_train
-from censai.utils import nullwriter, plot_to_image, deflection_angles_residual_plot as residual_plot, lens_residual_plot
+from censai import RayTracer512 as RayTracer, PhysicalModel
+from censai.data.alpha_tng import decode_train, decode_physical_info
+from censai.utils import nullwriter, plot_to_image, raytracer_residual_plot as residual_plot
 import os, glob
 import numpy as np
 from datetime import datetime
@@ -54,6 +54,9 @@ def main(args):
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
                                cycle_length=args.cycle_length, block_length=args.block_length)
+    # extract physical info from first example
+    for image_fov, kappa_fov in dataset.map(decode_physical_info):
+        break
     dataset = dataset.map(decode_train).batch(args.batch_size)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
@@ -66,7 +69,7 @@ def main(args):
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
 
     # ========== Model and Physical Model =============================================================================
-    phys = AnalyticalPhysicalModel(pixels=args.pixels)
+    phys = PhysicalModel(pixels=args.pixels, image_fov=image_fov, kappa_fov=kappa_fov, src_fov=args.source_fov, psf_sigma=args.psf_sigma)
     with STRATEGY.scope():  # Replicate ops accross gpus
         ray_tracer = RayTracer(
             initializer=args.initializer,
@@ -197,42 +200,42 @@ def main(args):
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
             tf.summary.scalar("Learning rate", optim.lr(step), step=step)
-            # last batch we make a summary of residuals
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
+
+            for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in train set
                 # Deflection angle residual
-                y_true = distributed_inputs[1][res_idx, ...]
-                y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
-                tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
-            # Lens residual
-            for ellipticity in [0., 0.1, 0.4, 0.6]:
-                lens_true = phys.lens_source_func(e=ellipticity)[0, ...]
-                alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
-                tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")), step=step)
+                alpha_true = distributed_inputs[1][res_idx, ...]
+                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
+                # Lens residual
+                kappa = distributed_inputs[0][res_idx, ...][None, ...]
+                lens_true = phys.lens_source_func(kappa)[0, ...]
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
+                tf.summary.image(f"Residuals {res_idx}",
+                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
+
+            # ========== Validation set ===================
+            val_loss.reset_states()
+            for distributed_inputs in val_dataset:  # Cost of val set
+                test_cost = distributed_test_step(distributed_inputs)
+                val_loss.update_state([test_cost])
+            val_cost = val_loss.result().numpy()
+            tf.summary.scalar("Val MSE", val_cost, step=step)
+            for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in val set
+                # Deflection angle residual
+                alpha_true = distributed_inputs[1][res_idx, ...]
+                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
+                # Lens residual
+                kappa = distributed_inputs[0][res_idx, ...][None, ...]
+                lens_true = phys.lens_source_func(kappa)[0, ...]
+                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
+                tf.summary.image(f"Val Residuals {res_idx}",
+                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)),
+                                 step=step)
         if args.profile and epoch == 1:
             # redo the last training step for debugging purposes
             tf.profiler.experimental.start(logdir=logdir)
             cost = distributed_train_step(distributed_inputs)
             tf.profiler.experimental.stop()
-        with test_writer.as_default():
-            val_loss.reset_states()
-            for distributed_inputs in val_dataset:
-                test_cost = distributed_test_step(distributed_inputs)
-                val_loss.update_state([test_cost])
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
-                y_true = distributed_inputs[1][res_idx, ...]
-                y_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
-                tf.summary.image(f"Residual {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
-            # Lens residual
-            for ellipticity in [0., 0.1, 0.4, 0.6]:
-                lens_true = phys.lens_source_func(e=ellipticity)[0, ...]
-                alpha_pred = ray_tracer(phys.kappa_field(e=ellipticity))
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred)[0, ...]
-                tf.summary.image(f"Lens residual with ellipticity={ellipticity}",
-                                 plot_to_image(lens_residual_plot(lens_true, lens_pred, title=rf"$e = {ellipticity}$")), step=step)
         train_cost = epoch_loss.result().numpy()
-        val_cost = val_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
               f"time per step {time_per_step.result():.2e} s")
         # =============================================================================================================
@@ -259,8 +262,9 @@ def main(args):
         hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
         hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
         hp.hparams(hparams_dict)
-        tf.summary.scalar("Test MSE", best_loss, step=step)
-        tf.summary.scalar("Final Train MSE", train_cost, step=step)
+        tf.summary.scalar("Best MSE", best_loss, step=step)
+        tf.summary.scalar("Final MSE", cost, step=step)
+
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -307,6 +311,9 @@ if __name__ == "__main__":
     parser.add_argument("--max_to_keep",                    default=3,      type=int,               help="Max model checkpoint to keep")
     parser.add_argument("--n_residuals",                    default=1,      type=int,               help="Number of residual plots to save. Add overhead at the end of an epoch only.")
     parser.add_argument("--profile",                        action="store_true",                    help="If added, we will profile the last training step of the first epoch")
+    parser.add_argument("--source_fov",                     default=3,      type=float,             help="Source fov for lens residuals")
+    parser.add_argument("--source_w",                       default=0.1,    type=float,             help="Width of gaussian of source gaussian")
+    parser.add_argument("--psf_sigma",                      default=0.04,   type=float,             help="Sigma of PSF for lens resiudal")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",                   default=10,     type=int,               help="Number of epochs for training.")

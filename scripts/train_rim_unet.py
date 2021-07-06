@@ -186,19 +186,11 @@ def main(args):
         logname = args.logname_prefixe + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
-        traindir = os.path.join(logdir, "train")
-        testdir = os.path.join(logdir, "test")
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
-        if not os.path.isdir(traindir):
-            os.mkdir(traindir)
-        if not os.path.isdir(testdir):
-            os.mkdir(testdir)
-        train_writer = tf.summary.create_file_writer(traindir)
-        test_writer = tf.summary.create_file_writer(testdir)
+        writer = tf.summary.create_file_writer(logdir)
     else:
-        test_writer = nullwriter()
-        train_writer = nullwriter()
+        writer = nullwriter()
     # ===== Make sure directory and checkpoint manager are created to save model ===================================
     if args.model_dir.lower() != "none":
         models_dir = os.path.join(args.model_dir, logname)
@@ -294,11 +286,11 @@ def main(args):
     for epoch in range(args.epochs):
         epoch_loss.reset_states()
         time_per_step.reset_states()
-        with train_writer.as_default():
+        with writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
                 start = time.time()
                 cost = distributed_train_step(distributed_inputs)
-                # ========== Summary and logs ==========
+        # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
                 tf.summary.scalar("Time per step", _time, step=step)
                 time_per_step.update_state([_time])
@@ -313,31 +305,32 @@ def main(args):
                 kappa_true = distributed_inputs[2][res_idx, ...]
                 source_pred, kappa_pred, chi_squared = rim.call(lens_true[None, ...])
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
-                tf.summary.image(f"Residual {res_idx}",
+                tf.summary.image(f"Residuals {res_idx}",
                                  plot_to_image(
                                      residual_plot(
                                          lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
-        with test_writer.as_default():
+
+            # ========== Validation set ===================
             val_loss.reset_states()
             for distributed_inputs in val_dataset:
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
+            val_cost = val_loss.result().numpy()
+            tf.summary.scalar("Val MSE", val_cost, step=step)
             for res_idx in range(min(args.n_residuals, args.batch_size)):
                 lens_true = distributed_inputs[0][res_idx, ...]
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
                 source_pred, kappa_pred, chi_squared = rim.call(lens_true[None, ...])
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
-                tf.summary.image(f"Residual {res_idx}",
+                tf.summary.image(f"Val Residuals {res_idx}",
                                  plot_to_image(
                                      residual_plot(
                                          lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared
                                      )), step=step)
-            tf.summary.scalar("MSE", test_cost, step=step)
-        val_cost = val_loss.result().numpy()
         train_cost = epoch_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
@@ -368,22 +361,22 @@ def main(args):
         hparams_dict = {key: vars(args)["source_" +key] for key in SOURCE_MODEL_HPARAMS}
         hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
         hp.hparams(hparams_dict)
-        tf.summary.scalar("Test MSE", best_loss, step=step)
-        tf.summary.scalar("Final Train MSE", train_cost, step=step)
+        tf.summary.scalar("Best MSE", best_loss, step=step)
+        tf.summary.scalar("Final MSE", cost, step=step)
 
     with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_kappa_hparams", logname)).as_default():
         hparams_dict = {key: vars(args)["kappa_" + key] for key in KAPPA_MODEL_HPARAMS}
         hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
         hp.hparams(hparams_dict)
-        tf.summary.scalar("Test MSE", best_loss, step=step)
-        tf.summary.scalar("Final Train MSE", train_cost, step=step)
+        tf.summary.scalar("Best MSE", best_loss, step=step)
+        tf.summary.scalar("Final MSE", cost, step=step)
 
     with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_rim_hparams", logname)).as_default():
         hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
         hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
         hp.hparams(hparams_dict)
-        tf.summary.scalar("Test MSE", best_loss, step=step)
-        tf.summary.scalar("Final Train MSE", train_cost, step=step)
+        tf.summary.scalar("Best MSE", best_loss, step=step)
+        tf.summary.scalar("Final MSE", cost, step=step)
 
 
 if __name__ == "__main__":
