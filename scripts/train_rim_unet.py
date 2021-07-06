@@ -4,7 +4,7 @@ from censai import PhysicalModel, RIMUnet
 from censai.models import UnetModel
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
-import os, glob, time
+import os, glob, time, json
 from tensorboard.plugins.hparams import api as hp
 from datetime import datetime
 import random
@@ -101,7 +101,6 @@ def main(args):
     train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
-        import json
         with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
             raytracer_hparams = json.load(f)
     else:
@@ -196,23 +195,20 @@ def main(args):
         models_dir = os.path.join(args.model_dir, logname)
         if not os.path.isdir(models_dir):
             os.mkdir(models_dir)
-            import json
             with open(os.path.join(models_dir, "script_params.json"), "w") as f:
-                json.dump(vars(args), f)
+                json.dump(vars(args), f, indent=4)
         source_checkpoints_dir = os.path.join(models_dir, "source_checkpoints")
         if not os.path.isdir(source_checkpoints_dir):
             os.mkdir(source_checkpoints_dir)
-            import json
             with open(os.path.join(source_checkpoints_dir, "hparams.json"), "w") as f:
                 hparams_dict = {key: vars(args)["source_" + key] for key in SOURCE_MODEL_HPARAMS}
-                json.dump(hparams_dict, f)
+                json.dump(hparams_dict, f, indent=4)
         kappa_checkpoints_dir = os.path.join(models_dir, "kappa_checkpoints")
         if not os.path.isdir(kappa_checkpoints_dir):
             os.mkdir(kappa_checkpoints_dir)
-            import json
             with open(os.path.join(kappa_checkpoints_dir, "hparams.json"), "w") as f:
                 hparams_dict = {key: vars(args)["kappa_" + key] for key in KAPPA_MODEL_HPARAMS}
-                json.dump(hparams_dict, f)
+                json.dump(hparams_dict, f, indent=4)
         source_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.source_model)
         source_checkpoint_manager = tf.train.CheckpointManager(source_ckpt, source_checkpoints_dir, max_to_keep=args.max_to_keep)
         kappa_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.kappa_model)
@@ -381,7 +377,6 @@ def main(args):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    import json
     parser = ArgumentParser()
     parser.add_argument("--model_id",               default="None",                 help="Start from this model id checkpoint. None means start from scratch")
     parser.add_argument("--load_checkpoint",        default="best",                 help="One of 'best', 'lastest' or the specific checkpoint index.")
