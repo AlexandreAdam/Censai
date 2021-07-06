@@ -237,4 +237,4 @@ if __name__ == '__main__':
     parser.add_argument("--json_override",                  default=None,             help="A json filepath that will override every command line parameters. "
                                                                                            "Useful for reproducibility")
     args = parser.parse_args()
-    # distributed_strategy(args)
+    distributed_strategy(args)
