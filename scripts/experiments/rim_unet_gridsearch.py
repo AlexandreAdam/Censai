@@ -130,7 +130,7 @@ def exhaustive_grid_search(args):
     """
     indexes = []
     for p in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS:
-        if isinstance(vars(args)[p], list):
+        if isinstance(vars(args)[p], list):  # search for params to be updated
             indexes.append(0)
     for gridsearch_id in range(1, args.n_models + 1):
         new_args = copy.deepcopy(args)
