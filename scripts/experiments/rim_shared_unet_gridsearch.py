@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_unet import main
+from scripts.train_rim_shared_unet import main
 import copy
 
 # total number of slurm workers detected
@@ -12,7 +12,7 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 # defaults to zero if not running under SLURM
 THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
-DATE = datetime.now().strftime("%y-%m-%d_%H")
+DATE = datetime.now().strftime("%y%m%d%H%M%S")
 
 RIM_HPARAMS = [
     "adam",
@@ -116,33 +116,30 @@ def exhaustive_grid_search(args):
     """
     Lexicographic ordering of given parameter lists, up to n_models deep.
     """
-    indexes = []
+    from itertools import product
+    grid_params = []
     for p in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS:
         if isinstance(vars(args)[p], list):
-            indexes.append(0)
-    for gridsearch_id in range(1, args.n_models + 1):
+            if len(vars(args)[p]) > 1:
+                grid_params.append(vars(args)[p])
+    lexicographically_ordered_grid_params = product(*grid_params)
+    for gridsearch_id, lex in enumerate(lexicographically_ordered_grid_params):
+        if gridsearch_id >= args.n_models:
+            return
         new_args = copy.deepcopy(args)
         args_dict = vars(new_args)
-        i = 0
-        roll = True
         nicknames = []
         params = []
+        i = 0
         for p in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS:
             if isinstance(args_dict[p], list):
-                if roll and len(args_dict[p]) > 1:
-                    if indexes[i] < len(args_dict[p]):
-                        args_dict[p] = args_dict[p][indexes[i]]
-                        indexes[i] += 1
-                        roll = False
-                    else:
-                        if i + 1 <= len(indexes)-1:
-                            indexes[i + 1] += 1
-                        args_dict[p] = args_dict[p][0]
+                if len(args_dict[p]) > 1:
+                    args_dict[p] = lex[i]
+                    i += 1
                     nicknames.append(PARAMS_NICKNAME[p])
                     params.append(args_dict[p])
                 else:
                     args_dict[p] = args_dict[p][0]
-                i += 1
         param_str = "_" + "_".join([f"{nickname}{param}" for nickname, param in zip(nicknames, params)])
         args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str + "_" + DATE})
         yield new_args
