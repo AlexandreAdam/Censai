@@ -82,7 +82,7 @@ def exhaustive_grid_search(args):
         roll = True
         for p in RAYTRACER_HPARAMS + EXTRA_PARAMS:
             if isinstance(args_dict[p], list):
-                if roll:
+                if roll and len(args_dict[p]) > 1:
                     if indexes[i] < len(args_dict[p]):
                         args_dict[p] = args_dict[p][indexes[i]]
                         indexes[i] += 1
