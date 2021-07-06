@@ -2,7 +2,7 @@ import tensorflow as tf
 from censai import RayTracer, PhysicalModel
 from censai.data.alpha_tng import decode_train, decode_physical_info
 from censai.utils import nullwriter, plot_to_image, raytracer_residual_plot as residual_plot
-import os, glob
+import os, glob, json
 import numpy as np
 from datetime import datetime
 import random, time
@@ -124,12 +124,11 @@ def main(args):
         if not os.path.isdir(checkpoints_dir):
             os.mkdir(checkpoints_dir)
             # save script parameter for future reference
-            import json
             with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
-                json.dump(vars(args), f)
+                json.dump(vars(args), f, indent=4)
             with open(os.path.join(checkpoints_dir, "ray_tracer_hparams.json"), "w") as f:
                 hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
-                json.dump(hparams_dict, f)
+                json.dump(hparams_dict, f, indent=4)
         ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=ray_tracer)
         checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
@@ -271,7 +270,6 @@ def main(args):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    import json
     date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     parser = ArgumentParser()
     parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
@@ -341,7 +339,6 @@ if __name__ == "__main__":
         tf.random.set_seed(args.seed)
         np.random.seed(args.seed)
     if args.json_override is not None:
-
         with open(args.json_override, "r") as f:
             json_override = json.load(f)
         args_dict = vars(args)

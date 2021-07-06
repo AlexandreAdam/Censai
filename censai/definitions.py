@@ -9,9 +9,9 @@ DTYPE = tf.float32
 LOG10 = tf.constant(np.log(10.), DTYPE)
 LOGFLOOR = tf.constant(1e-5, DTYPE)
 # some estimate of kappa statistics (after rescaling for theta_e ~ Uniform(1, 7))
-KAPPA_MEAN = 0.3
-KAPPA_STD = 0.5
-KAPPA_MAX = 1e3
+KAPPA_LOG_MEAN = -0.52
+KAPPA_LOG_STD = -0.3
+KAPPA_LOG_MAX = 3
 KAPPA_MIN = LOGFLOOR  # not actual min, which is 0
 
 
@@ -99,9 +99,9 @@ def log_10(x):
 @tf.function
 def logkappa_normalization(x, forward=True):
     if forward:
-        return (x - log_10(KAPPA_MEAN)) / log_10(KAPPA_STD)
+        return (x - log_10(KAPPA_LOG_MEAN)) / log_10(KAPPA_LOG_STD)
     else:
-        return log_10(KAPPA_STD) * x + log_10(KAPPA_MEAN)
+        return log_10(KAPPA_LOG_STD) * x + log_10(KAPPA_LOG_MEAN)
 
 
 def lrelu4p(x, alpha=0.04):

@@ -102,7 +102,8 @@ def uniform_grid_search(args):
         for p in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS:
             if isinstance(args_dict[p], list):
                 if len(args_dict[p]) > 1:
-                    args_dict[p] = np.random.choice(args_dict[p], size=1)[0]
+                    # this way, numpy does not cast int to int64 or float to float32
+                    args_dict[p] = args_dict[p][np.random.choice(range(len(args_dict[p])))]
                     nicknames.append(PARAMS_NICKNAME[p])
                     params.append(args_dict[p])
                 else:

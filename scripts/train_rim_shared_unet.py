@@ -4,7 +4,7 @@ from censai import PhysicalModel, RIMSharedUnet
 from censai.models import SharedUnetModel
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
-import os, glob, time
+import os, glob, time, json
 from datetime import datetime
 from tensorboard.plugins.hparams import api as hp
 import random
@@ -97,7 +97,6 @@ def main(args):
     train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
-        import json
         with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
             raytracer_hparams = json.load(f)
     else:
@@ -118,7 +117,7 @@ def main(args):
         assert is_power_of_two(phys.pixels)
         assert is_power_of_two(phys.src_pixels)
         kappa_resize_layers = (phys.pixels // phys.src_pixels) // args.kappa_resize_strides
-        vars(args).update({"kappa_resize_layers": kappa_resize_layers})
+        vars(args).update({"kappa_resize_layers": int(kappa_resize_layers)})
         if args.raytracer is not None:
             # load last checkpoint in the checkpoint directory
             checkpoint = tf.train.Checkpoint(net=phys.RayTracer)
@@ -184,15 +183,14 @@ def main(args):
         checkpoints_dir = os.path.join(args.model_dir, logname)
         if not os.path.isdir(checkpoints_dir):
             os.mkdir(checkpoints_dir)
-            import json
             with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
-                json.dump(vars(args), f)
+                json.dump(vars(args), f, indent=4)
             with open(os.path.join(checkpoints_dir, "unet_hparams.json"), "w") as f:
                 hparams_dict = {key: vars(args)[key] for key in UNET_MODEL_HPARAMS}
-                json.dump(hparams_dict, f)
+                json.dump(hparams_dict, f, indent=4)
             with open(os.path.join(checkpoints_dir, "rim_hparams.json"), "w") as f:
                 hparams_dict = {key: vars(args)["rim_" + key] for key in RIM_HPARAMS}
-                json.dump(hparams_dict, f)
+                json.dump(hparams_dict, f, indent=4)
         ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.unet)
         checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
@@ -336,7 +334,6 @@ def main(args):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    import json
     parser = ArgumentParser()
     parser.add_argument("--model_id",               default="None",                 help="Start from this model id checkpoint. None means start from scratch")
     parser.add_argument("--load_checkpoint",        default="best",                 help="One of 'best', 'lastest' or the specific checkpoint index.")

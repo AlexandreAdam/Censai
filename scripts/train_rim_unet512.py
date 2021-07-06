@@ -3,7 +3,7 @@ import numpy as np
 from censai import PhysicalModel, RIMUnet512
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter
-import os, glob
+import os, glob, json
 from datetime import datetime
 import random
 MIRRORED_STRATEGY = tf.distribute.MirroredStrategy() # Strategy for data parallelism
@@ -62,7 +62,6 @@ def main(args):
     train_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = MIRRORED_STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
-        import json
         with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
             raytracer_hparams = json.load(f)
     else:
@@ -130,9 +129,8 @@ def main(args):
         models_dir = os.path.join(args.model_dir, logname)
         if not os.path.isdir(models_dir):
             os.mkdir(models_dir)
-            import json
             with open(os.path.join(models_dir, "script_params.json"), "w") as f:
-                json.dump(vars(args), f)
+                json.dump(vars(args), f, indent=4)
         source_checkpoints_dir = os.path.join(models_dir, "source_checkpoints")
         if not os.path.isdir(source_checkpoints_dir):
             os.mkdir(source_checkpoints_dir)
@@ -256,7 +254,6 @@ def main(args):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    import json
     parser = ArgumentParser()
     parser.add_argument("--model_id",           default="None",     help="Start from this model id checkpoint. None means start from scratch")
     parser.add_argument("--load_checkpoint",    default="best",     help="One of 'best', 'lastest' or the specific checkpoint index.")
