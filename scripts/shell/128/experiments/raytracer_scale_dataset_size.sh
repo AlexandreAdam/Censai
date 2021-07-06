@@ -40,7 +40,7 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\
-  --n_residuals=5\
+  --n_residuals=1\
   --patience=50\
   --tolerance=0.0\
   --seed=42\
