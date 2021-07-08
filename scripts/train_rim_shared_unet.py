@@ -274,7 +274,7 @@ def main(args):
                                  plot_to_image(
                                      residual_plot(
                                          lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
-                                         kappa_pred[-1][0, ...], chi_squared
+                                         kappa_pred[-1][0, ...], chi_squared[-1]
                                      )), step=step)
 
             # ========== Validation set ===================
@@ -294,7 +294,7 @@ def main(args):
                                  plot_to_image(
                                      residual_plot(
                                          lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
-                                         kappa_pred[-1][0, ...], chi_squared
+                                         kappa_pred[-1][0, ...], chi_squared[-1]
                                      )), step=step)
         train_cost = epoch_loss.result().numpy()
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
