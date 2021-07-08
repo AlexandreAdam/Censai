@@ -76,6 +76,7 @@ PARAMS_NICKNAME["kappa_normalize"] = "KaN"
 PARAMS_NICKNAME["adam"] = "A"
 PARAMS_NICKNAME["alpha"] = "al"
 PARAMS_NICKNAME["steps"] = "TS"
+PARAMS_NICKNAME["source_link"] = "Sli"
 
 
 def single_instance_args_generator(args):
