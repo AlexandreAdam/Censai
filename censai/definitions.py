@@ -12,7 +12,7 @@ LOGFLOOR = tf.constant(1e-5, DTYPE)
 KAPPA_LOG_MEAN = -0.52
 KAPPA_LOG_STD = 0.3
 KAPPA_LOG_MAX = 3
-KAPPA_MIN = LOGFLOOR  # not actual min, which is 0
+KAPPA_LOG_MIN = tf.math.log(LOGFLOOR) / tf.math.log(10.)  # not actual min, which is 0
 
 
 def theta_einstein(kappa, rescaling, physical_pixel_scale, sigma_crit, Dds, Ds, Dd):
@@ -94,6 +94,15 @@ def xsquared(x):
 @tf.function
 def log_10(x):
     return tf.math.log(x + LOGFLOOR) / LOG10
+
+
+@tf.function
+def kappa_clipped_exponential(log_kappa):
+    # log_kappa = tf.clip_by_value(log_kappa, clip_value_min=KAPPA_LOG_MIN, clip_value_max=KAPPA_LOG_MAX)
+    # clip values of log_kappa in a certain range. Make sure sure it is differentiable
+    log_kappa = (log_kappa + KAPPA_LOG_MIN) * 2 / (KAPPA_LOG_MAX - KAPPA_LOG_MIN) - 1  # rescale between -1 and 1 for tanh
+    log_kappa = (tf.math.tanh(log_kappa) + 1) * (KAPPA_LOG_MAX - KAPPA_LOG_MIN) / 2 + KAPPA_LOG_MIN  # rescale output of tanh to wanted range
+    return 10**log_kappa
 
 
 @tf.function
