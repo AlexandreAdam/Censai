@@ -229,6 +229,9 @@ def main(args):
               f"| learning rate {optim.lr(step).numpy():.2e}")
 
         cost = train_cost if args.track_train else val_cost
+        if np.isnan(cost):
+            print("Training broke the Universe")
+            break
         if cost < (1 - args.tolerance) * best_loss:
             best_loss = cost
             patience = args.patience
