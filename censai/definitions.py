@@ -66,13 +66,20 @@ def compute_rescaling_probabilities(kappa, rescaling_array, physical_pixel_scale
     return p
 
 
-def belu(x):
+def bipolar_elu(x):
     """Bipolar ELU as in https://arxiv.org/abs/1709.04054."""
-    x_shape = x.shape
-    x1, x2 = tf.split(tf.reshape(x, x_shape[:-1] + [-1, 2]), 2, axis=-1)
+    x1, x2 = tf.split(x, 2, axis=-1)
     y1 = tf.nn.elu(x1)
     y2 = -tf.nn.elu(-x2)
-    return tf.reshape(tf.concat([y1, y2], axis=-1), x_shape)
+    return tf.concat([y1, y2], axis=-1)
+
+
+def bipolar_leaky_relu(x, alpha=0.2, **kwargs):
+    """Bipolar Leaky ReLU as in https://arxiv.org/abs/1709.04054."""
+    x1, x2 = tf.split(x, 2, axis=-1)
+    y1 = tf.nn.leaky_relu(x1, alpha=alpha)
+    y2 = -tf.nn.leaky_relu(-x2, alpha=alpha)
+    return tf.concat([y1, y2], axis=-1)
 
 
 def lrelu(x, alpha=0.3):
