@@ -29,7 +29,6 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --steps=16\
   --adam\
   --kappalog\
-  --source_link sqrt\
   --filters 32\
   --filter_scaling 1\
   --kernel_size 3\
@@ -51,6 +50,6 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\
-  --n_residuals=5\
+  --n_residuals=1\
   --track_train
 

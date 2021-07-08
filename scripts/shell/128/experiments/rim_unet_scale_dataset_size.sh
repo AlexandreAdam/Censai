@@ -29,7 +29,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --steps=16\
   --adam\
   --kappalog\
-  --source_link sqrt\
+  --source_link identity\
   --kappa_filters 32\
   --kappa_filter_scaling 1\
   --kappa_kernel_size 3\
@@ -51,7 +51,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --source_upsampling_interpolation\
   --source_kernel_regularizer_amp 1e-4\
   --source_bias_regularizer_amp 1e-4\
-  --source_activatio leaky_relu\
+  --source_activation leaky_relu\
   --source_alpha 0.1\
   --source_initializer glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\

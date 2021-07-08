@@ -6,11 +6,11 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=1-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_TNG100_128_ScaleFilterSize
+#SBATCH --job-name=Train_RIM_TNG100_512_ScaleFilterSize
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
-  --datasets $CENSAI_PATH/data/lenses128_TNG100\
+  --datasets $CENSAI_PATH/data/lenses512_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=64\
@@ -32,9 +32,9 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --kappa_filters 8 16 32 64\
   --kappa_filter_scaling 1\
   --kappa_kernel_size 3\
-  --kappa_layers 4\
+  --kappa_layers 3\
   --kappa_block_conv_layers 3\
-  --kappa_strides 2\
+  --kappa_strides 4\
   --kappa_upsampling_interpolation\
   --kappa_kernel_regularizer_amp 0\
   --kappa_bias_regularizer_amp 0\
@@ -44,9 +44,9 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --source_filters 8 16 32 64\
   --source_filter_scaling 1\
   --source_kernel_size 3\
-  --source_layers 4\
+  --source_layers 3\
   --source_block_conv_layers 3\
-  --source_strides 2\
+  --source_strides 4\
   --source_upsampling_interpolation\
   --source_kernel_regularizer_amp 0\
   --source_bias_regularizer_amp 0\
@@ -55,7 +55,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --source_initializer glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logs\
-  --logname_prefixe=RIMDU128_SF\
+  --logname_prefixe=RIMDU512_SF\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\
