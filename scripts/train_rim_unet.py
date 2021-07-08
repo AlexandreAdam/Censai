@@ -388,6 +388,7 @@ if __name__ == "__main__":
     parser.add_argument("--adam",                   action="store_true",            help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",               action="store_true")
     parser.add_argument("--kappa_normalize",        action="store_true")
+    parser.add_argument("--source_link",            default="identity",             help="One of 'exp', 'source' or 'identity' (default).")
     
     # Kappa model hyperparameters
     parser.add_argument("--kappa_filters",                  default=32,     type=int)

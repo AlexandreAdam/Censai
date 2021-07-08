@@ -18,8 +18,10 @@ RIM_HPARAMS = [
     "adam",
     "steps",
     "kappalog",
-    "kappa_normalize"
+    "kappa_normalize",
+    "source_link"
 ]
+
 UNET_MODEL_HPARAMS = [
     "filters",
     "filter_scaling",
@@ -170,6 +172,7 @@ if __name__ == '__main__':
     parser.add_argument("--adam",               action="store_true",                      help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
+    parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
@@ -226,13 +229,13 @@ if __name__ == '__main__':
     parser.add_argument("--n_residuals",             default=1,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
 
     # Make sure each model train on the same dataset
-    parser.add_argument("--seed",                   default=42,   type=int,       help="Random seed for numpy and tensorflow.")
+    parser.add_argument("--seed",                   default=42,   type=int,         help="Random seed for numpy and tensorflow.")
 
     # Keep these as default, they need to be in Namespace but we dont use them for this script
     parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
                                                                                           "checkpoint of this model if provided")
     parser.add_argument("--load_checkpoint",            default="best",              help="One of 'best', 'lastest' or the specific checkpoint index")
-    parser.add_argument("--json_override",                  default=None,             help="A json filepath that will override every command line parameters. "
+    parser.add_argument("--json_override",                  default=None,            help="A json filepath that will override every command line parameters. "
                                                                                            "Useful for reproducibility")
     args = parser.parse_args()
     distributed_strategy(args)
