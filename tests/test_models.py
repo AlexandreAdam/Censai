@@ -118,12 +118,22 @@ def test_shared_unet_model():
     model(source, kappa, source_grad, kappa_grad, states)
 
 
-def test_rim_shared_unet():
-    phys = PhysicalModel(pixels=128, src_pixels=32, method="fft")
-    unet = SharedUnetModel(kappa_resize_layers=2)
-    rim = RIMSharedUnet(phys, unet, 16)
-    lens = tf.random.normal(shape=[1, 128, 128, 1])
-    rim.call(lens)
+def test_rim_shared_unet():  # TODO check that no output is nan
+    phys = PhysicalModel(pixels=64, src_pixels=32, method="fft")
+    unet = SharedUnetModel(kappa_resize_layers=1)
+    rim = RIMSharedUnet(phys, unet, 4)
+    lens = tf.random.normal(shape=[1, 64, 64, 1])
+    source_series, kappa_series, chi_squared_series = rim.call(lens)
+
+    phys = PhysicalModel(pixels=32, src_pixels=32, method="fft")
+    unet = SharedUnetModel(kappa_resize_layers=0)
+    rim = RIMSharedUnet(phys, unet, 4, kappa_normalize=True, source_link="sqrt")
+    lens = tf.random.normal(shape=[1, 32, 32, 1])
+    source_series, kappa_series, chi_squared_series = rim.call(lens)
+
+    rim = RIMSharedUnet(phys, unet, 4, kappa_normalize=True, source_link="exp")
+    lens = tf.random.normal(shape=[1, 32, 32, 1])
+    source_series, kappa_series, chi_squared_series = rim.call(lens)
 
 
 if __name__ == '__main__':
