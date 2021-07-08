@@ -166,6 +166,7 @@ def main(args):
             steps=args.steps,
             adam=args.adam,
             kappalog=args.kappalog,
+            source_link=args.source_link,
             kappa_normalize=args.kappa_normalize
         )
         learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
