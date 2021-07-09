@@ -102,6 +102,7 @@ class PhysicalModel:
     def log_likelihood(self, source, kappa, y_true):
         # with self.device:
         y_pred = self.forward(source, kappa)
+        y_pred += tf.random.normal(shape=y_pred.shape, stddev=self.noise_rms)  # TODO this seems necessary for noise_rms = 6e-3 (instead of 0.3e-3)
         return 0.5 * tf.reduce_mean((y_pred - y_true)**2/self.noise_rms**2)
 
     def forward(self, source, kappa):
