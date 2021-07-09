@@ -60,7 +60,7 @@ class RIMUnet:
 
     def initial_states(self, batch_size):
         source_init = self.source_link(tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1)))
-        kappa_init = self.kappa_link(tf.zeros(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)))
+        kappa_init = self.kappa_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) / 10.)
 
         source_states = self.source_model.init_hidden_states(self.source_pixels, batch_size)
         kappa_states = self.kappa_model.init_hidden_states(self.kappa_pixels, batch_size)
