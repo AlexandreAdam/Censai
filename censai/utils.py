@@ -5,7 +5,6 @@ import collections
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.visualization import ImageNormalize, LogStretch
-from matplotlib.colors import LogNorm
 
 try:
     from contextlib import nullcontext  # python > 3.7 needed for this
@@ -271,24 +270,3 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     plt.figtext(0.1, 0.22, r"$\kappa$", va="center", ha="center", size=15, rotation=90)
 
     return fig
-
-
-if __name__ == '__main__':
-    from censai import AnalyticalPhysicalModel
-    phys = AnalyticalPhysicalModel(pixels=128)
-    kap = phys.kappa_field()
-    lens = phys.lens_source_func()
-    src = tf.random.normal(shape=(128, 128, 1))
-    # rim_residual_plot(lens[0], src, kap[0], lens[0], src, kap[0], 1.)
-    # plt.show()
-
-    phys = AnalyticalPhysicalModel(pixels=32)
-    kap = phys.kappa_field()
-    lens = phys.lens_source_func()
-    src = tf.random.normal(shape=(128, 128, 1))
-    from censai import PhysicalModel
-    phys = PhysicalModel(pixels=32)
-    kap = tf.random.normal(shape=(1, 32, 32, 1))
-    src = tf.random.normal(shape=(1, 32, 32, 1))
-    cost = phys.log_likelihood(src, kap, lens)
-    pass
