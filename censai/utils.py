@@ -4,6 +4,8 @@ import io
 import collections
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from astropy.visualization import ImageNormalize, LogStretch
+from matplotlib.colors import LogNorm
 
 try:
     from contextlib import nullcontext  # python > 3.7 needed for this
@@ -112,7 +114,7 @@ def deflection_angles_residual_plot(y_true, y_pred):
 def lens_residual_plot(lens_true, lens_pred, title=""):
     fig, axs = plt.subplots(1, 3, figsize=(12, 4))
     ax = axs[0]
-    im = ax.imshow(lens_true.numpy()[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(lens_true.numpy()[..., 0], cmap="hot",  origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
@@ -211,7 +213,7 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     ax.axis("off")
 
     ax = axs[2, 0]
-    im = ax.imshow(kappa_true.numpy()[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(kappa_true.numpy()[..., 0], cmap="hot", norm=ImageNormalize(stretch=LogStretch(a=100)), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
@@ -232,7 +234,7 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     ax.axis("off")
 
     ax = axs[2, 1]
-    im = ax.imshow(kappa_pred.numpy()[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(kappa_pred.numpy()[..., 0], cmap="hot", norm=ImageNormalize(stretch=LogStretch(a=100)), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
@@ -269,3 +271,24 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     plt.figtext(0.1, 0.22, r"$\kappa$", va="center", ha="center", size=15, rotation=90)
 
     return fig
+
+
+if __name__ == '__main__':
+    from censai import AnalyticalPhysicalModel
+    phys = AnalyticalPhysicalModel(pixels=128)
+    kap = phys.kappa_field()
+    lens = phys.lens_source_func()
+    src = tf.random.normal(shape=(128, 128, 1))
+    # rim_residual_plot(lens[0], src, kap[0], lens[0], src, kap[0], 1.)
+    # plt.show()
+
+    phys = AnalyticalPhysicalModel(pixels=32)
+    kap = phys.kappa_field()
+    lens = phys.lens_source_func()
+    src = tf.random.normal(shape=(128, 128, 1))
+    from censai import PhysicalModel
+    phys = PhysicalModel(pixels=32)
+    kap = tf.random.normal(shape=(1, 32, 32, 1))
+    src = tf.random.normal(shape=(1, 32, 32, 1))
+    cost = phys.log_likelihood(src, kap, lens)
+    pass

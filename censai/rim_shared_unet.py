@@ -99,6 +99,9 @@ class RIMSharedUnet:
         return self.call(lensed_image)
 
     def call(self, lensed_image):
+        """
+        Used in training. Return linked kappa and source maps.
+        """
         batch_size = lensed_image.shape[0]
         source, kappa, states = self.initial_states(batch_size)
 
@@ -115,6 +118,29 @@ class RIMSharedUnet:
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
             source_series.append(source)
             kappa_series.append(kappa)
+            chi_squared_series.append(cost)
+        return source_series, kappa_series, chi_squared_series
+
+    def predict(self, lensed_image):
+        """
+        Used in inference. Return physical kappa and source maps.
+        """
+        batch_size = lensed_image.shape[0]
+        source, kappa, states = self.initial_states(batch_size)
+
+        source_series = []
+        kappa_series = []
+        chi_squared_series = []
+        for current_step in range(self.steps):
+            with tf.GradientTape() as g:
+                g.watch(source)
+                g.watch(kappa)
+                cost = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+            source_grad, kappa_grad = g.gradient(cost, [source, kappa])
+            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
+            source_series.append(self.source_inverse_link(source))
+            kappa_series.append(self.kappa_inverse_link(kappa))
             chi_squared_series.append(cost)
         return source_series, kappa_series, chi_squared_series
 

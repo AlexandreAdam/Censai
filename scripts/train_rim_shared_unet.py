@@ -269,12 +269,12 @@ def main(args):
                 lens_true = distributed_inputs[0][res_idx, ...]
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
-                source_pred, kappa_pred, chi_squared = rim.call(lens_true[None, ...])
+                source_pred, kappa_pred, chi_squared = rim.predict(lens_true[None, ...])
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
                 tf.summary.image(f"Residuals {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
+                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared[-1]
                                      )), step=step)
 
@@ -289,12 +289,12 @@ def main(args):
                 lens_true = distributed_inputs[0][res_idx, ...]
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
-                source_pred, kappa_pred, chi_squared = rim.call(lens_true[None, ...])
+                source_pred, kappa_pred, chi_squared = rim.predict(lens_true[None, ...])
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
                 tf.summary.image(f"Val Residuals {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, rim.kappa_link(kappa_true), lens_pred, source_pred[-1][0, ...],
+                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared[-1]
                                      )), step=step)
         train_cost = epoch_loss.result().numpy()
