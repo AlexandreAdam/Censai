@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from censai import PhysicalModel, RIMUnet
+from censai import PhysicalModel, RIMUnet, RayTracer
 from censai.models import UnetModel
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
@@ -106,6 +106,14 @@ def main(args):
     else:
         raytracer_hparams = {}
     with STRATEGY.scope():  # Replicate ops accross gpus
+        if args.raytracer is not None:
+            raytracer = RayTracer(**raytracer_hparams)
+            # load last checkpoint in the checkpoint directory
+            checkpoint = tf.train.Checkpoint(net=raytracer)
+            manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
+            checkpoint.restore(manager.latest_checkpoint)
+        else:
+            raytracer = None
         phys = PhysicalModel(
             pixels=params["kappa pixels"].numpy(),
             src_pixels=params["src pixels"].numpy(),
@@ -114,15 +122,9 @@ def main(args):
             method=args.forward_method,
             noise_rms=params["noise rms"].numpy(),
             kappalog=args.kappalog,
-            checkpoint_path=args.raytracer,
             device=PHYSICAL_MODEL_DEVICE,
-            **raytracer_hparams
+            raytracer=raytracer
         )
-        if args.raytracer is not None:
-            # load last checkpoint in the checkpoint directory
-            checkpoint = tf.train.Checkpoint(net=phys.RayTracer)
-            manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
-            checkpoint.restore(manager.latest_checkpoint)
         kappa_model = UnetModel(
             filters=args.kappa_filters,
             filter_scaling=args.kappa_filter_scaling,
