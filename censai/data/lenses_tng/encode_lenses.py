@@ -14,6 +14,7 @@ def encode_examples(
         z_lens: float,
         image_fov: float,
         kappa_fov: float,
+        source_fov: float,
         sigma_crit: float,
         noise_rms: float,
         psf_sigma: float,
@@ -36,6 +37,7 @@ def encode_examples(
             "z lens": _float_feature(z_lens),
             "image fov": _float_feature(image_fov),    # arc seconds
             "kappa fov": _float_feature(kappa_fov),    # arc seconds
+            "source fov": _float_feature(source_fov),  # arc seconds
             "sigma crit": _float_feature(sigma_crit),  # 10^10 M_sun / Mpc^2
             "src pixels": _int64_feature(source_pixels),
             "kappa pixels": _int64_feature(kappa_pixels),
