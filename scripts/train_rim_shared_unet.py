@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from censai import PhysicalModel, RIMSharedUnet
-from censai.models import SharedUnetModel
+from censai.models import SharedUnetModel, RayTracer
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 import os, glob, time, json
@@ -102,6 +102,14 @@ def main(args):
     else:
         raytracer_hparams = {}
     with STRATEGY.scope():  # Replicate ops accross gpus
+        if args.raytracer is not None:
+            raytracer = RayTracer(**raytracer_hparams)
+            # load last checkpoint in the checkpoint directory
+            checkpoint = tf.train.Checkpoint(net=raytracer)
+            manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
+            checkpoint.restore(manager.latest_checkpoint)
+        else:
+            raytracer = None
         phys = PhysicalModel(
             pixels=params["kappa pixels"].numpy(),
             src_pixels=params["src pixels"].numpy(),
@@ -110,19 +118,14 @@ def main(args):
             method=args.forward_method,
             noise_rms=params["noise rms"].numpy(),
             kappalog=args.kappalog,
-            checkpoint_path=args.raytracer,
             device=PHYSICAL_MODEL_DEVICE,
-            **raytracer_hparams
+            raytracer=raytracer
         )
         assert is_power_of_two(phys.pixels)
         assert is_power_of_two(phys.src_pixels)
         kappa_resize_layers = (phys.pixels // phys.src_pixels) // args.kappa_resize_strides
         vars(args).update({"kappa_resize_layers": int(kappa_resize_layers)})
-        if args.raytracer is not None:
-            # load last checkpoint in the checkpoint directory
-            checkpoint = tf.train.Checkpoint(net=phys.RayTracer)
-            manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
-            checkpoint.restore(manager.latest_checkpoint)
+
         unet = SharedUnetModel(
             kappa_resize_layers=args.kappa_resize_layers,
             filters=args.filters,
