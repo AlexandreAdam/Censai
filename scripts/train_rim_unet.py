@@ -85,9 +85,9 @@ def main(args):
     # Read concurrently from multiple records
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
-                               cycle_length=args.cycle_length, block_length=args.block_length)
+                               cycle_length=args.cycle_lensource_fgth, block_length=args.block_length)
     # Read off global parameters from first example in dataset
-    for params in dataset.map(decode_physical_model_info):
+    for physical_params in dataset.map(decode_physical_model_info):
         break
     dataset = dataset.map(decode_train).batch(args.batch_size)
     # Do not prefetch in this script. Memory is more precious than latency
@@ -115,12 +115,13 @@ def main(args):
         else:
             raytracer = None
         phys = PhysicalModel(
-            pixels=params["kappa pixels"].numpy(),
-            src_pixels=params["src pixels"].numpy(),
-            image_fov=params["image fov"].numpy(),
-            kappa_fov=params["kappa fov"].numpy(),
+            pixels=physical_params["kappa pixels"].numpy(),
+            src_pixels=physical_params["src pixels"].numpy(),
+            image_fov=physical_params["image fov"].numpy(),
+            kappa_fov=physical_params["kappa fov"].numpy(),
+            src_fov=physical_params["source fov"].numpy(),
             method=args.forward_method,
-            noise_rms=params["noise rms"].numpy(),
+            noise_rms=physical_params["noise rms"].numpy(),
             kappalog=args.kappalog,
             device=PHYSICAL_MODEL_DEVICE,
             raytracer=raytracer
@@ -280,6 +281,8 @@ def main(args):
     epoch_loss = tf.metrics.Mean()
     time_per_step = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
+    # val_chi_sq = tf.metrics.Mean()
+    # train_chi_sq = tf.metrics.Mean()
     best_loss = np.inf
     patience = args.patience
     step = 0
