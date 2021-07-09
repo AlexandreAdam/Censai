@@ -111,7 +111,6 @@ def kappa_clipped_exponential(log_kappa):
     log_kappa = (tf.math.tanh(log_kappa) + 1) * (KAPPA_LOG_MAX - KAPPA_LOG_MIN) / 2 + KAPPA_LOG_MIN  # rescale output of tanh to wanted range
     return 10**log_kappa
 
-
 # @tf.function
 def logkappa_normalization(x, forward=True):
     if forward:

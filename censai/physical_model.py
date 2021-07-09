@@ -1,6 +1,5 @@
 import tensorflow as tf
 import numpy as np
-from censai.models.ray_tracer import RayTracer
 import tensorflow_addons as tfa
 from censai.definitions import DTYPE, log_10, logkappa_normalization
 from censai.utils import nullcontext
@@ -22,9 +21,8 @@ class PhysicalModel:
             noise_rms=1,
             kappalog=False,
             normalize_logkappa=False,
-            checkpoint_path=None,
             device=nullcontext(),
-            **raytracer_hparams
+            raytracer=None
     ):
         if src_pixels is None:
             src_pixels = pixels  # assume src has the same shape
@@ -39,8 +37,7 @@ class PhysicalModel:
         self.kappalog = kappalog
         self.normalize_logkappa = normalize_logkappa
         self.device = device
-        if method == "unet":
-            self.RayTracer = RayTracer(trainable=False, **raytracer_hparams)
+        self.raytracer = raytracer
         self.set_deflection_angle_vars()
         self.PSF = self.psf_model()
 
