@@ -28,6 +28,8 @@ class RIMSharedUnet:
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
+            kappa_init=1e-1,
+            source_init=1e-3
     ):
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.pixels
@@ -41,6 +43,8 @@ class RIMSharedUnet:
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
+        self._kappa_init = kappa_init
+        self._source_init = source_init
 
         if self.kappalog:
             if self.kappa_normalize:
@@ -69,8 +73,8 @@ class RIMSharedUnet:
             raise NotImplementedError(f"{source_link} not in ['exp', 'sqrt', 'identity']")
 
     def initial_states(self, batch_size):
-        source_init = self.source_link(tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1)))
-        kappa_init = self.kappa_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1))/10.)
+        source_init = self.source_link(tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
+        kappa_init = self.kappa_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
         states = self.unet.init_hidden_states(self.source_pixels, batch_size)
         return source_init, kappa_init, states
 

@@ -169,7 +169,9 @@ def main(args):
             adam=args.adam,
             kappalog=args.kappalog,
             source_link=args.source_link,
-            kappa_normalize=args.kappa_normalize
+            kappa_normalize=args.kappa_normalize,
+            kappa_init=args.kappa_init,
+            source_init=args.source_init
         )
         learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=args.initial_learning_rate,
@@ -395,6 +397,9 @@ if __name__ == "__main__":
     parser.add_argument("--kappalog",               action="store_true")
     parser.add_argument("--kappa_normalize",        action="store_true")
     parser.add_argument("--source_link",            default="identity",             help="One of 'exp', 'source' or 'identity' (default).")
+    parser.add_argument("--kappa_init",             default=1e-1,   type=float,     help="Initial value of kappa for RIM")
+    parser.add_argument("--source_init",            default=1e-3,   type=float,     help="Initial value of source for RIM")
+
     
     # Kappa model hyperparameters
     parser.add_argument("--kappa_filters",                  default=32,     type=int)
