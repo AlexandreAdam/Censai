@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from censai import PhysicalModel, RIMUnet512
+from censai import PhysicalModel, RIMUnet512, RayTracer
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter
 import os, glob, json
@@ -67,6 +67,14 @@ def main(args):
     else:
         raytracer_hparams = {}
     with MIRRORED_STRATEGY.scope():  # Replicate ops accross gpus
+        if args.raytracer is not None:
+            raytracer = RayTracer(**raytracer_hparams)
+            # load last checkpoint in the checkpoint directory
+            checkpoint = tf.train.Checkpoint(net=raytracer)
+            manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
+            checkpoint.restore(manager.latest_checkpoint)
+        else:
+            raytracer = None
         phys = PhysicalModel(
             pixels=params["kappa pixels"].numpy(),
             src_pixels=params["src pixels"].numpy(),
@@ -75,15 +83,9 @@ def main(args):
             method=args.forward_method,
             noise_rms=params["noise rms"].numpy(),
             kappalog=args.kappalog,
-            checkpoint_path=args.raytracer,
             device=PHYSICAL_MODEL_DEVICE,
-            **raytracer_hparams
+            raytracer=raytracer
         )
-        if args.raytracer is not None:
-            # load last checkpoint in the checkpoint directory
-            checkpoint = tf.train.Checkpoint(net=phys.RayTracer)
-            manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
-            checkpoint.restore(manager.latest_checkpoint)
         rim = RIMUnet512(
             physical_model=phys,
             steps=args.time_steps,
