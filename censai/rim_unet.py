@@ -114,6 +114,26 @@ class RIMUnet:
             chi_squared_series.append(cost)
         return source_series, kappa_series, chi_squared_series
 
+    def predict(self, lensed_image):
+        batch_size = lensed_image.shape[0]
+        source, source_states, kappa, kappa_states = self.initial_states(batch_size)
+
+        source_series = []
+        kappa_series = []
+        chi_squared_series = []
+        for current_step in range(self.steps):
+            with tf.GradientTape() as g:
+                g.watch(source)
+                g.watch(kappa)
+                cost = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+            source_grad, kappa_grad = g.gradient(cost, [source, kappa])
+            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
+            source_series.append(self.source_inverse_link(source))
+            kappa_series.append(self.kappa_inverse_link(kappa))
+            chi_squared_series.append(cost)
+        return source_series, kappa_series, chi_squared_series
+
     def cost_function(self, lensed_image, source, kappa, reduction=True):
         """
 
