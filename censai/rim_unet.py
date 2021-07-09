@@ -38,10 +38,13 @@ class RIMUnet:
         if self.kappalog:
             if self.kappa_normalize:
                 self.kappa_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_10(x), forward=True))
-                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(logkappa_normalization(x, forward=False)))
+                # self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(logkappa_normalization(x, forward=False)))
+                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**(logkappa_normalization(x, forward=False)))
             else:
                 self.kappa_link = tf.keras.layers.Lambda(lambda x: log_10(x))
-                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(x))
+                # self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(x))
+                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**x)
+
         else:
             self.kappa_link = tf.identity
             self.kappa_inverse_link = tf.identity

@@ -45,10 +45,13 @@ class RIMSharedUnet:
         if self.kappalog:
             if self.kappa_normalize:
                 self.kappa_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_10(x), forward=True))
-                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(logkappa_normalization(x, forward=False)))
+                # self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(logkappa_normalization(x, forward=False)))
+                self.kappa_inverse_link = tf.keras.layers.Lambda(
+                    lambda x: 10 ** (logkappa_normalization(x, forward=False)))
             else:
                 self.kappa_link = tf.keras.layers.Lambda(lambda x: log_10(x))
-                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(x))
+                # self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(x))
+                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10 ** x)
         else:
             self.kappa_link = tf.identity
             self.kappa_inverse_link = tf.identity
@@ -67,7 +70,7 @@ class RIMSharedUnet:
 
     def initial_states(self, batch_size):
         source_init = self.source_link(tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1)))
-        kappa_init = self.kappa_link(tf.zeros(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)))
+        kappa_init = self.kappa_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1))/10.)
         states = self.unet.init_hidden_states(self.source_pixels, batch_size)
         return source_init, kappa_init, states
 
