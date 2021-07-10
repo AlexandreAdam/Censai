@@ -85,7 +85,7 @@ def main(args):
     # Read concurrently from multiple records
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
-                               cycle_length=args.cycle_lensource_fgth, block_length=args.block_length)
+                               cycle_length=args.cycle_length, block_length=args.block_length)
     # Read off global parameters from first example in dataset
     for physical_params in dataset.map(decode_physical_model_info):
         break

@@ -99,7 +99,6 @@ PARAMS_NICKNAME["source_init"] = "Sini"
 PARAMS_NICKNAME["kappa_init"] = "Kini"
 
 
-
 def single_instance_args_generator(args):
     """
 
