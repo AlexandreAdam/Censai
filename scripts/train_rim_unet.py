@@ -122,7 +122,6 @@ def main(args):
             src_fov=physical_params["source fov"].numpy(),
             method=args.forward_method,
             noise_rms=physical_params["noise rms"].numpy(),
-            kappalog=args.kappalog,
             device=PHYSICAL_MODEL_DEVICE,
             raytracer=raytracer
         )
