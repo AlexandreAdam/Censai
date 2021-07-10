@@ -19,7 +19,9 @@ RIM_HPARAMS = [
     "steps",
     "kappalog",
     "kappa_normalize",
-    "source_link"
+    "source_link",
+    "kappa_init",
+    "source_init",
 ]
 
 UNET_MODEL_HPARAMS = [
@@ -77,6 +79,8 @@ PARAMS_NICKNAME["adam"] = "A"
 PARAMS_NICKNAME["alpha"] = "al"
 PARAMS_NICKNAME["steps"] = "TS"
 PARAMS_NICKNAME["source_link"] = "Sli"
+PARAMS_NICKNAME["source_init"] = "Sini"
+PARAMS_NICKNAME["kappa_init"] = "Kini"
 
 
 def single_instance_args_generator(args):
@@ -174,6 +178,8 @@ if __name__ == '__main__':
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
     parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
+    parser.add_argument("--kappa_init",         default=1e-1, nargs="+",  type=float,     help="Initial value of kappa for RIM")
+    parser.add_argument("--source_init",        default=1e-3, nargs="+",  type=float,     help="Initial value of source for RIM")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
