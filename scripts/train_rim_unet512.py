@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from censai import PhysicalModel, RIMUnet512, RayTracer
+from censai.models import UnetModel512
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter
 import os, glob, json
@@ -84,15 +85,17 @@ def main(args):
             device=PHYSICAL_MODEL_DEVICE,
             raytracer=raytracer
         )
+        source_model = UnetModel512(num_cell_features=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4], strides=args.source_strides)
+        kappa_model = UnetModel512(num_cell_features=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4], strides=args.source_strides)
         rim = RIMUnet512(
             physical_model=phys,
+            source_model=source_model,
+            kappa_model=kappa_model,
             steps=args.steps,
             adam=args.adam,
             kappalog=args.kappalog,
-            normalize=args.normalize,
+            kappa_normalize=args.normalize,
             state_sizes=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4],
-             **{"source": {"strides": args.source_strides},
-                "kappa": {"strides": args.kappa_strides}}
         )
         learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=args.initial_learning_rate,
@@ -170,7 +173,7 @@ def main(args):
         with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
             tape.watch(rim.source_model.trainable_variables)
             tape.watch(rim.kappa_model.trainable_variables)
-            cost = rim.cost_function(X, source, kappa, reduction=False)
+            cost = rim.cost_function(X, source, kappa, outer_tape=tape, reduction=False)
             cost = tf.reduce_sum(cost) / args.batch_size  # Reduce by the global batch size, not the replica batch size
         gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
         gradient2 = tape.gradient(cost, rim.kappa_model.trainable_variables)

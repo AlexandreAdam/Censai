@@ -244,7 +244,7 @@ def main(args):
         with tf.GradientTape(persistent=True, watch_accessed_variables=True) as tape:
             tape.watch(rim.source_model.trainable_variables)
             tape.watch(rim.kappa_model.trainable_variables)
-            cost = rim.cost_function(X, source, kappa, reduction=False)
+            cost = rim.cost_function(X, source, kappa, outer_tape=tape, reduction=False)
             cost = tf.reduce_sum(cost) / args.batch_size  # Reduce by the global batch size, not the replica batch size
         gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
         gradient2 = tape.gradient(cost, rim.kappa_model.trainable_variables)

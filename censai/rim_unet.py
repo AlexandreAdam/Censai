@@ -156,7 +156,6 @@ class RIMUnet:
 
         """
         source_series, kappa_series, _ = self.call(lensed_image, outer_tape=outer_tape)
-        # chi1 = sum([tf.square(source_series[i] - self.source_link(source)) for i in range(self.steps)]) / self.steps
         chi1 = sum([tf.square(source_series[i] - self.source_link(source)) for i in range(self.steps)]) / self.steps
         chi2 = sum([tf.square(kappa_series[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
         if reduction:
