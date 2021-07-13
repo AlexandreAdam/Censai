@@ -26,7 +26,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --num_parallel_reads=1\
   --cycle_length=1\
   --block_length=1\
-  --steps=16\
+  --steps=4\
   --adam\
   --kappalog\
   --kappa_filters 8 16 32 64\
