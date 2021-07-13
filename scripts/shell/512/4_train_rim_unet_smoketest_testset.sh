@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/train_rim_unet512.py\
-  --time_steps=16\
+  --steps=4\
   --adam\
   --kappalog\
   --kappa_strides=4\
