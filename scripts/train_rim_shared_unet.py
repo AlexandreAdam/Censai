@@ -106,7 +106,7 @@ def main(args):
             manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
         else:
-            raytracer = None
+            raytracer = None256
         phys = PhysicalModel(
             pixels=physical_params["kappa pixels"].numpy(),
             src_pixels=physical_params["src pixels"].numpy(),
@@ -217,7 +217,7 @@ def main(args):
         X, source, kappa = inputs
         with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
-            cost = rim.cost_function(X, source, kappa, reduction=False)
+            cost = rim.cost_function(X, source, kappa, outer_tape=tape, reduction=False)
             cost = tf.reduce_sum(cost) / args.batch_size  # Reduce by the global batch size, not the replica batch size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
         if args.clipping:
