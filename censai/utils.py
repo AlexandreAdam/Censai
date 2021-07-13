@@ -28,6 +28,16 @@ class nullwriter:
         return nullcontext()
 
 
+class nulltape(nullcontext):
+    @staticmethod
+    def stop_recording():
+        return nullcontext()
+
+    @staticmethod
+    def flush():
+        pass
+
+
 def convert_to_8_bit(image):
     return (255.0 * image).astype(np.uint8)
 

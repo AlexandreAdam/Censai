@@ -2,6 +2,7 @@ import tensorflow as tf
 from censai.models import SharedUnetModel
 from censai.definitions import logkappa_normalization, log_10, kappa_clipped_exponential
 from censai import PhysicalModel
+from censai.utils import nulltape
 
 
 class RIMSharedUnet:
@@ -102,10 +103,10 @@ class RIMSharedUnet:
         source, kappa, states = self.unet(source, kappa, source_grad, kappa_grad, states)
         return source, kappa, states
 
-    def __call__(self, lensed_image):
-        return self.call(lensed_image)
+    def __call__(self, lensed_image, outer_tape=nulltape):
+        return self.call(lensed_image, outer_tape)
 
-    def call(self, lensed_image):
+    def call(self, lensed_image, outer_tape=nulltape):
         """
         Used in training. Return linked kappa and source maps.
         """
@@ -116,10 +117,11 @@ class RIMSharedUnet:
         kappa_series = []
         chi_squared_series = []
         for current_step in range(self.steps):
-            with tf.GradientTape() as g:
-                g.watch(source)
-                g.watch(kappa)
-                cost = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+            with outer_tape.stop_recording():
+                with tf.GradientTape() as g:
+                    g.watch(source)
+                    g.watch(kappa)
+                    cost = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
