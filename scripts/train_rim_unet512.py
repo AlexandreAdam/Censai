@@ -88,7 +88,7 @@ def main(args):
         )
         rim = RIMUnet512(
             physical_model=phys,
-            steps=args.time_steps,
+            steps=args.steps,
             adam=args.adam,
             kappalog=args.kappalog,
             normalize=args.normalize,
@@ -268,7 +268,7 @@ if __name__ == "__main__":
 
 
     # RIM hyperparameters
-    parser.add_argument("--time_steps",         default=16,     type=int,   help="Number of time steps of RIM")
+    parser.add_argument("--steps",         default=16,     type=int,   help="Number of time steps of RIM")
     parser.add_argument("--adam",               action="store_true",        help="ADAM update for the log-likelihood gradient.")
     # ... for kappa model
     parser.add_argument("--kappalog",           action="store_true")

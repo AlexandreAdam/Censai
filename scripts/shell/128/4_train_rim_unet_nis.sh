@@ -26,7 +26,7 @@ python $CENSAI_PATH/scripts/train_rim_unet.py\
   --num_parallel_reads=4\
   --cycle_length=4\
   --block_length=1\
-  --steps=16\
+  --steps=4\
   --adam\
   --kappalog\
   --kappa_filters=32\
