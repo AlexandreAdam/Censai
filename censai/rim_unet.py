@@ -2,6 +2,7 @@ import tensorflow as tf
 from censai.models import UnetModel
 from censai.definitions import logkappa_normalization, log_10, kappa_clipped_exponential
 from censai import PhysicalModel
+from censai.utils import nulltape
 
 
 class RIMUnet:
@@ -98,10 +99,10 @@ class RIMUnet:
         new_kappa, new_kappa_states = self.kappa_model(kappa, kappa_states, kappa_grad)
         return new_source, new_source_states, new_kappa, new_kappa_states
 
-    def __call__(self, lensed_image):
-        return self.call(lensed_image)
+    def __call__(self, lensed_image, outer_tape=nulltape):
+        return self.call(lensed_image, outer_tape)
 
-    def call(self, lensed_image):
+    def call(self, lensed_image, outer_tape=nulltape):
         batch_size = lensed_image.shape[0]
         source, source_states, kappa, kappa_states = self.initial_states(batch_size)
 
@@ -109,10 +110,11 @@ class RIMUnet:
         kappa_series = []
         chi_squared_series = []
         for current_step in range(self.steps):
-            with tf.GradientTape() as g:
-                g.watch(source)
-                g.watch(kappa)
-                cost = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+            with outer_tape.stop_recording():
+                with tf.GradientTape() as g:
+                    g.watch(source)
+                    g.watch(kappa)
+                    cost = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
