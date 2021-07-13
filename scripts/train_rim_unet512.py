@@ -255,6 +255,7 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
+    return train_cost, val_cost, best_loss
 
 
 if __name__ == "__main__":

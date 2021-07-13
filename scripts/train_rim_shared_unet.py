@@ -6,7 +6,6 @@ from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 import os, glob, time, json
 from datetime import datetime
-from tensorboard.plugins.hparams import api as hp
 import random
 """ # NOTE ON THE USE OF MULTIPLE GPUS #
 Double the number of gpus will not speed up the code. In fact, doubling the number of gpus and mirroring 
@@ -326,20 +325,7 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
-    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_rim_hparams", logname)).as_default():
-        hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
-        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
-        hp.hparams(hparams_dict)
-        tf.summary.scalar("Best MSE", best_loss, step=step)
-        tf.summary.scalar("Final MSE", cost, step=step)
-
-    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_unet_hparams", logname)).as_default():
-        hparams_dict = {key: vars(args)[key] for key in UNET_MODEL_HPARAMS}
-        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
-        hp.hparams(hparams_dict)
-        tf.summary.scalar("Best MSE", best_loss, step=step)
-        tf.summary.scalar("Final MSE", cost, step=step)
-
+    return train_cost, val_cost, best_loss
 
 if __name__ == "__main__":
     from argparse import ArgumentParser

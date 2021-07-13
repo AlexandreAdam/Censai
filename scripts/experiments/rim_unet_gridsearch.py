@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from scripts.train_rim_unet import main
 import copy
+import pandas as pd
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -167,7 +168,22 @@ def exhaustive_grid_search(args):
 def distributed_strategy(args):
     gridsearch_args = list(single_instance_args_generator(args))
     for gridsearch_id in range((THIS_WORKER - 1), len(gridsearch_args), N_WORKERS):
-        main(gridsearch_args[gridsearch_id])
+        train_cost, val_cost, best_score = main(gridsearch_args[gridsearch_id])
+        params_dict = {k: v for k, v in vars(args) if k in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS}
+        params_dict.update({
+            "experiment_id": args.logname,
+            "train_cost": train_cost,
+            "val_cost": val_cost,
+            "best_score": best_score
+        })
+        df = pd.DataFrame(params_dict, index=[gridsearch_id])
+        if gridsearch_id == 0:
+            mode = "w"
+            header = True
+        else:
+            mode = "a"
+            header = False
+        df.to_csv(os.path.join(os.getenv("CENSAI_PATH"), "results", f"{args.logname_prefixe}.csv"), header=header, mode=mode)
 
 
 if __name__ == '__main__':
