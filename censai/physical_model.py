@@ -47,7 +47,7 @@ class PhysicalModel:
             alpha_y = tf.nn.conv2d(kappa, self.yconv_kernel, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
 
         elif self.method == "unet":
-            alpha = self.RayTracer(kappa)
+            alpha = self.raytracer(kappa)
             alpha_x, alpha_y = tf.split(alpha, 2, axis=-1)
         elif self.method == "fft":
             """
