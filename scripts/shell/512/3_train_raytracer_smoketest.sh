@@ -16,7 +16,6 @@ python $CENSAI_PATH/scripts/train_raytracer512.py\
   --bottleneck_kernel_size=16\
   --decoder_encoder_filters=32\
   --filter_scaling=1\
-  --upsampling_interpolation\
   --kernel_regularizer_amp=1e-4\
   --kappalog\
   --datasets $HOME/scratch/Censai/data/alpha512_NIS/ $HOME/scratch/Censai/data/alpha512_TNG100\

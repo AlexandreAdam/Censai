@@ -27,7 +27,6 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --strides 2\
   --resampling_kernel_size 5\
   --kappalog\
-  --upsampling_interpolation\
   --kernel_regularizer_amp 0\
   --initializer glorot_uniform\
   --batch_size=10\
