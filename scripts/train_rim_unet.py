@@ -102,15 +102,13 @@ def main(args):
     if args.raytracer is not None:
         with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
             raytracer_hparams = json.load(f)
-    else:
-        raytracer_hparams = {}
     with STRATEGY.scope():  # Replicate ops accross gpus
         if args.raytracer is not None:
             raytracer = RayTracer(**raytracer_hparams)
             # load last checkpoint in the checkpoint directory
             checkpoint = tf.train.Checkpoint(net=raytracer)
             manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
-            checkpoint.restore(manager.latest_checkpoint)
+            checkpoint.restore(manager.latest_checkpoint).expect_partial()
         else:
             raytracer = None
         phys = PhysicalModel(
