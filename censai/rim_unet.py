@@ -143,7 +143,7 @@ class RIMUnet:
             chi_squared_series.append(cost)
         return source_series, kappa_series, chi_squared_series
 
-    def cost_function(self, lensed_image, source, kappa, reduction=True):
+    def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):
         """
 
         Args:
@@ -155,7 +155,7 @@ class RIMUnet:
         Returns: The average loss over pixels, time steps and (if reduction=True) batch size.
 
         """
-        source_series, kappa_series, _ = self.call(lensed_image)
+        source_series, kappa_series, _ = self.call(lensed_image, outer_tape=nulltape)
         # chi1 = sum([tf.square(source_series[i] - self.source_link(source)) for i in range(self.steps)]) / self.steps
         chi1 = sum([tf.square(source_series[i] - self.source_link(source)) for i in range(self.steps)]) / self.steps
         chi2 = sum([tf.square(kappa_series[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
