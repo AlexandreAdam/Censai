@@ -6,7 +6,6 @@ import os, glob, json
 import numpy as np
 from datetime import datetime
 import random, time
-from tensorboard.plugins.hparams import api as hp
 gpus = tf.config.list_physical_devices('GPU')
 
 """ # NOTE ON THE USE OF MULTIPLE GPUS #
@@ -259,13 +258,7 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
-    # at the end of training, log hyperparameters for future tuning
-    with tf.summary.create_file_writer(os.path.join(args.logdir, args.logname_prefixe + "_hparams", logname)).as_default():
-        hparams_dict = {key: vars(args)[key] for key in RAYTRACER_HPARAMS}
-        hparams_dict = {k: (str(v) if v is None else v) for k,v in hparams_dict.items()}
-        hp.hparams(hparams_dict)
-        tf.summary.scalar("Best MSE", best_loss, step=step)
-        tf.summary.scalar("Final MSE", cost, step=step)
+    return train_cost, val_cost, best_loss
 
 
 if __name__ == "__main__":
