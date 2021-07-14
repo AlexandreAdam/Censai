@@ -102,8 +102,12 @@ def main(args):
             decay_steps=args.decay_steps,
             staircase=args.staircase
         )
-        optim = tf.optimizers.Adam(learning_rate=learning_rate_schedule)
-
+        optim = tf.keras.optimizers.deserialize(
+            {
+                "class_name": args.optimizer,
+                'config': {"learning_rate": learning_rate_schedule}
+            }
+        )
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         logname = args.model_id
@@ -301,6 +305,7 @@ if __name__ == "__main__":
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,   help="Number of epochs for training.")
+    parser.add_argument("--optimizer",              default="Adam",             help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float, help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     type=float, help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,   help="Decay steps of exponential decay of the learning rate.")

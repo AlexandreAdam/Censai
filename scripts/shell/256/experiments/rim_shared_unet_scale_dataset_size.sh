@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=5\
-  --forward_method=conv2d\
+  --forward_method=fft\
   --epochs=200\
   --initial_learning_rate=1e-5\
   --clipping\
