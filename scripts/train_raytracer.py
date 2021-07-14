@@ -19,13 +19,6 @@ if len(gpus) == 1:
     STRATEGY = tf.distribute.OneDeviceStrategy(device="/gpu:0")
 elif len(gpus) > 1:
     STRATEGY = tf.distribute.MirroredStrategy()
-try:
-    import wandb
-    wandb.init(project="censai_ray_tracer", entity="adam-alexandre01123", sync_tensorboard=True)
-    wndb = True
-except ImportError:
-    wndb = False
-    print("wandb not installed, package ignored")
 
 RAYTRACER_HPARAMS = [
     "pixels",
@@ -47,9 +40,6 @@ RAYTRACER_HPARAMS = [
 
 
 def main(args):
-    if wndb:
-        config = wandb.config
-        config.update(vars(args))
     # ========= Dataset=================================================================================================
     files = []
     for dataset in args.datasets:
@@ -184,6 +174,12 @@ def main(args):
     epoch_loss = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
     time_per_step = tf.metrics.Mean()
+    history = {  # recorded at the end of an epoch only
+        "train_cost": [],
+        "val_cost": [],
+        "learning_rate": [],
+        "time_per_step": []
+    }
     best_loss = np.inf
     patience = args.patience
     step = 1
@@ -197,12 +193,11 @@ def main(args):
                 cost = distributed_train_step(distributed_inputs)
         # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
-                tf.summary.scalar("Time per step", _time, step=step)
                 time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
+                tf.summary.scalar("Time per step", _time, step=step)
                 tf.summary.scalar("MSE", cost, step=step)
                 step += 1
-            tf.summary.scalar("Learning rate", optim.lr(step), step=step)
             for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in train set
                 # Deflection angle residual
                 alpha_true = distributed_inputs[1][res_idx, ...]
@@ -219,8 +214,7 @@ def main(args):
             for distributed_inputs in val_dataset:  # Cost of val set
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
-            val_cost = val_loss.result().numpy()
-            tf.summary.scalar("Val MSE", val_cost, step=step)
+
             for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in val set
                 # Deflection angle residual
                 alpha_true = distributed_inputs[1][res_idx, ...]
@@ -231,15 +225,23 @@ def main(args):
                 lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
                 tf.summary.image(f"Val Residuals {res_idx}",
                                  plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
+
+        train_cost = epoch_loss.result().numpy()
+        val_cost = val_loss.result().numpy()
+        tf.summary.scalar("Val MSE", val_cost, step=step)
+        tf.summary.scalar("Learning rate", optim.lr(step), step=step)
+        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
+              f"time per step {time_per_step.result():.2e} s")
+        history["train_cost"].append(train_cost)
+        history["val_cost"].append(val_cost)
+        history["learning_rate"].append(optim.lr(step).numpy())
+        history["time_per_step"].append(time_per_step.result().numpy())
+        # =============================================================================================================
         if args.profile and epoch == 1:
             # redo the last training step for debugging purposes
             tf.profiler.experimental.start(logdir=logdir)
             cost = distributed_train_step(distributed_inputs)
             tf.profiler.experimental.stop()
-        train_cost = epoch_loss.result().numpy()
-        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
-              f"time per step {time_per_step.result():.2e} s")
-        # =============================================================================================================
         cost = train_cost if args.track_train else val_cost
         if cost < best_loss * (1 - args.tolerance):
             best_loss = cost
@@ -258,7 +260,7 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
-    return train_cost, val_cost, best_loss, logname
+    return history, best_loss
 
 
 if __name__ == "__main__":

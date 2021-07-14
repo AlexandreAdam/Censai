@@ -121,13 +121,14 @@ class RIMSharedUnet:
                 with tf.GradientTape() as g:
                     g.watch(source)
                     g.watch(kappa)
-                    cost = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+                    log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+                    cost = tf.reduce_mean(log_likelihood)
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
             source_series.append(source)
             kappa_series.append(kappa)
-            chi_squared_series.append(cost)
+            chi_squared_series.append(log_likelihood)
         return source_series, kappa_series, chi_squared_series
 
     def predict(self, lensed_image):
@@ -165,11 +166,13 @@ class RIMSharedUnet:
         Returns: The average loss over pixels, time steps and (if reduction=True) batch size.
 
         """
-        source_series, kappa_series, _ = self.call(lensed_image, outer_tape=outer_tape)
-        chi1 = sum([tf.square(source_series[i] - self.source_link(source)) for i in range(self.steps)]) / self.steps
-        chi2 = sum([tf.square(kappa_series[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
+        source_series, kappa_series, chi_squared = self.call(lensed_image, outer_tape=outer_tape)
+        source_cost = sum([tf.square(source_series[i] - self.source_link(source)) for i in range(self.steps)]) / self.steps
+        kappa_cost = sum([tf.square(kappa_series[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
+        chi = sum([chi_t for chi_t in chi_squared]) / self.steps
+
         if reduction:
-            return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)
+            return tf.reduce_mean(source_cost) + tf.reduce_mean(kappa_cost), tf.reduce_mean(chi)
         else:
-            return tf.reduce_mean(chi1, axis=(1, 2, 3)) + tf.reduce_mean(chi2, axis=(1, 2, 3))
+            return tf.reduce_mean(source_cost, axis=(1, 2, 3)) + tf.reduce_mean(kappa_cost, axis=(1, 2, 3)), chi
 
