@@ -168,10 +168,10 @@ def exhaustive_grid_search(args):
 def distributed_strategy(args):
     gridsearch_args = list(single_instance_args_generator(args))
     for gridsearch_id in range((THIS_WORKER - 1), len(gridsearch_args), N_WORKERS):
-        train_cost, val_cost, best_score = main(gridsearch_args[gridsearch_id])
-        params_dict = {k: v for k, v in vars(args) if k in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS}
+        train_cost, val_cost, best_score, logname = main(gridsearch_args[gridsearch_id])
+        params_dict = {k: v for k, v in vars(gridsearch_args[gridsearch_id]).items() if k in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS}
         params_dict.update({
-            "experiment_id": args.logname,
+            "experiment_id": logname,
             "train_cost": train_cost,
             "val_cost": val_cost,
             "best_score": best_score
@@ -273,7 +273,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_residuals",             default=1,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
 
     # Make sure each model train on the same dataset
-    parser.add_argument("--seed",                   default=42,   type=int,       help="Random seed for numpy and tensorflow.")
+    parser.add_argument("--seed",                   default=42,   type=int,         help="Random seed for numpy and tensorflow.")
 
     # Keep these as default, they need to be in Namespace but we dont use them for this script
     parser.add_argument("--model_id",                   default="None",              help="Start training from previous "

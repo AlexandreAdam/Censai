@@ -6,7 +6,7 @@ from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 import os, glob, time, json
 from datetime import datetime
-import random
+
 """ # NOTE ON THE USE OF MULTIPLE GPUS #
 Double the number of gpus will not speed up the code. In fact, doubling the number of gpus and mirroring 
 the ops accross replicas means the code is TWICE as slow.
@@ -77,7 +77,7 @@ def main(args):
     files = []
     for dataset in args.datasets:
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
-    random.shuffle(files)
+    np.random.shuffle(files)
     # Read concurrently from multiple records
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
@@ -323,7 +323,7 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
-    return train_cost, val_cost, best_loss
+    return train_cost, val_cost, best_loss, logname
 
 
 if __name__ == "__main__":

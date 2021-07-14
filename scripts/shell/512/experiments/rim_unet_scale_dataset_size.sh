@@ -18,11 +18,11 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --epochs=200\
   --initial_learning_rate=1e-4\
   --clipping\
-  --patience=40\
+  --patience=20\
   --tolerance=0.01\
   --batch_size=1\
   --train_split=0.85\
-  --total_items 8 10 50 100 150 200 1000\
+  --total_items 10 50 100 200 1000 10000\
   --num_parallel_reads=1\
   --cycle_length=1\
   --block_length=1\
