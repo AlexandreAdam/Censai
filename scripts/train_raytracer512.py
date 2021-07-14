@@ -19,13 +19,6 @@ if len(gpus) == 1:
     STRATEGY = tf.distribute.OneDeviceStrategy(device="/gpu:0")
 elif len(gpus) > 1:
     STRATEGY = tf.distribute.MirroredStrategy()
-try:
-    import wandb
-    wandb.init(project="censai_ray_tracer", entity="adam-alexandre01123", sync_tensorboard=True)
-    wndb = True
-except ImportError:
-    wndb = False
-    print("wandb not installed, package ignored")
 
 RAYTRACER_HPARAMS = [
     "decoder_encoder_kernel_size",
@@ -42,9 +35,6 @@ RAYTRACER_HPARAMS = [
 
 
 def main(args):
-    if wndb:
-        config = wandb.config
-        config.update(vars(args))
     # ========= Dataset=================================================================================================
     files = []
     for dataset in args.datasets:
