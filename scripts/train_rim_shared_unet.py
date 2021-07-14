@@ -21,13 +21,6 @@ elif len(gpus) > 1:
     STRATEGY = tf.distribute.MirroredStrategy()
 from censai.utils import nullcontext
 PHYSICAL_MODEL_DEVICE = nullcontext()
-try:
-    import wandb
-    wandb.init(project="censai_unet_rim", entity="adam-alexandre01123", sync_tensorboard=True)
-    wndb = True
-except ImportError:
-    wndb = False
-    print("wandb not installed, package ignored")
 
 RIM_HPARAMS = [
     "adam",
@@ -71,9 +64,6 @@ def is_power_of_two(n):
 
 
 def main(args):
-    if wndb:
-        config = wandb.config
-        config.update(vars(args))
     files = []
     for dataset in args.datasets:
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
@@ -222,19 +212,22 @@ def main(args):
         X, source, kappa = inputs
         with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
-            cost = rim.cost_function(X, source, kappa, outer_tape=tape, reduction=False)
+            cost, chi_squared = rim.cost_function(X, source, kappa, outer_tape=tape, reduction=False)
             cost = tf.reduce_sum(cost) / args.batch_size  # Reduce by the global batch size, not the replica batch size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
         if args.clipping:
             gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
-        return cost
+        chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
+        return cost, chi_squared
 
     @tf.function
     def distributed_train_step(dist_inputs):
-        per_replica_losses = STRATEGY.run(train_step, args=(dist_inputs,))
+        per_replica_losses, per_replica_chi_squared = STRATEGY.run(train_step, args=(dist_inputs,))
         # Replica losses are aggregated by summing them
-        return STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
+        return global_loss, global_chi_squared
 
     def test_step(inputs):
         X, source, kappa = inputs
@@ -252,27 +245,39 @@ def main(args):
     epoch_loss = tf.metrics.Mean()
     time_per_step = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
+    epoch_chi_squared = tf.metrics.Mean()
+    val_chi_squared = tf.metrics.Mean()
+    history = {  # recorded at the end of an epoch only
+        "train_cost": [],
+        "train_chi_squared": [],
+        "val_cost": [],
+        "val_chi_squared": [],
+        "learning_rate": [],
+        "time_per_step": []
+    }
     best_loss = np.inf
     patience = args.patience
     step = 0
     lastest_checkpoint = 1
     for epoch in range(args.epochs):
         epoch_loss.reset_states()
+        epoch_chi_squared.reset_states()
         time_per_step.reset_states()
         with writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
                 start = time.time()
-                cost = distributed_train_step(distributed_inputs)
+                cost, chi_squared = distributed_train_step(distributed_inputs)
         # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
                 tf.summary.scalar("Time per step", _time, step=step)
+                tf.summary.scalar("MSE", cost, step=step)
+                tf.summary.scalar("Chi Squared", chi_squared, step=step)
                 time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
-                tf.summary.scalar("MSE", cost, step=step)
+                epoch_chi_squared.update_state([chi_squared])
                 step += 1
-            tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
             # last batch we make a summary of residuals
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
+            for res_idx in range(min(args.n_residuals, distributed_inputs.shape[0])):
                 lens_true = distributed_inputs[0][res_idx, ...]
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
@@ -282,17 +287,18 @@ def main(args):
                                  plot_to_image(
                                      residual_plot(
                                          lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
-                                         kappa_pred[-1][0, ...], chi_squared[-1]
+                                         kappa_pred[-1][0, ...], chi_squared[-1][0]
                                      )), step=step)
 
             # ========== Validation set ===================
             val_loss.reset_states()
+            val_chi_squared.reset_states()
             for distributed_inputs in val_dataset:
-                test_cost = distributed_test_step(distributed_inputs)
-                val_loss.update_state([test_cost])
-            val_cost = val_loss.result().numpy()
-            tf.summary.scalar("Val MSE", val_cost, step=step)
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
+                cost, chi_squared = distributed_test_step(distributed_inputs)
+                val_loss.update_state([cost])
+                val_chi_squared.update_state([chi_squared])
+
+            for res_idx in range(min(args.n_residuals, distributed_inputs.shape[0])):
                 lens_true = distributed_inputs[0][res_idx, ...]
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
@@ -302,11 +308,23 @@ def main(args):
                                  plot_to_image(
                                      residual_plot(
                                          lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
-                                         kappa_pred[-1][0, ...], chi_squared[-1]
+                                         kappa_pred[-1][0, ...], chi_squared[-1][0]
                                      )), step=step)
+        val_cost = val_loss.result().numpy()
+        val_chi_sq = val_chi_squared.result().numpy()
         train_cost = epoch_loss.result().numpy()
+        train_chi_sq = epoch_chi_squared.result().numpy()
+        tf.summary.scalar("Val MSE", val_cost, step=step)
+        tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
+        tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
+        history["train_cost"].append(train_cost)
+        history["val_cost"].append(val_cost)
+        history["learning_rate"].append(optim.lr(step).numpy())
+        history["train_chi_squared"].append(train_chi_sq)
+        history["val_chi_squared"].append(val_chi_sq)
+        history["time_per_step"].append(time_per_step.result().numpy())
 
         cost = train_cost if args.track_train else val_cost
         if np.isnan(cost):
@@ -328,7 +346,7 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
-    return train_cost, val_cost, best_loss, logname
+    return history, best_loss
 
 
 if __name__ == "__main__":

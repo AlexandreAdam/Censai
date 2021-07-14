@@ -52,7 +52,8 @@ UNET_MODEL_HPARAMS = [
 
 EXTRA_PARAMS = [
     "total_items",
-    "optimizer"
+    "optimizer",
+    "seed"
 ]
 
 
@@ -60,6 +61,7 @@ from collections import OrderedDict
 PARAMS_NICKNAME = OrderedDict()
 PARAMS_NICKNAME["total_items"] = "TI"
 PARAMS_NICKNAME["optimizer"] = "O"
+PARAMS_NICKNAME["seed"] = ""
 
 PARAMS_NICKNAME["filters"] = "F"
 PARAMS_NICKNAME["filter_scaling"] = "FS"
@@ -161,14 +163,18 @@ def exhaustive_grid_search(args):
 def distributed_strategy(args):
     gridsearch_args = list(single_instance_args_generator(args))
     for gridsearch_id in range((THIS_WORKER - 1), len(gridsearch_args), N_WORKERS):
-        train_cost, val_cost, best_score, logname = main(gridsearch_args[gridsearch_id])
-        params_dict = {k: v for k, v in vars(gridsearch_args[gridsearch_id]).items() if k in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS}
+        run_args = gridsearch_args[gridsearch_id]
+        history, best_score, logname = main(run_args)
+        params_dict = {k: v for k, v in vars(run_args).items() if k in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS}
         params_dict.update({
-            "experiment_id": logname,
-            "train_cost": train_cost,
-            "val_cost": val_cost,
+            "experiment_id": run_args.logname,
+            "train_cost": history["train_cost"][-1],
+            "val_cost": history["val_cost"][-1],
+            "train_chi_squared": history["train_chi_squared"][-1],
+            "val_chi_squared": history["val_chi_squared"][-1],
             "best_score": best_score
         })
+        # Save hyperparameters and scores in shared csv for this gridsearch
         df = pd.DataFrame(params_dict, index=[gridsearch_id])
         if gridsearch_id == 0:
             mode = "w"
@@ -177,6 +183,8 @@ def distributed_strategy(args):
             mode = "a"
             header = False
         df.to_csv(os.path.join(os.getenv("CENSAI_PATH"), "results", f"{args.logname_prefixe}.csv"), header=header, mode=mode)
+        # Save this single run history
+        pd.DataFrame(history).to_csv(os.path.join(os.getenv("CENSAI_PATH"), "results", f"{run_args.logname}.csv"))
 
 
 if __name__ == '__main__':
@@ -257,7 +265,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_residuals",             default=1,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
 
     # Make sure each model train on the same dataset
-    parser.add_argument("--seed",                   default=42,   type=int,         help="Random seed for numpy and tensorflow.")
+    parser.add_argument("--seed",                   default=42, nargs="+",  type=int, help="Random seed for numpy and tensorflow.")
 
     # Keep these as default, they need to be in Namespace but we dont use them for this script
     parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
