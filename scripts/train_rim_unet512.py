@@ -6,7 +6,6 @@ from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter
 import os, glob, json
 from datetime import datetime
-import random
 MIRRORED_STRATEGY = tf.distribute.MirroredStrategy() # Strategy for data parallelism
 # gpus = tf.config.list_physical_devices('GPU')
 # ============================== Strategy for model parallelism requires manual placement of ops on devices =========
@@ -43,7 +42,7 @@ def main(args):
     files = []
     for dataset in args.datasets:
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
-    random.shuffle(files)
+    np.random.shuffle(files)
     # Read concurrently from multiple records
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),

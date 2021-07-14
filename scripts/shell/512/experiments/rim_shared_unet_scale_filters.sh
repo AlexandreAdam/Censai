@@ -18,7 +18,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --epochs=200\
   --initial_learning_rate=1e-4\
   --clipping\
-  --patience=40\
+  --patience=20\
   --tolerance=0.01\
   --batch_size=1\
   --train_split=0.9\
