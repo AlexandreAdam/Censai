@@ -99,7 +99,7 @@ class PhysicalModel:
     def log_likelihood(self, source, kappa, y_true):
         with self.device:
             y_pred = self.forward(source, kappa)
-        return 0.5 * tf.reduce_mean((y_pred - y_true)**2/self.noise_rms**2)
+        return 0.5 * tf.reduce_mean((y_pred - y_true)**2/self.noise_rms**2, axis=(1, 2, 3))
 
     def forward(self, source, kappa):
         with self.device:
