@@ -51,13 +51,16 @@ UNET_MODEL_HPARAMS = [
 ]
 
 EXTRA_PARAMS = [
-    "total_items"
+    "total_items",
+    "optimizer"
 ]
 
 
 from collections import OrderedDict
 PARAMS_NICKNAME = OrderedDict()
 PARAMS_NICKNAME["total_items"] = "TI"
+PARAMS_NICKNAME["optimizer"] = "O"
+
 PARAMS_NICKNAME["filters"] = "F"
 PARAMS_NICKNAME["filter_scaling"] = "FS"
 PARAMS_NICKNAME["kernel_size"] = "K"
@@ -76,6 +79,7 @@ PARAMS_NICKNAME["kappa_resize_method"] = "KRB"
 PARAMS_NICKNAME["kappa_resize_strides"] = "KRS"
 PARAMS_NICKNAME["kappalog"] = "KaL"
 PARAMS_NICKNAME["kappa_normalize"] = "KaN"
+
 PARAMS_NICKNAME["adam"] = "A"
 PARAMS_NICKNAME["alpha"] = "al"
 PARAMS_NICKNAME["steps"] = "TS"
@@ -234,6 +238,7 @@ if __name__ == '__main__':
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
+    parser.add_argument("--optimizer",              default="Adam",  nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")

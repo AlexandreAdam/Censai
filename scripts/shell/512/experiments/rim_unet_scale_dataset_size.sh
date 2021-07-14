@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --array=1-6
+#SBATCH --array=1-12
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
-#SBATCH --time=2-00:00		# time (DD-HH:MM), A step takes roughly 2 sec per example with conv2d
+#SBATCH --time=2-00:00		# time (DD-HH:MM), A step takes roughly 2 sec per example with fft
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RIM_TNG100_512_ScaleDatasetSize
 #SBATCH --output=%x-%j.out
@@ -13,8 +13,9 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses512_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=6\
-  --forward_method=conv2d\
+  --n_models=12\
+  --forward_method=fft\
+  --optimizer Adam Adamax\
   --epochs=200\
   --initial_learning_rate=1e-4\
   --clipping\
