@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-6
+#SBATCH --array=1-24
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -26,6 +26,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --num_parallel_reads=1\
   --cycle_length=1\
   --block_length=1\
+  --seeds 1 2 3 4\
   --steps=4 6 8 10 12 16\
   --adam\
   --kappalog\
