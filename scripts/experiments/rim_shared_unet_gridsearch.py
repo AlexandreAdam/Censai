@@ -164,7 +164,7 @@ def distributed_strategy(args):
     gridsearch_args = list(single_instance_args_generator(args))
     for gridsearch_id in range((THIS_WORKER - 1), len(gridsearch_args), N_WORKERS):
         run_args = gridsearch_args[gridsearch_id]
-        history, best_score, logname = main(run_args)
+        history, best_score = main(run_args)
         params_dict = {k: v for k, v in vars(run_args).items() if k in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS}
         params_dict.update({
             "experiment_id": run_args.logname,
