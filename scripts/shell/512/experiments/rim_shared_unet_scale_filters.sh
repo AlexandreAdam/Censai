@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-30
+#SBATCH --array=1-32
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -13,7 +13,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses512_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=30\
+  --n_models=32\
   --forward_method=fft\
   --epochs=200\
   --initial_learning_rate=1e-4\
@@ -22,14 +22,14 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --tolerance=0.01\
   --batch_size=1\
   --train_split=0.9\
-  --total_items 10 100 500\
+  --total_items 10 50 100 1000\
   --num_parallel_reads=1\
   --cycle_length=1\
   --block_length=1\
   --steps=4\
   --adam\
   --kappalog\
-  --filters 8 16 32 64 128\
+  --filters 8 16 32 64\
   --filter_scaling 1 2\
   --kernel_size 3\
   --layers 3\
