@@ -15,7 +15,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --strategy=exhaustive\
   --n_models=30\
   --forward_method=fft\
-  --epochs=200\
+  --epochs=5000\
   --initial_learning_rate=1e-5\
   --clipping\
   --patience=40\
