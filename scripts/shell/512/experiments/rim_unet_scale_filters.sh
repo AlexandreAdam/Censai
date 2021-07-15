@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-64
+#SBATCH --array=1-72
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -13,7 +13,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses512_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=64\
+  --n_models=72\
   --forward_method=fft\
   --epochs=200\
   --initial_learning_rate=1e-4\
@@ -22,15 +22,15 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --tolerance=0.01\
   --batch_size=1\
   --train_split=0.85\
-  --total_items 10 50 100 1000\
+  --total_items 1000\
   --num_parallel_reads=1\
   --cycle_length=1\
   --block_length=1\
-  --steps=4\
+  --steps=4 8\
   --adam\
   --kappalog\
-  --kappa_filters 8 16 32 64\
-  --kappa_filter_scaling 1\
+  --kappa_filters 8 16 32\
+  --kappa_filter_scaling 1 2\
   --kappa_kernel_size 3\
   --kappa_layers 3\
   --kappa_block_conv_layers 3\
@@ -41,8 +41,8 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --kappa_activatio leaky_relu\
   --kappa_alpha 0.1\
   --kappa_initializer glorot_normal\
-  --source_filters 8 16 32 64\
-  --source_filter_scaling 1\
+  --source_filters 8 16 32\
+  --source_filter_scaling 1 2\
   --source_kernel_size 3\
   --source_layers 3\
   --source_block_conv_layers 3\
