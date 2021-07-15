@@ -165,7 +165,6 @@ def main(args):
     @tf.function
     def distributed_train_step(dist_inputs):
         per_replica_losses, per_replica_chi_squared = STRATEGY.run(train_step, args=(dist_inputs,))
-        # Replica losses are aggregated by summing them
         global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
         global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
         return global_loss, global_chi_squared
@@ -220,7 +219,7 @@ def main(args):
                 epoch_chi_squared.update_state([chi_squared])
                 step += 1
             # last batch we make a summary of residuals
-            for res_idx in range(min(args.n_residuals, distributed_inputs.shape[0])):
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
                 lens_true = distributed_inputs[0][res_idx, ...]
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
@@ -241,7 +240,7 @@ def main(args):
                 val_loss.update_state([cost])
                 val_chi_squared.update_state([chi_squared])
 
-            for res_idx in range(min(args.n_residuals, distributed_inputs.shape[0])):
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
                 lens_true = distributed_inputs[0][res_idx, ...]
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
