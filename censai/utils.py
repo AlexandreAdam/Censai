@@ -265,7 +265,7 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     ax.axis("off")
 
     ax = axs[2, 2]
-    im = ax.imshow((kappa_true - kappa_pred.numpy())[..., 0], cmap="seismic", norm=SymLogNorm(linthresh=1e-1, base=10), origin="lower")
+    im = ax.imshow((kappa_true - kappa_pred.numpy())[..., 0], cmap="seismic", norm=SymLogNorm(linthresh=1e-1, base=10, vmax=100, vmin=-100), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
