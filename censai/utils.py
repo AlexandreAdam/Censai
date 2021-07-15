@@ -265,7 +265,7 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     ax.axis("off")
 
     ax = axs[2, 2]
-    im = ax.imshow((kappa_true - kappa_pred.numpy())[..., 0], cmap="seismic", norm=SymLogNorm(linthresh=1e-3, base=10), origin="lower")
+    im = ax.imshow((kappa_true - kappa_pred.numpy())[..., 0], cmap="seismic", norm=SymLogNorm(linthresh=1e-1, base=10), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
@@ -275,7 +275,7 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     axs[0, 1].set_title("Predictions", size=15)
     axs[0, 2].set_title("Residuals", size=15)
     fig.suptitle(fr"$\chi^2$ = {chi_squared: .3e}", size=20)
-    plt.subplots_adjust(wspace=.2, hspace=.2)
+    plt.subplots_adjust(wspace=.4, hspace=.2)
     plt.figtext(0.1, 0.75, r"Lens", va="center", ha="center", size=15, rotation=90)
     plt.figtext(0.1, 0.5, r"Source", va="center", ha="center", size=15, rotation=90)
     plt.figtext(0.1, 0.22, r"$\kappa$", va="center", ha="center", size=15, rotation=90)
