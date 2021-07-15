@@ -150,10 +150,10 @@ class RIMSharedUnet:
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
-            source_series = source_series.write(index=current_step, value=source)
-            kappa_series = kappa_series.write(index=current_step, value=kappa)
+            source_series = source_series.write(index=current_step, value=self.source_inverse_link(source))
+            kappa_series = kappa_series.write(index=current_step, value=self.kappa_inverse_link(kappa))
             chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
-        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack() # stack along 0-th dimension
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()  # stack along 0-th dimension
 
     def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):
         """
