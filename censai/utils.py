@@ -5,6 +5,7 @@ import collections
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.visualization import ImageNormalize, LogStretch
+from matplotlib.colors import LogNorm, SymLogNorm
 
 try:
     from contextlib import nullcontext  # python > 3.7 needed for this
@@ -137,7 +138,7 @@ def lens_residual_plot(lens_true, lens_pred, title=""):
     ax.axis("off")
 
     ax = axs[2]
-    im = ax.imshow((lens_true - lens_pred).numpy()[..., 0], cmap="jet", origin="lower")
+    im = ax.imshow((lens_true - lens_pred).numpy()[..., 0], cmap="seismic", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
@@ -167,7 +168,7 @@ def raytracer_residual_plot(y_true, y_pred, lens_true, lens_pred):
         axs[i, 1].axis("off")
 
         residual = np.abs(y_true.numpy()[..., i] - y_pred.numpy()[..., i])
-        im = axs[i, 2].imshow(residual, cmap="jet", origin="lower")
+        im = axs[i, 2].imshow(residual, cmap="seismic", norm=SymLogNorm(linthresh=1e-3, base=10), origin="lower")
         divider = make_axes_locatable(axs[i, 2])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
@@ -188,7 +189,7 @@ def raytracer_residual_plot(y_true, y_pred, lens_true, lens_pred):
     ax.axis("off")
 
     ax = axs[2, 2]
-    im = ax.imshow((lens_true - lens_pred).numpy()[..., 0], cmap="jet", origin="lower")
+    im = ax.imshow((lens_true - lens_pred).numpy()[..., 0], cmap="seismic", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
@@ -222,7 +223,7 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     ax.axis("off")
 
     ax = axs[2, 0]
-    im = ax.imshow(kappa_true.numpy()[..., 0], cmap="hot", norm=ImageNormalize(stretch=LogStretch(a=100)), origin="lower")
+    im = ax.imshow(kappa_true.numpy()[..., 0], cmap="hot", norm=LogNorm(), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
@@ -243,28 +244,28 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     ax.axis("off")
 
     ax = axs[2, 1]
-    im = ax.imshow(kappa_pred.numpy()[..., 0], cmap="hot", norm=ImageNormalize(stretch=LogStretch(a=100)), origin="lower")
+    im = ax.imshow(kappa_pred.numpy()[..., 0], cmap="hot", norm=LogNorm(), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[0, 2]
-    im = ax.imshow((lens_true - lens_pred.numpy())[..., 0], cmap="jet", origin="lower")
+    im = ax.imshow((lens_true - lens_pred.numpy())[..., 0], cmap="seismic", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[1, 2]
-    im = ax.imshow((source_true - source_pred.numpy())[..., 0], cmap="jet", origin="lower")
+    im = ax.imshow((source_true - source_pred.numpy())[..., 0], cmap="seismic", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2, 2]
-    im = ax.imshow((kappa_true - kappa_pred.numpy())[..., 0], cmap="jet", origin="lower")
+    im = ax.imshow((kappa_true - kappa_pred.numpy())[..., 0], cmap="seismic", norm=SymLogNorm(linthresh=1e-3, base=10), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
