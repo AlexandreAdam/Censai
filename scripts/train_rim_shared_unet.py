@@ -26,7 +26,9 @@ RIM_HPARAMS = [
     "adam",
     "steps",
     "kappalog",
-    "kappa_normalize"
+    "kappa_normalize",
+    "kappa_init",
+    "source_init"
 ]
 UNET_MODEL_HPARAMS = [
     "filters",
@@ -231,15 +233,18 @@ def main(args):
 
     def test_step(inputs):
         X, source, kappa = inputs
-        cost = rim.cost_function(X, source, kappa, reduction=False)
+        cost, chi_squared = rim.cost_function(X, source, kappa, reduction=False)
         cost = tf.reduce_sum(cost) / args.batch_size
-        return cost
+        chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
+        return cost, chi_squared
 
     @tf.function
     def distributed_test_step(dist_inputs):
-        per_replica_losses = STRATEGY.run(test_step, args=(dist_inputs,))
+        per_replica_losses, per_replica_chi_squared = STRATEGY.run(test_step, args=(dist_inputs,))
         # Replica losses are aggregated by summing them
-        return STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
+        return global_loss, global_chi_squared
 
     # ====== Training loop ============================================================================================
     epoch_loss = tf.metrics.Mean()
@@ -277,7 +282,7 @@ def main(args):
                 epoch_chi_squared.update_state([chi_squared])
                 step += 1
             # last batch we make a summary of residuals
-            for res_idx in range(min(args.n_residuals, distributed_inputs.shape[0])):
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
                 lens_true = distributed_inputs[0][res_idx, ...]
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]
@@ -298,7 +303,7 @@ def main(args):
                 val_loss.update_state([cost])
                 val_chi_squared.update_state([chi_squared])
 
-            for res_idx in range(min(args.n_residuals, distributed_inputs.shape[0])):
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
                 lens_true = distributed_inputs[0][res_idx, ...]
                 source_true = distributed_inputs[1][res_idx, ...]
                 kappa_true = distributed_inputs[2][res_idx, ...]

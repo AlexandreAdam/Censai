@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
-from censai.definitions import DTYPE, log_10, logkappa_normalization
+from censai.definitions import DTYPE
 from censai.utils import nullcontext
 
 
@@ -19,8 +19,6 @@ class PhysicalModel:
             kappa_fov=7.68,
             method="conv2d",
             noise_rms=1,
-            kappalog=False,
-            normalize_logkappa=False,
             device=nullcontext(),
             raytracer=None
     ):
@@ -34,8 +32,6 @@ class PhysicalModel:
         self.kappa_fov = kappa_fov
         self.method = method
         self.noise_rms = noise_rms
-        self.kappalog = kappalog
-        self.normalize_logkappa = normalize_logkappa
         self.device = device
         self.raytracer = raytracer
         self.set_deflection_angle_vars()
@@ -103,20 +99,12 @@ class PhysicalModel:
 
     def forward(self, source, kappa):
         with self.device:
-            if self.kappalog:
-                if self.normalize_logkappa:  # undo normalization
-                    kappa = logkappa_normalization(kappa, forward=False)
-                kappa = 10**kappa
             im = self.lens_source(source, kappa)
             im = self.convolve_with_psf(im)
         return im
 
     def noisy_forward(self, source, kappa, noise_rms):
         with self.device:
-            if self.kappalog:
-                if self.normalize_logkappa:  # undo normalization
-                    kappa = logkappa_normalization(kappa, forward=False)
-                kappa = 10**kappa
             im = self.lens_source(source, kappa)
             noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
             out = self.convolve_with_psf(im + noise)

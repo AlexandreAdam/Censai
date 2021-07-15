@@ -22,7 +22,7 @@ RIM_HPARAMS = [
     "kappa_normalize",
     "source_link",
     "kappa_init",
-    "source_init",
+    "source_init"
 ]
 
 UNET_MODEL_HPARAMS = [

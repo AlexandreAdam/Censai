@@ -124,5 +124,3 @@ if __name__ == "__main__":
     fig.colorbar(im, cax=cax, orientation='vertical')
 
     plt.show()
-
-
