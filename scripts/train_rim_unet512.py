@@ -12,8 +12,6 @@ if len(gpus) == 1:
     STRATEGY = tf.distribute.OneDeviceStrategy(device="/gpu:0")
 elif len(gpus) > 1:
     STRATEGY = tf.distribute.MirroredStrategy()
-from censai.utils import nullcontext
-PHYSICAL_MODEL_DEVICE = nullcontext()
 
 RIM_HPARAMS = ["state_sizes"]
 SOURCE_MODEL_HPARAMS = ["strides"]
@@ -63,7 +61,6 @@ def main(args):
             src_fov=physical_params["source fov"].numpy(),
             method=args.forward_method,
             noise_rms=physical_params["noise rms"].numpy(),
-            device=PHYSICAL_MODEL_DEVICE,
             raytracer=raytracer
         )
         source_model = UnetModel512(num_cell_features=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4], strides=args.source_strides)

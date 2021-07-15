@@ -1,6 +1,6 @@
 import tensorflow as tf
 from .models.rim_unet_model512 import UnetModel512
-from censai.definitions import logkappa_normalization, log_10
+from censai.definitions import logkappa_normalization, log_10, DTYPE
 from censai import PhysicalModel
 from censai.utils import nulltape
 
@@ -137,9 +137,9 @@ class RIMUnet512:
         batch_size = lensed_image.shape[0]
         source, source_states, kappa, kappa_states = self.initial_states(batch_size)
 
-        source_series = []
-        kappa_series = []
-        chi_squared_series = []
+        source_series = tf.TensorArray(DTYPE, size=self.steps)  # equivalent to empty list and append, but using tensorflow
+        kappa_series = tf.TensorArray(DTYPE, size=self.steps)
+        chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in range(self.steps):
             with outer_tape.stop_recording():
                 with tf.GradientTape() as g:
@@ -150,18 +150,18 @@ class RIMUnet512:
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
-            source_series.append(source)
-            kappa_series.append(kappa)
-            chi_squared_series.append(log_likelihood)
-        return source_series, kappa_series, chi_squared_series
+            source_series = source_series.write(index=current_step, value=source)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def predict(self, lensed_image):
         batch_size = lensed_image.shape[0]
         source, source_states, kappa, kappa_states = self.initial_states(batch_size)
 
-        source_series = []
-        kappa_series = []
-        chi_squared_series = []
+        source_series = tf.TensorArray(DTYPE, size=self.steps)
+        kappa_series = tf.TensorArray(DTYPE, size=self.steps)
+        chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in range(self.steps):
             with tf.GradientTape() as g:
                 g.watch(source)
@@ -171,10 +171,10 @@ class RIMUnet512:
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
-            source_series.append(self.source_inverse_link(source))
-            kappa_series.append(self.kappa_inverse_link(kappa))
-            chi_squared_series.append(log_likelihood)
-        return source_series, kappa_series, chi_squared_series
+            source_series = source_series.write(index=current_step, value=source)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):
         """
