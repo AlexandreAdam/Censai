@@ -16,7 +16,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --n_models=20\
   --forward_method=fft\
   --optimizer Adam Adamax\
-  --epochs=200\
+  --epochs=5000\
   --initial_learning_rate=1e-4\
   --clipping\
   --patience=20\
