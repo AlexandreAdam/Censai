@@ -158,9 +158,9 @@ class RIMUnet:
 
         """
         source_series, kappa_series, chi_squared = self.call(lensed_image, outer_tape=outer_tape)
-        source_cost = sum([tf.square(source_series[i] - self.source_link(source)) for i in range(self.steps)]) / self.steps
-        kappa_cost = sum([tf.square(kappa_series[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
-        chi = sum([chi_t for chi_t in chi_squared]) / self.steps
+        source_cost = tf.reduce_sum(tf.square(source_series - self.source_link(source)), axis=0) / self.steps
+        kappa_cost = tf.reduce_sum(tf.square(kappa_series - self.kappa_link(kappa)), axis=0) / self.steps
+        chi = tf.reduce_sum(chi_squared, axis=0) / self.steps
 
         if reduction:
             return tf.reduce_mean(source_cost) + tf.reduce_mean(kappa_cost), tf.reduce_mean(chi)

@@ -153,7 +153,7 @@ class RIMSharedUnet:
             source_series = source_series.write(index=current_step, value=source)
             kappa_series = kappa_series.write(index=current_step, value=kappa)
             chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
-        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack() # stack along 0-th dimension
 
     def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):
         """
@@ -168,9 +168,9 @@ class RIMSharedUnet:
 
         """
         source_series, kappa_series, chi_squared = self.call(lensed_image, outer_tape=outer_tape)
-        source_cost = sum([tf.square(source_series[i] - self.source_link(source)) for i in range(self.steps)]) / self.steps
-        kappa_cost = sum([tf.square(kappa_series[i] - self.kappa_link(kappa)) for i in range(self.steps)]) / self.steps
-        chi = sum([chi_t for chi_t in chi_squared]) / self.steps
+        source_cost = tf.reduce_sum(tf.square(source_series - self.source_link(source)), axis=0) / self.steps
+        kappa_cost = tf.reduce_sum(tf.square(kappa_series - self.kappa_link(kappa)), axis=0) / self.steps
+        chi = tf.reduce_sum(chi_squared, axis=0) / self.steps
 
         if reduction:
             return tf.reduce_mean(source_cost) + tf.reduce_mean(kappa_cost), tf.reduce_mean(chi)
