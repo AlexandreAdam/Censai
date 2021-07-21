@@ -7,6 +7,7 @@ from censai.data import NISGenerator
 from censai.data.lenses_tng import encode_examples
 from scipy.signal.windows import tukey
 from datetime import datetime
+import json
 
 
 # total number of slurm workers detected
@@ -19,10 +20,10 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 
 def distributed_strategy(args):
-    kappa_gen = NISGenerator(
+    kappa_gen = NISGenerator( # only used to generate pixelated kappa fields
         kappa_fov=args.kappa_fov,
         src_fov=args.source_fov,
-        pixels=args.pixels,
+        pixels=args.kappa_pixels,
         z_source=args.z_source,
         z_lens=args.z_lens
     )
@@ -39,9 +40,16 @@ def distributed_strategy(args):
 
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
-    phys = PhysicalModel(psf_sigma=args.psf_sigma,
-                         image_fov=args.image_fov, src_fov=args.source_fov, pixels=args.pixels,
-                         src_pixels=args.src_pixels, kappa_fov=args.kappa_fov, method="conv2d")
+    phys = PhysicalModel(
+        psf_sigma=args.psf_sigma,
+        image_fov=args.image_fov,
+        kappa_fov=args.kappa_fov,
+        src_fov=args.source_fov,
+        pixels=args.lens_pixels,
+        kappa_pixels=args.kappa_pixels,
+        src_pixels=args.src_pixels,
+        method="conv2d"
+    )
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
@@ -99,6 +107,8 @@ if __name__ == '__main__':
     parser.add_argument("--compression_type",   default=None,                   help="Default is no compression. Use 'GZIP' to compress data")
 
     # Physical model params
+    parser.add_argument("--lens_pixels",        default=512,        type=int,   help="Number of pixels on a side of the kappa map.")
+    parser.add_argument("--kappa_pixels",       default=128,        type=int,   help="Size of the lens postage stamp.")
     parser.add_argument("--src_pixels",         default=128,        type=int,   help="Size of Cosmos postage stamps")
     parser.add_argument("--kappa_fov",          default=22.2,       type=float, help="Field of view of kappa map in arcseconds")
     parser.add_argument("--image_fov",          default=20,         type=float, help="Field of view of the image (lens plane) in arc seconds")
@@ -109,7 +119,6 @@ if __name__ == '__main__':
     parser.add_argument("--psf_sigma",          default=0.06,       type=float, help="Sigma of psf in arcseconds")
 
     # Data generation params
-    parser.add_argument("--pixels",             default=512,        type=int,   help="Number of pixels on a side of the kappa map.")
     parser.add_argument("--max_shift",          default=1.,         type=float, help="Maximum allowed shift of kappa map center in arcseconds")
     parser.add_argument("--max_ellipticity",    default=0.6,        type=float, help="Maximum ellipticty of density profile.")
     parser.add_argument("--max_theta_e",        default=None,       type=float, help="Maximum allowed Einstein radius, default is 35 percent of image fov")
@@ -129,7 +138,7 @@ if __name__ == '__main__':
 
     # Reproducibility params
     parser.add_argument("--seed",               default=None,       type=int,   help="Random seed for numpy and tensorflow")
-    parser.add_argument("--json_override",      default=None,                   help="A json filepath that will override every command line parameters. "
+    parser.add_argument("--json_override",      default=None,       nargs="+",  help="A json filepath that will override every command line parameters. "
                                                                                      "Useful for reproducibility")
 
     args = parser.parse_args()
@@ -139,11 +148,15 @@ if __name__ == '__main__':
         tf.random.set_seed(args.seed)
         np.random.seed(args.seed)
     if args.json_override is not None:
-        import json
-        with open(args.json_override, "r") as f:
-            json_override = json.load(f)
-        args_dict = vars(args)
-        args_dict.update(json_override)
+        if isinstance(args.json_override, list):
+            files = args.json_override
+        else:
+            files = [args.json_override,]
+        for file in files:
+            with open(file, "r") as f:
+                json_override = json.load(f)
+            args_dict = vars(args)
+            args_dict.update(json_override)
     if THIS_WORKER == 1:
         import json
         with open(os.path.join(args.output_dir, "script_params.json"), "w") as f:

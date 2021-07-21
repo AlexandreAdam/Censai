@@ -23,9 +23,7 @@ python $CENSAI_PATH/scripts/train_rim_unet512.py\
   --dataset=$HOME/scratch/Censai/data/lenses_TNG100/\
   --train_split=0.9\
   --total_items=200000\
-  --num_parallel_reads=4\
   --block_length=1\
-  --cycle_length=4\
   --cache_file=$SLURM_TMPDIR/cache\
   --epochs=50\
   --initial_learning_rate=1e-3\

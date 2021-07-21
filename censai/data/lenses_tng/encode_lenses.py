@@ -23,6 +23,7 @@ def encode_examples(
     batch_size = galaxies.shape[0]
     source_pixels = galaxies.shape[1]
     kappa_pixels = kappa.shape[1]
+    pixels = lensed_images.shape[1]
     records = []
     for j in range(batch_size):
         features = {
@@ -41,6 +42,7 @@ def encode_examples(
             "sigma crit": _float_feature(sigma_crit),  # 10^10 M_sun / Mpc^2
             "src pixels": _int64_feature(source_pixels),
             "kappa pixels": _int64_feature(kappa_pixels),
+            "pixels": _int64_feature(pixels),
             "noise rms": _float_feature(noise_rms),
             "psf sigma": _float_feature(psf_sigma),
             "kappa id": _int64_feature(kappa_ids[j])

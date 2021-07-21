@@ -20,13 +20,11 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --batch_size=1\
+  --batch_size 1\
   --train_split=0.85\
   --total_items 10 50 100\
-  --num_parallel_reads=1\
-  --cycle_length=1\
   --block_length=1\
-  --steps=4\
+  --steps 4\
   --adam\
   --kappalog\
   --kappa_filters 8 16 32\

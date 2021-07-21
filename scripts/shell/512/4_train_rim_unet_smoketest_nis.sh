@@ -24,9 +24,7 @@ python $CENSAI_PATH/scripts/train_rim_unet512.py\
   --compression_type=GZIP\
   --train_split=0.9\
   --total_items=2000\
-  --num_parallel_reads=4\
   --block_length=1\
-  --cycle_length=4\
   --cache_file=$SLURM_TMPDIR/cache\
   --epochs=10\
   --initial_learning_rate=1e-3\
