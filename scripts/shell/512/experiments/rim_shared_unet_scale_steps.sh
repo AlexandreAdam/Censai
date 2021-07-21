@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
-#SBATCH --time=1-00:00		# time (DD-HH:MM)
+#SBATCH --time=2-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RIM_SharedUnet_TNG100_512_ScaleSteps
 #SBATCH --output=%x-%j.out
@@ -16,18 +16,17 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --n_models=24\
   --forward_method=fft\
   --epochs=5000\
+  --max_time=47\
   --initial_learning_rate=1e-4\
   --clipping\
   --patience=20\
   --tolerance=0.01\
-  --batch_size=1\
+  --batch_size 1\
   --train_split=0.9\
-  --total_items 100\
-  --num_parallel_reads=1\
-  --cycle_length=1\
+  --total_items 1000\
   --block_length=1\
-  --seed 1 2 3 4\
-  --steps=4 6 8 10 12 16\
+  --seed 31 42 84 94\
+  --steps 4 6 8 10 12 16\
   --adam\
   --kappalog\
   --filters 32\
@@ -47,7 +46,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --kappa_resize_kernel_size 7\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logs\
-  --logname_prefixe=RIMSU512_SDS\
+  --logname_prefixe=RIMSU512_St\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\

@@ -77,8 +77,8 @@ def main(args):
     np.random.shuffle(files)
     # Read concurrently from multiple records
     files = tf.data.Dataset.from_tensor_slices(files)
-    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
-                               cycle_length=args.cycle_length, block_length=args.block_length)
+    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
+                               block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
     # Read off global parameters from first example in dataset
     for physical_params in dataset.map(decode_physical_model_info):
         break
@@ -293,8 +293,14 @@ def main(args):
     best_loss = np.inf
     patience = args.patience
     step = 0
+    global_start = time.time()
+    estimated_time_for_epoch = 0
+    out_of_time = False
     lastest_checkpoint = 1
     for epoch in range(args.epochs):
+        if (time.time() - global_start) > args.max_time*3600 - estimated_time_for_epoch:
+            break
+        epoch_start = time.time()
         epoch_loss.reset_states()
         epoch_chi_squared.reset_states()
         time_per_step.reset_states()
@@ -370,10 +376,12 @@ def main(args):
             patience = args.patience
         else:
             patience -= 1
+        if (time.time() - global_start) > args.max_time * 3600:
+            out_of_time = True
         if save_checkpoint:
             source_checkpoint_manager.checkpoint.step.assign_add(1) # a bit of a hack
             kappa_checkpoint_manager.checkpoint.step.assign_add(1)
-            if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
+            if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1 or out_of_time:
                 with open(os.path.join(kappa_checkpoints_dir, "score_sheet.txt"), mode="a") as f:
                     np.savetxt(f, np.array([[lastest_checkpoint, cost]]))
                 with open(os.path.join(source_checkpoints_dir, "score_sheet.txt"), mode="a") as f:
@@ -386,6 +394,10 @@ def main(args):
         if patience == 0:
             print("Reached patience")
             break
+        if out_of_time:
+            break
+        if epoch > 0:  # First epoch is always very slow and not a good estimate of an epoch time.
+            estimated_time_for_epoch = time.time() - epoch_start
     return history, best_loss
 
 
@@ -453,9 +465,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_split",            default=0.8,    type=float,     help="Fraction of the training set.")
     parser.add_argument("--total_items",            required=True,  type=int,       help="Total images in an epoch.")
     # ... for tfrecord dataset
-    parser.add_argument("--num_parallel_reads",     default=10,     type=int,       help="TFRecord dataset number of parallel reads when loading data.")
     parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
-    parser.add_argument("--cycle_length",           default=4,      type=int,       help="Number of files to read concurrently.")
     parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files.")
 
     # Optimization params
@@ -468,7 +478,9 @@ if __name__ == "__main__":
     parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
-    parser.add_argument("--track_train",                    action="store_true",    help="Track training metric instead of validation metric, in case we want to overfit")
+    parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
+    parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
+
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
@@ -481,17 +493,22 @@ if __name__ == "__main__":
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
-    parser.add_argument("--json_override",          default=None,                   help="A json filepath that will override every command line parameters. "
-                                                                                         "Useful for reproducibility")
+    parser.add_argument("--json_override",          default=None,   nargs="+",      help="A json filepath that will override every command line parameters. "
+                                                                                 "Useful for reproducibility")
 
     args = parser.parse_args()
     if args.seed is not None:
         tf.random.set_seed(args.seed)
         np.random.seed(args.seed)
     if args.json_override is not None:
-        with open(args.json_override, "r") as f:
-            json_override = json.load(f)
-        args_dict = vars(args)
-        args_dict.update(json_override)
+        if isinstance(args.json_override, list):
+            files = args.json_override
+        else:
+            files = [args.json_override,]
+        for file in files:
+            with open(file, "r") as f:
+                json_override = json.load(f)
+            args_dict = vars(args)
+            args_dict.update(json_override)
 
     main(args)

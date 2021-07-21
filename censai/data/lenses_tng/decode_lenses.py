@@ -22,6 +22,7 @@ def decode_all(record_bytes):
               'sigma crit': tf.io.FixedLenFeature([], tf.float32),
               'src pixels': tf.io.FixedLenFeature([], tf.int64),
               'kappa pixels': tf.io.FixedLenFeature([], tf.int64),
+              'pixels': tf.io.FixedLenFeature([], tf.int64),
               'noise rms': tf.io.FixedLenFeature([], tf.float32),
               "psf sigma": tf.io.FixedLenFeature([], tf.float32),
               'kappa id': tf.io.FixedLenFeature([], tf.int64)
@@ -32,11 +33,12 @@ def decode_all(record_bytes):
     ps = tf.io.decode_raw(example['power spectrum'], tf.float32)
     kappa_pixels = example['kappa pixels']
     source_pixels = example['src pixels']
+    pixels = example['pixels']
 
     example['kappa'] = tf.reshape(kappa, [kappa_pixels, kappa_pixels, 1])
     example['source'] = tf.reshape(source, [source_pixels, source_pixels, 1])
     example['power spectrum'] = tf.reshape(ps, [source_pixels, source_pixels//2 + 1, 1])
-    example['lens'] = tf.reshape(lens, [kappa_pixels, kappa_pixels, 1])
+    example['lens'] = tf.reshape(lens, [pixels, pixels, 1])
     return example
 
 

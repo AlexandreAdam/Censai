@@ -13,21 +13,20 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses512_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=6\
+  --n_models=24\
   --forward_method=fft\
   --epochs=5000\
+  --max_time=94\
   --initial_learning_rate=1e-4\
   --clipping\
   --patience=20\
   --tolerance=0.01\
-  --batch_size=1\
+  --batch_size 1\
   --train_split=0.85\
-  --total_items 100\
-  --num_parallel_reads=1\
-  --cycle_length=1\
+  --total_items 1000\
   --block_length=1\
-  --seed 1 2 3 4\
-  --steps=4 6 8 10 12 16\
+  --seed 31 42 84 94\
+  --steps 4 6 8 10 12 16\
   --adam\
   --kappalog\
   --kappa_filters 32\
@@ -56,7 +55,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --source_initializer glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logs\
-  --logname_prefixe=RIMDU512_SDS\
+  --logname_prefixe=RIMDU512_St\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\
