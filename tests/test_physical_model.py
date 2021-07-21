@@ -116,7 +116,7 @@ def test_interpolated_kappa():
     wrap = tf.concat([i_coord, j_coord], axis=-1)
     # test_kappa1 = tfa.image.resampler(kappa, wrap)  # bilinear interpolation of source on wrap grid
     # test_lens1 = phys.lens_source_func(test_kappa1, w=0.2)
-    phys2 = PhysicalModel(pixels=128, kappa_pixels=32)
+    phys2 = PhysicalModel(pixels=128, kappa_pixels=32, method="fft")
     test_lens1 = phys2.lens_source_func(kappa, w=0.2)
 
     # Test interpolated alpha angles lens
