@@ -108,9 +108,9 @@ def main(args):
             noise_rms=physical_params["noise rms"].numpy(),
             raytracer=raytracer
         )
-        assert is_power_of_two(phys.pixels)
+        assert is_power_of_two(phys.kappa_pixels)
         assert is_power_of_two(phys.src_pixels)
-        kappa_resize_layers = (phys.pixels // phys.src_pixels) // args.kappa_resize_strides
+        kappa_resize_layers = (phys.kappa_pixels // phys.src_pixels) // args.kappa_resize_strides
         vars(args).update({"kappa_resize_layers": int(kappa_resize_layers)})
 
         unet = SharedUnetModel(
