@@ -18,7 +18,7 @@ python $CENSAI_PATH/scripts/train_rim_unet512.py\
   --state_size_2=32\
   --state_size_3=128\
   --state_size_4=256\
-  --forward_method=conv2d\
+  --forward_method=fft\
   --batch_size=4\
   --datasets=$HOME/scratch/Censai/data/lenses_NIS/\
   --compression_type=GZIP\

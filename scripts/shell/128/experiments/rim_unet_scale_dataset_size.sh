@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
-#SBATCH --time=2-00:00		# time (DD-HH:MM), A step takes roughly 2 sec per example with conv2d
+#SBATCH --time=2-00:00		# time (DD-HH:MM), A step takes roughly 2 sec per example with fft
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RIM_TNG100_128_ScaleDatasetSize
 #SBATCH --output=%x-%j.out
@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=5\
-  --forward_method=conv2d\
+  --forward_method=fft\
   --epochs=5000\
   --initial_learning_rate=5e-5\
   --clipping\

@@ -9,9 +9,9 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/train_rim_shared_unet.py\
-  --datasets $HOME/scratch/Censai/data/lenses128_NIS\
+  --datasets $HOME/scratch/Censai/data/lenses512_k256_NIS\
   --compression_type=GZIP\
-  --forward_method=conv2d\
+  --forward_method=fft\
   --epochs=20\
   --initial_learning_rate=1e-4\
   --patience=40\
