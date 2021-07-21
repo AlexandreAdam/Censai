@@ -16,15 +16,14 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --n_models=72\
   --forward_method=fft\
   --epochs=5000\
+  --max_time=47\
   --initial_learning_rate=1e-4\
   --clipping\
   --patience=20\
   --tolerance=0.01\
-  --batch_size=1\
+  --batch_size 1\
   --train_split=0.85\
   --total_items 1000\
-  --num_parallel_reads=1\
-  --cycle_length=1\
   --block_length=1\
   --steps 4 8\
   --adam\

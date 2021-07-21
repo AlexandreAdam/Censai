@@ -14,8 +14,9 @@ python $CENSAI_PATH/scripts/create_rim_dataset_analytical_kappa_maps.py\
   --len_dataset=2000\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
   --compression_type=GZIP\
+  --lens_pixels=512\
   --src_pixels=128\
-  --pixels=512\
+  --kappa_pixels=512\
   --image_fov=20\
   --kappa_fov=22.2\
   --source_fov=3\
