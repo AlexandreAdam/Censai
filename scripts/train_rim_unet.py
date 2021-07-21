@@ -106,7 +106,8 @@ def main(args):
         else:
             raytracer = None
         phys = PhysicalModel(
-            pixels=physical_params["kappa pixels"].numpy(),
+            pixels=physical_params["pixels"].numpy(),
+            kappa_pixels=physical_params["kappa pixels"].numpy(),
             src_pixels=physical_params["src pixels"].numpy(),
             image_fov=physical_params["image fov"].numpy(),
             kappa_fov=physical_params["kappa fov"].numpy(),

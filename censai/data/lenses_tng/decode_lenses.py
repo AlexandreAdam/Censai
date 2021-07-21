@@ -43,7 +43,7 @@ def decode_all(record_bytes):
 
 
 def decode_physical_model_info(record_bytes):
-    params_keys = ['image fov', 'kappa fov', 'source fov', 'src pixels', 'kappa pixels', 'noise rms', 'psf sigma']
+    params_keys = ['image fov', 'kappa fov', 'source fov', 'src pixels', 'kappa pixels', 'pixels', 'noise rms', 'psf sigma']
     example = decode_all(record_bytes)
     return {key: example[key] for key in params_keys}
 
