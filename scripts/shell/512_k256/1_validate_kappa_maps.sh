@@ -8,5 +8,5 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/validate_kappa_maps.py\
-  --kappa_dir=$HOME/scratch/Censai/data/kappa228_TNG100\
+  --kappa_dir=$HOME/scratch/Censai/data/kappa356_TNG100_512\
   --good_kappa_cutoff=1

@@ -8,6 +8,7 @@ from censai.data import AugmentedTNGKappaGenerator
 from censai.data.lenses_tng import encode_examples
 from scipy.signal.windows import tukey
 from datetime import datetime
+import json
 
 
 # total number of slurm workers detected
@@ -157,16 +158,19 @@ if __name__ == '__main__':
         tf.random.set_seed(args.seed)
         np.random.seed(args.seed)
     if args.json_override is not None:
-        import json
-        with open(args.json_override, "r") as f:
-            json_override = json.load(f)
-        args_dict = vars(args)
-        args_dict.update(json_override)
+        if isinstance(args.json_override, list):
+            files = args.json_override
+        else:
+            files = [args.json_override,]
+        for file in files:
+            with open(file, "r") as f:
+                json_override = json.load(f)
+            args_dict = vars(args)
+            args_dict.update(json_override)
     if THIS_WORKER == 1:
         import json
         with open(os.path.join(args.output_dir, "script_params.json"), "w") as f:
             args_dict = vars(args)
             json.dump(args_dict, f)
 
-    # distributed_strategy(args)
-    pass
+    distributed_strategy(args)

@@ -17,7 +17,6 @@ python $CENSAI_PATH/scripts/create_rim_dataset.py\
   --compression_type=GZIP\
   --lens_pixels=512\
   --src_pixels=128\
-  --kappa_pixels=512\
   --image_fov=20\
   --source_fov=3\
   --noise_rms=0.3e-3\

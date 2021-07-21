@@ -492,17 +492,22 @@ if __name__ == "__main__":
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
-    parser.add_argument("--json_override",          default=None,                   help="A json filepath that will override every command line parameters. "
-                                                                                         "Useful for reproducibility")
+    parser.add_argument("--json_override",          default=None,   nargs="+",      help="A json filepath that will override every command line parameters. "
+                                                                                 "Useful for reproducibility")
 
     args = parser.parse_args()
     if args.seed is not None:
         tf.random.set_seed(args.seed)
         np.random.seed(args.seed)
     if args.json_override is not None:
-        with open(args.json_override, "r") as f:
-            json_override = json.load(f)
-        args_dict = vars(args)
-        args_dict.update(json_override)
+        if isinstance(args.json_override, list):
+            files = args.json_override
+        else:
+            files = [args.json_override,]
+        for file in files:
+            with open(file, "r") as f:
+                json_override = json.load(f)
+            args_dict = vars(args)
+            args_dict.update(json_override)
 
     main(args)
