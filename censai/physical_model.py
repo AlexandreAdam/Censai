@@ -11,9 +11,10 @@ class PhysicalModel:
     """
     def __init__(
             self,
-            pixels,           # 512
-            psf_sigma=0.06,   # gaussian PSF
-            src_pixels=None,  # 128 for cosmos
+            pixels,            # 512
+            psf_sigma=0.06,    # gaussian PSF
+            src_pixels=None,   # 128 for cosmos
+            kappa_pixels=None,
             image_fov=7.68,
             src_fov=3.0,
             kappa_fov=7.68,
@@ -23,19 +24,27 @@ class PhysicalModel:
     ):
         if src_pixels is None:
             src_pixels = pixels  # assume src has the same shape
+        if kappa_pixels is None:
+            kappa_pixels = pixels
         self.image_fov = image_fov
         self.psf_sigma = psf_sigma
         self.src_fov = src_fov
         self.pixels = pixels
         self.src_pixels = src_pixels
+        self.kappa_pixels = kappa_pixels
         self.kappa_fov = kappa_fov
         self.method = method
         self.noise_rms = noise_rms
         self.raytracer = raytracer
         self.set_deflection_angle_vars()
         self.PSF = self.psf_model()
+        if kappa_pixels != pixels:
+            self.kappa_to_image_grid = self._kappa_to_image_grid
+        else:
+            self.kappa_to_image_grid = tf.identity
 
     def deflection_angle(self, kappa):
+        kappa = self.kappa_to_image_grid(kappa)  # resampling to shape of image
         if self.method == "conv2d":
             alpha_x = tf.nn.conv2d(kappa, self.xconv_kernel, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
             alpha_y = tf.nn.conv2d(kappa, self.yconv_kernel, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
@@ -111,15 +120,15 @@ class PhysicalModel:
         x_src = self.ximage - alpha_x
         y_src = self.yimage - alpha_y
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
-        wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
-        im = tfa.image.resampler(source, wrap)  # bilinear interpolation of source on wrap grid
+        warp = tf.concat([x_src_pix, y_src_pix], axis=-1)
+        im = tfa.image.resampler(source, warp)  # bilinear interpolation of source on warp grid
         return im
 
     def lens_source_func(self, kappa, xs=0., ys=0., es=0., w=0.1):
-        alpha1, alpha2 = self.deflection_angle(kappa)
+        alpha_x, alpha_y = self.deflection_angle(kappa)
         # lens equation
-        beta1 = self.ximage - alpha1
-        beta2 = self.yimage - alpha2
+        beta1 = self.ximage - alpha_x
+        beta2 = self.yimage - alpha_y
         # sample intensity directly from the functional form
         rho_sq = (beta1 - xs) ** 2 / (1 - es) + (beta2 - ys) ** 2 * (1 - es)
         lens = tf.math.exp(-0.5 * rho_sq / w ** 2)  # / 2 / np.pi / w**2
@@ -187,8 +196,8 @@ class PhysicalModel:
         x_src = x_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
         y_src = y_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
         x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
-        wrap = tf.concat([x_src_pix, y_src_pix], axis=-1)
-        im = tfa.image.resampler(source, wrap)
+        warp = tf.concat([x_src_pix, y_src_pix], axis=-1)
+        im = tfa.image.resampler(source, warp)
         return im, jacobian
 
     def src_coord_to_pix(self, x, y):
@@ -199,10 +208,24 @@ class PhysicalModel:
         j_coord = (y - ymin) / dx
         return i_coord, j_coord
 
-    def set_deflection_angle_vars(self):
-        self.dx_kap = self.kappa_fov / (self.pixels - 1)
+    def kap_coord_to_pix(self, x, y):
+        dx = self.kappa_fov / (self.kappa_pixels - 1)
+        xmin = -0.5 * self.kappa_fov
+        ymin = -0.5 * self.kappa_fov
+        i_coord = (x - xmin) / dx
+        j_coord = (y - ymin) / dx
+        return i_coord, j_coord
 
-        # coordinate grid for kappa
+    def _kappa_to_image_grid(self, kappa):
+        x_coord, y_coord = self.kap_coord_to_pix(self.ximage, self.yimage)
+        warp = tf.concat([x_coord, y_coord], axis=-1)
+        kappa = tfa.image.resampler(kappa, warp)
+        return kappa
+
+    def set_deflection_angle_vars(self):
+        self.dx_kap = self.kappa_fov / (self.pixels - 1)  # dx on image grid
+
+        # Convolution kernel
         x = np.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_fov
         xx, yy = np.meshgrid(x, x)
         rho = xx**2 + yy**2
@@ -266,7 +289,7 @@ class AnalyticalPhysicalModel:
             x0: float = 0.,
             y0: float = 0.
     ):
-        theta1, theta2 = self.rotated_and_shifted_coords(phi, x0, y0)
+        theta1, theta2 = self.rotated_and_shifted_coords(x0, y0, phi)
         return 0.5 * r_ein / tf.sqrt(theta1**2/(1-e) + (1-e)*theta2**2 + self.theta_c**2)
 
     def lens_source(
@@ -289,8 +312,8 @@ class AnalyticalPhysicalModel:
         beta1 = self.theta1 - alpha1 - alpha1_ext
         beta2 = self.theta2 - alpha2 - alpha2_ext
         x_src_pix, y_src_pix = self.src_coord_to_pix(beta1, beta2)
-        wrap = tf.stack([x_src_pix, y_src_pix], axis=4) 
-        im = tfa.image.resampler(source, wrap) # bilinear interpolation 
+        warp = tf.stack([x_src_pix, y_src_pix], axis=4)
+        im = tfa.image.resampler(source, warp) # bilinear interpolation
         return im
 
     def lens_source_func(
@@ -371,7 +394,7 @@ class AnalyticalPhysicalModel:
         return alpha1, alpha2
 
     def potential(self, r_ein, e, phi, x0, y0):  # arcsec^2
-        theta1, theta2 = self.rotated_and_shifted_coords(phi, x0, y0)
+        theta1, theta2 = self.rotated_and_shifted_coords(x0, y0, phi)
         return r_ein * tf.sqrt(theta1**2/(1-e) + (1-e)*theta2**2 + self.theta_c**2)
 
     def approximate_deflection_angles(self, r_ein, e, phi, x0, y0):

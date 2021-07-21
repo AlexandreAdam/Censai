@@ -53,7 +53,8 @@ UNET_MODEL_HPARAMS = [
 EXTRA_PARAMS = [
     "total_items",
     "optimizer",
-    "seed"
+    "seed",
+    "batch_size"
 ]
 
 
@@ -62,6 +63,7 @@ PARAMS_NICKNAME = OrderedDict()
 PARAMS_NICKNAME["total_items"] = "TI"
 PARAMS_NICKNAME["optimizer"] = "O"
 PARAMS_NICKNAME["seed"] = ""
+PARAMS_NICKNAME["batch_size"] = "B"
 
 PARAMS_NICKNAME["filters"] = "F"
 PARAMS_NICKNAME["filter_scaling"] = "FS"
@@ -235,7 +237,7 @@ if __name__ == '__main__':
 
 
     # Training set params
-    parser.add_argument("-b", "--batch_size",       default=1,      type=int,       help="Number of images in a batch. ")
+    parser.add_argument("-b", "--batch_size",       default=1, nargs="+", type=int, help="Number of images in a batch. ")
     parser.add_argument("--train_split",            default=0.8,    type=float,     help="Fraction of the training set.")
     parser.add_argument("--total_items",            required=True,  nargs="+", type=int,  help="Total images in an epoch.")
     # ... for tfrecord dataset
@@ -254,7 +256,9 @@ if __name__ == '__main__':
     parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
-    parser.add_argument("--track_train",                    action="store_true")
+    parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
+    parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
+
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

@@ -17,16 +17,15 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --forward_method=fft\
   --optimizer Adam Adamax\
   --epochs=5000\
+  --max_time=47\
   --initial_learning_rate=1e-4\
   --clipping\
   --patience=20\
   --tolerance=0.01\
-  --batch_size=1\
+  --batch_size 1\
   --train_split=0.9\
   --seed 1 2\
   --total_items 10 50 100 200 1000\
-  --num_parallel_reads=1\
-  --cycle_length=1\
   --block_length=1\
   --steps 4\
   --adam\

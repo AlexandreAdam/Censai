@@ -13,20 +13,19 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses512_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=6\
+  --n_models=24\
   --forward_method=fft\
   --epochs=5000\
+  --max_time=94\
   --initial_learning_rate=1e-4\
   --clipping\
   --patience=20\
   --tolerance=0.01\
-  --batch_size=1\
+  --batch_size 1\
   --train_split=0.85\
   --total_items 1000\
-  --num_parallel_reads=1\
-  --cycle_length=1\
   --block_length=1\
-  --seed 1 2 3 4\
+  --seed 31 42 84 94\
   --steps 4 6 8 10 12 16\
   --adam\
   --kappalog\
