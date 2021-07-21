@@ -6,23 +6,23 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=0-01:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Create-RIM-Dataset-Analytical-128
+#SBATCH --job-name=Create-RIM-Dataset-Analytical-512_k256
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_analytical_kappa_maps.py\
-  --output_dir=$HOME/scratch/Censai/data/lenses128_NIS/\
+  --output_dir=$HOME/scratch/Censai/data/lenses512_k256_NIS/\
   --len_dataset=2000\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
   --compression_type=GZIP\
-  --lens_pixels=128\
+  --lens_pixels=512\
   --src_pixels=128\
-  --kappa_pixels=128\
-  --image_fov=5\
-  --kappa_fov=7.24\
-  --source_fov=2\
+  --kappa_pixels=256\
+  --image_fov=20\
+  --kappa_fov=22.2\
+  --source_fov=3\
   --noise_rms=6e-3\
-  --psf_sigma=0.09\
-  --max_shift=0.5\
+  --psf_sigma=0.06\
+  --max_shift=1\
   --max_ellipticity=0.6\
   --shuffle_cosmos\
   --buffer_size=1000\
