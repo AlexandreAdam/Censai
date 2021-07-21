@@ -70,8 +70,11 @@ class RIMSharedUnet:
         elif self._source_link_func == "identity":
             self.source_link = tf.identity
             self.source_inverse_link = tf.identity
+        elif self._source_link_func == "relu":  # This function just folds negative numbers to 0.
+            self.source_link = tf.nn.relu
+            self.source_inverse_link = tf.nn.relu
         else:
-            raise NotImplementedError(f"{source_link} not in ['exp', 'sqrt', 'identity']")
+            raise NotImplementedError(f"{source_link} not in ['exp', 'sqrt', 'identity', 'relu']")
 
     def initial_states(self, batch_size):
         source_init = self.source_link(tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
