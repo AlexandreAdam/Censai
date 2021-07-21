@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import math
 from censai import PhysicalModel, RIMSharedUnet
 from censai.models import SharedUnetModel, RayTracer
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
@@ -80,9 +81,9 @@ def main(args):
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
     else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
         dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = dataset.take(int(args.train_split * args.total_items) // args.batch_size) # dont forget to divide by batch size!
-    val_dataset = dataset.skip(int(args.train_split * args.total_items) // args.batch_size)
-    val_dataset = val_dataset.take(int((1 - args.train_split) * args.total_items) // args.batch_size)
+    train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size)) # dont forget to divide by batch size!
+    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
+    val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
     train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
@@ -364,7 +365,7 @@ if __name__ == "__main__":
     parser.add_argument("--adam",               action="store_true",            help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--source_link",        default="identity",             help="One of 'exp', 'source' or 'identity' (default).")
+    parser.add_argument("--source_link",        default="identity",             help="One of 'exp', 'source', 'relu' or 'identity' (default).")
     parser.add_argument("--kappa_init",         default=1e-1,   type=float,     help="Initial value of kappa for RIM")
     parser.add_argument("--source_init",        default=1e-3,   type=float,     help="Initial value of source for RIM")
 
@@ -417,7 +418,7 @@ if __name__ == "__main__":
     parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
-    parser.add_argument("--track_train",                    action="store_true",    help="Track training metric instead of validation metric, in case we want to overfit")
+    parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

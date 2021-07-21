@@ -4,6 +4,7 @@ from censai.data.alpha_tng import decode_train, decode_physical_info
 from censai.utils import nullwriter, plot_to_image, raytracer_residual_plot as residual_plot
 import os, glob, json
 import numpy as np
+import math
 from datetime import datetime
 import random, time
 gpus = tf.config.list_physical_devices('GPU')
@@ -56,9 +57,9 @@ def main(args):
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
     else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
         dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = dataset.take(int(args.train_split * args.total_items) // args.batch_size) # dont forget to divide by batch size!
-    val_dataset = dataset.skip(int(args.train_split * args.total_items) // args.batch_size)
-    val_dataset = val_dataset.take(int((1 - args.train_split) * args.total_items) // args.batch_size)
+    train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size)) # dont forget to divide by batch size!
+    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
+    val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
     train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
 

@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import math
 from censai import PhysicalModel, RIMUnet, RayTracer
 from censai.models import UnetModel
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
@@ -87,9 +88,9 @@ def main(args):
         dataset = dataset.cache(args.cache_file)#.prefetch(tf.data.experimental.AUTOTUNE)
     # else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
     #     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = dataset.take(int(args.train_split * args.total_items) // args.batch_size) # dont forget to divide by batch size!
-    val_dataset = dataset.skip(int(args.train_split * args.total_items) // args.batch_size)
-    val_dataset = val_dataset.take(int((1 - args.train_split) * args.total_items) // args.batch_size)
+    train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size)) # dont forget to divide by batch size!
+    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
+    val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
     train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
@@ -401,7 +402,7 @@ if __name__ == "__main__":
     parser.add_argument("--adam",                   action="store_true",            help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",               action="store_true")
     parser.add_argument("--kappa_normalize",        action="store_true")
-    parser.add_argument("--source_link",            default="identity",             help="One of 'exp', 'source' or 'identity' (default).")
+    parser.add_argument("--source_link",            default="identity",             help="One of 'exp', 'source', 'relu' or 'identity' (default).")
     parser.add_argument("--kappa_init",             default=1e-1,   type=float,     help="Initial value of kappa for RIM")
     parser.add_argument("--source_init",            default=1e-3,   type=float,     help="Initial value of source for RIM")
 
