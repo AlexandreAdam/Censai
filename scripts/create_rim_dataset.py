@@ -50,9 +50,16 @@ def distributed_strategy(args):
 
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
-    phys = PhysicalModel(psf_sigma=args.psf_sigma,
-                         image_fov=args.image_fov, src_fov=args.source_fov, pixels=kappa_gen.crop_pixels,
-                         src_pixels=args.src_pixels, kappa_fov=kappa_gen.kappa_fov, method="conv2d")
+    phys = PhysicalModel(
+        psf_sigma=args.psf_sigma,
+        image_fov=args.image_fov,
+        src_fov=args.source_fov,
+        pixels=args.lens_pixels,
+        kappa_pixels=kappa_gen.crop_pixels,
+        src_pixels=args.src_pixels,
+        kappa_fov=kappa_gen.kappa_fov,
+        method="conv2d"
+    )
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
@@ -104,6 +111,7 @@ if __name__ == '__main__':
     parser.add_argument("--compression_type", default=None, help="Default is no compression. Use 'GZIP' to compress data")
 
     # Physical model params
+    parser.add_argument("--lens_pixels",    default=512,        type=int,   help="Size of the lens postage stamp.")
     parser.add_argument("--src_pixels",     default=128,        type=int,   help="Size of Cosmos postage stamps")
     parser.add_argument("--image_fov",      default=20,         type=float, help="Field of view of the image (lens plane) in arc seconds")
     parser.add_argument("--source_fov",     default=3,          type=float,
@@ -139,7 +147,7 @@ if __name__ == '__main__':
 
     # Reproducibility params
     parser.add_argument("--seed",           default=None,       type=int,   help="Random seed for numpy and tensorflow")
-    parser.add_argument("--json_override",  default=None,                   help="A json filepath that will override every command line parameters. "
+    parser.add_argument("--json_override",  default=None, nargs="+",        help="A json filepath that will override every command line parameters. "
                                                                                  "Useful for reproducibility")
 
     args = parser.parse_args()
@@ -160,4 +168,5 @@ if __name__ == '__main__':
             args_dict = vars(args)
             json.dump(args_dict, f)
 
-    distributed_strategy(args)
+    # distributed_strategy(args)
+    pass
