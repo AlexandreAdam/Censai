@@ -19,10 +19,10 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 
 def distributed_strategy(args):
-    kappa_gen = NISGenerator(
+    kappa_gen = NISGenerator( # only used to generate pixelated kappa fields
         kappa_fov=args.kappa_fov,
         src_fov=args.source_fov,
-        pixels=args.pixels,
+        pixels=args.kappa_pixels,
         z_source=args.z_source,
         z_lens=args.z_lens
     )
@@ -39,9 +39,16 @@ def distributed_strategy(args):
 
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
-    phys = PhysicalModel(psf_sigma=args.psf_sigma,
-                         image_fov=args.image_fov, src_fov=args.source_fov, pixels=args.pixels,
-                         src_pixels=args.src_pixels, kappa_fov=args.kappa_fov, method="conv2d")
+    phys = PhysicalModel(
+        psf_sigma=args.psf_sigma,
+        image_fov=args.image_fov,
+        kappa_fov=args.kappa_fov,
+        src_fov=args.source_fov,
+        pixels=args.lens_pixels,
+        kappa_pixels=args.kappa_pixels,
+        src_pixels=args.src_pixels,
+        method="conv2d"
+    )
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
@@ -99,6 +106,8 @@ if __name__ == '__main__':
     parser.add_argument("--compression_type",   default=None,                   help="Default is no compression. Use 'GZIP' to compress data")
 
     # Physical model params
+    parser.add_argument("--lens_pixels",        default=512,        type=int,   help="Number of pixels on a side of the kappa map.")
+    parser.add_argument("--kappa_pixels",       default=128,        type=int,   help="Size of the lens postage stamp.")
     parser.add_argument("--src_pixels",         default=128,        type=int,   help="Size of Cosmos postage stamps")
     parser.add_argument("--kappa_fov",          default=22.2,       type=float, help="Field of view of kappa map in arcseconds")
     parser.add_argument("--image_fov",          default=20,         type=float, help="Field of view of the image (lens plane) in arc seconds")
@@ -109,7 +118,6 @@ if __name__ == '__main__':
     parser.add_argument("--psf_sigma",          default=0.06,       type=float, help="Sigma of psf in arcseconds")
 
     # Data generation params
-    parser.add_argument("--pixels",             default=512,        type=int,   help="Number of pixels on a side of the kappa map.")
     parser.add_argument("--max_shift",          default=1.,         type=float, help="Maximum allowed shift of kappa map center in arcseconds")
     parser.add_argument("--max_ellipticity",    default=0.6,        type=float, help="Maximum ellipticty of density profile.")
     parser.add_argument("--max_theta_e",        default=None,       type=float, help="Maximum allowed Einstein radius, default is 35 percent of image fov")
