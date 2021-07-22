@@ -11,6 +11,7 @@ parser.add_argument("--task_id",            default=-1,         type=int,   help
 parser.add_argument("--do_all",             action="store_true",            help="Override task id and do and tasks")
 parser.add_argument("--sample",             default="25.2",                 help="Either 25.2 or 23.5")
 parser.add_argument("--exclusion_level",    default="marginal",             help="Galsim exclusion level of bad postage stamps")
+parser.add_argument("--min_flux",           default=0.,         type=float, help="Minimum flux for the postage stamps. Indirectly controls minimum SNR. Default is 0.")
 parser.add_argument("--cosmos_dir",         default=None,                   help="Directory to cosmos data")
 parser.add_argument("--store_attributes",   action="store_true",            help="Wether to store ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'z_phot] or not")
 parser.add_argument("--rotation",           action="store_true",            help="Rotate randomly the postage stamp (and psf)")
@@ -21,6 +22,8 @@ args = parser.parse_args()
 if args.store_attributes:
     vars(args)["attributes"] = ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'zphot']
 options = tf.io.TFRecordOptions(compression_type=args.compression_type)
+if not os.path.isdir(args.output_dir):
+    os.mkdir(args.output_dir)
 
 if args.do_all:
     if args.sample == "23.5":
@@ -31,7 +34,7 @@ if args.do_all:
         raise NotImplementedError
     for task_id in range(0, n_tasks):
         gen = encode_examples(args, task_id=task_id, sample=args.sample, cosmos_dir=args.cosmos_dir,
-                              exclusion_level=args.exclusion_level)
+                              exclusion_level=args.exclusion_level, min_flux=args.min_flux)
         filename = os.path.join(args.output_dir, f"cosmos_record_{task_id}.tfrecords")
         with tf.io.TFRecordWriter(filename, options=options) as writer:
             for record in gen:
