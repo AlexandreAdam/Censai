@@ -81,11 +81,11 @@ def draw_and_encode_stamp(gal, psf, stamp_size, pixel_scale, attributes=None):
     return serialized_output.SerializeToString()
 
 
-def encode_examples(hparams, task_id=0, sample="25.2", cosmos_dir=None, exclusion_level="marginal"):
+def encode_examples(hparams, task_id=0, sample="25.2", cosmos_dir=None, exclusion_level="marginal", min_flux=0.):
     """
     Generates and yields postage stamps obtained with GalSim.
     """
-    catalog = galsim.COSMOSCatalog(sample=sample, dir=cosmos_dir, exclusion_level=exclusion_level)
+    catalog = galsim.COSMOSCatalog(sample=sample, dir=cosmos_dir, exclusion_level=exclusion_level, min_flux=min_flux)
 
     index = range(task_id * hparams.example_per_shard,
                   min((task_id+1) * hparams.example_per_shard, catalog.getNTot()))
