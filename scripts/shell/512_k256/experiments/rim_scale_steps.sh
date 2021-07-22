@@ -9,7 +9,7 @@
 #SBATCH --job-name=Train_RIM_TNG100_512_k256_ScaleSteps
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
+python $CENSAI_PATH/scripts/experiments/rim_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses512_k256_TNG100\
   --compression_type=GZIP\
   --strategy=exhaustive\
@@ -55,7 +55,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --source_initializer glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logs\
-  --logname_prefixe=RIMDU512_k256_St\
+  --logname_prefixe=RIM512_k256_St\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\
