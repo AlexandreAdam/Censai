@@ -178,15 +178,16 @@ def distributed_strategy(args):
         })
         # Save hyperparameters and scores in shared csv for this gridsearch
         df = pd.DataFrame(params_dict, index=[gridsearch_id])
-        if gridsearch_id == 0:
+        grid_csv_path = os.path.join(os.getenv("CENSAI_PATH"), "results", f"{args.logname_prefixe}.csv")
+        this_run_csv_path = os.path.join(os.getenv("CENSAI_PATH"), "results", f"{run_args.logname}.csv")
+        if not os.path.exists(grid_csv_path):
             mode = "w"
             header = True
         else:
             mode = "a"
             header = False
-        df.to_csv(os.path.join(os.getenv("CENSAI_PATH"), "results", f"{args.logname_prefixe}.csv"), header=header, mode=mode)
-        # Save this single run history
-        pd.DataFrame(history).to_csv(os.path.join(os.getenv("CENSAI_PATH"), "results", f"{run_args.logname}.csv"))
+        df.to_csv(grid_csv_path, header=header, mode=mode)
+        pd.DataFrame(history).to_csv(this_run_csv_path)
 
 
 if __name__ == '__main__':
