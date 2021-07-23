@@ -62,7 +62,8 @@ KAPPA_MODEL_HPARAMS = [
 EXTRA_PARAMS = [
     "total_items",
     "optimizer",
-    "seed"
+    "seed",
+    "batch_size"
 ]
 
 from collections import OrderedDict
@@ -70,6 +71,8 @@ PARAMS_NICKNAME = OrderedDict()
 PARAMS_NICKNAME["total_items"] = "TI"
 PARAMS_NICKNAME["optimizer"] = "O"
 PARAMS_NICKNAME["seed"] = ""
+PARAMS_NICKNAME["batch_size"] = "B"
+
 
 PARAMS_NICKNAME["kappa_filters"] = "KF"
 PARAMS_NICKNAME["kappa_filter_scaling"] = "KFS"
@@ -249,7 +252,7 @@ if __name__ == '__main__':
     parser.add_argument("--source_initializer",              default="glorot_normal")
 
     # Training set params
-    parser.add_argument("-b", "--batch_size",       default=1,      type=int,       help="Number of images in a batch. ")
+    parser.add_argument("--batch_size",             default=1, nargs="+",  type=int,       help="Number of images in a batch. ")
     parser.add_argument("--train_split",            default=0.8,    type=float,     help="Fraction of the training set.")
     parser.add_argument("--total_items",            required=True,  nargs="+", type=int,  help="Total images in an epoch.")
     # ... for tfrecord dataset

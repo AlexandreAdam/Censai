@@ -29,7 +29,7 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --kappalog\
   --kernel_regularizer_amp 0\
   --initializer glorot_uniform\
-  --batch_size=10\
+  --batch_size 10\
   --num_parallel_reads=10\
   --cycle_length=10\
   --block_length=1\
