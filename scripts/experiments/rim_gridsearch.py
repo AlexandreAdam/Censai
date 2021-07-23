@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_unet import main
+from scripts.train_rim import main
 import copy
 import pandas as pd
 
@@ -79,7 +79,6 @@ PARAMS_NICKNAME["kappa_block_conv_layers"] = "KBCL"
 PARAMS_NICKNAME["kappa_strides"] = "KS"
 PARAMS_NICKNAME["kappa_upsampling_interpolation"] = "KBU"
 PARAMS_NICKNAME["kappa_resampling_kernel_size"] = "KRK"
-PARAMS_NICKNAME["kappa_gru_kernel_size"] = "KGK"
 PARAMS_NICKNAME["kappa_kernel_regularizer_amp"] = "KRA"
 
 PARAMS_NICKNAME["source_filters"] = "SF"
@@ -90,7 +89,6 @@ PARAMS_NICKNAME["source_block_conv_layers"] = "SBCL"
 PARAMS_NICKNAME["source_strides"] = "SS"
 PARAMS_NICKNAME["source_upsampling_interpolation"] = "SBU"
 PARAMS_NICKNAME["source_resampling_kernel_size"] = "SRK"
-PARAMS_NICKNAME["source_gru_kernel_size"] = "SGK"
 PARAMS_NICKNAME["source_kernel_regularizer_amp"] = "SRA"
 
 PARAMS_NICKNAME["steps"] = "TS"

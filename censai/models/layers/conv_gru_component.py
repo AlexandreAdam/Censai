@@ -22,8 +22,8 @@ class ConvGRUBlock(tf.keras.Model):
             strides=1,
             activation=get_activation(activation, **kwargs),
             padding='same')
-        self.gru1 = ConvGRU(gru_filters)
-        self.gru2 = ConvGRU(gru_filters)
+        self.gru1 = ConvGRU(gru_filters, kernel_size)
+        self.gru2 = ConvGRU(gru_filters, kernel_size)
 
     def call(self, inputs, state):
         ht_11, ht_12 = tf.split(state, 2, axis=3)
