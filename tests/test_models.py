@@ -1,5 +1,5 @@
-from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer
-from censai import RIMUnet, RIMSharedUnet, RIMUnet512, PhysicalModel
+from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model
+from censai import RIMUnet, RIMSharedUnet, RIMUnet512, PhysicalModel, RIM
 import tensorflow as tf
 
 
@@ -118,7 +118,7 @@ def test_shared_unet_model():
     model(source, kappa, source_grad, kappa_grad, states)
 
 
-def test_rim_shared_unet():  # TODO check that no output is nan
+def test_rim_shared_unet():
     phys = PhysicalModel(pixels=64, src_pixels=32, method="fft")
     unet = SharedUnetModel(kappa_resize_layers=1)
     rim = RIMSharedUnet(phys, unet, 4)
@@ -136,6 +136,15 @@ def test_rim_shared_unet():  # TODO check that no output is nan
     source_series, kappa_series, chi_squared_series = rim.call(lens)
 
 
+def test_rim():
+    phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
+    lens = tf.random.normal(shape=[1, 64, 64, 1])
+    m1 = Model(filters=2)
+    m2 = Model(filters=2)
+    rim = RIM(phys, m1, m2, steps=2)
+    rim.call(lens)
+
+
 if __name__ == '__main__':
     test_ray_tracer_512()
     test_raytracer()
@@ -143,3 +152,4 @@ if __name__ == '__main__':
     test_unet_model()
     test_shared_unet_model()
     test_rim_shared_unet()
+    test_rim()

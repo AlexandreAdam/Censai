@@ -1,120 +1,126 @@
 import tensorflow as tf
-from .layers.conv_gru import ConvGRU
+from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer
+from .layers.conv_gru_component import ConvGRUBlock
+from .utils import get_activation
+from censai.definitions import DTYPE
 
 
 class Model(tf.keras.Model):
     def __init__(
             self,
-            num_cell_features,
-            kernel_size=6,
-            kernel_reg_amp=0.,
-            bias_reg_amp=0.,
-            initializer="glorot_normal",
-            name="RIMModel"
+            name="RIMModel",
+            filters=32,
+            filter_scaling=1,
+            kernel_size=3,
+            layers=2,                        # before bottleneck
+            block_conv_layers=2,
+            strides=2,
+            output_filters=1,
+            bottleneck_kernel_size=None,     # use kernel_size as default
+            bottleneck_filters=None,
+            resampling_kernel_size=None,
+            upsampling_interpolation=False,  # use strided transposed convolution if false
+            kernel_regularizer_amp=0.,
+            bias_regularizer_amp=0.,
+            activation="leaky_relu",
+            alpha=0.1,                       # for leaky relu
+            use_bias=True,
+            trainable=True,
+            initializer="glorot_uniform",
     ):
         super(Model, self).__init__(name=name)
-        self.num_gru_features = num_cell_features/2
-        num_filt_emb1_1 = self.num_gru_features
-        num_filt_emb1_2 = self.num_gru_features
-        num_filt_emb2   = self.num_gru_features
-        num_filt_emb3_1 = self.num_gru_features
-        num_filt_emb3_2 = self.num_gru_features
-        self.conv1_1 = tf.keras.layers.Conv2D(
-                filters=num_filt_emb1_1,
-                kernel_size=[kernel_size,kernel_size],
-                strides=4,
-                activation='relu',
-                padding='same',
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp),
-                kernel_initializer=initializer
-                )
-        self.conv1_2 = tf.keras.layers.Conv2D(
-                filters = num_filt_emb1_2,
-                kernel_size=[kernel_size,kernel_size],
-                strides=4,
-                activation='relu',
-                padding='same',
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp),
-                kernel_initializer = initializer
-                )
-        self.conv1_3 = tf.keras.layers.Conv2D(
-                filters = num_filt_emb1_2,
-                kernel_size=[kernel_size,kernel_size],
-                strides=2,
-                activation='relu',
-                padding='same',
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp),
-                kernel_initializer = initializer
-                )
-        self.conv2 = tf.keras.layers.Conv2D(
-                filters=num_filt_emb2,
-                kernel_size=[5,5],
-                strides=1,
-                activation='relu',
-                padding='same',
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp),
-                kernel_initializer=initializer
-                )
-        self.conv3_1 = tf.keras.layers.Conv2DTranspose(
-                filters=num_filt_emb3_1,
-                kernel_size=[kernel_size,kernel_size],
-                strides=4,
-                activation='relu',
-                padding='same',
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp),
-                kernel_initializer=initializer
-                )
-        self.conv3_2 = tf.keras.layers.Conv2DTranspose(
-                filters=num_filt_emb3_2,
-                kernel_size=[kernel_size,kernel_size],
-                strides=4,
-                activation='relu',
-                padding='same',
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp),
-                kernel_initializer=initializer
-                )
-        self.conv3_3 = tf.keras.layers.Conv2DTranspose(
-                filters=num_filt_emb3_2,
-                kernel_size=[kernel_size,kernel_size],
-                strides=2,
-                activation='relu',
-                padding='same',
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp),
-                kernel_initializer = initializer
-                )
-        self.conv4 = tf.keras.layers.Conv2D(
-                filters=1,
-                kernel_size=[5, 5],
-                strides=1,
-                activation='linear',
-                padding='same',
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp),
-                kernel_initializer=initializer
-                )
-        self.gru1 = ConvGRU(self.num_gru_features)
-        self.gru2 = ConvGRU(self.num_gru_features)
+        self.trainable = trainable
 
-    def call(self, inputs, state, grad):
-        stacked_input = tf.concat([inputs , grad], axis=3)
-        xt_1E = self.conv1_1(stacked_input)
-        xt_1E = self.conv1_2(xt_1E)
-        xt_1E = self.conv1_3(xt_1E)
-        ht_11 , ht_12 = tf.split(state, 2, axis=3)
-        gru_1_out,_ = self.gru1(xt_1E ,ht_11)
-        gru_1_outE = self.conv2(gru_1_out)
-        gru_2_out,_ = self.gru2(gru_1_outE, ht_12)
-        delta_xt_1 = self.conv3_1(gru_2_out)
-        delta_xt_1 = self.conv3_2(delta_xt_1)
-        delta_xt_1 = self.conv3_3(delta_xt_1)
-        delta_xt = self.conv4(delta_xt_1)
-        xt = delta_xt + inputs
-        ht = tf.concat([gru_1_out, gru_2_out], axis=3)
-        return xt, ht
+        common_params = {"padding": "same", "kernel_initializer": initializer,
+                         "data_format": "channels_last", "use_bias": use_bias,
+                         "kernel_regularizer": tf.keras.regularizers.L2(l2=kernel_regularizer_amp)}
+        if use_bias:
+            common_params.update({"bias_regularizer": tf.keras.regularizers.L2(l2=bias_regularizer_amp)})
+
+        resampling_kernel_size = resampling_kernel_size if resampling_kernel_size is not None else kernel_size
+        bottleneck_kernel_size = bottleneck_kernel_size if bottleneck_kernel_size is not None else kernel_size
+        bottleneck_filters = bottleneck_filters if bottleneck_filters is not None else int(filter_scaling**(layers + 1) * filters)
+        activation = get_activation(activation, alpha=alpha)
+
+        self._num_layers = layers
+        self._strides = strides
+        self._init_filters = filters
+        self._filter_scaling = filter_scaling
+        self._bottleneck_filters = bottleneck_filters
+
+        self.encoding_layers = []
+        self.decoding_layers = []
+        self.gated_recurrent_blocks = []
+        for i in range(layers):
+            self.encoding_layers.append(
+                UnetEncodingLayer(
+                    kernel_size=kernel_size,
+                    downsampling_kernel_size=resampling_kernel_size,
+                    filters=int(filter_scaling**(i) * filters),
+                    conv_layers=block_conv_layers,
+                    activation=activation,
+                    strides=strides,
+                    **common_params
+                )
+            )
+            self.decoding_layers.append(
+                UnetDecodingLayer(
+                    kernel_size=kernel_size,
+                    upsampling_kernel_size=resampling_kernel_size,
+                    filters=int(filter_scaling**(i) * filters),
+                    conv_layers=block_conv_layers,
+                    activation=activation,
+                    bilinear=upsampling_interpolation,
+                    **common_params
+                )
+            )
+
+        self.decoding_layers = self.decoding_layers[::-1]
+
+        self.bottleneck_layer1 = tf.keras.layers.Conv2D(
+            filters=bottleneck_filters,
+            kernel_size=bottleneck_kernel_size,
+            activation=activation,
+            **common_params
+        )
+        self.bottleneck_layer2 = tf.keras.layers.Conv2D(
+            filters=bottleneck_filters,
+            kernel_size=bottleneck_kernel_size,
+            activation=activation,
+            **common_params
+        )
+        self.bottleneck_gru = ConvGRUBlock(
+            filters=2*bottleneck_filters,
+            kernel_size=bottleneck_kernel_size,
+            activation=activation
+        )
+
+        self.output_layer = tf.keras.layers.Conv2D(
+            filters=output_filters,
+            kernel_size=(1, 1),
+            activation="linear",
+            **common_params
+        )
+
+    def __call__(self, xt, states, grad):
+        return self.call(xt, states, grad)
+
+    def call(self, xt, states, grad):
+        delta_xt = tf.concat([tf.identity(xt), grad], axis=3)
+        skip_connections = []
+        for i in range(len(self.encoding_layers)):
+            c_i, delta_xt = self.encoding_layers[i](delta_xt)
+            skip_connections.append(c_i)
+        delta_xt = self.bottleneck_layer1(delta_xt)
+        delta_xt = self.bottleneck_layer2(delta_xt)
+        skip_connections = skip_connections[::-1]
+        delta_xt, new_state = self.bottleneck_gru(delta_xt, states)
+        for i in range(len(self.decoding_layers)):
+            delta_xt = self.decoding_layers[i](delta_xt, skip_connections[i])
+        delta_xt = self.output_layer(delta_xt)
+        xt_1 = xt + delta_xt  # update image
+        return xt_1, new_state
+
+    def init_hidden_states(self, input_pixels, batch_size, constant=0.):
+        pixels = input_pixels // self._strides ** (self._num_layers)
+        return constant * tf.ones(shape=[batch_size, pixels, pixels, 2 * self._bottleneck_filters], dtype=DTYPE)

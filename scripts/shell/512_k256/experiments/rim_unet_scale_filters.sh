@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
-#SBATCH --time=1-00:00		# time (DD-HH:MM)
+#SBATCH --time=2-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RIM_TNG100_512_k256_ScaleFilterSize
 #SBATCH --output=%x-%j.out
@@ -16,13 +16,14 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --n_models=108\
   --forward_method=fft\
   --epochs=5000\
+  --max_time=47\
   --initial_learning_rate=5e-5\
   --clipping\
   --patience=40\
   --tolerance=0.01\
   --batch_size 1\
   --train_split=0.85\
-  --total_items 10 50 100\
+  --total_items 100 1000 10000\
   --block_length=1\
   --steps 4\
   --adam\

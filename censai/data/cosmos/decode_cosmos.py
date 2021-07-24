@@ -2,7 +2,7 @@ import tensorflow as tf
 from censai.definitions import DTYPE
 
 
-def decode(record_bytes):
+def decode_all(record_bytes):
     example = tf.io.parse_single_example(
           # Data
           record_bytes,
@@ -23,7 +23,22 @@ def decode(record_bytes):
     image = tf.reshape(image, [h, w, 1])
     psf = tf.reshape(psf, [2*h, w + 1, 1])  # because of noise padding
     ps = tf.reshape(ps, [h, w//2 + 1, 1])
-    return image, psf, ps
+    example['image'] = image
+    example['psf'] = psf
+    example['ps'] = ps
+    return example
+
+
+def decode(record_bytes):
+    keys = ['image', 'psf', 'ps']
+    example = decode_all(record_bytes)
+    return [example[key] for key in keys]
+
+
+def decode_image_shape(record_bytes):
+    keys = ['height']
+    example = decode_all(record_bytes)
+    return [example[key] for key in keys]
 
 
 def preprocess(images, psf, ps):
