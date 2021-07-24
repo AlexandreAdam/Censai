@@ -1,78 +1,172 @@
 import tensorflow as tf
-from .models.rim_model import Model
-
-# TODO dubug this class
-class RIM(tf.compat.v1.nn.rnn_cell.RNNCell):
-    def __init__(self, batch_size, num_steps, num_pixels, state_size, input_size=None, activation=tf.tanh, **kwargs):
-        super(RIM, self).__init__(**kwargs)
-        self.num_pixels = num_pixels
-        self.num_steps = num_steps
-        self._num_units = state_size
-        self.double_RIM_state_size = state_size
-        self.single_RIM_state_size = state_size//2
-        self.gru_state_size = state_size//4
-        self.gru_state_pixel_downsampled = 16*2
-        self._activation = activation
-        self.model_1 = Model(self.single_RIM_state_size)
-        self.model_2 = Model(self.single_RIM_state_size)
-        self.batch_size = batch_size
-        self.initial_output_state()
-
-    def initial_output_state(self):
-        self.inputs_1 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, 1))
-        self.state_1 = tf.zeros(shape=(self.batch_size,  self.num_pixels//self.gru_state_pixel_downsampled, self.num_pixels//self.gru_state_pixel_downsampled, self.single_RIM_state_size))
-        self.inputs_2 = tf.zeros(shape=(self.batch_size, self.num_pixels, self.num_pixels, 1))
-        self.state_2 = tf.zeros(shape=(self.batch_size,  self.num_pixels//self.gru_state_pixel_downsampled, self.num_pixels//self.gru_state_pixel_downsampled, self.single_RIM_state_size))
-
-    @property
-    def state_size(self):
-        return self._num_units
-
-    @property
-    def output_size(self):
-        return self._num_units
-
-    def __call__(self, inputs_1, state_1, grad_1, inputs_2, state_2, grad_2):
-        xt_1, ht_1 = self.model_1(inputs_1, state_1 , grad_1)
-        xt_2, ht_2 = self.model_2(inputs_2, state_2 , grad_2)
-        return xt_1, ht_1, xt_2, ht_2
-
-    def forward_pass(self, data):
-        if (data.shape[0] != self.batch_size):
-            self.batch_size = data.shape[0]
-            self.initial_output_state()
+from censai.models import Model
+from censai.definitions import logkappa_normalization, log_10, DTYPE
+from censai import PhysicalModel
+from censai.utils import nulltape
 
 
-            output_series_1 = []
-            output_series_2 = []
+class RIM:
+    def __init__(
+            self,
+            physical_model: PhysicalModel,
+            source_model: Model,
+            kappa_model: Model,
+            steps: int,
+            adam=True,
+            kappalog=True,
+            kappa_normalize=True,
+            source_tukey_alpha=0.6,
+            source_link='identity',
+            beta_1=0.9,
+            beta_2=0.999,
+            epsilon=1e-8,
+            source_init=1e-3,
+            kappa_init=1e-1
+    ):
+        self.physical_model = physical_model
+        self.kappa_pixels = physical_model.pixels
+        self.source_pixels = physical_model.src_pixels
+        self.steps = steps
+        self.source_model = source_model
+        self.kappa_model = kappa_model
+        self.adam = adam
+        self.kappalog = kappalog
+        self.kappa_normalize = kappa_normalize
+        self.tukey_alpha = source_tukey_alpha
+        self._source_link_func = source_link
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+        self.epsilon = epsilon
+        self._kappa_init = kappa_init
+        self._source_init = source_init
 
-            with tf.GradientTape() as g:
-                g.watch(self.inputs_1)
-                g.watch(self.inputs_2)
-                y = log_likelihood(data, physical_model(self.inputs_1, self.inputs_2), noise_rms) #TODO input log_likelihood and physical model in init
-            grads = g.gradient(y, [self.inputs_1 , self.inputs_2])
+        if self.kappalog:
+            if self.kappa_normalize:
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_10(x), forward=True))
+                # self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(logkappa_normalization(x, forward=False)))
+                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**(logkappa_normalization(x, forward=False)))
+            else:
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_10(x))
+                # self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(x))
+                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**x)
 
-            output_1, state_1, output_2, state_2 = self.__call__(self.inputs_1, self.state_1 , grads[0] , self.inputs_2 , self.state_2 , grads[1])
-            output_series_1.append(output_1)
-            output_series_2.append(output_2)
+        else:
+            self.kappa_link = tf.identity
+            self.kappa_inverse_link = tf.identity
 
-            for current_step in range(self.num_steps-1):
+        if self._source_link_func == "exp":
+            self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.log(x + 1e-6))
+            self.source_inverse_link = tf.keras.layers.Lambda(lambda x: tf.math.exp(x))
+        elif self._source_link_func == "sqrt":
+            self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.sqrt(x + 1e-6))
+            self.source_inverse_link = tf.keras.layers.Lambda(lambda x: x**2)
+        elif self._source_link_func == "identity":
+            self.source_link = tf.identity
+            self.source_inverse_link = tf.identity
+        elif self._source_link_func == "relu":  # This function just folds negative numbers to 0.
+            self.source_link = tf.nn.relu
+            self.source_inverse_link = tf.nn.relu
+        else:
+            raise NotImplementedError(f"{source_link} not in ['exp', 'sqrt', 'identity', 'relu']")
+
+    def initial_states(self, batch_size):
+        source_init = self.source_link(tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
+        kappa_init = self.kappa_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
+
+        source_states = self.source_model.init_hidden_states(self.source_pixels, batch_size)
+        kappa_states = self.kappa_model.init_hidden_states(self.kappa_pixels, batch_size)
+        return source_init, source_states, kappa_init, kappa_states
+
+    def grad_update(self, grad1, grad2, time_step):
+        if self.adam:
+            if time_step == 0:  # reset mean and variance for time t=-1
+                self._grad_mean1 = tf.zeros_like(grad1)
+                self._grad_var1 = tf.zeros_like(grad1)
+                self._grad_mean2 = tf.zeros_like(grad2)
+                self._grad_var2 = tf.zeros_like(grad2)
+            self._grad_mean1 = self. beta_1 * self._grad_mean1 + (1 - self.beta_1) * grad1
+            self._grad_var1  = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad1)
+            self._grad_mean2 = self. beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
+            self._grad_var2  = self.beta_2 * self._grad_var2 + (1 - self.beta_2) * tf.square(grad2)
+            # for grad update, unbias the moments
+            m_hat1 = self._grad_mean1 / (1 - self.beta_1**(time_step + 1))
+            v_hat1 = self._grad_var1 / (1 - self.beta_2**(time_step + 1))
+            m_hat2 = self._grad_mean2 / (1 - self.beta_1**(time_step + 1))
+            v_hat2 = self._grad_var2 / (1 - self.beta_2**(time_step + 1))
+            return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon), m_hat2 / (tf.sqrt(v_hat2) + self.epsilon)
+        else:
+            return grad1, grad2
+
+    def time_step(self, sources, source_states, source_grad, kappa, kappa_states, kappa_grad, scope=None):
+        new_source, new_source_states = self.source_model(sources, source_states, source_grad)
+        new_kappa, new_kappa_states = self.kappa_model(kappa, kappa_states, kappa_grad)
+        return new_source, new_source_states, new_kappa, new_kappa_states
+
+    def __call__(self, lensed_image, outer_tape=nulltape):
+        return self.call(lensed_image, outer_tape)
+
+    def call(self, lensed_image, outer_tape=nulltape):
+        batch_size = lensed_image.shape[0]
+        source, source_states, kappa, kappa_states = self.initial_states(batch_size)
+
+        source_series = tf.TensorArray(DTYPE, size=self.steps)  # equivalent to empty list and append, but using tensorflow
+        kappa_series = tf.TensorArray(DTYPE, size=self.steps)
+        chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        for current_step in range(self.steps):
+            with outer_tape.stop_recording():
                 with tf.GradientTape() as g:
-                    g.watch(output_1)
-                    g.watch(output_2)
-                    y = log_likelihood(data, self.physical_model(output_1,output_2),noise_rms)
-                grads = g.gradient(y, [output_1 , output_2])
+                    g.watch(source)
+                    g.watch(kappa)
+                    log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+                    cost = tf.reduce_mean(log_likelihood)
+            source_grad, kappa_grad = g.gradient(cost, [source, kappa])
+            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
+            source_series = source_series.write(index=current_step, value=source)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
+    def predict(self, lensed_image):
+        batch_size = lensed_image.shape[0]
+        source, source_states, kappa, kappa_states = self.initial_states(batch_size)
 
-                output_1, state_1 , output_2 , state_2 = self.__call__(output_1, state_1 , grads[0] , output_2 , state_2 , grads[1])
-                output_series_1.append(output_1)
-                output_series_2.append(output_2)
-            final_log_L = log_likelihood(data, self.physical_model(output_1,output_2), noise_rms)
-            return output_series_1 , output_series_2 , final_log_L
+        source_series = tf.TensorArray(DTYPE, size=self.steps)
+        kappa_series = tf.TensorArray(DTYPE, size=self.steps)
+        chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        for current_step in range(self.steps):
+            with tf.GradientTape() as g:
+                g.watch(source)
+                g.watch(kappa)
+                log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+                cost = tf.reduce_mean(log_likelihood)
+            source_grad, kappa_grad = g.gradient(cost, [source, kappa])
+            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
+            source_series = source_series.write(index=current_step, value=self.source_inverse_link(source))
+            kappa_series = kappa_series.write(index=current_step, value=self.kappa_inverse_link(kappa))
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
-    def cost_function(self, data, labels_x_1, labels_x_2):
-        output_series_1 , output_series_2 , final_log_L = self.forward_pass(data)
-        chi1 = sum([tf.square(output_series_1[i] - labels_x_1) for i in range(self.num_steps)]) / self.num_steps
-        chi2 = sum([tf.square(output_series_2[i] - labels_x_2) for i in range(self.num_steps)]) / self.num_steps
-        return tf.reduce_mean(chi1) + tf.reduce_mean(chi2)#, output_series_1 , output_series_2 , output_series_1[-1].numpy() , output_series_2[-1].numpy()
+    def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):
+        """
+
+        Args:
+            lensed_image: Batch of lensed images
+            source: Batch of source images
+            kappa: Batch of kappa maps
+            reduction: Whether or not to reduce the batch dimension in computing the loss or not
+
+        Returns: The average loss over pixels, time steps and (if reduction=True) batch size.
+
+        """
+        source_series, kappa_series, chi_squared = self.call(lensed_image, outer_tape=outer_tape)
+        source_cost = tf.reduce_sum(tf.square(source_series - self.source_link(source)), axis=0) / self.steps
+        kappa_cost = tf.reduce_sum(tf.square(kappa_series - self.kappa_link(kappa)), axis=0) / self.steps
+        chi = tf.reduce_sum(chi_squared, axis=0) / self.steps
+
+        if reduction:
+            return tf.reduce_mean(source_cost) + tf.reduce_mean(kappa_cost), tf.reduce_mean(chi)
+        else:
+            return tf.reduce_mean(source_cost, axis=(1, 2, 3)) + tf.reduce_mean(kappa_cost, axis=(1, 2, 3)), chi
 

@@ -217,8 +217,10 @@ class PhysicalModel:
         return i_coord, j_coord
 
     def _kappa_to_image_grid(self, kappa):
+        batch_size = kappa.shape[0]
         x_coord, y_coord = self.kap_coord_to_pix(self.ximage, self.yimage)
         warp = tf.concat([x_coord, y_coord], axis=-1)
+        warp = tf.tile(warp, [batch_size, 1, 1, 1])  # make sure warp has same batch size has kappa
         kappa = tfa.image.resampler(kappa, warp)
         return kappa
 

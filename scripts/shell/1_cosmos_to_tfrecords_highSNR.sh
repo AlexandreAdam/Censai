@@ -14,8 +14,8 @@ python ../1_cosmos_to_tfrecords.py\
   --do_all\
   --sample=23.5\
   --exclusion_level=marginal\
-  --min_flux=0.1\
+  --min_flux=100\
   --cosmos_dir=$HOME/scratch/data/COSMOS/COSMOS_23.5_training_sample/\
   --store_attributes\
   --rotation\
-  --output_dir=$HOME/scratch/Censai/data/cosmos_23.5/
+  --output_dir=$HOME/scratch/Censai/data/cosmos_23.5_highSNR/

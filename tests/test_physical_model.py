@@ -103,6 +103,11 @@ def test_interpolated_kappa():
     kappa = phys_a.kappa_field(r_ein=2., e=0.2)
     kappa += phys_a.kappa_field(r_ein=1., x0=2., y0=2.)
 
+    # kappa2 = phys_a.kappa_field(r_ein=2., e=0.2)
+    # kappa2 += phys_a.kappa_field(r_ein=1., x0=2., y0=2.)
+    #
+    # kappa = tf.concat([kappa, kappa2], axis=1)
+
     # Test interpolated kappa lens
     x = np.linspace(-1, 1, 128) * phys.kappa_fov / 2
     x, y = np.meshgrid(x, x)

@@ -238,7 +238,7 @@ if __name__ == '__main__':
 
 
     # Training set params
-    parser.add_argument("-b", "--batch_size",       default=1, nargs="+", type=int, help="Number of images in a batch. ")
+    parser.add_argument("--batch_size",             default=1, nargs="+",  type=int,       help="Number of images in a batch. ")
     parser.add_argument("--train_split",            default=0.8,    type=float,     help="Fraction of the training set.")
     parser.add_argument("--total_items",            required=True,  nargs="+", type=int,  help="Total images in an epoch.")
     # ... for tfrecord dataset
