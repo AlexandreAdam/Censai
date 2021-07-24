@@ -114,7 +114,7 @@ class Model(tf.keras.Model):
         delta_xt = self.bottleneck_layer1(delta_xt)
         delta_xt = self.bottleneck_layer2(delta_xt)
         skip_connections = skip_connections[::-1]
-        delta_xt, new_state = self.bottleneck_gru(delta_xt, states[-1])
+        delta_xt, new_state = self.bottleneck_gru(delta_xt, states)
         for i in range(len(self.decoding_layers)):
             delta_xt = self.decoding_layers[i](delta_xt, skip_connections[i])
         delta_xt = self.output_layer(delta_xt)
@@ -122,15 +122,5 @@ class Model(tf.keras.Model):
         return xt_1, new_state
 
     def init_hidden_states(self, input_pixels, batch_size, constant=0.):
-        hidden_states = []
-        for i in range(self._num_layers):
-            pixels = input_pixels // self._strides**(i)
-            filters = int(self._filter_scaling**(i) * self._init_filters)
-            hidden_states.append(
-                constant * tf.ones(shape=[batch_size, pixels, pixels, 2 * filters], dtype=DTYPE)
-            )
         pixels = input_pixels // self._strides ** (self._num_layers)
-        hidden_states.append(
-            constant * tf.ones(shape=[batch_size, pixels, pixels, 2 * self._bottleneck_filters], dtype=DTYPE)
-        )
-        return hidden_states
+        return constant * tf.ones(shape=[batch_size, pixels, pixels, 2 * self._bottleneck_filters], dtype=DTYPE)
