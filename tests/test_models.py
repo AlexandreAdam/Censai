@@ -14,6 +14,15 @@ def test_ray_tracer_512():
     out = model(kappa)
 
 
+def test_rim_unet():
+    lens = tf.random.normal(shape=[1, 64, 64, 1])
+    phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32)
+    m1 = UnetModel()
+    m2 = UnetModel()
+    rim = RIMUnet(phys, m1, m2, steps=2)
+    rim.call(lens)
+
+
 def test_resnet_autoencoder():
     pixels = 128
     AE = CosmosAutoencoder(pixels)
@@ -135,6 +144,12 @@ def test_rim_shared_unet():
     lens = tf.random.normal(shape=[1, 32, 32, 1])
     source_series, kappa_series, chi_squared_series = rim.call(lens)
 
+    lens = tf.random.normal(shape=[1, 128, 128, 1])
+    phys = PhysicalModel(pixels=128, src_pixels=32, kappa_pixels=64, method="fft")
+    m1 = SharedUnetModel(kappa_resize_layers=1)
+    rim = RIMSharedUnet(phys, m1, steps=2)
+    rim.call(lens)
+
 
 def test_rim():
     phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
@@ -146,10 +161,11 @@ def test_rim():
 
 
 if __name__ == '__main__':
-    test_ray_tracer_512()
-    test_raytracer()
-    test_resnet_autoencoder()
-    test_unet_model()
-    test_shared_unet_model()
+    # test_ray_tracer_512()
+    # test_raytracer()
+    # test_resnet_autoencoder()
+    # test_unet_model()
+    # test_shared_unet_model()
     test_rim_shared_unet()
-    test_rim()
+    # test_rim()
+    # test_rim_unet()

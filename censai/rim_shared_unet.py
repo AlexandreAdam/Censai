@@ -33,7 +33,7 @@ class RIMSharedUnet:
             source_init=1e-3
     ):
         self.physical_model = physical_model
-        self.kappa_pixels = physical_model.pixels
+        self.kappa_pixels = physical_model.kappa_pixels
         self.source_pixels = physical_model.src_pixels
         self.unet = unet
         self.steps = steps

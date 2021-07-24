@@ -42,7 +42,6 @@ python $CENSAI_PATH/scripts/train_rim_shared_unet.py\
   --kappa_resize_method=bilinear\
   --kappa_resize_conv_layers=1\
   --kappa_resize_kernel_size=7\
-  --kappa_resize_separate_grad_downsampling\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$HOME/scratch/Censai/logs\
   --logname_prefixe=RIM_SharedUnet128_NIS\

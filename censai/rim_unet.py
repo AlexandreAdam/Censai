@@ -24,7 +24,7 @@ class RIMUnet:
             kappa_init=1e-1
     ):
         self.physical_model = physical_model
-        self.kappa_pixels = physical_model.pixels
+        self.kappa_pixels = physical_model.kappa_pixels
         self.source_pixels = physical_model.src_pixels
         self.steps = steps
         self.source_model = source_model
