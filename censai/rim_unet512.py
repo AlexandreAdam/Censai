@@ -26,7 +26,7 @@ class RIMUnet512:
         self.physical_model = physical_model
         self.source_model = source_model
         self.kappa_model = kappa_model
-        self.kappa_pixels = physical_model.pixels
+        self.kappa_pixels = physical_model.kappa_pixels
         self.source_pixels = physical_model.src_pixels
         self.steps = steps
         self._num_units = 32

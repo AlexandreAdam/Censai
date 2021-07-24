@@ -112,7 +112,8 @@ class PhysicalModel:
     def noisy_forward(self, source, kappa, noise_rms):
         im = self.lens_source(source, kappa)
         noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
-        out = self.convolve_with_psf(im + noise)
+        out = self.convolve_with_psf(im)
+        out = out + noise
         return out
 
     def lens_source(self, source, kappa):
