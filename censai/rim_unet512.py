@@ -18,7 +18,7 @@ class RIMUnet512:
             adam=True,
             kappalog=True,
             kappa_normalize=True,
-            source_link='identity',
+            source_link='relu',
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
@@ -62,8 +62,11 @@ class RIMUnet512:
         elif self._source_link_func == "identity":
             self.source_link = tf.identity
             self.source_inverse_link = tf.identity
+        elif self._source_link_func == "relu":
+            self.source_link = tf.nn.relu
+            self.source_inverse_link = tf.nn.relu
         else:
-            raise NotImplementedError(f"{source_link} not in ['exp', 'sqrt', 'identity']")
+            raise NotImplementedError(f"{source_link} not in ['exp', 'sqrt', 'identity', 'relu']")
 
     def initial_states(self, batch_size):
         source_init = tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1))
