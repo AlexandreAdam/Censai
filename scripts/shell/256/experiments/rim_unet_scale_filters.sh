@@ -27,6 +27,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --steps 4\
   --adam\
   --kappalog\
+  --source_link relu\
   --kappa_filters 8 16 32\
   --kappa_filter_scaling 1 2\
   --kappa_kernel_size 3\

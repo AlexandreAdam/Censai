@@ -4,7 +4,6 @@ import io
 import collections
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from astropy.visualization import ImageNormalize, LogStretch
 from matplotlib.colors import LogNorm, SymLogNorm, CenteredNorm
 
 try:
@@ -93,19 +92,19 @@ def plot_to_image(figure):
 def deflection_angles_residual_plot(y_true, y_pred):
     fig, axs = plt.subplots(2, 3, figsize=(12, 8))
     for i in range(2):
-        im = axs[i, 0].imshow(y_true.numpy()[..., i], cmap="jet", origin="lower")
+        im = axs[i, 0].imshow(y_true[..., i], cmap="jet", origin="lower")
         divider = make_axes_locatable(axs[i, 0])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
         axs[i, 0].axis("off")
 
-        im = axs[i, 1].imshow(y_pred.numpy()[..., i], cmap="jet", origin="lower")
+        im = axs[i, 1].imshow(y_pred[..., i], cmap="jet", origin="lower")
         divider = make_axes_locatable(axs[i, 1])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
         axs[i, 1].axis("off")
 
-        residual = np.abs(y_true.numpy()[..., i] - y_pred.numpy()[..., i])
+        residual = np.abs(y_true[..., i] - y_pred[..., i])
         im = axs[i, 2].imshow(residual, cmap="seismic", norm=CenteredNorm(), origin="lower")
         divider = make_axes_locatable(axs[i, 2])
         cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -124,21 +123,21 @@ def deflection_angles_residual_plot(y_true, y_pred):
 def lens_residual_plot(lens_true, lens_pred, title=""):
     fig, axs = plt.subplots(1, 3, figsize=(12, 4))
     ax = axs[0]
-    im = ax.imshow(lens_true.numpy()[..., 0], cmap="hot",  origin="lower")
+    im = ax.imshow(lens_true[..., 0], cmap="hot",  origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[1]
-    im = ax.imshow(lens_pred.numpy()[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(lens_pred[..., 0], cmap="hot", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2]
-    im = ax.imshow((lens_true - lens_pred).numpy()[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
+    im = ax.imshow((lens_true - lens_pred)[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
@@ -155,19 +154,19 @@ def lens_residual_plot(lens_true, lens_pred, title=""):
 def raytracer_residual_plot(y_true, y_pred, lens_true, lens_pred):
     fig, axs = plt.subplots(3, 3, figsize=(12, 12))
     for i in range(2):
-        im = axs[i, 0].imshow(y_true.numpy()[..., i], cmap="jet", origin="lower")
+        im = axs[i, 0].imshow(y_true[..., i], cmap="jet", origin="lower")
         divider = make_axes_locatable(axs[i, 0])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
         axs[i, 0].axis("off")
 
-        im = axs[i, 1].imshow(y_pred.numpy()[..., i], cmap="jet", origin="lower")
+        im = axs[i, 1].imshow(y_pred[..., i], cmap="jet", origin="lower")
         divider = make_axes_locatable(axs[i, 1])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
         axs[i, 1].axis("off")
 
-        residual = np.abs(y_true.numpy()[..., i] - y_pred.numpy()[..., i])
+        residual = np.abs(y_true[..., i] - y_pred[..., i])
         im = axs[i, 2].imshow(residual, cmap="seismic", norm=SymLogNorm(linthresh=1e-3, base=10), origin="lower")
         divider = make_axes_locatable(axs[i, 2])
         cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -175,21 +174,21 @@ def raytracer_residual_plot(y_true, y_pred, lens_true, lens_pred):
         axs[i, 2].axis("off")
 
     ax = axs[2, 0]
-    im = ax.imshow(lens_true.numpy()[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(lens_true[..., 0], cmap="hot", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2, 1]
-    im = ax.imshow(lens_pred.numpy()[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(lens_pred[..., 0], cmap="hot", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2, 2]
-    im = ax.imshow((lens_true - lens_pred).numpy()[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
+    im = ax.imshow((lens_true - lens_pred)[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
@@ -209,63 +208,63 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     fig, axs = plt.subplots(3, 3, figsize=(12, 12))
 
     ax = axs[0, 0]
-    im = ax.imshow(lens_true.numpy()[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(lens_true[..., 0], cmap="hot", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[1, 0]
-    im = ax.imshow(source_true.numpy()[..., 0], cmap="bone", origin="lower")
+    im = ax.imshow(source_true[..., 0], cmap="bone", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2, 0]
-    im = ax.imshow(kappa_true.numpy()[..., 0], cmap="hot", norm=LogNorm(), origin="lower")
+    im = ax.imshow(kappa_true[..., 0], cmap="hot", norm=LogNorm(vmin=5e-2), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[0, 1]
-    im = ax.imshow(lens_pred.numpy()[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(lens_pred[..., 0], cmap="hot", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[1, 1]
-    im = ax.imshow(source_pred.numpy()[..., 0], cmap="bone", origin="lower")
+    im = ax.imshow(source_pred[..., 0], cmap="bone", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2, 1]
-    im = ax.imshow(kappa_pred.numpy()[..., 0], cmap="hot", norm=LogNorm(), origin="lower")
+    im = ax.imshow(kappa_pred[..., 0], cmap="hot", norm=LogNorm(vmin=5e-2), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[0, 2]
-    im = ax.imshow((lens_true - lens_pred.numpy())[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
+    im = ax.imshow((lens_true - lens_pred)[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[1, 2]
-    im = ax.imshow((source_true - source_pred.numpy())[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
+    im = ax.imshow((source_true - source_pred)[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2, 2]
-    im = ax.imshow((kappa_true - kappa_pred.numpy())[..., 0], cmap="seismic", norm=SymLogNorm(linthresh=1e-1, base=10, vmax=100, vmin=-100), origin="lower")
+    im = ax.imshow((kappa_true - kappa_pred)[..., 0], cmap="seismic", norm=SymLogNorm(linthresh=1e-1, base=10, vmax=100, vmin=-100), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)

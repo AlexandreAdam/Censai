@@ -16,7 +16,7 @@ class RIMUnet:
             kappalog=True,
             kappa_normalize=True,
             source_tukey_alpha=0.6,
-            source_link='identity',
+            source_link='relu',
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
@@ -63,7 +63,7 @@ class RIMUnet:
         elif self._source_link_func == "identity":
             self.source_link = tf.identity
             self.source_inverse_link = tf.identity
-        elif self._source_link_func == "relu":  # This function just folds negative numbers to 0.
+        elif self._source_link_func == "relu":
             self.source_link = tf.nn.relu
             self.source_inverse_link = tf.nn.relu
         else:

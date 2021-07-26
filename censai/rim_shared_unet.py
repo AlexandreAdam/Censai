@@ -25,7 +25,7 @@ class RIMSharedUnet:
             adam=True,
             kappalog=True,
             kappa_normalize=False,
-            source_link="identity",
+            source_link="relu",
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
@@ -65,12 +65,12 @@ class RIMSharedUnet:
             self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.log(x + 1e-6))
             self.source_inverse_link = tf.keras.layers.Lambda(lambda x: tf.math.exp(x))
         elif self._source_link_func == "sqrt":
-            self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.sqrt(x + 1e-6))
+            self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.sqrt(x))
             self.source_inverse_link = tf.keras.layers.Lambda(lambda x: x**2)
         elif self._source_link_func == "identity":
             self.source_link = tf.identity
             self.source_inverse_link = tf.identity
-        elif self._source_link_func == "relu":  # This function just folds negative numbers to 0.
+        elif self._source_link_func == "relu":
             self.source_link = tf.nn.relu
             self.source_inverse_link = tf.nn.relu
         else:
