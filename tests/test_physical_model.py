@@ -36,7 +36,7 @@ def test_alpha_method_fft():
     assert np.allclose(alphay, alphay2, atol=1e-4)
 
     # test out an analytical profile
-    kappa = phys_analytic.kappa_field(2, 0., 0, 0.1, 0.5)
+    kappa = phys_analytic.kappa_field(2, 0.4, 0, 0.1, 0.5)
     alphax, alphay = phys.deflection_angle(kappa)
 
     alphax2, alphay2 = phys2.deflection_angle(kappa)
@@ -79,8 +79,8 @@ def test_analytical_lensing():
 def test_lens_func_given_alpha():
     phys = PhysicalModel(pixels=128)
     phys_a = AnalyticalPhysicalModel(pixels=128)
-    alpha = phys_a.approximate_deflection_angles(x0=0.5, y0=0.5, e=0., phi=0., r_ein=1.)
-    lens_true = phys_a.lens_source_func(x0=0.5, y0=0.5, xs=0.5, ys=0.5)
+    alpha = phys_a.analytical_deflection_angles(x0=0.5, y0=0.5, e=0.4, phi=0., r_ein=1.)
+    lens_true = phys_a.lens_source_func(x0=0.5, y0=0.5, e=0.4, phi=0., r_ein=1., xs=0.5, ys=0.5)
     lens_pred = phys_a.lens_source_func_given_alpha(alpha, xs=0.5, ys=0.5)
     lens_pred2 = phys.lens_source_func_given_alpha(alpha, xs=0.5, ys=0.5)
     fig = raytracer_residual_plot(alpha[0], alpha[0], lens_true[0], lens_pred2[0])

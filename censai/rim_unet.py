@@ -24,7 +24,7 @@ class RIMUnet:
             kappa_init=1e-1
     ):
         self.physical_model = physical_model
-        self.kappa_pixels = physical_model.pixels
+        self.kappa_pixels = physical_model.kappa_pixels
         self.source_pixels = physical_model.src_pixels
         self.steps = steps
         self.source_model = source_model
@@ -119,8 +119,8 @@ class RIMUnet:
                     g.watch(kappa)
                     log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
                     cost = tf.reduce_mean(log_likelihood)
-            source_grad, kappa_grad = g.gradient(cost, [source, kappa])
-            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+                source_grad, kappa_grad = g.gradient(cost, [source, kappa])
+                source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
             source_series = source_series.write(index=current_step, value=source)
             kappa_series = kappa_series.write(index=current_step, value=kappa)
