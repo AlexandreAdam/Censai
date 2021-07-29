@@ -18,11 +18,12 @@ python $CENSAI_PATH/scripts/create_rim_dataset_analytical_kappa_maps.py\
   --src_pixels=128\
   --kappa_pixels=128\
   --image_fov=20\
-  --kappa_fov=22.2\
+  --kappa_fov=18\
   --source_fov=3\
   --noise_rms=6e-3\
   --psf_sigma=0.06\
   --max_shift=1\
+  --min_theta_e=1.5\
   --max_ellipticity=0.6\
   --shuffle_cosmos\
   --buffer_size=1000\
