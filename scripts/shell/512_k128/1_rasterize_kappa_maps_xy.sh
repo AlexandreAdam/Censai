@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=3  # maximum cpu per task is 3.5 per gpus
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --gres=gpu:1
-#SBATCH --time=0-02:00		 # time (DD-HH:MM)
+#SBATCH --time=0-04:00		 # time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Rasterize_Kappa_Maps_512_k228_xy
 #SBATCH --output=%x-%j.out
