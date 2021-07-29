@@ -12,7 +12,7 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset.py\
   --output_dir=$HOME/scratch/Censai/data/lenses512_k128_TNG100_testset/\
   --len_dataset=5000\
-  --kappa_dir=$HOME/scratch/Censai/data/kappa228_TNG100_512\
+  --kappa_dir=$HOME/scratch/Censai/data/kappa158_TNG100_512\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
   --compression_type=GZIP\
   --lens_pixels=512\
@@ -21,8 +21,9 @@ python $CENSAI_PATH/scripts/create_rim_dataset.py\
   --source_fov=3\
   --noise_rms=6e-3\
   --psf_sigma=0.06\
-  --crop=50\
+  --crop=15\
   --max_shift=1\
+  --min_theta_e=1.5\
   --rotate\
   --rotate_by=90\
   --shuffle_cosmos\
