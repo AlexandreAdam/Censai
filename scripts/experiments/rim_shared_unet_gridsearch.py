@@ -54,7 +54,9 @@ EXTRA_PARAMS = [
     "total_items",
     "optimizer",
     "seed",
-    "batch_size"
+    "batch_size",
+    "initial_learning_rate",
+    "decay_rate"
 ]
 
 
@@ -64,6 +66,8 @@ PARAMS_NICKNAME["total_items"] = "TI"
 PARAMS_NICKNAME["optimizer"] = "O"
 PARAMS_NICKNAME["seed"] = ""
 PARAMS_NICKNAME["batch_size"] = "B"
+PARAMS_NICKNAME["initial_learning_rate"] = "lr"
+PARAMS_NICKNAME["decay_rate"] = "dr"
 
 PARAMS_NICKNAME["filters"] = "F"
 PARAMS_NICKNAME["filter_scaling"] = "FS"
@@ -248,10 +252,10 @@ if __name__ == '__main__':
     parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files.")
 
     # Optimization params
-    parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
-    parser.add_argument("--optimizer",              default="Adam",  nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
-    parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float,     help="Initial learning rate.")
-    parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
+    parser.add_argument("-e", "--epochs",           default=10,     type=int,      help="Number of epochs for training.")
+    parser.add_argument("--optimizer",              default="Adam", nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
+    parser.add_argument("--initial_learning_rate",  default=1e-3,   nargs="+",   type=float,     help="Initial learning rate.")
+    parser.add_argument("--decay_rate",             default=1.,     nargs="+",   type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
     parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
