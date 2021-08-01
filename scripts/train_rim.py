@@ -348,13 +348,13 @@ def main(args):
                                          lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
                                          kappa_pred[-1][0, ...], chi_squared[-1][0]
                                      )), step=step)
-        val_cost = val_loss.result().numpy()
-        val_chi_sq = val_chi_squared.result().numpy()
-        train_cost = epoch_loss.result().numpy()
-        train_chi_sq = epoch_chi_squared.result().numpy()
-        tf.summary.scalar("Val MSE", val_cost, step=step)
-        tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
-        tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
+            val_cost = val_loss.result().numpy()
+            val_chi_sq = val_chi_squared.result().numpy()
+            train_cost = epoch_loss.result().numpy()
+            train_chi_sq = epoch_chi_squared.result().numpy()
+            tf.summary.scalar("Val MSE", val_cost, step=step)
+            tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
+            tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
         history["train_cost"].append(train_cost)
