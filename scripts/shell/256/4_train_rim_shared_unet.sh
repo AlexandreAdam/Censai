@@ -13,7 +13,7 @@ python $CENSAI_PATH/scripts/train_rim_shared_unet.py\
   --compression_type=GZIP\
   --forward_method=fft\
   --epochs=200\
-  --initial_learning_rate=1e-3\
+  --initial_learning_rate 1e-3\
   --decay_rate=0.9\
   --decay_steps=10000\
   --staircase\
