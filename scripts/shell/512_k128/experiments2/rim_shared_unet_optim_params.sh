@@ -45,7 +45,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --bias_regularizer_amp 1e-4\
   --alpha 0.1\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logs\
+  --logdir=$CENSAI_PATH/logsSU512_128\
   --logname_prefixe=RIMSU512_k128_OPTIM\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
