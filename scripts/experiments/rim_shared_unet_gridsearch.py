@@ -87,6 +87,7 @@ PARAMS_NICKNAME["kappa_resize_method"] = "KRB"
 PARAMS_NICKNAME["kappa_resize_strides"] = "KRS"
 PARAMS_NICKNAME["kappalog"] = "KaL"
 PARAMS_NICKNAME["kappa_normalize"] = "KaN"
+PARAMS_NICKNAME["activation"] = "NL"
 
 PARAMS_NICKNAME["adam"] = "A"
 PARAMS_NICKNAME["alpha"] = "al"
