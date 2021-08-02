@@ -1,5 +1,5 @@
 import tensorflow as tf
-from censai.definitions import bipolar_elu, bipolar_leaky_relu
+from censai.definitions import bipolar_elu, bipolar_leaky_relu, bipolar_relu
 
 
 def summary_histograms(layer, activation):
@@ -19,11 +19,11 @@ def global_step():
 def get_activation(activation_name, **kwargs):
     if activation_name == "leaky_relu":
         return tf.keras.layers.LeakyReLU(**kwargs)
-    elif activation_name == "gelu":
-        return tf.keras.activations.gelu
     elif activation_name == "bipolar_elu":
         return tf.keras.layers.Lambda(lambda x: bipolar_elu(x))
     elif activation_name == "bipolar_leaky_relu":
         return tf.keras.layers.Lambda(lambda x: bipolar_leaky_relu(x, **kwargs))
+    elif activation_name == "bipolar_relu":
+        return tf.keras.layers.Lambda(lambda x: bipolar_relu(x))
     else:
         return tf.keras.layers.Activation(activation_name, **kwargs)

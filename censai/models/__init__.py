@@ -5,4 +5,7 @@ from .rim_unet_model512 import UnetModel512
 from .rim_unet_model import UnetModel
 from .cosmos_autoencoder import CosmosAutoencoder
 from .resnet_autoencoder import ResnetAutoencoder
+from .resnet_vae import ResnetVAE
 from .rim_shared_unet_model import SharedUnetModel
+from .resnet_encoder import ResnetEncoder
+from .decoder import Decoder

@@ -1,5 +1,6 @@
 import tensorflow as tf
 from censai.definitions import DTYPE
+from censai.models.utils import get_activation
 
 
 class ResidualBlock(tf.keras.layers.Layer):
@@ -9,16 +10,14 @@ class ResidualBlock(tf.keras.layers.Layer):
                  conv_layers=2,
                  kernel_reg_amp=0.01,
                  bias_reg_amp=0.01,
-                 alpha=0.1,
                  dropout_rate=None,
                  architecture="bare",
-                 **kwargs):
-        super(ResidualBlock, self).__init__(DTYPE, **kwargs)
-        assert architecture in ["bare", "original", "bn_after_addition",
-                                "relu_before_addition", "relu_only_pre_activation",
-                                "full_pre_activation", "full_pre_activation_rescale"]
+                 activation="relu"
+                 ):
+        super(ResidualBlock, self).__init__(dtype=DTYPE)
+        assert architecture in ["bare", "original", "bn_after_addition", "relu_before_addition", "relu_only_pre_activation", "full_pre_activation", "full_pre_activation_rescale"]
+        self.non_linearity = get_activation(activation)
         self.conv_layers = []
-        self.non_linearity = tf.keras.layers.LeakyReLU(alpha=alpha)
         if architecture == "full_pre_activation_rescale":
             filters = filters//2
         for i in range(conv_layers):
@@ -29,9 +28,8 @@ class ResidualBlock(tf.keras.layers.Layer):
                     strides=1,
                     padding="same",
                     data_format="channels_last",
-                    kernel_initializer=tf.keras.initializers.HeUniform(),
-                    kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                    bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp)
+                    kernel_regularizer=tf.keras.regularizers.l2(l2=kernel_reg_amp),
+                    bias_regularizer=tf.keras.regularizers.l2(l2=bias_reg_amp)
                 )
             )
         if dropout_rate is not None:
@@ -60,9 +58,8 @@ class ResidualBlock(tf.keras.layers.Layer):
                 strides=1,
                 padding="same",
                 data_format="channels_last",
-                kernel_initializer=tf.keras.initializers.HeUniform(),
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp)
+                kernel_regularizer=tf.keras.regularizers.l2(l2=kernel_reg_amp),
+                bias_regularizer=tf.keras.regularizers.l2(l2=bias_reg_amp)
             )
             self.rescale_output = tf.keras.layers.Conv2D(
                 filters=filters*2,
@@ -70,9 +67,8 @@ class ResidualBlock(tf.keras.layers.Layer):
                 strides=1,
                 padding="same",
                 data_format="channels_last",
-                kernel_initializer=tf.keras.initializers.HeUniform(),
-                kernel_regularizer=tf.keras.regularizers.l2(l=kernel_reg_amp),
-                bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp)
+                kernel_regularizer=tf.keras.regularizers.l2(l2=kernel_reg_amp),
+                bias_regularizer=tf.keras.regularizers.l2(l2=bias_reg_amp)
             )
 
         self._call = {

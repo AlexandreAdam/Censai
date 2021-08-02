@@ -1,5 +1,5 @@
 import tensorflow as tf
-from censai.models.utils import get_activation, summary_histograms
+from censai.models.utils import get_activation
 from censai.definitions import DTYPE
 
 
@@ -15,10 +15,11 @@ class UnetDecodingLayer(tf.keras.layers.Layer):
             filters=32,
             conv_layers=2,
             activation="linear",
+            batch_norm=False,
+            dropout_rate=None,
             name=None,
-            strides=2,  # for final layer
-            bilinear=False, # whether to use bilinear upsampling or vanilla half strid convolution
-            record=False, # eventually record output of layer
+            strides=2,       # for final layer
+            bilinear=False,  # whether to use bilinear upsampling or vanilla half strid convolution
             **common_params
     ):
         super(UnetDecodingLayer, self).__init__(name=name, dtype=DTYPE)
@@ -33,29 +34,49 @@ class UnetDecodingLayer(tf.keras.layers.Layer):
         self.activation = get_activation(activation)
 
         self.conv_layers = []
+        self.batch_norms = []
         for i in range(self.num_conv_layers):
             self.conv_layers.append(
                 tf.keras.layers.Conv2D(
                     filters=self.filters,
                     kernel_size=self.kernel_size,
-                    activation=self.activation,
                     **common_params
                 )
             )
+            if batch_norm:
+                self.batch_norms.append(
+                    tf.keras.layers.BatchNormalization()
+                )
+            else:
+                self.batch_norms.append(
+                    tf.identity
+                )
         if bilinear:
             self.upsampling_layer = tf.keras.layers.UpSampling2D(size=self.strides, interpolation="bilinear")
         else:
-            self.upsampling_layer = tf.keras.layers.Conv2DTranspose(
-                filters=self.filters,
-                kernel_size=self.upsampling_kernel_size,
-                strides=self.strides,
-                activation=self.activation,
-                **common_params
+            self.upsampling_layer = tf.keras.Sequential(
+                [
+                    tf.keras.layers.Conv2DTranspose(
+                        filters=self.filters,
+                        kernel_size=self.upsampling_kernel_size,
+                        strides=self.strides,
+                        **common_params
+                    ),
+                    tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x)),
+                    self.activation
+                ]
             )
+        if dropout_rate is None:
+            self.dropout = tf.identity
+        else:
+            self.dropout = tf.keras.layers.SpatialDropout2D(rate=dropout_rate, data_format="channels_last")
 
     def call(self, x, c_i):  # c_i is the skip connection
         x = self.upsampling_layer(x)
         x = tf.concat([x, c_i], axis=-1)
-        for layer in self.conv_layers:
+        for i, layer in enumerate(self.conv_layers):
             x = layer(x)
+            x = self.batch_norms[i](x)
+            x = self.activation(x)
+            x = self.dropout(x)
         return x
