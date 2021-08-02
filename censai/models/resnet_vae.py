@@ -1,9 +1,10 @@
 import tensorflow as tf
 from .decoder import Decoder
 from .resnet_encoder import ResnetEncoder
+from censai.definitions import DTYPE
 
 
-class ResnetAutoencoder(tf.keras.Model):
+class ResnetVAE(tf.keras.Model):
     def __init__(
             self,
             pixels=128,  # side length of the input image, used to compute shape of bottleneck mainly
@@ -21,7 +22,7 @@ class ResnetAutoencoder(tf.keras.Model):
             batch_norm=False,
             latent_size=16
     ):
-        super(ResnetAutoencoder, self).__init__()
+        super(ResnetVAE, self).__init__()
         self.latent_size = latent_size
         self.encoder = ResnetEncoder(
             layers=layers,
@@ -58,7 +59,13 @@ class ResnetAutoencoder(tf.keras.Model):
         )
 
     def encode(self, x):
-        return self.encoder(x)
+        batch_size = x.shape[0]
+        distribution_parameters = self.encoder(x)
+        mean, logvar = tf.split(distribution_parameters, 2, axis=1)
+        logvar = 0.5 * logvar
+        epsilon = tf.random.normal([batch_size, self.latent_size//2], dtype=DTYPE)
+        z = mean + tf.multiply(epsilon, tf.exp(logvar))
+        return z, mean, logvar
 
     def decode(self, z):
         return self.decoder(z)
@@ -67,10 +74,25 @@ class ResnetAutoencoder(tf.keras.Model):
         return self.call(x)
 
     def call(self, x):
-        return self.decoder(self.encoder(x))
+        z, mean, logvar = self.encode(x)
+        y = self.decode(z)
+        return y
 
     def cost_function(self, x):
-        y = self.call(x)
-        loss = tf.reduce_mean(tf.square(y - x))
-        return loss
+        z, mean, logvar = self.encode(x)
+        y = self.decode(z)
+        img_cost = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
+        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
+        return img_cost + latent_cost
 
+    def cost_function_training(self, x, skip_strength, l2_bottleneck):
+        batch_size = x.shape[0]
+        distribution_parameters, skip_connections = self.encoder.call_with_skip_connections(x)
+        mean, logvar = tf.split(distribution_parameters, 2, axis=1)
+        logvar = 0.5 * logvar
+        epsilon = tf.random.normal([batch_size, self.latent_size // 2], dtype=DTYPE)
+        z = mean + tf.multiply(epsilon, tf.exp(logvar))
+        y, bottleneck_l2_cost = self.decoder.call_with_skip_connections(z, skip_connections, skip_strength, l2_bottleneck)
+        img_cost = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
+        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
+        return img_cost + latent_cost + l2_bottleneck
