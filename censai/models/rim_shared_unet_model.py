@@ -134,7 +134,6 @@ class SharedUnetModel(tf.keras.Model):
                 output_filters=1
             )
             self.downsampling_layer = DownsamplingLayer(
-                method=kappa_resize_method,
                 layers=kappa_resize_layers,
                 conv_layers=kappa_resize_conv_layers,
                 kernel_size=kappa_resize_kernel_size,
@@ -144,7 +143,6 @@ class SharedUnetModel(tf.keras.Model):
             )
             if self.separate_grad_downsampling:
                 self.grad_downsampling_layer = DownsamplingLayer(
-                    method=kappa_resize_method,
                     layers=kappa_resize_layers,
                     conv_layers=kappa_resize_conv_layers,
                     kernel_size=kappa_resize_kernel_size,
