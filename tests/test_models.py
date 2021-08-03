@@ -163,41 +163,41 @@ def test_rim():
 def test_resnet_vae():
     vae = ResnetVAE(pixels=32, layers=3, latent_size=16)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    vae.cost_function_training(x, 1., 1.)
+    vae.cost_function_training(x, 1., 1., 1.)
 
     vae = ResnetVAE(pixels=32, layers=3, res_blocks_in_layer=[5, 10, 15], conv_layers_per_block=3, latent_size=16, batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1.))
+    print(vae.cost_function_training(x, 1., 1., 1.))
 
     print("original")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="original", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1.))
+    print(vae.cost_function_training(x, 1., 1., 1.))
 
     print("bn_after_addition")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="bn_after_addition", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1.))
+    print(vae.cost_function_training(x, 1., 1., 1.))
 
     print("relu_before_addition")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="relu_before_addition", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1.))
+    print(vae.cost_function_training(x, 1., 1., 1.))
 
     print("relu_only_pre_activation")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="relu_only_pre_activation", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1.))
+    print(vae.cost_function_training(x, 1., 1., 1.))
 
     print("full_pre_activation")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="full_pre_activation", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1.))
+    print(vae.cost_function_training(x, 1., 1., 1.))
 
     print("full_pre_activation_rescale")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="full_pre_activation_rescale", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1.))
+    print(vae.cost_function_training(x, 1., 1., 1.))
 
 
 def test_resnet_encoder():

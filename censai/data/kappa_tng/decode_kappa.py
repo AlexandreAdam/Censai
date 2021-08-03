@@ -31,6 +31,11 @@ def decode_einstein_radii_info(record_bytes):
     return [example[key] for key in params_keys]
 
 
+def decode_shape(record_bytes):
+    example = decode_all(record_bytes)
+    return example["kappa pixels"]
+
+
 def decode_train(record_bytes):
     example = decode_all(record_bytes)
     return example['kappa']

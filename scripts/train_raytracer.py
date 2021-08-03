@@ -6,7 +6,7 @@ import os, glob, json
 import numpy as np
 import math
 from datetime import datetime
-import random, time
+import time
 gpus = tf.config.list_physical_devices('GPU')
 
 """ # NOTE ON THE USE OF MULTIPLE GPUS #
@@ -45,7 +45,7 @@ def main(args):
     files = []
     for dataset in args.datasets:
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
-    random.shuffle(files)
+    np.random.shuffle(files)
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
                                cycle_length=args.cycle_length, block_length=args.block_length)
