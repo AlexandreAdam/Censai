@@ -5,3 +5,4 @@ from .unet_decoding_layer import UnetDecodingLayer
 from .unet_encoding_layer import UnetEncodingLayer
 from .shared_upsampling_layer import UpsamplingLayer
 from .shared_downsampling_layer import DownsamplingLayer
+from .conv_block import ConvBlock

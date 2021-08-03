@@ -1,72 +1,98 @@
 import tensorflow as tf
-from censai.definitions import lrelu, m_softplus, DTYPE
+from .decoder import Decoder
+from .encoder import Encoder
+from censai.definitions import DTYPE
 
 
-class VAE(tf.keras.Model):
-    def __init__(self, npix_side=256, channels=1, **kwargs):
-        super(VAE, self).__init__(**kwargs)
-        activation = lrelu
-        self.npix_side = npix_side
-        self.channels = 1
-        n_downsample = 5
-        self.l0 = tf.keras.layers.Conv2D(16, (4, 4), strides=2, padding='same', activation=activation)
-        self.l1 = tf.keras.layers.Conv2D(16 * 2, (4, 4), strides=2, padding='same', activation=activation)
-        self.l2 = tf.keras.layers.Conv2D(16 * 2, (4, 4), strides=2, padding='same', activation=activation)
-        self.l3 = tf.keras.layers.Conv2D(16 * 2, (4, 4), strides=2, padding='same', activation=activation)
-        self.l4 = tf.keras.layers.Conv2D(16 * 2, (4, 4), strides=2, padding='same', activation=activation)
-        self.l5 = tf.keras.layers.Conv2D(16 * 1, (4, 4), strides=1, padding='same', activation=activation)
-        self.l_mean = tf.keras.layers.Conv2D(16, (2, 2), strides=1, padding='same', activation=activation)
-        self.l_logvar = tf.keras.layers.Conv2D(16, (2, 2), strides=1, padding='same', activation=activation)
+class ResnetVAE(tf.keras.Model):
+    def __init__(
+            self,
+            pixels=128,  # side length of the input image, used to compute shape of bottleneck mainly
+            layers=7,
+            conv_layers=2,
+            conv_layers_per_block=2,
+            filter_scaling=2,
+            filters=8,
+            kernel_size=3,
+            kernel_reg_amp=0.01,
+            bias_reg_amp=0.01,
+            activation="bipolar_relu",
+            dropout_rate=None,
+            batch_norm=False,
+            latent_size=16
+    ):
+        super(ResnetVAE, self).__init__(dtype=DTYPE)
+        self.latent_size = latent_size
+        self.encoder = Encoder(
+            layers=layers,
+            conv_layers=conv_layers,
+            filter_scaling=filter_scaling,
+            filters=filters,
+            kernel_size=kernel_size,
+            kernel_reg_amp=kernel_reg_amp,
+            bias_reg_amp=bias_reg_amp,
+            dropout_rate=dropout_rate,
+            batch_norm=batch_norm,
+            latent_size=latent_size,
+            activation=activation
+        )
+        # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
+        b_filters = filters * (int(filter_scaling ** layers))
+        pix = pixels//2 ** layers
+        mlp_bottleneck = b_filters * pix**2
+        self.decoder = Decoder(
+            mlp_bottleneck=mlp_bottleneck,
+            z_reshape_pix=pix,
+            layers=layers,
+            conv_layers=conv_layers_per_block,
+            filter_scaling=filter_scaling,
+            filters=filters,
+            kernel_size=kernel_size,
+            kernel_reg_amp=kernel_reg_amp,
+            bias_reg_amp=bias_reg_amp,
+            dropout_rate=dropout_rate,
+            batch_norm=batch_norm,
+            activation=activation
+        )
 
-        # inputs_decoder = 6**2 * 2
-        # self.d1 = tf.keras.layers.Dense(inputs_decoder, activation=activation)
-        # self.d2 = tf.keras.layers.Dense(inputs_decoder  , activation=activation)
-        self.d3 = tf.keras.layers.Conv2DTranspose(16 * 4, (4, 4), strides=2, padding='same', activation=activation)
-        self.d4 = tf.keras.layers.Conv2DTranspose(16 * 4, (4, 4), strides=2, padding='same', activation=activation)
-        self.d5 = tf.keras.layers.Conv2DTranspose(16 * 2, (4, 4), strides=2, padding='same', activation=activation)
-        self.d6 = tf.keras.layers.Conv2DTranspose(16 * 2, (4, 4), strides=2, padding='same', activation=activation)
-        self.d7 = tf.keras.layers.Conv2DTranspose(16 * 1, (4, 4), strides=2, padding='same', activation=activation)
-        self.d8 = tf.keras.layers.Conv2DTranspose(16, (4, 4), strides=1, padding='same', activation=activation)
-        self.d9 = tf.keras.layers.Conv2DTranspose(1, (4, 4), strides=1, padding='same', activation=m_softplus)
-
-    def encoder(self, X_in):
-        x = tf.reshape(X_in, shape=[-1, self.npix_side, self.npix_side, 1])
-        x = self.l0(x)
-        x = self.l1(x)
-        x = self.l2(x)
-        x = self.l3(x)
-        x = self.l4(x)
-        x = self.l5(x)
-        mean = self.l_mean(x)
-        logvar = 0.5 * self.l_logvar(x)
-        epsilon = tf.random.normal([x.shape[0], 8, 8, 16], dtype=DTYPE)
+    def encode(self, x):
+        batch_size = x.shape[0]
+        mean, logvar = self.encoder(x)
+        logvar = 0.5 * logvar
+        epsilon = tf.random.normal([batch_size, self.latent_size], dtype=DTYPE)
         z = mean + tf.multiply(epsilon, tf.exp(logvar))
         return z, mean, logvar
 
-    def decoder(self, sampled_z):
-        # reshaped_dim = [-1, 6, 6, 2]
-        # x = self.d1(sampled_z)
-        # x = self.d2(sampled_z)
-        # x = tf.reshape(x, reshaped_dim)
-        x = self.d3(sampled_z)
-        x = self.d4(x)
-        x = self.d5(x)
-        x = self.d6(x)
-        x = self.d7(x)
-        x = self.d8(x)
-        x = self.d9(x)
-        img = tf.reshape(x, shape=[-1, self.npix_side, self.npix_side])
-        return img
+    def decode(self, z):
+        return self.decoder(z)
 
-    def cost(self, X_in):
-        sampled_code, mean, logvar = self.encoder(X_in)
-        decoded_im = self.decoder(sampled_code)
-        img_cost = tf.reduce_sum((decoded_im - X_in) ** 2, [1, 2])
-        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=(1, 2, 3))
-        cost = tf.reduce_mean(img_cost + latent_cost)
-        return cost, decoded_im
+    def __call__(self, x):
+        return self.call(x)
 
-    def draw_image(self, N):
-        randoms = tf.random.normal((N, 8, 8, 16), dtype=DTYPE)
-        simulated_im = self.decoder(randoms)
-        return simulated_im
+    def call(self, x):
+        z, mean, logvar = self.encode(x)
+        y = self.decode(z)
+        return y
+
+    def generate_samples(self, batch_size=1):
+        z = tf.random.normal([batch_size, self.latent_size], dtype=DTYPE)
+        y = self.decode(z)
+        return y
+
+    def cost_function(self, x):
+        z, mean, logvar = self.encode(x)
+        y = self.decode(z)
+        img_cost = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
+        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
+        return img_cost + latent_cost
+
+    def cost_function_training(self, x, skip_strength, l2_bottleneck):
+        batch_size = x.shape[0]
+        mean, logvar, skip_connections = self.encoder.call_with_skip_connections(x)
+        logvar = 0.5 * logvar
+        epsilon = tf.random.normal([batch_size, self.latent_size], dtype=DTYPE)
+        z = mean + tf.multiply(epsilon, tf.exp(logvar))
+        y, bottleneck_l2_loss = self.decoder.call_with_skip_connections(z, skip_connections, skip_strength, l2_bottleneck)
+        reconstruction_loss = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
+        kl_loss = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
+        return reconstruction_loss, kl_loss, bottleneck_l2_loss
