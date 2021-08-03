@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from censai.data.kappa_tng import decode_train, decode_shape
 from censai.utils import nullwriter, kappa_vae_residual_plot as residual_plot, plot_to_image
-from censai.definitions import PolynomialSchedule, log_10
+from censai.definitions import PolynomialSchedule, log_10, DTYPE
 from censai import ResnetVAE
 import os, glob, json
 import math
@@ -39,7 +39,8 @@ def main(args):
     # Read off global parameters from first example in dataset
     for pixels in dataset.map(decode_shape):
         break
-    dataset = dataset.map(decode_train).batch(args.batch_size)
+    vars(args).update({"pixels": pixels})
+    dataset = dataset.map(decode_train).map(log_10).batch(args.batch_size)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
     else:
@@ -67,7 +68,7 @@ def main(args):
         batch_norm=args.batch_norm,
         latent_size=args.latent_size
     )
-    vae.call(tf.zeros(shape=[args.batch_size, pixels, pixels, 1]))  # build layers of model
+    vae.call(tf.zeros(shape=[args.batch_size, pixels, pixels, 1], dtype=DTYPE))  # build layers of model
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.initial_learning_rate,
         decay_rate=args.decay_rate,
@@ -104,7 +105,7 @@ def main(args):
             os.mkdir(checkpoints_dir)
             with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
                 json.dump(vars(args), f, indent=4)
-            with open(os.path.join(checkpoints_dir, "unet_hparams.json"), "w") as f:
+            with open(os.path.join(checkpoints_dir, "model_hparams.json"), "w") as f:
                 hparams_dict = {key: vars(args)[key] for key in VAE_HPARAMS}
                 json.dump(hparams_dict, f, indent=4)
         ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=vae)
