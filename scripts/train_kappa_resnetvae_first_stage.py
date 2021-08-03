@@ -75,7 +75,7 @@ def main(args):
         decay_steps=args.decay_steps,
         staircase=args.staircase
     )
-    beta_schedule = PolynomialSchedule(initial_value=args.beta_init, end_value=args.beta_end_value, power=args.beta_decay_power, decay_steps=args.beta_decay_steps)
+    beta_schedule = PolynomialSchedule(initial_value=args.beta_init, end_value=args.beta_end_value, power=args.beta_decay_power, decay_steps=args.beta_decay_steps, cyclical=args.beta_cyclical)
     skip_strength_schedule = PolynomialSchedule(initial_value=args.skip_strength_init, end_value=0., power=args.skip_strength_decay_power, decay_steps=args.skip_strength_decay_steps)
     l2_bottleneck_schedule = PolynomialSchedule(initial_value=args.l2_bottleneck_init, end_value=0., power=args.l2_bottleneck_decay_power, decay_steps=args.l2_bottleneck_decay_steps)
     optim = tf.keras.optimizers.deserialize(

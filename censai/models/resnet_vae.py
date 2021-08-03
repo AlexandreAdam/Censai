@@ -29,14 +29,14 @@ class ResnetVAE(tf.keras.Model):
             res_blocks_in_layer=res_blocks_in_layer,
             conv_layers_in_resblock=conv_layers_per_block,
             filter_scaling=filter_scaling,
-            filter_init=filters,
+            filters=filters,
             kernel_size=kernel_size,
             res_architecture=res_architecture,
             kernel_reg_amp=kernel_reg_amp,
             bias_reg_amp=bias_reg_amp,
             dropout_rate=dropout_rate,
             batch_norm=batch_norm,
-            mlp_bottleneck_neurons=latent_size,
+            latent_size=latent_size,
             activation=activation
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
@@ -75,6 +75,11 @@ class ResnetVAE(tf.keras.Model):
 
     def call(self, x):
         z, mean, logvar = self.encode(x)
+        y = self.decode(z)
+        return y
+
+    def generate_samples(self, batch_size=1):
+        z = tf.random.normal([batch_size, self.latent_size//2], dtype=DTYPE)
         y = self.decode(z)
         return y
 
