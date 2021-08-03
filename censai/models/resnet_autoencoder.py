@@ -28,14 +28,14 @@ class ResnetAutoencoder(tf.keras.Model):
             res_blocks_in_layer=res_blocks_in_layer,
             conv_layers_in_resblock=conv_layers_per_block,
             filter_scaling=filter_scaling,
-            filter_init=filter_init,
+            filters=filter_init,
             kernel_size=kernel_size,
             res_architecture=res_architecture,
             kernel_reg_amp=kernel_reg_amp,
             bias_reg_amp=bias_reg_amp,
             dropout_rate=dropout_rate,
             batch_norm=batch_norm,
-            mlp_bottleneck_neurons=latent_size,
+            latent_size=latent_size,
             activation=activation
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
@@ -48,7 +48,7 @@ class ResnetAutoencoder(tf.keras.Model):
             layers=layers,
             conv_layers=conv_layers_per_block,
             filter_scaling=filter_scaling,
-            filter_init=filter_init,
+            filters=filter_init,
             kernel_size=kernel_size,
             kernel_reg_amp=kernel_reg_amp,
             bias_reg_amp=bias_reg_amp,

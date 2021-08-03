@@ -28,7 +28,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --steps 4\
   --adam\
   --kappalog\
-  --source_link relu\
+  --source_link linear\
   --filters 16\
   --filter_scaling 2\
   --kernel_size 3\
