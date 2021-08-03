@@ -280,3 +280,33 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     plt.figtext(0.1, 0.22, r"$\kappa$", va="center", ha="center", size=15, rotation=90)
 
     return fig
+
+
+def kappa_vae_residual_plot(kappa_true, kappa_pred):
+    fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+
+    ax = axs[0]
+    im = ax.imshow(kappa_true[..., 0], cmap="hot", origin="lower")
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    ax.axis("off")
+
+    ax = axs[1]
+    im = ax.imshow(kappa_pred[..., 0], cmap="hot", origin="lower")
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    ax.axis("off")
+
+    ax = axs[2]
+    im = ax.imshow(kappa_true[..., 0] - kappa_pred[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    ax.axis("off")
+
+    axs[0].set_title("Ground Truth", size=15)
+    axs[1].set_title("Prediction", size=15)
+    axs[2].set_title("Residual", size=15)
+    return fig
