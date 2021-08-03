@@ -59,3 +59,5 @@ python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
   --checkpoints=5\
   --max_to_keep=10\
   --n_residuals=3\
+  --track_train\
+  --max_time=7.7
