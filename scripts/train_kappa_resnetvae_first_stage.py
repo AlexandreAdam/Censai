@@ -39,7 +39,7 @@ def main(args):
     # Read off global parameters from first example in dataset
     for pixels in dataset.map(decode_shape):
         break
-    dataset = dataset.map(decode_train).map(log_10).batch(args.batch_size)
+    dataset = dataset.map(decode_train).batch(args.batch_size)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
     else:
@@ -321,7 +321,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
-    parser.add_argument("--n_residuals",             default=1,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
+    parser.add_argument("--n_residuals",             default=5,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
