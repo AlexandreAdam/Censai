@@ -92,7 +92,6 @@ class ResnetEncoder(tf.keras.Model):
         return x
 
     def call_with_skip_connections(self, x):
-        """ Use in training autoencoder """
         skips = []
         x = self.input_layer(x)
         for i in range(self._num_layers):

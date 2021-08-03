@@ -12,7 +12,7 @@ class ResnetVAE(tf.keras.Model):
             res_blocks_in_layer=2,
             conv_layers_per_block=2,
             filter_scaling=2,
-            filter_init=8,
+            filters=8,
             kernel_size=3,
             res_architecture="bare",
             kernel_reg_amp=0.01,
@@ -29,7 +29,7 @@ class ResnetVAE(tf.keras.Model):
             res_blocks_in_layer=res_blocks_in_layer,
             conv_layers_in_resblock=conv_layers_per_block,
             filter_scaling=filter_scaling,
-            filter_init=filter_init,
+            filter_init=filters,
             kernel_size=kernel_size,
             res_architecture=res_architecture,
             kernel_reg_amp=kernel_reg_amp,
@@ -40,16 +40,16 @@ class ResnetVAE(tf.keras.Model):
             activation=activation
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
-        filters = filter_init*(int(filter_scaling**(layers)))
-        pix = pixels//2**(layers)
-        mlp_bottleneck = filters * pix**2
+        b_filters = filters * (int(filter_scaling ** layers))
+        pix = pixels//2 ** layers
+        mlp_bottleneck = b_filters * pix**2
         self.decoder = Decoder(
             mlp_bottleneck=mlp_bottleneck,
             z_reshape_pix=pix,
             layers=layers,
             conv_layers=conv_layers_per_block,
             filter_scaling=filter_scaling,
-            filter_init=filter_init,
+            filters=filters,
             kernel_size=kernel_size,
             kernel_reg_amp=kernel_reg_amp,
             bias_reg_amp=bias_reg_amp,
@@ -92,7 +92,7 @@ class ResnetVAE(tf.keras.Model):
         logvar = 0.5 * logvar
         epsilon = tf.random.normal([batch_size, self.latent_size // 2], dtype=DTYPE)
         z = mean + tf.multiply(epsilon, tf.exp(logvar))
-        y, bottleneck_l2_cost = self.decoder.call_with_skip_connections(z, skip_connections, skip_strength, l2_bottleneck)
-        img_cost = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
-        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
-        return img_cost + latent_cost + l2_bottleneck
+        y, bottleneck_l2_loss = self.decoder.call_with_skip_connections(z, skip_connections, skip_strength, l2_bottleneck)
+        reconstruction_loss = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
+        kl_loss = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
+        return reconstruction_loss, kl_loss, bottleneck_l2_loss

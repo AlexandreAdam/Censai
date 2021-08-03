@@ -85,7 +85,7 @@ class ConvDecodingLayer(tf.keras.layers.Layer):
 
     def call_with_skip_connection(self, x, skip_connection):
         x = self.upsampling_layer(x)
-        x = tf.concat([x, skip_connection], axis=-1)
+        x = tf.add(x, skip_connection)
         for i, layer in enumerate(self.conv_layers):
             x = layer(x)
             x = self.batch_norms[i](x)

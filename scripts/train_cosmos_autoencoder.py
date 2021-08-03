@@ -8,20 +8,6 @@ from datetime import datetime
 import re
 
 
-class PolynomialSchedule:
-    def __init__(self, initial_value, end_value, power, decay_steps):
-        self.initial_value = initial_value
-        self.end_value = end_value
-        self.power = power
-        self.decay_steps = decay_steps
-
-    def __call__(self, step=None):
-        if step is None:
-            step = tf.summary.experimental.get_step()
-        step = min(step, self.decay_steps)
-        return ((self.initial_value - self.end_value) * (1 - step / self.decay_steps) ** (self.power)) + self.end_value
-
-
 def atoi(text):
     return int(text) if text.isdigit() else text
 
