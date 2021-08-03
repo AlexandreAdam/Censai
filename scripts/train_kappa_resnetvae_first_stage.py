@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
 from censai.data.kappa_tng import decode_train, decode_shape
-from censai.utils import nullwriter
-from censai.definitions import PolynomialSchedule
+from censai.utils import nullwriter, kappa_vae_residual_plot as residual_plot, plot_to_image
+from censai.definitions import PolynomialSchedule, log_10
 from censai import ResnetVAE
 import os, glob, json
 import math
@@ -39,7 +39,7 @@ def main(args):
     # Read off global parameters from first example in dataset
     for pixels in dataset.map(decode_shape):
         break
-    dataset = dataset.map(decode_train).batch(args.batch_size)
+    dataset = dataset.map(decode_train).map(log_10).batch(args.batch_size)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
     else:
@@ -189,6 +189,11 @@ def main(args):
                 epoch_reconstruction_loss.update_state([reconstruction_loss])
                 epoch_kl_loss.update_state([kl_loss])
                 step += 1
+            # last batch we make a summary of residuals
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
+                kappa_true = x[res_idx, ...]
+                kappa_pred = vae.call(kappa_true[None, ...])[0, ...]
+                tf.summary.image(f"Residuals {res_idx}", plot_to_image(residual_plot(kappa_true, kappa_pred)), step=step)
             # ========== Validation set ===================
             val_loss.reset_states()
             val_reconstruction_loss.reset_states()
@@ -198,6 +203,10 @@ def main(args):
                 val_loss.update_state([cost])
                 val_reconstruction_loss.update_state([reconstruction_loss])
                 val_kl_loss.update_state([kl_loss])
+            for res_idx in range(min(args.n_residuals, args.batch_size)):
+                kappa_true = x[res_idx, ...]
+                kappa_pred = vae.call(kappa_true[None, ...])[0, ...]
+                tf.summary.image(f"Val Residuals {res_idx}", plot_to_image(residual_plot(kappa_true, kappa_pred)), step=step)
 
             val_cost = val_loss.result().numpy()
             train_cost = epoch_loss.result().numpy()
@@ -316,8 +325,7 @@ if __name__ == '__main__':
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
-    parser.add_argument("--json_override",          default=None,   nargs="+",      help="A json filepath that will override every command line parameters. "
-                                                                                 "Useful for reproducibility")
+    parser.add_argument("--json_override",          default=None,   nargs="+",      help="A json filepath that will override every command line parameters. Useful for reproducibility")
 
     args = parser.parse_args()
 
