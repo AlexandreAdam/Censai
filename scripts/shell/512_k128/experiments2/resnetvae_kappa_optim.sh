@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
-  --datasets $HOME/scratch/Censai/data/kappa128_TNG100_trainset/\
+  --datasets $CENSAI_PATH/data/kappa128_TNG100_trainset/\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --epochs=200\
@@ -53,8 +53,9 @@ python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
   --batch_norm 1\
   --latent_size 16\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$HOME/scratch/Censai/logs\
+  --logdir=$CENSAI_PATH/logsRVAE_k\
   --logname_prefixe=RVAE1_OPTIM\
-  --model_dir=$HOME/scratch/Censai/models\
+  --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\
+  --n_residuals=3\

@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/train_kappa_resnetvae_first_stage.py\
-  --datasets $HOME/scratch/Censai/data/kappa128_TNG100_trainset/\
+  --datasets $CENSAI_PATH/data/kappa128_TNG100_trainset/\
   --compression_type=GZIP\
   --epochs=200\
   --initial_learning_rate 1e-4\
@@ -48,8 +48,8 @@ python $CENSAI_PATH/scripts/train_kappa_resnetvae_first_stage.py\
   --batch_norm=1\
   --latent_size=16\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$HOME/scratch/Censai/logs\
+  --logdir=$CENSAI_PATH/logsRVAE_k\
   --logname_prefixe=RVAE_1_TNG100\
-  --model_dir=$HOME/scratch/Censai/models\
+  --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\
