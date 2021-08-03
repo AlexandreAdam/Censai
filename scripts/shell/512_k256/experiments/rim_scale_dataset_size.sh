@@ -27,7 +27,7 @@ python $CENSAI_PATH/scripts/experiments/rim_gridsearch.py\
   --steps 4\
   --adam\
   --kappalog\
-  --source_link relu\
+  --source_link linear\
   --kappa_filters 16\
   --kappa_filter_scaling 2\
   --kappa_kernel_size 3\
