@@ -39,7 +39,7 @@ def main(args):
     # Read off global parameters from first example in dataset
     for pixels in dataset.map(decode_shape):
         break
-    vars(args).update({"pixels": pixels})
+    vars(args).update({"pixels": int(pixels)})
     dataset = dataset.map(decode_train).map(log_10).batch(args.batch_size)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
