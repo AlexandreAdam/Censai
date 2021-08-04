@@ -219,7 +219,9 @@ class PhysicalModel:
 
     def _kappa_to_image_grid(self, kappa):
         batch_size = kappa.shape[0]
-        x_coord, y_coord = self.kap_coord_to_pix(self.ximage, self.yimage)
+        xkappa = tf.cast(tf.linspace(-1, 1, self.pixels), dtype=DTYPE) * self.kappa_fov / 2
+        xkappa, ykappa = tf.meshgrid(xkappa, xkappa)
+        x_coord, y_coord = self.kap_coord_to_pix(xkappa[tf.newaxis, ..., tf.newaxis], ykappa[tf.newaxis, ..., tf.newaxis])
         warp = tf.concat([x_coord, y_coord], axis=-1)
         warp = tf.tile(warp, [batch_size, 1, 1, 1])  # make sure warp has same batch size has kappa
         kappa = tfa.image.resampler(kappa, warp)
@@ -271,14 +273,19 @@ class PhysicalModel:
 
 
 class AnalyticalPhysicalModel: 
-    def __init__(self, src_side=3.0, pixels=256, kappa_side=7.68, theta_c=1e-4):
-        self.src_side = src_side
+    def __init__(
+            self,
+            pixels=256,
+            image_fov=7.68,
+            src_fov=3.0,
+            theta_c=1e-4):
+        self.src_fov = src_fov
         self.pixels = pixels
-        self.kappa_side = kappa_side
+        self.image_fov = image_fov
         self.theta_c = tf.constant(theta_c, dtype=tf.float32)
 
         # coordinates for image
-        x = np.linspace(-1, 1, self.pixels) * self.kappa_side/2
+        x = np.linspace(-1, 1, self.pixels) * self.image_fov/2
         xx, yy = np.meshgrid(x, x) 
         # reshape for broadcast to [batch_size, pixels, pixels, channels]
         self.theta1 = tf.constant(xx[np.newaxis, ..., np.newaxis], dtype=tf.float32)
@@ -378,9 +385,9 @@ class AnalyticalPhysicalModel:
         return im
 
     def src_coord_to_pix(self, x, y):
-        dx = self.src_side/(self.pixels - 1)
-        xmin = -0.5 * self.src_side
-        ymin = -0.5 * self.src_side
+        dx = self.src_fov / (self.pixels - 1)
+        xmin = -0.5 * self.src_fov
+        ymin = -0.5 * self.src_fov
         i_coord = (x - xmin) / dx
         j_coord = (y - ymin) / dx
         return i_coord, j_coord

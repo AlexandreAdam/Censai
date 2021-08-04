@@ -14,7 +14,7 @@ def test_lens_source_conv2():
     pixels = 64
     src_pixels = 32
     phys = PhysicalModel(pixels=pixels, src_pixels=src_pixels, kappa_fov=16, image_fov=16)
-    phys_analytic = AnalyticalPhysicalModel(pixels=pixels, kappa_side=16)
+    phys_analytic = AnalyticalPhysicalModel(pixels=pixels, image_fov=16)
     source = tf.random.normal([1, src_pixels, src_pixels, 1])
     kappa = phys_analytic.kappa_field(7, 0.1, 0, 0, 0)
     lens = phys.lens_source(source, kappa)
@@ -24,7 +24,7 @@ def test_lens_source_conv2():
 def test_alpha_method_fft():
     pixels = 64
     phys = PhysicalModel(pixels=pixels, method="fft")
-    phys_analytic = AnalyticalPhysicalModel(pixels=pixels, kappa_side=7)
+    phys_analytic = AnalyticalPhysicalModel(pixels=pixels, image_fov=7)
     phys2 = PhysicalModel(pixels=pixels, method="conv2d")
 
     # test out noise
@@ -90,8 +90,8 @@ def test_lens_func_given_alpha():
 
 def test_interpolated_kappa():
     import tensorflow_addons as tfa
-    phys = PhysicalModel(pixels=128, src_pixels=32)
-    phys_a = AnalyticalPhysicalModel(pixels=128)
+    phys = PhysicalModel(pixels=128, src_pixels=32, image_fov=7.68, kappa_fov=5)
+    phys_a = AnalyticalPhysicalModel(pixels=128, image_fov=7.68)
     kappa = phys_a.kappa_field(r_ein=2., e=0.2)
     kappa += phys_a.kappa_field(r_ein=1., x0=2., y0=2.)
     true_lens = phys.lens_source_func(kappa, w=0.2)
@@ -99,7 +99,7 @@ def test_interpolated_kappa():
 
     # Test interpolation of alpha angles on a finer grid
     # phys = PhysicalModel(pixels=128, src_pixels=32, kappa_pixels=32)
-    phys_a = AnalyticalPhysicalModel(pixels=32)
+    phys_a = AnalyticalPhysicalModel(pixels=32, image_fov=7.68)
     kappa = phys_a.kappa_field(r_ein=2., e=0.2)
     kappa += phys_a.kappa_field(r_ein=1., x0=2., y0=2.)
 
@@ -121,11 +121,11 @@ def test_interpolated_kappa():
     wrap = tf.concat([i_coord, j_coord], axis=-1)
     # test_kappa1 = tfa.image.resampler(kappa, wrap)  # bilinear interpolation of source on wrap grid
     # test_lens1 = phys.lens_source_func(test_kappa1, w=0.2)
-    phys2 = PhysicalModel(pixels=128, kappa_pixels=32, method="fft")
+    phys2 = PhysicalModel(pixels=128, kappa_pixels=32, method="fft", image_fov=7.68, kappa_fov=5)
     test_lens1 = phys2.lens_source_func(kappa, w=0.2)
 
     # Test interpolated alpha angles lens
-    phys2 = PhysicalModel(pixels=32, src_pixels=32)
+    phys2 = PhysicalModel(pixels=32, src_pixels=32, image_fov=7.68, kappa_fov=5)
     alpha1, alpha2 = phys2.deflection_angle(kappa)
     alpha = tf.concat([alpha1, alpha2], axis=-1)
     alpha = tfa.image.resampler(alpha, wrap)
@@ -137,14 +137,13 @@ def test_interpolated_kappa():
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
+    from matplotlib.colors import LogNorm, SymLogNorm, CenteredNorm
     test_lens_func_given_alpha()
-    plt.show()
     im = test_analytical_lensing()
     # im = test_lens_source_conv2()[0, ..., 0]
     im1, im2 = test_alpha_method_fft()
     plt.imshow(im)
     plt.colorbar()
-    plt.show()
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
 
@@ -168,22 +167,24 @@ if __name__ == "__main__":
     divider = make_axes_locatable(ax3)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im, cax=cax, orientation='vertical')
-    #
 
     true_lens, test_lens1, test_lens2 = test_interpolated_kappa()
-    fig, axs = plt.subplots(2, 3, figsize=(8, 6))
-    axs[0, 0].imshow(true_lens[0, ..., 0], origin="lower")
-    axs[0, 1].imshow(test_lens1[0, ..., 0], origin="lower")
-    im = axs[0, 2].imshow((true_lens - test_lens1)[0, ..., 0], cmap="seismic", vmin=-0.4, vmax=0.4, origin="lower")
-    divider = make_axes_locatable(axs[0, 2])
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-
-    axs[1, 0].imshow(true_lens[0, ..., 0], origin="lower")
-    axs[1, 1].imshow(test_lens2[0, ..., 0], origin="lower")
-    im = axs[1, 2].imshow((true_lens - test_lens2)[0, ..., 0], cmap="seismic", vmin=-0.4, vmax=0.4, origin="lower")
-    divider = make_axes_locatable(axs[1, 2])
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
+    fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+    axs[0, 0].imshow(true_lens[0, ..., 0], cmap="hot")
+    axs[0, 0].axis("off")
+    axs[0, 0].set_title("Ground Truth")
+    axs[0, 1].imshow(test_lens1[0, ..., 0], cmap="hot")
+    axs[0, 1].axis("off")
+    axs[0, 1].set_title("Kappa interpolation")
+    axs[1, 1].imshow(test_lens1[0, ..., 0], cmap="hot")
+    axs[1, 1].axis("off")
+    axs[1, 1].set_title("Alpha interpolation")
+    # axs[1, 0].imshow(true_lens[0, ..., 0], cmap="hot")
+    axs[1, 0].axis("off")
+    axs[0, 2].imshow(true_lens[0, ..., 0] - test_lens1[0, ..., 0], cmap="seismic", norm=CenteredNorm())
+    axs[0, 2].set_title("Residuals")
+    axs[0, 2].axis("off")
+    axs[1, 2].imshow(true_lens[0, ..., 0] - test_lens2[0, ..., 0], cmap="seismic", norm=CenteredNorm())
+    axs[1, 2].axis("off")
 
     plt.show()
