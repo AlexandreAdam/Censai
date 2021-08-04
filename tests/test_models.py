@@ -1,5 +1,5 @@
-from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder
-from censai import RIMUnet, RIMSharedUnet, RIMUnet512, PhysicalModel, RIM
+from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE
+from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM
 import tensorflow as tf
 
 
@@ -136,7 +136,7 @@ def test_rim_shared_unet():
 
     phys = PhysicalModel(pixels=32, src_pixels=32, method="fft")
     unet = SharedUnetModel(kappa_resize_layers=0)
-    rim = RIMSharedUnet(phys, unet, 4, kappa_normalize=True, source_link="sqrt")
+    rim = RIMSharedUnet(phys, unet, 4, kappa_normalize=True, source_link="relu")
     lens = tf.random.normal(shape=[1, 32, 32, 1])
     source_series, kappa_series, chi_squared_series = rim.call(lens)
 
@@ -163,41 +163,47 @@ def test_rim():
 def test_resnet_vae():
     vae = ResnetVAE(pixels=32, layers=3, latent_size=16)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    vae.cost_function_training(x, 1., 1., 1.)
+    vae.cost_function_training(x, 1., 1.)
 
     vae = ResnetVAE(pixels=32, layers=3, res_blocks_in_layer=[5, 10, 15], conv_layers_per_block=3, latent_size=16, batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1., 1.))
+    print(vae.cost_function_training(x, 1., 1.))
 
     print("original")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="original", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1., 1.))
+    print(vae.cost_function_training(x, 1., 1.))
 
     print("bn_after_addition")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="bn_after_addition", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1., 1.))
+    print(vae.cost_function_training(x, 1., 1.))
 
     print("relu_before_addition")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="relu_before_addition", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1., 1.))
+    print(vae.cost_function_training(x, 1., 1.))
 
     print("relu_only_pre_activation")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="relu_only_pre_activation", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1., 1.))
+    print(vae.cost_function_training(x, 1., 1.))
 
     print("full_pre_activation")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="full_pre_activation", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1., 1.))
+    print(vae.cost_function_training(x, 1., 1.))
 
     print("full_pre_activation_rescale")
     vae = ResnetVAE(pixels=32, layers=3, res_architecture="full_pre_activation_rescale", batch_norm=True, dropout_rate=0.2)
     x = tf.random.normal(shape=(5, 32, 32, 1))
-    print(vae.cost_function_training(x, 1., 1., 1.))
+    print(vae.cost_function_training(x, 1., 1.))
+
+
+def test_vae():
+    vae = VAE(pixels=32, layers=3, latent_size=16, conv_layers=4)
+    x = tf.random.normal(shape=(5, 32, 32, 1))
+    print(vae.cost_function_training(x, 1., 1.))
 
 
 def test_resnet_encoder():
@@ -222,5 +228,6 @@ if __name__ == '__main__':
     # test_rim_shared_unet()
     # test_rim()
     # test_rim_unet()
-    test_resnet_vae()
-    test_resnet_encoder()
+    # test_resnet_vae()
+    # test_resnet_encoder()
+    test_vae()

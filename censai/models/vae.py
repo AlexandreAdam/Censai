@@ -4,7 +4,7 @@ from .encoder import Encoder
 from censai.definitions import DTYPE
 
 
-class ResnetVAE(tf.keras.Model):
+class VAE(tf.keras.Model):
     def __init__(
             self,
             pixels=128,  # side length of the input image, used to compute shape of bottleneck mainly
@@ -21,7 +21,7 @@ class ResnetVAE(tf.keras.Model):
             batch_norm=False,
             latent_size=16
     ):
-        super(ResnetVAE, self).__init__(dtype=DTYPE)
+        super(VAE, self).__init__(dtype=DTYPE)
         self.latent_size = latent_size
         self.encoder = Encoder(
             layers=layers,
