@@ -7,12 +7,15 @@ from astropy.cosmology import Planck18 as cosmo
 COSMO = cosmo
 DTYPE = tf.float32
 LOG10 = tf.constant(np.log(10.), DTYPE)
-LOGFLOOR = tf.constant(1e-5, DTYPE)
+LOGFLOOR = tf.constant(1e-8, DTYPE)
 # some estimate of kappa statistics (after rescaling for theta_e ~ Uniform(1, 7))
 KAPPA_LOG_MEAN = -0.52
 KAPPA_LOG_STD = 0.3
 KAPPA_LOG_MAX = 3
 KAPPA_LOG_MIN = tf.math.log(LOGFLOOR) / tf.math.log(10.)  # not actual min, which is 0
+
+SIGMOID_MIN = tf.constant(1e-3, DTYPE)
+SIGMOIN_MAX = tf.constant(1 - 1e-3, DTYPE)
 
 
 def theta_einstein(kappa, rescaling, physical_pixel_scale, sigma_crit, Dds, Ds, Dd):
@@ -131,6 +134,20 @@ def lrelu4p(x, alpha=0.04):
     return tf.maximum(x, tf.multiply(x, alpha))
 
 
+def logit(x):
+    """
+    Computes the logit function, i.e. the logistic sigmoid inverse.
+    This function has no gradient, so it cannot be used on model output. It is mainly used
+    to link physical labels to model labels.
+
+    We clip values for numerical stability.
+    Normally, there should not be any values outside of this range anyway, except maybe for the peak at 1.
+    """
+    x = tf.math.minimum(x, SIGMOIN_MAX)
+    x = tf.math.maximum(x, SIGMOID_MIN)
+    return - tf.math.log(1. / x - 1.)
+
+
 def to_float(x):
     """Cast x to float; created because tf.to_float is deprecated."""
     return tf.cast(x, tf.float32)
@@ -229,7 +246,3 @@ def conv2_layers_flops(layer):
 def upsampling2d_layers_flops(layer):
     _, h, w, output_channels = layer.output_shape
     return 50 * h * w * output_channels
-
-
-def lrelu4p(x, alpha=0.04):
-    return tf.maximum(x, tf.multiply(x, alpha))

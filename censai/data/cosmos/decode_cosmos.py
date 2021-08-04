@@ -1,5 +1,4 @@
 import tensorflow as tf
-from censai.definitions import DTYPE
 
 
 def decode_all(record_bytes):
@@ -35,15 +34,29 @@ def decode(record_bytes):
     return [example[key] for key in keys]
 
 
+def preprocess(image, psf, ps):
+    image = tf.nn.relu(image)  # set negative pixels to 0.
+    image = image / tf.reduce_max(image)  # set peak value to 1
+    return image, psf, ps
+
+
+def decode_image(record_bytes):
+    example = decode_all(record_bytes)
+    return example['image']
+
+
+def preprocess_image(image):
+    image = tf.nn.relu(image)  # set negative pixels to 0.
+    image = image / tf.reduce_max(image)  # set peak value to 1
+    return image
+
+
 def decode_image_shape(record_bytes):
     keys = ['height']
     example = decode_all(record_bytes)
     return [example[key] for key in keys]
 
 
-def preprocess(images, psf, ps):
-    images = tf.where(images < 0, tf.constant(0, DTYPE), images)  # set negative pixel to 0
-    return images, psf, ps
 
 
 # # some tests that everything works

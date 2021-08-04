@@ -1,6 +1,6 @@
 import tensorflow as tf
 from censai.models import Model
-from censai.definitions import logkappa_normalization, log_10, DTYPE
+from censai.definitions import logkappa_normalization, log_10, DTYPE, logit, lrelu4p
 from censai import PhysicalModel
 from censai.utils import nulltape
 
@@ -42,36 +42,39 @@ class RIM:
 
         if self.kappalog:
             if self.kappa_normalize:
-                self.kappa_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_10(x), forward=True))
-                # self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(logkappa_normalization(x, forward=False)))
-                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**(logkappa_normalization(x, forward=False)))
+                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: logkappa_normalization(log_10(x), forward=True))
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: 10**(logkappa_normalization(x, forward=False)))
             else:
-                self.kappa_link = tf.keras.layers.Lambda(lambda x: log_10(x))
-                # self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: kappa_clipped_exponential(x))
-                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: 10**x)
+                self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: log_10(x))
+                self.kappa_link = tf.keras.layers.Lambda(lambda x: 10**x)
 
         else:
             self.kappa_link = tf.identity
             self.kappa_inverse_link = tf.identity
 
         if self._source_link_func == "exp":
-            self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.log(x + 1e-6))
-            self.source_inverse_link = tf.keras.layers.Lambda(lambda x: tf.math.exp(x))
-        elif self._source_link_func == "sqrt":
-            self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.sqrt(x + 1e-6))
-            self.source_inverse_link = tf.keras.layers.Lambda(lambda x: x**2)
+            self.source_inverse_link = tf.keras.layers.Lambda(lambda x: tf.math.log(x + 1e-6))
+            self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.exp(x))
         elif self._source_link_func == "identity":
-            self.source_link = tf.identity
             self.source_inverse_link = tf.identity
+            self.source_link = tf.identity
         elif self._source_link_func == "relu":
+            self.source_inverse_link = tf.identity
             self.source_link = tf.nn.relu
-            self.source_inverse_link = tf.nn.relu
+        elif self._source_link_func == "sigmoid":
+            self.source_inverse_link = logit
+            self.source_link = tf.nn.sigmoid
+        elif self._source_link_func == "leaky_relu":
+            self.source_inverse_link = tf.identity
+            self.source_link = lrelu4p
+
         else:
-            raise NotImplementedError(f"{source_link} not in ['exp', 'sqrt', 'identity', 'relu']")
+            raise NotImplementedError(f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'sigmoid']")
 
     def initial_states(self, batch_size):
-        source_init = self.source_link(tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
-        kappa_init = self.kappa_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
+        # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
+        source_init = self.source_inverse_link(tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
+        kappa_init = self.kappa_inverse_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
 
         source_states = self.source_model.init_hidden_states(self.source_pixels, batch_size)
         kappa_states = self.kappa_model.init_hidden_states(self.kappa_pixels, batch_size)
@@ -117,7 +120,7 @@ class RIM:
                 with tf.GradientTape() as g:
                     g.watch(source)
                     g.watch(kappa)
-                    log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+                    log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
                     cost = tf.reduce_mean(log_likelihood)
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
@@ -138,13 +141,13 @@ class RIM:
             with tf.GradientTape() as g:
                 g.watch(source)
                 g.watch(kappa)
-                log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_inverse_link(source), kappa=self.kappa_inverse_link(kappa))
+                log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
                 cost = tf.reduce_mean(log_likelihood)
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
-            source_series = source_series.write(index=current_step, value=self.source_inverse_link(source))
-            kappa_series = kappa_series.write(index=current_step, value=self.kappa_inverse_link(kappa))
+            source_series = source_series.write(index=current_step, value=self.source_link(source))
+            kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
             chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
@@ -161,8 +164,8 @@ class RIM:
 
         """
         source_series, kappa_series, chi_squared = self.call(lensed_image, outer_tape=outer_tape)
-        source_cost = tf.reduce_sum(tf.square(source_series - self.source_link(source)), axis=0) / self.steps
-        kappa_cost = tf.reduce_sum(tf.square(kappa_series - self.kappa_link(kappa)), axis=0) / self.steps
+        source_cost = tf.reduce_sum(tf.square(source_series - self.source_inverse_link(source)), axis=0) / self.steps
+        kappa_cost = tf.reduce_sum(tf.square(kappa_series - self.kappa_inverse_link(kappa)), axis=0) / self.steps
         chi = tf.reduce_sum(chi_squared, axis=0) / self.steps
 
         if reduction:

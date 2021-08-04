@@ -39,7 +39,7 @@ class CosmosAutoencoder(tf.keras.Model):
             bias_reg_amp=bias_reg_amp,
             dropout_rate=dropout_rate,
             batch_norm=batch_norm,
-            mlp_bottleneck_neurons=latent_size,
+            latent_size=latent_size,
             activation=activation
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
