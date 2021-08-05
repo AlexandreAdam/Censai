@@ -134,6 +134,25 @@ def test_interpolated_kappa():
     return true_lens, test_lens1, test_lens2
 
 
+def test_lagrange_multiplier_for_lens_intensity():
+    phys = PhysicalModel(pixels=128)
+    phys_a = AnalyticalPhysicalModel(pixels=128)
+    kappa = phys_a.kappa_field(2.0, e=0.2)
+    x = np.linspace(-1, 1, 128) * phys.src_fov/2
+    xx, yy = np.meshgrid(x, x)
+    rho = xx**2 + yy**2
+    source = tf.math.exp(-0.5 * rho / 0.5**2)[tf.newaxis, ..., tf.newaxis]
+    source = tf.cast(source, tf.float32)
+
+    y_true = phys.forward(source, kappa)
+    y_pred = phys.forward(0.001 * source, kappa)  # rescale it, say it has different units
+    lam_lagrange = tf.reduce_sum(y_true * y_pred, axis=(1, 2, 3)) / tf.reduce_sum(y_pred ** 2, axis=(1, 2, 3))
+    lam_tests = tf.squeeze(tf.cast(tf.linspace(lam_lagrange/10, lam_lagrange*10, 1000), tf.float32))[..., tf.newaxis, tf.newaxis, tf.newaxis]
+    log_likelihood_best = 0.5 * tf.reduce_mean((lam_lagrange * y_pred - y_true) ** 2 / phys.noise_rms ** 2, axis=(1, 2, 3))
+    log_likilhood_test = 0.5 * tf.reduce_mean((lam_tests * y_pred - y_true) ** 2 / phys.noise_rms ** 2, axis=(1, 2, 3))
+    return log_likilhood_test, log_likelihood_best, tf.squeeze(lam_tests), lam_lagrange
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -186,5 +205,13 @@ if __name__ == "__main__":
     axs[0, 2].axis("off")
     axs[1, 2].imshow(true_lens[0, ..., 0] - test_lens2[0, ..., 0], cmap="seismic", norm=CenteredNorm())
     axs[1, 2].axis("off")
+
+    log_test, log_best, lam_test, lam_best = test_lagrange_multiplier_for_lens_intensity()
+    plt.figure()
+    plt.plot(lam_test, log_test, "-k")
+    plt.axvline(lam_best)
+    plt.axhline(log_best)
+    plt.xlabel(r"$\lambda$")
+    plt.ylabel(r"$\mathcal{L}(y \mid x)$")
 
     plt.show()

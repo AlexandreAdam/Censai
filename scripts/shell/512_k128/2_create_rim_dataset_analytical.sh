@@ -12,7 +12,7 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_analytical_kappa_maps.py\
   --output_dir=$HOME/scratch/Censai/data/lenses512_k128_NIS/\
   --len_dataset=2000\
-  --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
+  --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5_preprocessed/\
   --compression_type=GZIP\
   --lens_pixels=512\
   --src_pixels=128\
