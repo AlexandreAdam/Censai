@@ -14,8 +14,8 @@ python $CENSAI_PATH/scripts/cosmos_to_tfrecords_distributed.py\
   --sample=23.5\
   --exclusion_level=marginal\
   --min_flux=0.1\
-  --min_new_flux=2\
+  --min_new_flux=5\
   --cosmos_dir=$HOME/projects/rrg-lplevass/data/COSMOS/COSMOS_23.5_training_sample/\
   --store_attributes\
   --rotation\
-  --output_dir=$HOME/scratch/Censai/data/cosmos_23.5_preprocessed/
+  --output_dir=$HOME/scratch/Censai/data/cosmos_23.5_preprocessed_highSNR/
