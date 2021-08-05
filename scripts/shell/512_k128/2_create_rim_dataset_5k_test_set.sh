@@ -13,7 +13,7 @@ python $CENSAI_PATH/scripts/create_rim_dataset.py\
   --output_dir=$HOME/scratch/Censai/data/lenses512_k128_TNG100_testset/\
   --len_dataset=5000\
   --kappa_dir=$HOME/scratch/Censai/data/kappa158_TNG100_512\
-  --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5/\
+  --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5_preprocessed_highSNR/\
   --compression_type=GZIP\
   --lens_pixels=512\
   --src_pixels=128\

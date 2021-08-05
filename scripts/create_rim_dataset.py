@@ -75,6 +75,7 @@ def distributed_strategy(args):
             kappa, einstein_radius, rescaling_factors, kappa_ids, einstein_radius_init = kappa_gen.draw_batch(
                 batch_size, rescale=True, shift=True, rotate=args.rotate, random_draw=True, return_einstein_radius_init=True)
             lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=args.noise_rms)
+            lensed_images = tf.nn.relu(lensed_images)  # remove negative pixels
 
             records = encode_examples(
                 kappa=kappa,

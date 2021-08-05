@@ -8,5 +8,5 @@
 #SBATCH --job-name=Tensorboard
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-tensorboard --logdir=$CENSAI_PATH/logs --host 0.0.0.0
+tensorboard --logdir=$CENSAI_PATH/logsRVAE_k --host 0.0.0.0
 
