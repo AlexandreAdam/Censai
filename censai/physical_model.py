@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
 from censai.definitions import DTYPE
-from censai.utils import nullcontext
 
 
 class PhysicalModel:
@@ -102,7 +101,8 @@ class PhysicalModel:
 
     def log_likelihood(self, source, kappa, y_true):
         y_pred = self.forward(source, kappa)
-        return 0.5 * tf.reduce_mean((y_pred - y_true)**2/self.noise_rms**2, axis=(1, 2, 3))
+        lam_lagrange = tf.reduce_sum(y_true * y_pred, axis=(1, 2, 3)) / tf.reduce_sum(y_pred**2, axis=(1, 2, 3))[..., tf.newaxis, tf.newaxis, tf.newaxis]
+        return 0.5 * tf.reduce_mean((lam_lagrange * y_pred - y_true)**2/self.noise_rms**2, axis=(1, 2, 3))
 
     def forward(self, source, kappa):
         im = self.lens_source(source, kappa)
@@ -112,7 +112,7 @@ class PhysicalModel:
     def noisy_forward(self, source, kappa, noise_rms):
         im = self.lens_source(source, kappa)
         noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
-        out = self.convolve_with_psf(im)
+        out = self.convolve_with_psf(im)  # convolve before adding noise, otherwise it correlates the noise
         out = out + noise
         return out
 
