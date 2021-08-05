@@ -136,8 +136,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.store_attributes:
         vars(args)["attributes"] = ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'zphot']
-    if not os.path.isdir(args.output_dir):
+    if not os.path.isdir(args.output_dir) and THIS_WORKER <= 1:
         os.mkdir(args.output_dir)
 
-
-
+    distributed_strategy(args)
