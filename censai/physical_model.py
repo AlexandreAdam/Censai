@@ -237,15 +237,15 @@ class PhysicalModel:
         xconv_kernel = -self._safe_divide(xx, rho)
         yconv_kernel = -self._safe_divide(yy, rho)
         # reshape to [filter_height, filter_width, in_channels, out_channels]
-        self.xconv_kernel = tf.constant(xconv_kernel[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
-        self.yconv_kernel = tf.constant(yconv_kernel[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
+        self.xconv_kernel = tf.cast(xconv_kernel[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
+        self.yconv_kernel = tf.cast(yconv_kernel[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
 
         # coordinates for image
         x = tf.linspace(-1, 1, self.pixels) * self.image_fov / 2
         xx, yy = tf.meshgrid(x, x)
         # reshape for broadcast to [batch_size, pixels, pixels, 1]
-        self.ximage = tf.constant(xx[tf.newaxis, ..., tf.newaxis], dtype=DTYPE)
-        self.yimage = tf.constant(yy[tf.newaxis, ..., tf.newaxis], dtype=DTYPE)
+        self.ximage = tf.cast(xx[tf.newaxis, ..., tf.newaxis], dtype=DTYPE)
+        self.yimage = tf.cast(yy[tf.newaxis, ..., tf.newaxis], dtype=DTYPE)
 
 
     @staticmethod
