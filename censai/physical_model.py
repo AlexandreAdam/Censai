@@ -231,21 +231,22 @@ class PhysicalModel:
         self.dx_kap = self.kappa_fov / (self.pixels - 1)  # dx on image grid
 
         # Convolution kernel
-        x = np.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_fov
-        xx, yy = np.meshgrid(x, x)
+        x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_fov
+        xx, yy = tf.meshgrid(x, x)
         rho = xx**2 + yy**2
         xconv_kernel = -self._safe_divide(xx, rho)
         yconv_kernel = -self._safe_divide(yy, rho)
         # reshape to [filter_height, filter_width, in_channels, out_channels]
-        self.xconv_kernel = tf.constant(xconv_kernel[..., np.newaxis, np.newaxis], dtype=tf.float32)
-        self.yconv_kernel = tf.constant(yconv_kernel[..., np.newaxis, np.newaxis], dtype=tf.float32)
+        self.xconv_kernel = tf.constant(xconv_kernel[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
+        self.yconv_kernel = tf.constant(yconv_kernel[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
 
         # coordinates for image
-        x = np.linspace(-1, 1, self.pixels) * self.image_fov / 2
-        xx, yy = np.meshgrid(x, x) 
+        x = tf.linspace(-1, 1, self.pixels) * self.image_fov / 2
+        xx, yy = tf.meshgrid(x, x)
         # reshape for broadcast to [batch_size, pixels, pixels, 1]
-        self.ximage = tf.constant(xx[np.newaxis, ..., np.newaxis], dtype=np.float32)
-        self.yimage = tf.constant(yy[np.newaxis, ..., np.newaxis], dtype=tf.float32)
+        self.ximage = tf.constant(xx[tf.newaxis, ..., tf.newaxis], dtype=DTYPE)
+        self.yimage = tf.constant(yy[tf.newaxis, ..., tf.newaxis], dtype=DTYPE)
+
 
     @staticmethod
     def _safe_divide(num, denominator):
@@ -257,13 +258,13 @@ class PhysicalModel:
         pixel_scale = self.image_fov / self.pixels
         cutout_size = int(10 * self.psf_sigma / pixel_scale)
         r_squared = self.ximage**2 + self.yimage**2
-        psf = np.exp(-0.5 * r_squared / self.psf_sigma**2)
+        psf = tf.math.exp(-0.5 * r_squared / self.psf_sigma**2)
         psf = tf.image.crop_to_bounding_box(psf,
                                             offset_height=self.pixels//2 - cutout_size//2,
                                             offset_width=self.pixels//2 - cutout_size//2,
                                             target_width=cutout_size,
                                             target_height=cutout_size)
-        psf /= psf.numpy().sum()
+        psf /= tf.reduce_sum(psf)
         psf = tf.reshape(psf, shape=[cutout_size, cutout_size, 1, 1])
         return psf
 
