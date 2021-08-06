@@ -1,5 +1,5 @@
 import tensorflow as tf
-from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer, DownsamplingLayer, UpsamplingLayer
+from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer
 from .layers.conv_gru_component import ConvGRUBlock
 from .utils import get_activation
 from censai.definitions import DTYPE

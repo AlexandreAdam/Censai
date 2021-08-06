@@ -54,7 +54,6 @@ class RIMSharedUnet:
             else:
                 self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: log_10(x))
                 self.kappa_link = tf.keras.layers.Lambda(lambda x: 10**x)
-
         else:
             self.kappa_link = tf.identity
             self.kappa_inverse_link = tf.identity
