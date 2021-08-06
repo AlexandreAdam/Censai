@@ -203,8 +203,8 @@ def main(args):
         with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
             source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
-            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_link(source)), axis=(0, 2, 3, 4))
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_link(kappa)), axis=(0, 2, 3, 4))
+            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(0, 2, 3, 4))
+            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
         if args.clipping:
@@ -228,8 +228,8 @@ def main(args):
     def test_step(inputs):
         X, source, kappa = inputs
         source_series, kappa_series, chi_squared = rim.call(X)
-        source_cost = tf.reduce_mean(tf.square(source_series - rim.source_link(source)), axis=(0, 2, 3, 4))
-        kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_link(kappa)), axis=(0, 2, 3, 4))
+        source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(0, 2, 3, 4))
+        kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
         cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
         source_cost = tf.reduce_sum(source_cost) / args.batch_size

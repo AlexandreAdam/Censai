@@ -128,27 +128,15 @@ def test_shared_unet_model():
 
 
 def test_rim_shared_unet():
-    phys = PhysicalModel(pixels=64, src_pixels=32, method="fft")
-    unet = SharedUnetModel(kappa_resize_layers=1)
+    phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
+    unet = SharedUnetModel()
     rim = RIMSharedUnet(phys, unet, 4)
     lens = tf.random.normal(shape=[1, 64, 64, 1])
     source_series, kappa_series, chi_squared_series = rim.call(lens)
 
-    phys = PhysicalModel(pixels=32, src_pixels=32, method="fft")
-    unet = SharedUnetModel(kappa_resize_layers=0)
     rim = RIMSharedUnet(phys, unet, 4, kappa_normalize=True, source_link="relu")
-    lens = tf.random.normal(shape=[1, 32, 32, 1])
+    lens = tf.random.normal(shape=[1, 64, 64, 1])
     source_series, kappa_series, chi_squared_series = rim.call(lens)
-
-    rim = RIMSharedUnet(phys, unet, 4, kappa_normalize=True, source_link="exp")
-    lens = tf.random.normal(shape=[1, 32, 32, 1])
-    source_series, kappa_series, chi_squared_series = rim.call(lens)
-
-    lens = tf.random.normal(shape=[1, 128, 128, 1])
-    phys = PhysicalModel(pixels=128, src_pixels=32, kappa_pixels=64, method="fft")
-    m1 = SharedUnetModel(kappa_resize_layers=1)
-    rim = RIMSharedUnet(phys, m1, steps=2)
-    rim.call(lens)
 
 
 def test_rim():
@@ -221,13 +209,13 @@ def test_resnet_encoder():
 
 if __name__ == '__main__':
     # test_ray_tracer_512()
-    test_raytracer()
-    test_resnet_autoencoder()
-    test_unet_model()
-    test_shared_unet_model()
+    # test_raytracer()
+    # test_resnet_autoencoder()
+    # test_unet_model()
+    # test_shared_unet_model()
     test_rim_shared_unet()
-    test_rim()
-    test_rim_unet()
-    test_resnet_vae()
-    test_resnet_encoder()
-    test_vae()
+    # test_rim()
+    # test_rim_unet()
+    # test_resnet_vae()
+    # test_resnet_encoder()
+    # test_vae()
