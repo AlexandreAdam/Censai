@@ -137,7 +137,6 @@ class SharedUnetModel(tf.keras.Model):
         source_delta, kappa_delta = tf.split(delta_xt, 2, axis=-1)
         new_source = source + source_delta
         new_kappa = kappa + kappa_delta
-        new_kappa = self.upsampling_layer(new_kappa)
         return new_source, new_kappa, new_states
 
     def init_hidden_states(self, input_pixels, batch_size, constant=0.):
