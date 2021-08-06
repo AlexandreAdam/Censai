@@ -109,13 +109,8 @@ def main(args):
             noise_rms=physical_params["noise rms"].numpy(),
             raytracer=raytracer
         )
-        assert is_power_of_two(phys.kappa_pixels)
-        assert is_power_of_two(phys.src_pixels)
-        kappa_resize_layers = (phys.kappa_pixels // phys.src_pixels) // args.kappa_resize_strides
-        vars(args).update({"kappa_resize_layers": int(kappa_resize_layers)})
 
         unet = SharedUnetModel(
-            kappa_resize_layers=args.kappa_resize_layers,
             filters=args.filters,
             filter_scaling=args.filter_scaling,
             kernel_size=args.kernel_size,
@@ -132,12 +127,6 @@ def main(args):
             activation=args.activation,
             alpha=args.alpha,
             initializer=args.initializer,
-            kappa_resize_filters=args.kappa_resize_filters,
-            kappa_resize_strides=args.kappa_resize_strides,
-            kappa_resize_conv_layers=args.kappa_resize_conv_layers,
-            kappa_resize_kernel_size=args.kappa_resize_kernel_size,
-            kappa_resize_method=args.kappa_resize_method,
-            kappa_resize_separate_grad_downsampling=args.kappa_resize_separate_grad_downsampling
         )
         rim = RIMSharedUnet(
             physical_model=phys,
@@ -440,12 +429,6 @@ if __name__ == "__main__":
     parser.add_argument("--activation",                                 default="leaky_relu")
     parser.add_argument("--alpha",                                      default=0.1,    type=float)
     parser.add_argument("--initializer",                                default="glorot_normal")
-    parser.add_argument("--kappa_resize_filters",                       default=4,      type=int)
-    parser.add_argument("--kappa_resize_method",                        default="bilinear")
-    parser.add_argument("--kappa_resize_conv_layers",                   default=1,      type=int)
-    parser.add_argument("--kappa_resize_strides",                       default=2,      type=int)
-    parser.add_argument("--kappa_resize_kernel_size",                   default=3,      type=int)
-    parser.add_argument("--kappa_resize_separate_grad_downsampling",    action="store_true")
 
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
