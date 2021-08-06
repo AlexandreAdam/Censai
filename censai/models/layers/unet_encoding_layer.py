@@ -3,6 +3,34 @@ from censai.models.utils import get_activation
 from censai.definitions import DTYPE
 
 
+class DownsamplingLayer(tf.keras.layers.Layer):
+    def __init__(
+            self,
+            filters,
+            kernel_size,
+            activation,
+            strides,
+            batch_norm,
+            **kwargs
+    ):
+        super(DownsamplingLayer, self).__init__()
+
+        self.conv = tf.keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            **kwargs
+        )
+        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.activation = activation
+
+    def call(self, x):
+        x = self.conv(x)
+        x = self.batch_norm(x)
+        x = self.activation(x)
+        return x
+
+
 class UnetEncodingLayer(tf.keras.layers.Layer):
     """
     Abstraction for n convolutional layers and a strided convolution for downsampling. The output of the layer
@@ -51,17 +79,13 @@ class UnetEncodingLayer(tf.keras.layers.Layer):
                 self.batch_norms.append(
                     tf.identity
                 )
-        self.downsampling_layer = tf.keras.Sequential(
-            [
-                tf.keras.layers.Conv2D(
-                    filters=self.filters,
-                    kernel_size=self.downsampling_kernel_size,
-                    strides=self.strides,
-                    **kwargs
-                ),
-                tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x)),
-                self.activation
-            ]
+        self.downsampling_layer = DownsamplingLayer(
+            filters=self.filters,
+            kernel_size=self.downsampling_kernel_size,
+            strides=self.strides,
+            batch_norm=batch_norm,
+            activation=self.activation,
+            **kwargs
         )
         if dropout_rate is None:
             self.dropout = tf.identity

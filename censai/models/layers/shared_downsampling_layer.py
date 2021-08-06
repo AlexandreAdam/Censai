@@ -9,7 +9,8 @@ class DownsamplingLayer(tf.keras.Model):
             strides: int,
             filters: int,
             output_filters: int,
-            kernel_size: 5):
+            kernel_size: int
+    ):
         super(DownsamplingLayer, self).__init__()
         self.output_layer = tf.keras.layers.Conv2D(filters=output_filters, kernel_size=kernel_size, padding="SAME")
         self._layers = []

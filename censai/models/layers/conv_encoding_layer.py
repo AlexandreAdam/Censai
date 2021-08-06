@@ -2,6 +2,33 @@ import tensorflow as tf
 from censai.models.utils import get_activation
 
 
+class DownsamplingLayer(tf.keras.layers.Layer):
+    def __init__(
+            self,
+            filters,
+            kernel_size,
+            activation,
+            strides,
+            batch_norm
+    ):
+        super(DownsamplingLayer, self).__init__()
+
+        self.conv = tf.keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            padding="SAME"
+        )
+        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.activation = activation
+
+    def call(self, x):
+        x = self.conv(x)
+        x = self.batch_norm(x)
+        x = self.activation(x)
+        return x
+
+
 class ConvEncodingLayer(tf.keras.layers.Layer):
     def __init__(
             self,
@@ -14,7 +41,6 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
             dropout_rate=None,
             name=None,
             strides=2,
-            **common_params
     ):
         super(ConvEncodingLayer, self).__init__(name=name)
         if downsampling_kernel_size is None:
@@ -35,7 +61,6 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
                     filters=self.filters,
                     kernel_size=self.kernel_size,
                     activation=self.activation,
-                    **common_params
                 )
             )
             if batch_norm:
@@ -46,17 +71,12 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
                 self.batch_norms.append(
                     tf.identity
                 )
-        self.downsampling_layer = tf.keras.Sequential(
-            [
-                tf.keras.layers.Conv2D(
-                    filters=self.filters,
-                    kernel_size=self.downsampling_kernel_size,
-                    strides=self.strides,
-                    **common_params
-                ),
-                tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x)),
-                self.activation
-            ]
+        self.downsampling_layer = DownsamplingLayer(
+            filters=self.filters,
+            kernel_size=self.downsampling_kernel_size,
+            activation=self.activation,
+            strides=self.strides,
+            batch_norm=batch_norm
         )
 
         if dropout_rate is None:

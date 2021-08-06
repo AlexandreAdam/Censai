@@ -68,7 +68,6 @@ def main(args):
         batch_norm=args.batch_norm,
         latent_size=args.latent_size
     )
-    vae.call(tf.zeros(shape=[args.batch_size, pixels, pixels, 1], dtype=DTYPE))  # build layers of model
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.initial_learning_rate,
         decay_rate=args.decay_rate,

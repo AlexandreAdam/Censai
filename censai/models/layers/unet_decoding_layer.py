@@ -3,6 +3,33 @@ from censai.models.utils import get_activation
 from censai.definitions import DTYPE
 
 
+class UpsamplingLayer(tf.keras.layers.Layer):
+    def __init__(
+            self,
+            filters,
+            kernel_size,
+            strides,
+            batch_norm,
+            activation,
+            **kwargs
+    ):
+        super(UpsamplingLayer, self).__init__()
+        self.conv = tf.keras.layers.Conv2DTranspose(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            **kwargs
+        )
+        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.activation = activation
+
+    def call(self, x):
+        x = self.conv(x)
+        x = self.batch_norm(x)
+        x = self.activation(x)
+        return x
+
+
 class UnetDecodingLayer(tf.keras.layers.Layer):
     """
     Abstraction for n convolutional layers and a strided convolution for upsampling. Skip connection
@@ -54,17 +81,14 @@ class UnetDecodingLayer(tf.keras.layers.Layer):
         if bilinear:
             self.upsampling_layer = tf.keras.layers.UpSampling2D(size=self.strides, interpolation="bilinear")
         else:
-            self.upsampling_layer = tf.keras.Sequential(
-                [
-                    tf.keras.layers.Conv2DTranspose(
-                        filters=self.filters,
-                        kernel_size=self.upsampling_kernel_size,
-                        strides=self.strides,
-                        **common_params
-                    ),
-                    tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x)),
-                    self.activation
-                ]
+            self.upsampling_layer = UpsamplingLayer(
+                filters=self.filters,
+                kernel_size=self.upsampling_kernel_size,
+                strides=self.strides,
+                batch_norm=batch_norm,
+                activation=self.activation,
+                **common_params
+
             )
         if dropout_rate is None:
             self.dropout = tf.identity

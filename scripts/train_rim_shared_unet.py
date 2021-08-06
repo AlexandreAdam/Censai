@@ -5,6 +5,7 @@ from censai import PhysicalModel, RIMSharedUnet
 from censai.models import SharedUnetModel, RayTracer
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
+from censai.definitions import DTYPE
 import os, glob, time, json
 from datetime import datetime
 
