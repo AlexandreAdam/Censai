@@ -8,7 +8,6 @@ from censai.definitions import DTYPE
 class SharedUnetModel(tf.keras.Model):
     def __init__(
             self,
-            kappa_resize_layers,
             name="RIMUnetModel",
             filters=32,
             filter_scaling=1,
@@ -28,12 +27,6 @@ class SharedUnetModel(tf.keras.Model):
             use_bias=True,
             trainable=True,
             initializer="glorot_uniform",
-            kappa_resize_separate_grad_downsampling=False,
-            kappa_resize_method="bilinear",
-            kappa_resize_filters=4,
-            kappa_resize_kernel_size=3,
-            kappa_resize_conv_layers=1,
-            kappa_resize_strides=2
     ):
         super(SharedUnetModel, self).__init__(name=name)
         self.trainable = trainable
@@ -117,56 +110,10 @@ class SharedUnetModel(tf.keras.Model):
             **common_params
         )
 
-        # Some logic here to support 2 modes of downsampling
-        self.separate_grad_downsampling = kappa_resize_separate_grad_downsampling
-        if kappa_resize_layers == 0:
-            self.upsampling_layer = tf.identity
-            self.downsampling_layer = tf.identity
-            self.grad_downsampling_layer = tf.identity
-        else:
-            self.upsampling_layer = UpsamplingLayer(
-                method=kappa_resize_method,
-                layers=kappa_resize_layers,
-                conv_layers=kappa_resize_conv_layers,
-                kernel_size=kappa_resize_kernel_size,
-                strides=kappa_resize_strides,
-                filters=kappa_resize_filters,
-                output_filters=1
-            )
-            self.downsampling_layer = DownsamplingLayer(
-                layers=kappa_resize_layers,
-                conv_layers=kappa_resize_conv_layers,
-                kernel_size=kappa_resize_kernel_size,
-                strides=kappa_resize_strides,
-                filters=kappa_resize_filters,
-                output_filters=1 if self.separate_grad_downsampling else 2
-            )
-            if self.separate_grad_downsampling:
-                self.grad_downsampling_layer = DownsamplingLayer(
-                    layers=kappa_resize_layers,
-                    conv_layers=kappa_resize_conv_layers,
-                    kernel_size=kappa_resize_kernel_size,
-                    strides=kappa_resize_strides,
-                    filters=kappa_resize_filters,
-                    output_filters=1
-                )
-            else:
-                self.grad_downsampling_layer = None
-
     def __call__(self, source, kappa, source_grad, kappa_grad, states):
         return self.call(source, kappa, source_grad, kappa_grad, states)
 
     def call(self, source, kappa, source_grad, kappa_grad, states):
-        if not self.separate_grad_downsampling:
-            kappa, kappa_grad = tf.split(
-                self.downsampling_layer(
-                    tf.concat([kappa, kappa_grad], axis=-1)
-                ),
-                2, axis=-1
-            )
-        else:
-            kappa = self.downsampling_layer(kappa)
-            kappa_grad = self.grad_downsampling_layer(kappa_grad)
         delta_xt = tf.concat([source, source_grad, kappa, kappa_grad], axis=-1)
         skip_connections = []
         for i in range(len(self.encoding_layers)):
