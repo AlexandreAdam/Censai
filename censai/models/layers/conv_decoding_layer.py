@@ -2,6 +2,39 @@ import tensorflow as tf
 from censai.models.utils import get_activation
 
 
+class UpsamplingLayer(tf.keras.layers.Layer):
+    def __init__(
+            self,
+            filters,
+            kernel_size,
+            strides,
+            padding,
+            data_format,
+            kernel_reg_amp,
+            bias_reg_amp,
+            batch_norm,
+            activation
+    ):
+        super(UpsamplingLayer, self).__init__()
+        self.conv = tf.keras.layers.Conv2DTranspose(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            padding=padding,
+            data_format=data_format,
+            kernel_regularizer=tf.keras.regularizers.l2(kernel_reg_amp),
+            bias_regularizer=tf.keras.regularizers.l2(bias_reg_amp)
+        )
+        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.activation = activation
+
+    def call(self, x):
+        x = self.conv(x)
+        x = self.batch_norm(x)
+        x = self.activation(x)
+        return x
+
+
 class ConvDecodingLayer(tf.keras.layers.Layer):
     def __init__(
             self,
@@ -53,20 +86,16 @@ class ConvDecodingLayer(tf.keras.layers.Layer):
         if bilinear:
             self.upsampling_layer = tf.keras.layers.UpSampling2D(size=self.strides, interpolation="bilinear")
         else:
-            self.upsampling_layer = tf.keras.Sequential(
-                [
-                    tf.keras.layers.Conv2DTranspose(
-                        filters=self.filters,
-                        kernel_size=self.upsampling_kernel_size,
-                        strides=self.strides,
-                        padding="SAME",
-                        data_format="channels_last",
-                        kernel_regularizer=tf.keras.regularizers.l2(kernel_reg_amp),
-                        bias_regularizer=tf.keras.regularizers.l2(bias_reg_amp)
-                    ),
-                    tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x)),
-                    self.activation
-                ]
+            self.upsampling_layer = UpsamplingLayer(
+                filters=self.filters,
+                kernel_size=self.upsampling_kernel_size,
+                strides=self.strides,
+                padding="SAME",
+                data_format="channels_last",
+                kernel_reg_amp=kernel_reg_amp,
+                bias_reg_amp=bias_reg_amp,
+                batch_norm=batch_norm,
+                activation=self.activation
             )
 
         if dropout_rate is None:
