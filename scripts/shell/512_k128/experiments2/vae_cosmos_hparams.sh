@@ -11,7 +11,6 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --datasets $CENSAI_PATH/data/cosmos_23.5_preprocessed_highSNR/\
-  --compression_type=GZIP\
   --strategy=exhaustive\
   --epochs=200\
   --n_models=32\
