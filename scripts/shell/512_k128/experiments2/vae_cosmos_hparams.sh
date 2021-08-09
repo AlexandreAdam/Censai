@@ -27,7 +27,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --beta_decay_power 0.5\
   --beta_decay_steps=20000\
   --beta_cyclical 0\
-  --skip_strength_init=0.\
+  --skip_strength_init=0. 1e-3\
   --skip_strength_end_value=0.\
   --skip_strength_decay_power 0.5\
   --skip_strength_decay_steps=2000\
@@ -40,7 +40,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --patience=20\
   --tolerance=0.01\
   --block_length=1\
-  --layers 4 5\
+  --layers 3 4\
   --conv_layers 3 4\
   --filter_scaling 2\
   --filters 16 32\
