@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from censai.data.cosmos import decode, decode_shape, preprocess
+from censai.data.cosmos import decode_image, decode_shape, preprocess_image
 from censai.utils import nullwriter, vae_residual_plot as residual_plot, plot_to_image
 from censai.definitions import PolynomialSchedule
 from censai.models import VAE
@@ -38,7 +38,7 @@ def main(args):
     for pixels in dataset.map(decode_shape):
         break
     vars(args).update({"pixels": int(pixels)})
-    dataset = dataset.map(decode).map(preprocess).batch(args.batch_size)
+    dataset = dataset.map(decode_image).map(preprocess_image).batch(args.batch_size)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
     else:
