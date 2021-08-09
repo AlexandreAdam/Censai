@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-16
+#SBATCH --array=1-32
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --epochs=200\
-  --n_models=16\
+  --n_models=32\
   --batch_size 20\
   --train_split=0.9\
   --total_items 40000\
@@ -40,8 +40,8 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --patience=20\
   --tolerance=0.01\
   --block_length=1\
-  --layers 3\
-  --conv_layers_per_block 2 3\
+  --layers 4 5\
+  --conv_layers 3 4\
   --filter_scaling 2\
   --filters 16 32\
   --kernel_size 3\
@@ -49,7 +49,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --bias_reg_amp=1e-4\
   --activation leaky_relu bipolar_relu\
   --batch_norm 0\
-  --latent_size 64 128, 256\
+  --latent_size 256 512\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsRVAE_k\
   --logname_prefixe=RVAE1_HPARAMS\

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-24
+#SBATCH --array=1-12
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -14,24 +14,24 @@ python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --epochs=200\
-  --n_models=24\
+  --n_models=12\
   --batch_size 20\
   --train_split=0.9\
   --total_items 20000\
   --optimizer Adam\
   --initial_learning_rate 1e-4\
   --decay_rate 0.5\
-  --decay_steps=5000\
+  --decay_steps=2000\
   --beta_init=0\
   --beta_end_value=1.\
-  --beta_decay_power 1.\
-  --beta_decay_steps=2000\
-  --beta_cyclical 0 1\
+  --beta_decay_power 0.5\
+  --beta_decay_steps=10000\
+  --beta_cyclical 0\
   --skip_strength_init=0.\
   --skip_strength_end_value=0.\
   --skip_strength_decay_power 0.5\
   --skip_strength_decay_steps=2000\
-  --l2_bottleneck_init=1.\
+  --l2_bottleneck_init=1e-2\
   --l2_bottleneck_end_value=0.\
   --l2_bottleneck_decay_power 0.5\
   --l2_bottleneck_decay_steps=2000\
@@ -40,8 +40,8 @@ python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
   --patience=20\
   --tolerance=0.01\
   --block_length=1\
-  --layers 3\
-  --res_blocks_in_layer 4\
+  --layers 3 4\
+  --res_blocks_in_layer 3 4\
   --conv_layers_per_block 2\
   --filter_scaling 2\
   --filters 32\
@@ -49,9 +49,9 @@ python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
   --res_architecture bare full_pre_activation\
   --kernel_reg_amp=1e-4\
   --bias_reg_amp=1e-4\
-  --activation leaky_relu bipolar_relu\
-  --batch_norm 1\
-  --latent_size 32 64 96\
+  --activation bipolar_relu\
+  --batch_norm 0\
+  --latent_size 256 512\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsRVAE_k\
   --logname_prefixe=RVAE1_HPARAMS\
