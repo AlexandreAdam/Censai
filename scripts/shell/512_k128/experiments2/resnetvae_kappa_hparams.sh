@@ -6,7 +6,7 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=1-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_ResnetVAE_Grid_Hparams
+#SBATCH --job-name=Train_ResnetVAE_kappa_Grid_Hparams
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
@@ -54,7 +54,7 @@ python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
   --latent_size 256 512\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsRVAE_k\
-  --logname_prefixe=RVAE1_HPARAMS\
+  --logname_prefixe=RVAE1_kap_HPARAMS\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\

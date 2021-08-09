@@ -50,8 +50,8 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --batch_norm 0\
   --latent_size 256 512\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsRVAE_k\
-  --logname_prefixe=RVAE1_HPARAMS\
+  --logdir=$CENSAI_PATH/logsVAE_cosmos\
+  --logname_prefixe=VAE1_cosmos_HPARAMS\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\
