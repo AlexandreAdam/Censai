@@ -40,7 +40,7 @@ class ResnetVAE(tf.keras.Model):
             activation=activation
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
-        b_filters = filters * (int(filter_scaling ** layers))
+        b_filters = filters * int(filter_scaling ** layers)
         pix = pixels//2 ** layers
         mlp_bottleneck = b_filters * pix**2
         self.decoder = Decoder(

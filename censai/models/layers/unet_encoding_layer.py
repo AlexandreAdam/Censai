@@ -38,10 +38,11 @@ class UnetEncodingLayer(tf.keras.layers.Layer):
     """
     def __init__(
             self,
-            kernel_size=3,
-            downsampling_kernel_size=None,
             filters=32,
             conv_layers=2,
+            kernel_size=3,
+            downsampling_kernel_size=None,
+            downsampling_filters=None,
             activation="linear",
             batch_norm=False,
             dropout_rate=None,
@@ -55,6 +56,8 @@ class UnetEncodingLayer(tf.keras.layers.Layer):
             self.downsampling_kernel_size = self.kernel_size
         else:
             self.downsampling_kernel_size = tuple([downsampling_kernel_size]*2)
+        if downsampling_filters is None:
+            downsampling_filters = filters
         self.num_conv_layers = conv_layers
         self.filters = filters
         self.strides = tuple([strides]*2)
@@ -80,7 +83,7 @@ class UnetEncodingLayer(tf.keras.layers.Layer):
                     tf.identity
                 )
         self.downsampling_layer = DownsamplingLayer(
-            filters=self.filters,
+            filters=downsampling_filters,
             kernel_size=self.downsampling_kernel_size,
             strides=self.strides,
             batch_norm=batch_norm,

@@ -39,8 +39,8 @@ class CosmosAutoencoder(tf.keras.Model):
             activation=activation
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
-        _filters = filters*(int(filter_scaling**(layers)))
-        pix = pixels//2**(layers)
+        _filters = filters*int(filter_scaling**layers)
+        pix = pixels//2**layers
         mlp_bottleneck = _filters * pix**2
         self.decoder = Decoder(
             mlp_bottleneck=mlp_bottleneck,

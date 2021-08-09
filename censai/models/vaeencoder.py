@@ -3,7 +3,7 @@ from .utils import get_activation
 from .layers import UnetEncodingLayer
 
 
-class Encoder(tf.keras.Model):
+class VAEEncoder(tf.keras.Model):
     def __init__(
             self,
             layers=7,
@@ -19,7 +19,7 @@ class Encoder(tf.keras.Model):
             activation="relu",
             dropout_rate=None
     ):
-        super(Encoder, self).__init__()
+        super(VAEEncoder, self).__init__()
         common_params = {"padding": "same",
                          "data_format": "channels_last",
                          "kernel_regularizer": tf.keras.regularizers.L2(l2=kernel_reg_amp),
@@ -27,7 +27,11 @@ class Encoder(tf.keras.Model):
         self._num_layers = layers
         self.activation = get_activation(activation)
         self.conv_layers = []
-        self.bottleneck_layer = tf.keras.layers.Dense(
+        self.mean_layer = tf.keras.layers.Dense(
+            units=latent_size,
+            kernel_regularizer=tf.keras.regularizers.l2(l2=kernel_reg_amp)
+        )
+        self.logvar_layer = tf.keras.layers.Dense(
             units=latent_size,
             kernel_regularizer=tf.keras.regularizers.l2(l2=kernel_reg_amp)
         )
@@ -60,8 +64,9 @@ class Encoder(tf.keras.Model):
         for i, layer in enumerate(self.conv_layers):
             _, x = layer(x)
         x = self.flatten(x)
-        x = self.bottleneck_layer(x)
-        return x
+        mean = self.mean_layer(x)
+        logvar = self.logvar_layer(x)
+        return mean, logvar
 
     def call_with_skip_connections(self, x):
         skips = []
@@ -71,5 +76,6 @@ class Encoder(tf.keras.Model):
             skips.append(skip)
         x = self.flatten(x)
         skips.append(tf.identity(x))
-        x = self.bottleneck_layer(x)
-        return x, skips[::-1]
+        mean = self.mean_layer(x)
+        logvar = self.logvar_layer(x)
+        return mean, logvar, skips[::-1]

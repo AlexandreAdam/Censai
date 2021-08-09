@@ -3,6 +3,34 @@ from .layers.resnet_block import ResidualBlock
 from .utils import get_activation
 
 
+class DownsamplingLayer(tf.keras.layers.Layer):
+    def __init__(
+            self,
+            filters,
+            kernel_size,
+            activation,
+            strides,
+            batch_norm,
+            **common_params
+    ):
+        super(DownsamplingLayer, self).__init__()
+
+        self.conv = tf.keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            **common_params
+        )
+        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.activation = activation
+
+    def call(self, x):
+        x = self.conv(x)
+        x = self.batch_norm(x)
+        x = self.activation(x)
+        return x
+
+
 class ResnetEncoder(tf.keras.Model):
     def __init__(
             self,
@@ -36,20 +64,16 @@ class ResnetEncoder(tf.keras.Model):
         )
         for i in range(layers):
             self.downsample_conv.append(
-                tf.keras.Sequential(
-                    [
-                        tf.keras.layers.Conv2D(
-                            filters=filters * int(filter_scaling ** (i + 1)),
-                            kernel_size=kernel_size,
-                            strides=2,
-                            padding="same",
-                            data_format="channels_last",
-                            kernel_regularizer=tf.keras.regularizers.l2(kernel_reg_amp),
-                            bias_regularizer=tf.keras.regularizers.l2(bias_reg_amp),
-                        ),
-                        tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x)),
-                        self.activation
-                    ]
+                DownsamplingLayer(
+                    filters=filters * int(filter_scaling ** (i + 1)),
+                    kernel_size=kernel_size,
+                    strides=2,
+                    activation=self.activation,
+                    batch_norm=batch_norm,
+                    padding="same",
+                    data_format="channels_last",
+                    kernel_regularizer=tf.keras.regularizers.l2(kernel_reg_amp),
+                    bias_regularizer=tf.keras.regularizers.l2(bias_reg_amp),
                 )
             )
             self.res_blocks.append(
@@ -84,8 +108,8 @@ class ResnetEncoder(tf.keras.Model):
     def call(self, x):
         x = self.input_layer(x)
         for i in range(self._num_layers):
-            for layers in self.res_blocks[i]:
-                x = layers(x)
+            for layer in self.res_blocks[i]:
+                x = layer(x)
             x = self.downsample_conv[i](x)
         x = self.flatten(x)
         x = self.mlp_bottleneck(x)
@@ -95,8 +119,8 @@ class ResnetEncoder(tf.keras.Model):
         skips = []
         x = self.input_layer(x)
         for i in range(self._num_layers):
-            for layers in self.res_blocks[i]:
-                x = layers(x)
+            for layer in self.res_blocks[i]:
+                x = layer(x)
             skips.append(tf.identity(x))
             x = self.downsample_conv[i](x)
         x = self.flatten(x)
