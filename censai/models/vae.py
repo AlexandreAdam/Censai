@@ -10,7 +10,6 @@ class VAE(tf.keras.Model):
             pixels=128,  # side length of the input image, used to compute shape of bottleneck mainly
             layers=7,
             conv_layers=2,
-            conv_layers_per_block=2,
             filter_scaling=2,
             filters=8,
             kernel_size=3,
@@ -44,7 +43,7 @@ class VAE(tf.keras.Model):
             mlp_bottleneck=mlp_bottleneck,
             z_reshape_pix=pix,
             layers=layers,
-            conv_layers=conv_layers_per_block,
+            conv_layers=conv_layers,
             filter_scaling=filter_scaling,
             filters=filters,
             kernel_size=kernel_size,
