@@ -39,8 +39,8 @@ class ResnetAutoencoder(tf.keras.Model):
             activation=activation
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
-        filters = filter_init*(int(filter_scaling**(layers)))
-        pix = pixels//2**(layers)
+        filters = filter_init*int(filter_scaling**layers)
+        pix = pixels//2**layers
         mlp_bottleneck = filters * pix**2
         self.decoder = Decoder(
             mlp_bottleneck=mlp_bottleneck,

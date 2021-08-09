@@ -21,7 +21,7 @@ class Decoder(tf.keras.Model):
     ):
         super(Decoder, self).__init__()
         self._z_pix = z_reshape_pix
-        self._z_filters = filters*(int(filter_scaling**layers))
+        self._z_filters = filters*int(filter_scaling**layers)
         self._num_layers = layers
         self.conv_blocks = []
         for i in reversed(range(layers)):

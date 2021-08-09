@@ -1,6 +1,6 @@
 import tensorflow as tf
 from .decoder import Decoder
-from .encoder import Encoder
+from .vaeencoder import VAEEncoder
 from censai.definitions import DTYPE
 
 
@@ -22,7 +22,7 @@ class VAE(tf.keras.Model):
     ):
         super(VAE, self).__init__(dtype=DTYPE)
         self.latent_size = latent_size
-        self.encoder = Encoder(
+        self.encoder = VAEEncoder(
             layers=layers,
             conv_layers=conv_layers,
             filter_scaling=filter_scaling,
@@ -36,7 +36,7 @@ class VAE(tf.keras.Model):
             activation=activation
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
-        b_filters = filters * (int(filter_scaling ** layers))
+        b_filters = filters * int(filter_scaling ** layers)
         pix = pixels//2 ** layers
         mlp_bottleneck = b_filters * pix**2
         self.decoder = Decoder(

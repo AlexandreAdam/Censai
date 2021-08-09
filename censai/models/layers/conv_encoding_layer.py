@@ -17,7 +17,8 @@ class DownsamplingLayer(tf.keras.layers.Layer):
             filters=filters,
             kernel_size=kernel_size,
             strides=strides,
-            padding="SAME"
+            padding="SAME",
+            data_format="channels_last"
         )
         self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
         self.activation = activation
@@ -44,7 +45,7 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
     ):
         super(ConvEncodingLayer, self).__init__(name=name)
         if downsampling_kernel_size is None:
-            self.downsampling_kernel_size = self.kernel_size
+            self.downsampling_kernel_size = kernel_size
         else:
             self.downsampling_kernel_size = tuple([downsampling_kernel_size]*2)
         self.kernel_size = tuple([kernel_size]*2)
@@ -61,6 +62,8 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
                     filters=self.filters,
                     kernel_size=self.kernel_size,
                     activation=self.activation,
+                    padding="SAME",
+                    data_format="channels_last",
                 )
             )
             if batch_norm:
@@ -90,7 +93,7 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
             x = self.batch_norms[i](x)
             x = self.activation(x)
             x = self.dropout(x)
-        x = self.downsample_layer(x)
+        x = self.downsampling_layer(x)
         return x
 
     def call_with_skip_connection(self, x):

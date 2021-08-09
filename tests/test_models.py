@@ -25,7 +25,7 @@ def test_rim_unet():
 
 def test_resnet_autoencoder():
     pixels = 128
-    AE = CosmosAutoencoder(pixels)
+    AE = CosmosAutoencoder(pixels, layers=6)
     image = tf.random.uniform(shape=[1, 128, 128, 1])
     psf = tf.abs(tf.signal.rfft2d(tf.random.normal(shape=[1, 256, 256]))[..., tf.newaxis])
     ps = tf.abs(tf.signal.rfft2d(tf.random.normal(shape=[1, 128, 128]))[..., tf.newaxis])
@@ -91,38 +91,11 @@ def test_unet_model():
 
 def test_shared_unet_model():
     # test out plumbing
-    model = SharedUnetModel(kappa_resize_layers=2, filters=32, layers=1)
-    source = tf.random.normal([10, 32, 32, 1])
-    source_grad = tf.random.normal([10, 32, 32, 1])
-    kappa = tf.random.normal([10, 128, 128, 1])
-    kappa_grad = tf.random.normal([10, 128, 128, 1])
-    states = model.init_hidden_states(input_pixels=32, batch_size=10)
-    model(source, kappa, source_grad, kappa_grad, states)
-
-    # test out plumbing
-    model = SharedUnetModel(kappa_resize_layers=2, filters=32, layers=2)
-    source = tf.random.normal([10, 32, 32, 1])
-    source_grad = tf.random.normal([10, 32, 32, 1])
-    kappa = tf.random.normal([10, 128, 128, 1])
-    kappa_grad = tf.random.normal([10, 128, 128, 1])
-    states = model.init_hidden_states(input_pixels=32, batch_size=10)
-    model(source, kappa, source_grad, kappa_grad, states)
-
-    # test out plumbing
-    model = SharedUnetModel(kappa_resize_layers=0, filters=32, layers=2)
+    model = SharedUnetModel(filters=32, layers=2)
     source = tf.random.normal([10, 32, 32, 1])
     source_grad = tf.random.normal([10, 32, 32, 1])
     kappa = tf.random.normal([10, 32, 32, 1])
     kappa_grad = tf.random.normal([10, 32, 32, 1])
-    states = model.init_hidden_states(input_pixels=32, batch_size=10)
-    model(source, kappa, source_grad, kappa_grad, states)
-
-    # test out plumbing
-    model = SharedUnetModel(kappa_resize_layers=1, filters=32, layers=2)
-    source = tf.random.normal([10, 32, 32, 1])
-    source_grad = tf.random.normal([10, 32, 32, 1])
-    kappa = tf.random.normal([10, 64, 64, 1])
-    kappa_grad = tf.random.normal([10, 64, 64, 1])
     states = model.init_hidden_states(input_pixels=32, batch_size=10)
     model(source, kappa, source_grad, kappa_grad, states)
 
@@ -208,14 +181,14 @@ def test_resnet_encoder():
 
 
 if __name__ == '__main__':
-    # test_ray_tracer_512()
-    # test_raytracer()
-    # test_resnet_autoencoder()
-    # test_unet_model()
-    # test_shared_unet_model()
-    # test_rim_shared_unet()
-    # test_rim()
-    # test_rim_unet()
-    # test_resnet_vae()
-    # test_resnet_encoder()
+    test_ray_tracer_512()
+    test_raytracer()
+    test_resnet_autoencoder()
+    test_unet_model()
+    test_shared_unet_model()
+    test_rim_shared_unet()
+    test_rim()
+    test_rim_unet()
+    test_resnet_vae()
+    test_resnet_encoder()
     test_vae()
