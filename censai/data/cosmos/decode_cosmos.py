@@ -51,12 +51,9 @@ def preprocess_image(image):
     return image
 
 
-def decode_image_shape(record_bytes):
-    keys = ['height']
+def decode_shape(record_bytes):
     example = decode_all(record_bytes)
-    return [example[key] for key in keys]
-
-
+    return example['height']
 
 
 # # some tests that everything works

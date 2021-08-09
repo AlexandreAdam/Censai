@@ -1,9 +1,9 @@
 import tensorflow as tf
 import numpy as np
-from censai.data.kappa_tng import decode_train, decode_shape
+from censai.data.cosmos import decode, decode_shape, preprocess
 from censai.utils import nullwriter, vae_residual_plot as residual_plot, plot_to_image
-from censai.definitions import PolynomialSchedule, log_10
-from censai import ResnetVAE
+from censai.definitions import PolynomialSchedule
+from censai.models import VAE
 import os, glob, json
 import math
 from datetime import datetime
@@ -12,12 +12,10 @@ import time
 VAE_HPARAMS = [
     "pixels",
     "layers",
-    "res_blocks_in_layer",
     "conv_layers_per_block",
     "filter_scaling",
     "filters",
     "kernel_size",
-    "res_architecture",
     "kernel_reg_amp",
     "bias_reg_amp",
     "activation",
@@ -40,7 +38,7 @@ def main(args):
     for pixels in dataset.map(decode_shape):
         break
     vars(args).update({"pixels": int(pixels)})
-    dataset = dataset.map(decode_train).map(log_10).batch(args.batch_size)
+    dataset = dataset.map(decode).map(preprocess).batch(args.batch_size)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
     else:
@@ -49,18 +47,13 @@ def main(args):
     val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
     val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
 
-    if isinstance(args.res_blocks_in_layer, list):
-        if len(args.res_blocks_in_layer) == 1:
-            vars(args).update({"res_blocks_in_layer": args.res_blocks_in_layer[0]})
-    vae = ResnetVAE(
+    vae = VAE(
         pixels=pixels,
         layers=args.layers,
-        res_blocks_in_layer=args.res_blocks_in_layer,
         conv_layers_per_block=args.conv_layers_per_block,
         filter_scaling=args.filter_scaling,
         filters=args.filters,
         kernel_size=args.kernel_size,
-        res_architecture=args.res_architecture,
         kernel_reg_amp=args.kernel_reg_amp,
         bias_reg_amp=args.bias_reg_amp,
         activation=args.activation,
@@ -191,9 +184,9 @@ def main(args):
                 step += 1
             # last batch we make a summary of residuals
             for res_idx in range(min(args.n_residuals, args.batch_size)):
-                kappa_true = x[res_idx, ...]
-                kappa_pred = vae.call(kappa_true[None, ...])[0, ...]
-                tf.summary.image(f"Residuals {res_idx}", plot_to_image(residual_plot(kappa_true, kappa_pred)), step=step)
+                y_true = x[res_idx, ...]
+                y_pred = vae.call(y_true[None, ...])[0, ...]
+                tf.summary.image(f"Residuals {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
             # ========== Validation set ===================
             val_loss.reset_states()
             val_reconstruction_loss.reset_states()
@@ -204,9 +197,9 @@ def main(args):
                 val_reconstruction_loss.update_state([reconstruction_loss])
                 val_kl_loss.update_state([kl_loss])
             for res_idx in range(min(args.n_residuals, args.batch_size)):
-                kappa_true = x[res_idx, ...]
-                kappa_pred = vae.call(kappa_true[None, ...])[0, ...]
-                tf.summary.image(f"Val Residuals {res_idx}", plot_to_image(residual_plot(kappa_true, kappa_pred)), step=step)
+                y_true = x[res_idx, ...]
+                y_pred = vae.call(y_true[None, ...])[0, ...]
+                tf.summary.image(f"Val Residuals {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
 
             val_cost = val_loss.result().numpy()
             train_cost = epoch_loss.result().numpy()
@@ -267,12 +260,10 @@ if __name__ == '__main__':
 
     # Model params
     parser.add_argument("--layers",                 default=4,              type=int,       help="Number of layer in encoder/decoder")
-    parser.add_argument("--res_blocks_in_layer",    default=2, nargs="+",   type=int,       help="List of res block per layers. If single number is given, assume uniform structure")
     parser.add_argument("--conv_layers_per_block",  default=2,              type=int,       help="Number of convolution layers in a block")
     parser.add_argument("--filter_scaling",         default=2,              type=float,     help="Filter scaling after each layers")
     parser.add_argument("--filters",                default=8,              type=int,       help="Number of filters in the first layer")
     parser.add_argument("--kernel_size",            default=3,              type=int)
-    parser.add_argument("--res_architecture",       default="bare",                         help="One of ['bare', 'original', 'bn_after_addition', 'relu_before_addition', 'relu_only_pre_activation', 'full_pre_activation', 'full_pre_activation_rescale']")
     parser.add_argument("--kernel_reg_amp",         default=1e-4,           type=float,     help="L2 kernel regularization amplitude")
     parser.add_argument("--bias_reg_amp",           default=1e-4,           type=float,     help="L2 bias regularizer amplitude")
     parser.add_argument("--activation",             default="relu",                         help="Name of activation function, on of ['relu', 'leaky_relu', 'bipolar_relu', 'bipolar_leaky_relu', 'bipolar_elu', 'gelu', etc.]")
@@ -286,7 +277,7 @@ if __name__ == '__main__':
     parser.add_argument("--total_items",            required=True,  type=int,       help="Total images in an epoch.")
     # ... for tfrecord dataset
     parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
-    parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files.")
+    parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files at a given batch.")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",                   default=10,     type=int,       help="Number of epochs for training.")

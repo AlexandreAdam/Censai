@@ -5,6 +5,7 @@ import collections
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import LogNorm, SymLogNorm, CenteredNorm
+import re
 
 try:
     from contextlib import nullcontext  # python > 3.7 needed for this
@@ -16,6 +17,18 @@ except ImportError:
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             pass
+
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    '''
+    return [atoi(c) for c in re.split(r'(\d+)', text)]
 
 
 class nullwriter:
@@ -282,25 +295,25 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     return fig
 
 
-def kappa_vae_residual_plot(kappa_true, kappa_pred):
+def vae_residual_plot(y_true, y_pred):
     fig, axs = plt.subplots(1, 3, figsize=(12, 4))
 
     ax = axs[0]
-    im = ax.imshow(kappa_true[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(y_true[..., 0], cmap="hot", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[1]
-    im = ax.imshow(kappa_pred[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(y_pred[..., 0], cmap="hot", origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2]
-    im = ax.imshow(kappa_true[..., 0] - kappa_pred[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
+    im = ax.imshow(y_true[..., 0] - y_pred[..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
