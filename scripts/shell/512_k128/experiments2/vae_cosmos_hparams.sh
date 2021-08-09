@@ -10,14 +10,14 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
-  --datasets $CENSAI_PATH/data/cosmos23.5/\
+  --datasets $CENSAI_PATH/data/cosmos_23.5_preprocessed_highSNR/\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --epochs=200\
   --n_models=32\
   --batch_size 20\
   --train_split=0.9\
-  --total_items 40000\
+  --total_items 30000\
   --optimizer Adam\
   --initial_learning_rate 1e-4\
   --decay_rate 0.5\
