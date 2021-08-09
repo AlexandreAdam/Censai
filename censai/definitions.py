@@ -69,7 +69,6 @@ def compute_rescaling_probabilities(kappa, rescaling_array, physical_pixel_scale
     return p
 
 
-@tf.function
 def bipolar_elu(x):
     """Bipolar ELU as in https://arxiv.org/abs/1709.04054."""
     x1, x2 = tf.split(x, 2, axis=-1)
@@ -78,7 +77,6 @@ def bipolar_elu(x):
     return tf.concat([y1, y2], axis=-1)
 
 
-@tf.function
 def bipolar_leaky_relu(x, alpha=0.2, **kwargs):
     """Bipolar Leaky ReLU as in https://arxiv.org/abs/1709.04054."""
     x1, x2 = tf.split(x, 2, axis=-1)
@@ -87,7 +85,6 @@ def bipolar_leaky_relu(x, alpha=0.2, **kwargs):
     return tf.concat([y1, y2], axis=-1)
 
 
-@tf.function
 def bipolar_relu(x):
     x1, x2 = tf.split(x, 2, axis=-1)
     y1 = tf.nn.relu(x1)

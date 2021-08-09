@@ -49,7 +49,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --bias_reg_amp=1e-4\
   --activation leaky_relu bipolar_relu\
   --batch_norm 0\
-  --latent_size 64 96\
+  --latent_size 64 128, 256\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsRVAE_k\
   --logname_prefixe=RVAE1_HPARAMS\
