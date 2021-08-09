@@ -39,8 +39,7 @@ class Encoder(tf.keras.Model):
                     conv_layers=conv_layers,
                     activation=activation,
                     batch_norm=batch_norm,
-                    dropout_rate=dropout_rate,
-                    strides=
+                    dropout_rate=dropout_rate
                 )
             )
         self.flatten = tf.keras.layers.Flatten(data_format="channels_last")
