@@ -1,6 +1,6 @@
 import tensorflow as tf
 from .utils import get_activation
-from .layers import ConvBlock
+from .layers import ConvEncodingLayer
 
 
 class Encoder(tf.keras.Model):
@@ -23,7 +23,6 @@ class Encoder(tf.keras.Model):
         self._num_layers = layers
         self.activation = get_activation(activation)
         self.conv_layers = []
-        self.downsample_conv = []
         self.mean_layer = tf.keras.layers.Dense(
             units=latent_size,
             kernel_regularizer=tf.keras.regularizers.l2(l2=kernel_reg_amp)
@@ -33,32 +32,15 @@ class Encoder(tf.keras.Model):
             kernel_regularizer=tf.keras.regularizers.l2(l2=kernel_reg_amp)
         )
         for i in range(layers):
-            self.downsample_conv.append(
-                tf.keras.Sequential(
-                    [
-                        tf.keras.layers.Conv2D(
-                            filters=filters * int(filter_scaling ** (i + 1)),
-                            kernel_size=kernel_size,
-                            strides=2,
-                            padding="same",
-                            data_format="channels_last",
-                            kernel_regularizer=tf.keras.regularizers.l2(kernel_reg_amp),
-                            bias_regularizer=tf.keras.regularizers.l2(bias_reg_amp),
-                        ),
-                        tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x)),
-                        self.activation
-                    ]
-                )
-            )
             self.conv_layers.append(
-                ConvBlock(
+                ConvEncodingLayer(
                     kernel_size=kernel_size,
                     filters=filters * int(filter_scaling ** i),
                     conv_layers=conv_layers,
                     activation=activation,
                     batch_norm=batch_norm,
                     dropout_rate=dropout_rate,
-
+                    strides=
                 )
             )
         self.flatten = tf.keras.layers.Flatten(data_format="channels_last")
