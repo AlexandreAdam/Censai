@@ -12,7 +12,7 @@ import time
 VAE_HPARAMS = [
     "pixels",
     "layers",
-    "conv_layers_per_block",
+    "conv_layers",
     "filter_scaling",
     "filters",
     "kernel_size",
@@ -50,7 +50,7 @@ def main(args):
     vae = VAE(
         pixels=pixels,
         layers=args.layers,
-        conv_layers_per_block=args.conv_layers_per_block,
+        conv_layers=args.conv_layers,
         filter_scaling=args.filter_scaling,
         filters=args.filters,
         kernel_size=args.kernel_size,
@@ -260,7 +260,7 @@ if __name__ == '__main__':
 
     # Model params
     parser.add_argument("--layers",                 default=4,              type=int,       help="Number of layer in encoder/decoder")
-    parser.add_argument("--conv_layers_per_block",  default=2,              type=int,       help="Number of convolution layers in a block")
+    parser.add_argument("--conv_layers",            default=2,              type=int,       help="Number of convolution layers in a block")
     parser.add_argument("--filter_scaling",         default=2,              type=float,     help="Filter scaling after each layers")
     parser.add_argument("--filters",                default=8,              type=int,       help="Number of filters in the first layer")
     parser.add_argument("--kernel_size",            default=3,              type=int)

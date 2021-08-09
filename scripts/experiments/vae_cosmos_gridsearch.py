@@ -17,7 +17,7 @@ DATE = datetime.now().strftime("%y%m%d%H%M%S")
 
 VAE_HPARAMS = [
     "layers",
-    "conv_layers_per_block",
+    "conv_layers",
     "filter_scaling",
     "filters",
     "kernel_size",
@@ -43,8 +43,7 @@ EXTRA_PARAMS = [
 
 PARAMS_NICKNAME = {
     "layers": "L",
-    "res_blocks_in_layer": "RB",
-    "conv_layers_per_block": "CB",
+    "conv_layers": "CL",
     "filter_scaling": "FS",
     "filters": "F",
     "kernel_size": "K",
@@ -167,7 +166,7 @@ if __name__ == '__main__':
 
     # Model params
     parser.add_argument("--layers",                 default=4,          nargs="+",      type=int,       help="Number of layer in encoder/decoder")
-    parser.add_argument("--conv_layers_per_block",  default=2,          nargs="+",      type=int,       help="Number of convolution layers in a block")
+    parser.add_argument("--conv_layers",            default=2,          nargs="+",      type=int,       help="Number of convolution layers in a block")
     parser.add_argument("--filter_scaling",         default=2,          nargs="+",      type=float,     help="Filter scaling after each layers")
     parser.add_argument("--filters",                default=8,          nargs="+",      type=int,       help="Number of filters in the first layer")
     parser.add_argument("--kernel_size",            default=3,          nargs="+",      type=int)
