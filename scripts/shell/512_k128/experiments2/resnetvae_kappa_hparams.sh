@@ -4,9 +4,9 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
-#SBATCH --time=0-08:00		# time (DD-HH:MM)
+#SBATCH --time=1-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_ResnetVAE_Grid_Optim
+#SBATCH --job-name=Train_ResnetVAE_Grid_Hparams
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
@@ -18,10 +18,10 @@ python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
   --batch_size 20\
   --train_split=0.9\
   --total_items 20000\
-  --optimizer Adam Adamax\
-  --initial_learning_rate 1e-2 1e-3 1e-4\
-  --decay_rate 1 0.9\
-  --decay_steps=2000\
+  --optimizer Adam\
+  --initial_learning_rate 1e-4\
+  --decay_rate 0.5\
+  --decay_steps=5000\
   --beta_init=0\
   --beta_end_value=1.\
   --beta_decay_power 1.\
@@ -46,18 +46,18 @@ python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
   --filter_scaling 2\
   --filters 32\
   --kernel_size 3\
-  --res_architecture full_pre_activation\
+  --res_architecture bare full_pre_activation\
   --kernel_reg_amp=1e-4\
   --bias_reg_amp=1e-4\
-  --activation relu leaky_relu\
+  --activation leaky_relu bipolar_relu\
   --batch_norm 1\
-  --latent_size 84\
+  --latent_size 32 64 96\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsRVAE_k\
-  --logname_prefixe=RVAE1_OPTIM\
+  --logname_prefixe=RVAE1_HPARAMS\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\
   --n_residuals=3\
   --track_train\
-  --max_time=7.7
+  --max_time=23.5
