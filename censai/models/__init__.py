@@ -10,3 +10,4 @@ from .rim_shared_unet_model import SharedUnetModel
 from .resnet_encoder import ResnetEncoder
 from .vae import VAE
 from .decoder import Decoder
+from .vae_second_stage import VAESecondStage
