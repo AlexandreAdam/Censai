@@ -10,18 +10,13 @@ from datetime import datetime
 import time
 
 VAE_HPARAMS = [
-    "pixels",
     "layers",
-    "conv_layers",
-    "filter_scaling",
-    "filters",
-    "kernel_size",
     "kernel_reg_amp",
     "bias_reg_amp",
     "activation",
-    "dropout_rate",
-    "batch_norm",
-    "latent_size"
+    "latent_size",
+    "units",
+    "output_size"
 ]
 
 
@@ -47,26 +42,30 @@ def main(args):
     val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
     val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
 
+    # Load fisrt stage and freeze weights
     with open(os.path.join(args.first_stage_model, "model_hparams.json"), "r") as f:
         vae_hparams = json.load(f)
     vae = VAE(**vae_hparams)
     ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=vae)
     checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.first_stage_model)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint)
-
     vae.trainable = False
     vae.encoder.trainable = False
     vae.decoder.trainable = False
+
+    vars(args).update({"output_size": vae_hparams["latent_size"]})
+
+    # Create second stage
     vae2 = VAESecondStage(
-        latent_size=args.latent_size_second_stage,
-        output_size=args.latent_size,
+        latent_size=args.latent_size,
+        output_size=args.output_size,
         units=args.units,
         hidden_layers=args.hidden_layers,
         activation=args.activation,
         kernel_regularizer=tf.keras.regularizers.l2(l2=args.kernel_reg_amp),
         bias_regularizer=tf.keras.regularizers.l2(l2=args.bias_reg_amp)
-
     )
+
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.initial_learning_rate,
         decay_rate=args.decay_rate,
@@ -74,8 +73,6 @@ def main(args):
         staircase=args.staircase
     )
     beta_schedule = PolynomialSchedule(initial_value=args.beta_init, end_value=args.beta_end_value, power=args.beta_decay_power, decay_steps=args.beta_decay_steps, cyclical=args.beta_cyclical)
-    skip_strength_schedule = PolynomialSchedule(initial_value=args.skip_strength_init, end_value=0., power=args.skip_strength_decay_power, decay_steps=args.skip_strength_decay_steps)
-    l2_bottleneck_schedule = PolynomialSchedule(initial_value=args.l2_bottleneck_init, end_value=0., power=args.l2_bottleneck_decay_power, decay_steps=args.l2_bottleneck_decay_steps)
     optim = tf.keras.optimizers.deserialize(
         {
             "class_name": args.optimizer,
@@ -266,16 +263,11 @@ if __name__ == '__main__':
 
     # Model params
     parser.add_argument("--layers",                 default=4,              type=int,       help="Number of layer in encoder/decoder")
-    parser.add_argument("--conv_layers",            default=2,              type=int,       help="Number of convolution layers in a block")
-    parser.add_argument("--filter_scaling",         default=2,              type=float,     help="Filter scaling after each layers")
-    parser.add_argument("--filters",                default=8,              type=int,       help="Number of filters in the first layer")
-    parser.add_argument("--kernel_size",            default=3,              type=int)
     parser.add_argument("--kernel_reg_amp",         default=1e-4,           type=float,     help="L2 kernel regularization amplitude")
     parser.add_argument("--bias_reg_amp",           default=1e-4,           type=float,     help="L2 bias regularizer amplitude")
     parser.add_argument("--activation",             default="relu",                         help="Name of activation function, on of ['relu', 'leaky_relu', 'bipolar_relu', 'bipolar_leaky_relu', 'bipolar_elu', 'gelu', etc.]")
-    parser.add_argument("--dropout_rate",           default=None,           type=float,     help="2D spatial dropout rate (drop entire feature map to help them become independent)")
-    parser.add_argument("--batch_norm",             default=0,              type=int,       help="0: False, do no use batch norm. 1: True, use batch norm beforce activation")
     parser.add_argument("--latent_size",            default=16,             type=int,       help="Twice the size of the latent code vector z")
+    parser.add_argument("--units",                  default=32,             type=int,       help="Number of hidden unit in MLP layers")
 
     # Training set params
     parser.add_argument("-b", "--batch_size",       default=1,      type=int,       help="Number of images in a batch. ")
