@@ -16,13 +16,13 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --n_models=32\
   --batch_size 20\
   --train_split=0.9\
-  --total_items 30000\
+  --total_items 43990\
   --optimizer Adam\
   --initial_learning_rate 1e-4\
   --decay_rate 0.5\
   --decay_steps=10000\
   --beta_init=0\
-  --beta_end_value=1.\
+  --beta_end_value=0.1\
   --beta_decay_power 0.5\
   --beta_decay_steps=20000\
   --beta_cyclical 0\
@@ -36,7 +36,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --l2_bottleneck_decay_steps=10000\
   --staircase\
   --clipping\
-  --patience=20\
+  --patience=40\
   --tolerance=0.01\
   --block_length=1\
   --layers 3 4\
@@ -48,7 +48,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --bias_reg_amp=1e-4\
   --activation leaky_relu bipolar_relu\
   --batch_norm 0\
-  --latent_size 256 512\
+  --latent_size 64 84 128 \
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsVAE_cosmos\
   --logname_prefixe=VAE1_cosmos_HPARAMS\
