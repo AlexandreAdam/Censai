@@ -49,7 +49,7 @@ class VAESecondStage(tf.keras.Model):
     ):
         super(VAESecondStage, self).__init__()
         self.latent_size = latent_size
-        self.encoder = NN(output_size=latent_size, units=units, hidden_layers=hidden_layers, activation=activation,
+        self.encoder = NN(output_size=2 * latent_size, units=units, hidden_layers=hidden_layers, activation=activation,
                           kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer)
         self.decoder = NN(output_size=output_size, units=units, hidden_layers=hidden_layers, activation=activation,
                           kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer)
@@ -61,7 +61,7 @@ class VAESecondStage(tf.keras.Model):
         logvar *= 0.5
         epsilon = tf.random.normal(shape=[batch_size, self.latent_size])
         z = mean + tf.exp(logvar) * epsilon
-        return z
+        return z, mean, logvar
 
     def decode(self, z):
         return self.decoder(z)
@@ -74,4 +74,12 @@ class VAESecondStage(tf.keras.Model):
         return self.call(x)
 
     def call(self, x):
-        return self.decode(self.encode(x))
+        z, mean, logvar = self.encode(x)
+        return self.decode(z)
+
+    def cost_function(self, x):
+        z, mean, logvar = self.encode(x)
+        y = self.decode(z)
+        img_cost = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
+        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
+        return img_cost, latent_cost

@@ -11,6 +11,7 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --datasets $CENSAI_PATH/data/kappa128_TNG100_trainset/\
+  --compression_type=GZIP\
   --strategy=exhaustive\
   --epochs=200\
   --n_models=32\
