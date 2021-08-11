@@ -14,5 +14,5 @@ python $CENSAI_PATH/scripts/plot_vae_first_stage_results.py\
   --type=cosmos\
   --batch_size=30\
   --sampling_size=81\
-  --n_plots=2\
+  --n_plots=5\
   --seed=42
