@@ -323,3 +323,51 @@ def vae_residual_plot(y_true, y_pred):
     axs[1].set_title("Prediction", size=15)
     axs[2].set_title("Residual", size=15)
     return fig
+
+
+def reconstruction_plot(y_true, y_pred):
+    batch_size = y_true.shape[0]
+    len_y = batch_size // 3
+    fig, axs = plt.subplots(len_y, 9, figsize=(27, 3 * len_y))
+
+    for i in range(len_y):
+        for j in range(3):
+            k = (i * 3 + j) % batch_size
+            ax = axs[i, j]
+            ax.imshow(y_true[k, ..., 0], cmap="hot", origin="lower")
+            ax.axis("off")
+
+            ax = axs[i, j + 3]
+            ax.imshow(y_pred[k, ..., 0], cmap="hot", origin="lower")
+            ax.axis("off")
+
+            ax = axs[i, j + 6]
+            ax.imshow(y_true[k, ..., 0] - y_pred[k, ..., 0], cmap="seismic", norm=CenteredNorm(), origin="lower")
+            ax.axis("off")
+
+    axs[0, 1].set_title("Ground Truth", size=20)
+    axs[0, 4].set_title("Prediction", size=20)
+    axs[0, 7].set_title("Residual", size=20)
+    fig.subplots_adjust(wspace=0, hspace=0)
+    return fig
+
+
+def sampling_plot(y):
+    batch_size = y.shape[0]
+    len_y = batch_size // 9
+    fig, axs = plt.subplots(len_y, 9, figsize=(3 * len_y, 27))
+    for i in range(len_y):
+        for j in range(9):
+            k = 9 * i + j
+            axs[i, j].imshow(y[k, ..., 0], cmap="hot", origin="lower")
+            axs[i, j].axis("off")
+    fig.subplots_adjust(wspace=0, hspace=0)
+    return fig
+
+
+if __name__ == '__main__':
+    x = np.random.normal(size=[81, 64, 64, 1])
+    y = np.random.normal(size=[81, 64, 64, 1])
+    fig = reconstruction_plot(x, y)
+    fig.savefig("test.png")
+    plt.show()
