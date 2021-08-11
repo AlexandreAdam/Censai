@@ -73,7 +73,7 @@ class VAE(tf.keras.Model):
         y = self.decode(z)
         return y
 
-    def generate_samples(self, batch_size=1):
+    def sample(self, batch_size=1):
         z = tf.random.normal([batch_size, self.latent_size], dtype=DTYPE)
         y = self.decode(z)
         return y

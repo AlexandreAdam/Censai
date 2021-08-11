@@ -28,20 +28,22 @@ def main(args):
 
     model_list = glob.glob(os.path.join(os.getenv("CENSAI_PATH"), "models", args.model_prefixe, "*"))
     for model in model_list:
+        if "second_stage" in model:
+            continue
         with open(os.path.join(model, "model_hparams.json")) as f:
             vae_hparams = json.load(f)
 
         # load weights
         vae = VAE(**vae_hparams)
         ckpt1 = tf.train.Checkpoint(net=vae)
-        checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.first_stage_model)
+        checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model)
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
         for batch, images in enumerate(dataset):
             y_pred = vae(images)
             fig = reconstruction_plot(images, y_pred)
             fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_reconstruction" + model + args.output_postfixe + f"{batch:01d}.png"))
-            y_pred = vae.generate_samples(args.sampling_size)
+            y_pred = vae.sample(args.sampling_size)
             fig = sampling_plot(y_pred)
             fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_sampling" + model + args.output_postfixe + f"{batch:01d}.png"))
 
