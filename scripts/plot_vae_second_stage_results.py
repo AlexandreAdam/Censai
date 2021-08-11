@@ -34,7 +34,8 @@ def main(args):
                 z = vae2.sample(args.sampling_size)
                 y_pred = vae.decode(z)
                 fig = sampling_plot(y_pred)
-                fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae2_sampling" + model_name + args.output_postfixe + f"{n:01d}.png"))
+                fig.suptitle(model_name)
+                fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae2_sampling_" + model_name + args.output_postfixe + f"_{n:02d}.png"))
 
 
 if __name__ == '__main__':
