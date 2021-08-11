@@ -17,7 +17,7 @@ def main(args):
         # load weights of first stage
         vae = VAE(**vae_hparams)
         ckpt1 = tf.train.Checkpoint(net=vae)
-        checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model)
+        checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model, 1)
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
         second_stages = [file for file in model_list if "second_stage" in file and model in file]
@@ -26,7 +26,7 @@ def main(args):
                 vae2_hparams = json.load(f)
             vae2 = VAESecondStage(**vae2_hparams)
             ckpt2 = tf.train.Checkpoint(net=vae2)
-            checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, second_stage)
+            checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, second_stage, 1)
             checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
 
             for n in range(args.n_plots):

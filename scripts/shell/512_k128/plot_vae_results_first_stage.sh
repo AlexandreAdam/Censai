@@ -8,7 +8,7 @@
 #SBATCH --job-name=PlotResults_VAE_FirstStage
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/experiments/plot_vae_first_stage_results.py\
+python $CENSAI_PATH/scripts/plot_vae_first_stage_results.py\
   --model_prefixe=VAE1_cosmos\
   --dataset=$CENSAI_PATH/data/cosmos_23.5_preprocessed_highSNR/\
   --type=cosmos\

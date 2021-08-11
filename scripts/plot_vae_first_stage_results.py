@@ -36,7 +36,7 @@ def main(args):
         # load weights
         vae = VAE(**vae_hparams)
         ckpt1 = tf.train.Checkpoint(net=vae)
-        checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model)
+        checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model, 1)
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
         for batch, images in enumerate(dataset):
