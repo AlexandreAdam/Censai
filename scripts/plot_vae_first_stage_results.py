@@ -44,10 +44,12 @@ def main(args):
         for batch, images in enumerate(dataset):
             y_pred = vae(images)
             fig = reconstruction_plot(images, y_pred)
-            fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_reconstruction" + model_name + args.output_postfixe + f"{batch:01d}.png"))
+            fig.suptitle(model_name)
+            fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_reconstruction_" + model_name + "_" + args.output_postfixe + f"_{batch:01d}.png"))
             y_pred = vae.sample(args.sampling_size)
+            fig.suptitle(model_name)
             fig = sampling_plot(y_pred)
-            fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_sampling" + model_name + args.output_postfixe + f"{batch:01d}.png"))
+            fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_sampling_" + model_name + "_" + args.output_postfixe + f"_{batch:01d}.png"))
 
             if batch == args.n_plots-1:
                 break
