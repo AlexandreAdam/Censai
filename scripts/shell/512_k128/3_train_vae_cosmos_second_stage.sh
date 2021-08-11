@@ -8,7 +8,7 @@
 #SBATCH --job-name=Train_VAECosmos_SecondStage
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/experiments/train_cosmos_vae_second_stage.py\
+python $CENSAI_PATH/scripts/train_cosmos_vae_second_stage.py\
   --first_stage_model=$CENSAI_PATH/models/VAE1_cosmos_HPARAMS_029_L3_CL4_F16_NLleaky_relu_LS128_ssi0.001_210810161842\
   --datasets $CENSAI_PATH/data/cosmos_23.5_preprocessed_highSNR/\
   --epochs=2000\
