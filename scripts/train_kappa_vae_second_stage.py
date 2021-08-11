@@ -10,7 +10,7 @@ from datetime import datetime
 import time
 
 VAE_HPARAMS = [
-    "layers",
+    "hidden_layers",
     "kernel_reg_amp",
     "bias_reg_amp",
     "activation",
@@ -261,7 +261,7 @@ if __name__ == '__main__':
     parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
 
     # Model params
-    parser.add_argument("--layers",                 default=4,              type=int,       help="Number of layer in encoder/decoder")
+    parser.add_argument("--hidden_layers",                 default=4,              type=int,       help="Number of layer in encoder/decoder")
     parser.add_argument("--kernel_reg_amp",         default=1e-4,           type=float,     help="L2 kernel regularization amplitude")
     parser.add_argument("--bias_reg_amp",           default=1e-4,           type=float,     help="L2 bias regularizer amplitude")
     parser.add_argument("--activation",             default="relu",                         help="Name of activation function, on of ['relu', 'leaky_relu', 'bipolar_relu', 'bipolar_leaky_relu', 'bipolar_elu', 'gelu', etc.]")
