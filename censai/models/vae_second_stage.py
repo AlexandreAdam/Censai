@@ -1,5 +1,6 @@
 import tensorflow as tf
 from .utils import get_activation
+from censai.definitions import DTYPE
 
 
 class NN(tf.keras.Model):
@@ -47,7 +48,7 @@ class VAESecondStage(tf.keras.Model):
             kernel_regularizer=tf.keras.regularizers.l2(),
             bias_regularizer=tf.keras.regularizers.l2()
     ):
-        super(VAESecondStage, self).__init__()
+        super(VAESecondStage, self).__init__(dtype=DTYPE)
         self.latent_size = latent_size
         self.encoder = NN(output_size=2 * latent_size, units=units, hidden_layers=hidden_layers, activation=activation,
                           kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer)
