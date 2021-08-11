@@ -71,7 +71,7 @@ class VAESecondStage(tf.keras.Model):
         z = tf.random.normal(shape=[n_samples, self.latent_size])
         return self.decode(z)
 
-    def __call__(self, x):
+    def __call__(self, x, *args, **kwargs):
         return self.call(x)
 
     def call(self, x, *args, **kwargs):
