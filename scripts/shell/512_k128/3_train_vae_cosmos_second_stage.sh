@@ -29,7 +29,7 @@ python $CENSAI_PATH/scripts/train_cosmos_vae_second_stage.py\
   --patience=40\
   --tolerance=0.01\
   --block_length=1\
-  --layers=2\
+  --hidden_layers=2\
   --kernel_reg_amp=1e-4\
   --bias_reg_amp=1e-4\
   --activation=leaky_relu\
