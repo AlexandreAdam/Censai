@@ -13,7 +13,7 @@ class NN(tf.keras.Model):
             kernel_regularizer=tf.keras.regularizers.l2(),
             bias_regularizer=tf.keras.regularizers.l2()
     ):
-        super(NN, self).__init__()
+        super(NN, self).__init__(dtype=DTYPE)
         if not isinstance(units, list):
             units = [units] * hidden_layers
         self.activitation = get_activation(activation)
