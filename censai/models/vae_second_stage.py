@@ -80,6 +80,6 @@ class VAESecondStage(tf.keras.Model):
     def cost_function(self, x):
         z, mean, logvar = self.encode(x)
         y = self.decode(z)
-        img_cost = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
-        latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
-        return img_cost, latent_cost
+        reconstruction_cost = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
+        kl_divergence = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
+        return reconstruction_cost, kl_divergence

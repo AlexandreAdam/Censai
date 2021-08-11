@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from censai.data.cosmos import decode_image, decode_shape, preprocess_image
-from censai.utils import nullwriter, vae_residual_plot as residual_plot, plot_to_image
+from censai.utils import nullwriter
 from censai.definitions import PolynomialSchedule
 from censai.models import VAE, VAESecondStage
 import os, glob, json
@@ -48,7 +48,7 @@ def main(args):
     vae = VAE(**vae_hparams)
     ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=vae)
     checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.first_stage_model)
-    checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint)
+    checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
     vae.trainable = False
     vae.encoder.trainable = False
     vae.decoder.trainable = False
@@ -83,9 +83,9 @@ def main(args):
     if args.model_id.lower() != "none":
         logname = args.model_id
     elif args.logname is not None:
-        logname = args.logname
+        logname = args.first_stage_model + "_second_stage_" + args.logname
     else:
-        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y%m%d%H%M%S")
+        logname = args.first_stage_model + "_second_stage_" + datetime.now().strftime("%y%m%d%H%M%S")
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
         if not os.path.isdir(logdir):
@@ -103,7 +103,7 @@ def main(args):
             with open(os.path.join(checkpoints_dir, "model_hparams.json"), "w") as f:
                 hparams_dict = {key: vars(args)[key] for key in VAE_HPARAMS}
                 json.dump(hparams_dict, f, indent=4)
-        ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=vae)
+        ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=vae2)
         checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
         # ======= Load model if model_id is provided ===============================================================
@@ -123,18 +123,22 @@ def main(args):
 
     def train_step(x, step):
         with tf.GradientTape() as tape:
-            tape.watch(vae.trainable_weights)
-            reconstruction_loss, kl_loss, bottleneck_l2_loss = vae.cost_function_training(x,  skip_strength_schedule(step), l2_bottleneck_schedule(step))
-            cost = tf.reduce_sum(reconstruction_loss + beta_schedule(step) * kl_loss + bottleneck_l2_loss) / args.batch_size
-        gradients = tape.gradient(cost, vae.trainable_weights)
+            tape.watch(vae2.trainable_weights)
+            reconstruction_loss, kl_loss = vae2.cost_function(x)
+            cost = tf.reduce_sum(reconstruction_loss + beta_schedule(step) * kl_loss) / args.batch_size
+        gradients = tape.gradient(cost, vae2.trainable_weights)
         if args.clipping:
             gradients = [tf.clip_by_value(grad, -10, 10) for grad in gradients]
-        optim.apply_gradients(zip(gradients, vae.trainable_weights))
+        optim.apply_gradients(zip(gradients, vae2.trainable_weights))
+        reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+        kl_loss = tf.reduce_mean(kl_loss)
         return cost, reconstruction_loss, kl_loss
 
     def test_step(x,  step):
-        reconstruction_loss, kl_loss, bottleneck_l2_loss = vae.cost_function_training(x, skip_strength_schedule(step), l2_bottleneck_schedule(step))
-        cost = tf.reduce_sum(reconstruction_loss + beta_schedule(step) * kl_loss + bottleneck_l2_loss) / args.batch_size
+        reconstruction_loss, kl_loss = vae2.cost_function(x)
+        cost = tf.reduce_sum(reconstruction_loss + beta_schedule(step) * kl_loss) / args.batch_size
+        reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+        kl_loss = tf.reduce_mean(kl_loss)
         return cost, reconstruction_loss, kl_loss
 
     # ====== Training loop ============================================================================================
@@ -172,24 +176,17 @@ def main(args):
         time_per_step.reset_states()
         with writer.as_default():
             for batch, x in enumerate(train_dataset):
+                x, _, _ = vae.encode(x)  # Get latent code
                 start = time.time()
-                cost, reconstruction_loss, kl_loss = train_step(x, step=step)
-                # ========== Summary and logs ==================================================================================
+                cost, reconstruction_loss, kl_loss = train_step(x, step=step)  # train on latent code
+                # ========== Summary and logs ====================================================================
                 _time = time.time() - start
-                tf.summary.scalar("Time per step", _time, step=step)
-                tf.summary.scalar("MSE", cost, step=step)
                 tf.summary.scalar("beta", beta_schedule(step), step=step)
-                tf.summary.scalar("l2 bottleneck", l2_bottleneck_schedule(step), step=step)
                 time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
                 epoch_reconstruction_loss.update_state([reconstruction_loss])
                 epoch_kl_loss.update_state([kl_loss])
                 step += 1
-            # last batch we make a summary of residuals
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
-                y_true = x[res_idx, ...]
-                y_pred = vae.call(y_true[None, ...])[0, ...]
-                tf.summary.image(f"Residuals {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
             # ========== Validation set ===================
             val_loss.reset_states()
             val_reconstruction_loss.reset_states()
@@ -199,10 +196,6 @@ def main(args):
                 val_loss.update_state([cost])
                 val_reconstruction_loss.update_state([reconstruction_loss])
                 val_kl_loss.update_state([kl_loss])
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
-                y_true = x[res_idx, ...]
-                y_pred = vae.call(y_true[None, ...])[0, ...]
-                tf.summary.image(f"Val Residuals {res_idx}", plot_to_image(residual_plot(y_true, y_pred)), step=step)
 
             val_cost = val_loss.result().numpy()
             train_cost = epoch_loss.result().numpy()
@@ -210,6 +203,11 @@ def main(args):
             val_reconstruction_cost = val_reconstruction_loss.result().numpy()
             train_kl_cost = epoch_kl_loss.result().numpy()
             val_kl_cost = val_kl_loss.result().numpy()
+            tf.summary.scalar("KL", train_kl_cost, step=step)
+            tf.summary.scalar("Val KL", val_kl_cost, step=step)
+            tf.summary.scalar("Reconstruction loss", train_reconstruction_cost, step=step)
+            tf.summary.scalar("Val reconstruction loss", val_reconstruction_cost, step=step)
+            tf.summary.scalar("MSE", train_cost, step=step)
             tf.summary.scalar("Val MSE", val_cost, step=step)
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
@@ -256,6 +254,7 @@ def main(args):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
+    parser.add_argument("--first_stage_model",      required=True,                  help="Path to first stage VAE checkpoint directory.")
     parser.add_argument("--model_id",               default="None",                 help="Start from this model id checkpoint. None means start from scratch")
     parser.add_argument("--load_checkpoint",        default="best",                 help="One of 'best', 'lastest' or the specific checkpoint index.")
     parser.add_argument("--datasets",               required=True, nargs="+",       help="Path to kappa directories, with tfrecords files")
@@ -306,11 +305,9 @@ if __name__ == '__main__':
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
     parser.add_argument("--logname",                 default=None,                  help="Overwrite name of the log with this argument")
-    parser.add_argument("--logname_prefixe",         default="KappaVAE",            help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
-    parser.add_argument("--n_residuals",             default=5,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")

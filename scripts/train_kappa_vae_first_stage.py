@@ -127,11 +127,15 @@ def main(args):
         if args.clipping:
             gradients = [tf.clip_by_value(grad, -10, 10) for grad in gradients]
         optim.apply_gradients(zip(gradients, vae.trainable_weights))
+        reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+        kl_loss = tf.reduce_mean(kl_loss)
         return cost, reconstruction_loss, kl_loss
 
     def test_step(x,  step):
         reconstruction_loss, kl_loss, bottleneck_l2_loss = vae.cost_function_training(x, skip_strength_schedule(step), l2_bottleneck_schedule(step))
         cost = tf.reduce_sum(reconstruction_loss + beta_schedule(step) * kl_loss + bottleneck_l2_loss) / args.batch_size
+        reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+        kl_loss = tf.reduce_mean(kl_loss)
         return cost, reconstruction_loss, kl_loss
 
     # ====== Training loop ============================================================================================
@@ -173,8 +177,6 @@ def main(args):
                 cost, reconstruction_loss, kl_loss = train_step(x, step=step)
                 # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
-                tf.summary.scalar("Time per step", _time, step=step)
-                tf.summary.scalar("MSE", cost, step=step)
                 tf.summary.scalar("beta", beta_schedule(step), step=step)
                 tf.summary.scalar("l2 bottleneck", l2_bottleneck_schedule(step), step=step)
                 time_per_step.update_state([_time])
@@ -207,6 +209,11 @@ def main(args):
             val_reconstruction_cost = val_reconstruction_loss.result().numpy()
             train_kl_cost = epoch_kl_loss.result().numpy()
             val_kl_cost = val_kl_loss.result().numpy()
+            tf.summary.scalar("KL", train_kl_cost, step=step)
+            tf.summary.scalar("Val KL", val_kl_cost, step=step)
+            tf.summary.scalar("Reconstruction loss", train_reconstruction_cost, step=step)
+            tf.summary.scalar("Val reconstruction loss", val_reconstruction_cost, step=step)
+            tf.summary.scalar("MSE", train_cost, step=step)
             tf.summary.scalar("Val MSE", val_cost, step=step)
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
