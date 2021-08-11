@@ -62,6 +62,7 @@ if __name__ == '__main__':
     parser.add_argument("--sampling_size",      default=81,         type=int,          help="Number of images to sample for a single figure")
     parser.add_argument("--n_plots",            default=1,          type=int,          help="Number of plot to make for a given model")
     parser.add_argument("--block_length",       default=1,          type=int,          help="Number of example to read from tfrecords concurently")
+    parser.add_argument("--compression_type",   default=None,                           help="Compression type used to write data. Default assumes no compression.")
     parser.add_argument("--seed",               default=None,       type=int)
 
     args = parser.parse_args()
