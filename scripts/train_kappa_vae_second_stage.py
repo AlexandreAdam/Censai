@@ -47,7 +47,7 @@ def main(args):
         vae_hparams = json.load(f)
     vae = VAE(**vae_hparams)
     ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=vae)
-    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.first_stage_model)
+    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.first_stage_model, 1)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
     vae.trainable = False
     vae.encoder.trainable = False
