@@ -26,7 +26,7 @@ def main(args):
     vars(args).update({"pixels": int(pixels)})
     dataset = dataset.map(decode).map(preprocess).batch(args.batch_size)
 
-    model_list = glob.glob(os.path.join(os.getenv("CENSAI_PATH"), "models", args.model_prefixe, "*"))
+    model_list = glob.glob(os.path.join(os.getenv("CENSAI_PATH"), "models", args.model_prefixe + "*"))
     for model in model_list:
         if "second_stage" in model:
             continue
