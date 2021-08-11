@@ -39,13 +39,15 @@ def main(args):
         checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model, 1)
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
+        model_name = os.path.split(model)[-1]
+
         for batch, images in enumerate(dataset):
             y_pred = vae(images)
             fig = reconstruction_plot(images, y_pred)
-            fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_reconstruction" + model + args.output_postfixe + f"{batch:01d}.png"))
+            fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_reconstruction" + model_name + args.output_postfixe + f"{batch:01d}.png"))
             y_pred = vae.sample(args.sampling_size)
             fig = sampling_plot(y_pred)
-            fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_sampling" + model + args.output_postfixe + f"{batch:01d}.png"))
+            fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_sampling" + model_name + args.output_postfixe + f"{batch:01d}.png"))
 
             if batch == args.n_plots-1:
                 break
