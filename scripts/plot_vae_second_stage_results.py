@@ -20,6 +20,7 @@ def main(args):
         checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model, 1)
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
+        model_name = os.path.split(model)[-1]
         second_stages = [file for file in model_list if "second_stage" in file and model in file]
         for second_stage in second_stages:
             with open(os.path.join(second_stage, "model_hparams.json"), "r") as f:
@@ -33,7 +34,7 @@ def main(args):
                 z = vae2.sample(args.sampling_size)
                 y_pred = vae.decode(z)
                 fig = sampling_plot(y_pred)
-                fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae2_sampling" + model + args.output_postfixe + f"{n:01d}.png"))
+                fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae2_sampling" + model_name + args.output_postfixe + f"{n:01d}.png"))
 
 
 if __name__ == '__main__':
