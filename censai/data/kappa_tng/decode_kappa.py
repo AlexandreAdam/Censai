@@ -48,6 +48,6 @@ def decode_train(record_bytes):
     kappa = tf.io.decode_raw(example['kappa'], tf.float32)
     kappa_pixels = example['kappa pixels']
 
-    example['kappa'] = tf.reshape(kappa, [kappa_pixels, kappa_pixels, 1])
+    kappa = tf.reshape(kappa, [kappa_pixels, kappa_pixels, 1])
     return kappa
 
