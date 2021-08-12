@@ -1,4 +1,4 @@
-from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE
+from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE, VAESecondStage
 from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM
 import tensorflow as tf
 
@@ -180,15 +180,23 @@ def test_resnet_encoder():
     pass
 
 
+def test_vae_second_stage():
+    vae = VAESecondStage(latent_size=4, output_size=64)
+    x = tf.random.normal(shape=[100, 64])
+    y = vae(x)
+    vae.cost_function(x)
+
+
 if __name__ == '__main__':
-    test_ray_tracer_512()
-    test_raytracer()
-    test_resnet_autoencoder()
-    test_unet_model()
-    test_shared_unet_model()
-    test_rim_shared_unet()
-    test_rim()
-    test_rim_unet()
-    test_resnet_vae()
-    test_resnet_encoder()
-    test_vae()
+    # test_ray_tracer_512()
+    # test_raytracer()
+    # test_resnet_autoencoder()
+    # test_unet_model()
+    # test_shared_unet_model()
+    # test_rim_shared_unet()
+    # test_rim()
+    # test_rim_unet()
+    # test_resnet_vae()
+    # test_resnet_encoder()
+    # test_vae()
+    test_vae_second_stage()

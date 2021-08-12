@@ -7,7 +7,7 @@ from astropy.cosmology import Planck18 as cosmo
 COSMO = cosmo
 DTYPE = tf.float32
 LOG10 = tf.constant(np.log(10.), DTYPE)
-LOGFLOOR = tf.constant(1e-8, DTYPE)
+LOGFLOOR = tf.constant(1e-3, DTYPE) # for kappa
 # some estimate of kappa statistics (after rescaling for theta_e ~ Uniform(1, 7))
 KAPPA_LOG_MEAN = -0.52
 KAPPA_LOG_STD = 0.3

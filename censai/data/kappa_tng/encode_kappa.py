@@ -19,6 +19,7 @@ def encode_examples(
     for j in range(batch_size):
         features = {
             "kappa": _bytes_feature(kappa[j].numpy().tobytes()),
+            "kappa pixels": _int64_feature(kappa_pixels),
             "Einstein radius before rescaling": _float_feature(einstein_radius_init[j]),
             "Einstein radius": _float_feature(einstein_radius[j]),
             "rescaling factor": _float_feature(rescalings[j]),
@@ -26,7 +27,6 @@ def encode_examples(
             "z lens": _float_feature(z_lens),
             "kappa fov": _float_feature(kappa_fov),    # arc seconds
             "sigma crit": _float_feature(sigma_crit),  # 10^10 M_sun / Mpc^2
-            "kappa pixels": _int64_feature(kappa_pixels),
             "kappa id": _int64_feature(kappa_ids[j])
         }
         serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
