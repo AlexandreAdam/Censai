@@ -63,5 +63,5 @@ def preprocess_image(image):
 
 
 def decode_shape(record_bytes):
-    example = decode_image(record_bytes)
+    example = decode_all(record_bytes)
     return example['height']
