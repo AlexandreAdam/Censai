@@ -1,4 +1,4 @@
-from censai.models import VAE
+from censai.models import VAE, VAESecondStage
 from censai.data.cosmos import encode_cosmos
 import numpy as np
 import tensorflow as tf
@@ -7,21 +7,23 @@ import json
 
 
 def main(args):
-    files = []
-    files.extend(glob.glob(os.path.join(args.dataset, "*.tfrecords")))
-    np.random.shuffle(files)
-    # Read concurrently from multiple records
-    files = tf.data.Dataset.from_tensor_slices(files)
-    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
-                               block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-
+    with open(os.path.join(args.first_stage_model_id, "model_hparams.json"), "r") as f:
+        vae_hparams = json.load(f)
     # load weights
     vae = VAE(**vae_hparams)
     ckpt1 = tf.train.Checkpoint(net=vae)
-    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model, 1)
+    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.first_stage_model_id, 1)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
+    model1_name = os.path.split(args.first_stage_model_id)[-1]
 
-    model_name = os.path.split(model)[-1]
+    if args.second_stage_model_id is not None:
+        with open(os.path.join(args.second_stage_model_id, "model_hparams.json"), "r") as f:
+            vae2_hparams = json.load(f)
+        vae2 = VAESecondStage(**vae2_hparams)
+        ckpt2 = tf.train.Checkpoint(net=vae2)
+        checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, args.first_stage_model_id, 1)
+        checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
+        model2_name = os.path.split(args.second_stage_model_id)[-1]
 
 
     y_pred = vae.sample(args.sampling_size)
