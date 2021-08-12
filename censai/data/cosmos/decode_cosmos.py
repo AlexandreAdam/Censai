@@ -28,6 +28,23 @@ def decode_all(record_bytes):
     return example
 
 
+def decode_image(record_bytes):
+    example = tf.io.parse_single_example(
+          # Data
+          record_bytes,
+          # Schema
+          features={
+              'image': tf.io.FixedLenFeature([], tf.string),
+              'height': tf.io.FixedLenFeature([], tf.int64),
+          })
+    #  decode raw data to float tensors, assuming everything was encoded as float32
+    image = tf.io.decode_raw(example["image"], tf.float32)
+    h = example["height"]
+    image = tf.reshape(image, [h, h, 1])
+    example['image'] = image
+    return example
+
+
 def decode(record_bytes):
     keys = ['image', 'psf', 'ps']
     example = decode_all(record_bytes)
@@ -40,11 +57,6 @@ def preprocess(image, psf, ps):
     return image, psf, ps
 
 
-def decode_image(record_bytes):
-    example = decode_all(record_bytes)
-    return example['image']
-
-
 def preprocess_image(image):
     image = tf.nn.relu(image)  # set negative pixels to 0.
     image = image / tf.reduce_max(image)  # set peak value to 1
@@ -52,16 +64,5 @@ def preprocess_image(image):
 
 
 def decode_shape(record_bytes):
-    example = decode_all(record_bytes)
+    example = decode_image(record_bytes)
     return example['height']
-
-
-# # some tests that everything works
-if __name__ == '__main__':
-    import os
-    path = os.path.join("/home/alexandre/Desktop/Projects", "Censai/data/cosmos_record_1.tfrecords")
-    data = tf.data.TFRecordDataset(path)
-    data = data.map(decode)
-    data = data.batch(10)
-    for (im, psf, ps) in data.as_numpy_iterator():
-        break
