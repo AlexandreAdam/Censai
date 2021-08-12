@@ -31,7 +31,7 @@ class NN(tf.keras.Model):
             bias_regularizer=bias_regularizer
         )
 
-    def call(self, x, *args, **kwargs):
+    def call(self, x):
         for layer in self.hidden_layers:
             x = layer(x)
         return self.output_layer(x)
@@ -74,7 +74,7 @@ class VAESecondStage(tf.keras.Model):
     def __call__(self, x, *args, **kwargs):
         return self.call(x)
 
-    def call(self, x, *args, **kwargs):
+    def call(self, x):
         z, mean, logvar = self.encode(x)
         return self.decode(z)
 
