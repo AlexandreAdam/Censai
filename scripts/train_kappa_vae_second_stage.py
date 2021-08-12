@@ -192,6 +192,7 @@ def main(args):
             val_reconstruction_loss.reset_states()
             val_kl_loss.reset_states()
             for x in val_dataset:
+                x, _, _ = vae.encode(x)
                 cost, reconstruction_loss, kl_loss = test_step(x, step=step)
                 val_loss.update_state([cost])
                 val_reconstruction_loss.update_state([reconstruction_loss])
