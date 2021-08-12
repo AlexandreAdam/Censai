@@ -124,7 +124,7 @@ def main(args):
     def train_step(x, step):
         with tf.GradientTape() as tape:
             tape.watch(vae2.trainable_weights)
-            reconstruction_loss, kl_loss = vae2.cost_function_training(x)
+            reconstruction_loss, kl_loss = vae2.cost_function(x)
             cost = tf.reduce_sum(reconstruction_loss + beta_schedule(step) * kl_loss) / args.batch_size
         gradients = tape.gradient(cost, vae2.trainable_weights)
         if args.clipping:
@@ -135,7 +135,7 @@ def main(args):
         return cost, reconstruction_loss, kl_loss
 
     def test_step(x,  step):
-        reconstruction_loss, kl_loss = vae2.cost_function_training(x)
+        reconstruction_loss, kl_loss = vae2.cost_function(x)
         cost = tf.reduce_sum(reconstruction_loss + beta_schedule(step) * kl_loss) / args.batch_size
         reconstruction_loss = tf.reduce_mean(reconstruction_loss)
         kl_loss = tf.reduce_mean(kl_loss)
