@@ -41,8 +41,7 @@ def decode_image(record_bytes):
     image = tf.io.decode_raw(example["image"], tf.float32)
     h = example["height"]
     image = tf.reshape(image, [h, h, 1])
-    example['image'] = image
-    return example
+    return image
 
 
 def decode(record_bytes):
