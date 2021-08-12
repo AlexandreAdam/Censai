@@ -22,12 +22,12 @@ class NN(tf.keras.Model):
             self.hidden_layers.append(tf.keras.layers.Dense(
                 units=units[i],
                 activation=self.activitation,
-                kernel_initializer=kernel_regularizer,
+                kernel_regularizer=kernel_regularizer,
                 bias_regularizer=bias_regularizer
             ))
         self.output_layer = tf.keras.layers.Dense(
             units=output_size,
-            kernel_initializer=kernel_regularizer,
+            kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer
         )
 
