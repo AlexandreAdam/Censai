@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/plot_vae_first_stage_results.py\
-  --model_prefixe=VAE1_cosmos\
+  --model_prefixe=VAE1_kappa\
   --dataset=$CENSAI_PATH/data/kappa128_TNG100_trainset/\
   --type=kappa\
   --batch_size=30\
