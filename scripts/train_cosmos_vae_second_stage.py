@@ -62,8 +62,8 @@ def main(args):
         units=args.units,
         hidden_layers=args.hidden_layers,
         activation=args.activation,
-        kernel_regularizer=tf.keras.regularizers.l2(l2=args.kernel_reg_amp),
-        bias_regularizer=tf.keras.regularizers.l2(l2=args.bias_reg_amp)
+        kernel_reg_amp=args.kernel_reg_amp,
+        bias_reg_amp=args.bias_reg_amp
     )
 
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
@@ -79,13 +79,14 @@ def main(args):
             'config': {"learning_rate": learning_rate_schedule}
         }
     )
+    first_stage_name = os.path.split(args.first_stage_model)[-1]
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         logname = args.model_id
     elif args.logname is not None:
-        logname = args.first_stage_model + "_second_stage_" + args.logname
+        logname = first_stage_name + "_second_stage_" + args.logname
     else:
-        logname = args.first_stage_model + "_second_stage_" + datetime.now().strftime("%y%m%d%H%M%S")
+        logname = first_stage_name + "_second_stage_" + datetime.now().strftime("%y%m%d%H%M%S")
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
         if not os.path.isdir(logdir):

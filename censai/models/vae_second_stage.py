@@ -45,10 +45,13 @@ class VAESecondStage(tf.keras.Model):
             units=64,
             hidden_layers=2,
             activation="relu",
-            kernel_regularizer=tf.keras.regularizers.l2(),
-            bias_regularizer=tf.keras.regularizers.l2()
+            kernel_reg_amp=1e-4,
+            bias_reg_amp=1e-4
+
     ):
         super(VAESecondStage, self).__init__(dtype=DTYPE)
+        kernel_regularizer = tf.keras.regularizers.l2(l2=kernel_reg_amp),
+        bias_regularizer = tf.keras.regularizers.l2(l2=bias_reg_amp)
         self.latent_size = latent_size
         self.encoder = NN(output_size=2 * latent_size, units=units, hidden_layers=hidden_layers, activation=activation,
                           kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer)
