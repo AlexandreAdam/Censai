@@ -112,7 +112,8 @@ def main(args):
             src_fov=physical_params["source fov"].numpy(),
             method=args.forward_method,
             noise_rms=physical_params["noise rms"].numpy(),
-            raytracer=raytracer
+            raytracer=raytracer,
+            psf_sigma=physical_params["psf_sigma"].numpy()
         )
         kappa_model = Model(
             filters=args.kappa_filters,

@@ -222,7 +222,7 @@ if __name__ == '__main__':
 
     # Kappa model hyperparameters
     parser.add_argument("--kappa_filters",                  default=32, nargs="+",      type=int)
-    parser.add_argument("--kappa_filter_scaling",           default=1, nargs="+",       type=int)
+    parser.add_argument("--kappa_filter_scaling",           default=1, nargs="+",       type=float)
     parser.add_argument("--kappa_kernel_size",              default=3, nargs="+",       type=int)
     parser.add_argument("--kappa_layers",                   default=2, nargs="+",       type=int)
     parser.add_argument("--kappa_block_conv_layers",        default=2, nargs="+",       type=int)
@@ -240,7 +240,7 @@ if __name__ == '__main__':
 
     # Source model hyperparameters
     parser.add_argument("--source_filters",                  default=32, nargs="+",     type=int)
-    parser.add_argument("--source_filter_scaling",           default=1, nargs="+",      type=int)
+    parser.add_argument("--source_filter_scaling",           default=1, nargs="+",      type=float)
     parser.add_argument("--source_kernel_size",              default=3, nargs="+",      type=int)
     parser.add_argument("--source_layers",                   default=2, nargs="+",      type=int)
     parser.add_argument("--source_block_conv_layers",        default=2, nargs="+",      type=int)
