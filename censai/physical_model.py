@@ -101,8 +101,10 @@ class PhysicalModel:
 
     def log_likelihood(self, source, kappa, y_true):
         y_pred = self.forward(source, kappa)
-        lam_lagrange = tf.reduce_sum(y_true * y_pred, axis=(1, 2, 3)) / tf.reduce_sum(y_pred**2, axis=(1, 2, 3))[..., tf.newaxis, tf.newaxis, tf.newaxis]
-        return 0.5 * tf.reduce_mean((lam_lagrange * y_pred - y_true)**2/self.noise_rms**2, axis=(1, 2, 3))
+        return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
+        # The multiplicative factor here is interesting in theory, but it seems it impedes learning (maybe it changes the gradient too much)
+        # lam = tf.reduce_sum(y_true * y_pred, axis=(1, 2, 3)) / tf.reduce_sum(y_pred**2, axis=(1, 2, 3))[..., tf.newaxis, tf.newaxis, tf.newaxis]
+        # return 0.5 * tf.reduce_mean((lam * y_pred - y_true)**2/self.noise_rms**2, axis=(1, 2, 3))
 
     def forward(self, source, kappa):
         im = self.lens_source(source, kappa)
