@@ -303,7 +303,7 @@ def main(args):
                 epoch_source_cost.update_state([source_cost])
                 epoch_kappa_cost.update_state([kappa_cost])
                 step += 1
-            if args.n_resiudals > 0:
+            if args.n_residuals > 0:
                 kappa_true = kappa_sampling_function(args.n_residuals)
                 source_true = source_sampling_function(args.n_residuals)
                 lens_true = tf.nn.relu(phys.noisy_forward(source_true, kappa_true, noise_rms=args.noise_rms))

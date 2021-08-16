@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-24
+#SBATCH --array=1-16
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -11,7 +11,7 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_shared_unet_wvae_gridsearch.py\
   --strategy=exhaustive\
-  --n_models=24\
+  --n_models=16\
   --kappa_first_stage_vae=$CENSAI_PATH/models/VAE1_kappa_HPARAMS2_010_CL2_F64_NLbipolar_relu_LS32_210812184741\
   --kappa_second_stage_vae=$CENSAI_PATH/models/VAE1_kappa_HPARAMS2_010_CL2_F64_NLbipolar_relu_LS32_210812184741_second_stage_210813104442\
   --source_first_stage_vae=$CENSAI_PATH/models/VAE1_cosmos_HPARAMS_029_L3_CL4_F16_NLleaky_relu_LS128_ssi0.001_210810161842\
@@ -37,8 +37,8 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_wvae_gridsearch.py\
   --kappalog\
   --source_link relu\
   --activation leaky_relu bipolar_relu\
-  --filters 32 64 108\
-  --filter_scaling 1 1.2\
+  --filters 32 64\
+  --filter_scaling 1 2\
   --kernel_size 3\
   --layers 4\
   --block_conv_layers 3\
@@ -52,4 +52,4 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_wvae_gridsearch.py\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\
-  --n_residuals=5\
+  --n_residuals=5
