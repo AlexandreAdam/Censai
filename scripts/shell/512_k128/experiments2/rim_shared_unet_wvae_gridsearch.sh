@@ -47,7 +47,6 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_wvae_gridsearch.py\
   --gru_kernel_size 3\
   --kernel_regularizer_amp 1e-4\
   --bias_regularizer_amp 1e-4\
-  --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSU_wVAE\
   --logname_prefixe=RIMSU_wVAE\
   --model_dir=$CENSAI_PATH/models\
