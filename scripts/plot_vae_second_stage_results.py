@@ -21,7 +21,7 @@ def main(args):
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
         model_name = os.path.split(model)[-1]
-        second_stages = [file for file in model_list if "second_stage" in file and model in file]
+        second_stages = [file for file in model_list if "second_stage" in file and model_name in file]
         for second_stage in second_stages:
             second_stage_name = os.path.split(second_stage)[-1]
             with open(os.path.join(second_stage, "model_hparams.json"), "r") as f:
