@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/plot_vae_second_stage_results.py\
-  --model_prefixe=VAE1_kappa_HPARAM\
+  --model_prefixe=VAE1_kappa_HPARAMS\
   --sampling_size=81\
   --n_plots=5\
   --seed=42
