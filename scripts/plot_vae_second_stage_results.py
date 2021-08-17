@@ -23,6 +23,7 @@ def main(args):
         model_name = os.path.split(model)[-1]
         second_stages = [file for file in model_list if "second_stage" in file and model in file]
         for second_stage in second_stages:
+            second_stage_name = os.path.split(second_stage)[-1]
             with open(os.path.join(second_stage, "model_hparams.json"), "r") as f:
                 vae2_hparams = json.load(f)
             vae2 = VAESecondStage(**vae2_hparams)
@@ -35,7 +36,7 @@ def main(args):
                 y_pred = vae.decode(z)
                 fig = sampling_plot(y_pred)
                 fig.suptitle(model_name)
-                fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae2_sampling_" + model_name + args.output_postfixe + f"_{n:02d}.png"))
+                fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae2_sampling_" + second_stage_name + args.output_postfixe + f"_{n:02d}.png"))
 
 
 if __name__ == '__main__':
