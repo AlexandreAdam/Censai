@@ -37,10 +37,10 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_wvae_gridsearch.py\
   --kappalog\
   --source_link relu\
   --activation leaky_relu bipolar_relu\
-  --filters 32 64\
-  --filter_scaling 1 2\
+  --filters 32 64 108\
+  --filter_scaling 1\
   --kernel_size 3\
-  --layers 4\
+  --layers 3 4\
   --block_conv_layers 3\
   --kernel_size 3\
   --resampling_kernel_size 5\
