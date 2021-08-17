@@ -26,8 +26,11 @@ def main(args):
         for second_stage in second_stages:
             second_stage_name = os.path.split(second_stage)[-1]
             print(second_stage_name)
-            with open(os.path.join(second_stage, "model_hparams.json"), "r") as f:
-                vae2_hparams = json.load(f)
+            try:
+                with open(os.path.join(second_stage, "model_hparams.json"), "r") as f:
+                    vae2_hparams = json.load(f)
+            except FileNotFoundError(f"{second_stage_name} does not have model hparams."):
+                continue
             vae2 = VAESecondStage(**vae2_hparams)
             ckpt2 = tf.train.Checkpoint(net=vae2)
             checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, second_stage, 1)
