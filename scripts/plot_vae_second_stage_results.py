@@ -7,7 +7,7 @@ import json
 
 
 def main(args):
-    model_list = glob.glob(os.path.join(os.getenv("CENSAI_PATH"), "models", args.model_prefixe, "*"))
+    model_list = glob.glob(os.path.join(os.getenv("CENSAI_PATH"), "models", args.model_prefixe +"*"))
     for model in model_list:
         if "second_stage" in model:
             continue
