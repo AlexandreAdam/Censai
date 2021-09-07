@@ -55,14 +55,6 @@ UNET_MODEL_HPARAMS = [
 ]
 
 
-def is_power_of_two(n):
-    while n > 1:
-        n /= 2
-        if int(n) != n:
-            return False
-        elif n == 2:
-            return True
-
 
 def main(args):
     files = []
@@ -107,7 +99,8 @@ def main(args):
             src_fov=physical_params["source fov"].numpy(),
             method=args.forward_method,
             noise_rms=physical_params["noise rms"].numpy(),
-            raytracer=raytracer
+            raytracer=raytracer,
+            psf_sigma=physical_params["psf_sigma"].numpy()
         )
 
         unet = SharedUnetModel(
@@ -414,7 +407,7 @@ if __name__ == "__main__":
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32,     type=int)
-    parser.add_argument("--filter_scaling",                             default=1,      type=int)
+    parser.add_argument("--filter_scaling",                             default=1,      type=float)
     parser.add_argument("--kernel_size",                                default=3,      type=int)
     parser.add_argument("--layers",                                     default=2,      type=int)
     parser.add_argument("--block_conv_layers",                          default=2,      type=int)

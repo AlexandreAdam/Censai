@@ -219,7 +219,7 @@ if __name__ == '__main__':
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
-    parser.add_argument("--filter_scaling",                             default=1, nargs="+",     type=int)
+    parser.add_argument("--filter_scaling",                             default=1, nargs="+",     type=float)
     parser.add_argument("--kernel_size",                                default=3, nargs="+",     type=int)
     parser.add_argument("--layers",                                     default=2, nargs="+",     type=int)
     parser.add_argument("--block_conv_layers",                          default=2, nargs="+",     type=int)
