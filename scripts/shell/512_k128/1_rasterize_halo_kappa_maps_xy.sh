@@ -22,4 +22,4 @@ python $CENSAI_PATH/scripts/rasterize_halo_kappa_maps.py\
   --n_neighbors=64\
   --fw_param=3\
   --use_gpu\
-  --batch_size=20
+  --batch_size=5
