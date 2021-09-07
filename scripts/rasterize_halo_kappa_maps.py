@@ -362,7 +362,6 @@ def distributed_strategy(args):
                                   args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
 
 
-
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--offsets",            required=True,              help="Path to offset file (hfd5)")
