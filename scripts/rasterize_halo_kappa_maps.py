@@ -116,6 +116,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     Rasterize particle cloud over the 2 dimensions, the output is a projected density
     """
     # Smooth particle mass over a region of size equal to the mean distance btw its n nearest neighbors in 3D
+    print("Fitting Nearest Neighbors...")
     nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='kd_tree').fit(coords)
     distances, _ = nbrs.kneighbors(coords)
     distances = distances[:, 1:]  # the first column is 0 since the nearest neighbor of each point is  the point itself, at a distance of zero.
@@ -156,6 +157,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         context = nullcontext()  # no context needed
         dataset = numpy_dataset(coords[:, dims], mass, ell_hat, batch_size)
 
+    print("Rasterizing...")
     with context:
         x = _np.linspace(xmin, xmax, pixels, dtype=_np.float32)
         y = _np.linspace(ymin, ymax, pixels, dtype=_np.float32)
@@ -282,6 +284,7 @@ def distributed_strategy(args):
         mass = []
         _len = []
         for part_type in [0, 1, 4, 5]:
+            print(f"Loading particle {part_type}...")
             coords_, mass_ = load_halo(halo_id, part_type, offsets, halo_offsets, args.snapshot_dir, args.snapshot_id)
             if coords_ is None:
                 _len.append(0)
@@ -291,6 +294,7 @@ def distributed_strategy(args):
             mass.append(mass_)
         coords = np.concatenate(coords)
         mass = np.concatenate(mass)
+        print(f"Loaded {mass.shape[0]} particles in memory")
 
         # Adjust for periodic boundary conditions
         coords = fixed_boundary_coordinates(coords, centroid, box_size)
@@ -356,6 +360,7 @@ def distributed_strategy(args):
         hdul = fits.HDUList([hdu])
         hdul.writeto(os.path.join(args.output_dir,
                                   args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
+
 
 
 if __name__ == '__main__':
