@@ -1,25 +1,11 @@
 import tensorflow as tf
 import numpy as np
-import math
 from censai import PhysicalModel, RIMSharedUnet
-from censai.models import SharedUnetModel, RayTracer
-from censai.data.lenses_tng import decode_train, decode_physical_model_info
+from censai.models import SharedUnetModel, RayTracer, VAE, VAESecondStage
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
-import os, glob, time, json
+import os, time, json
 from datetime import datetime
 
-""" # NOTE ON THE USE OF MULTIPLE GPUS #
-Double the number of gpus will not speed up the code. In fact, doubling the number of gpus and mirroring 
-the ops accross replicas means the code is TWICE as slow.
-
-In fact, using multiple gpus means one should at least multiply the batch size by the number of gpus introduced, 
-and optimize hyperparameters accordingly (learning rate should be scaled similarly).
-"""
-gpus = tf.config.list_physical_devices('GPU')
-if len(gpus) == 1:
-    STRATEGY = tf.distribute.OneDeviceStrategy(device="/gpu:0")
-elif len(gpus) > 1:
-    STRATEGY = tf.distribute.MirroredStrategy()
 
 RIM_HPARAMS = [
     "adam",
@@ -54,96 +40,153 @@ UNET_MODEL_HPARAMS = [
     "kappa_resize_separate_grad_downsampling"
 ]
 
+VAE_HPARAMS = [
+    "pixels",
+    "layers",
+    "conv_layers",
+    "filter_scaling",
+    "filters",
+    "kernel_size",
+    "kernel_reg_amp",
+    "bias_reg_amp",
+    "activation",
+    "dropout_rate",
+    "batch_norm",
+    "latent_size"
+]
+
+VAE2_HPARAMS = [
+    "hidden_layers",
+    "kernel_reg_amp",
+    "bias_reg_amp",
+    "activation",
+    "latent_size",
+    "units",
+    "output_size"
+]
 
 
 def main(args):
-    files = []
-    for dataset in args.datasets:
-        files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
-    np.random.shuffle(files)
-    # Read concurrently from multiple records
-    files = tf.data.Dataset.from_tensor_slices(files)
-    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
-                               block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-    # Read off global parameters from first example in dataset
-    for physical_params in dataset.map(decode_physical_model_info):
-        break
-    dataset = dataset.map(decode_train).batch(args.batch_size)
-    if args.cache_file is not None:
-        dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
-    else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
-        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size)) # dont forget to divide by batch size!
-    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
-    val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
-    train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
-    val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
         with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
             raytracer_hparams = json.load(f)
-    with STRATEGY.scope():  # Replicate ops accross gpus
-        if args.raytracer is not None:
-            raytracer = RayTracer(**raytracer_hparams)
-            # load last checkpoint in the checkpoint directory
-            checkpoint = tf.train.Checkpoint(net=raytracer)
-            manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
-            checkpoint.restore(manager.latest_checkpoint).expect_partial()
-        else:
-            raytracer = None
-        phys = PhysicalModel(
-            pixels=physical_params["pixels"].numpy(),
-            kappa_pixels=physical_params["kappa pixels"].numpy(),
-            src_pixels=physical_params["src pixels"].numpy(),
-            image_fov=physical_params["image fov"].numpy(),
-            kappa_fov=physical_params["kappa fov"].numpy(),
-            src_fov=physical_params["source fov"].numpy(),
-            method=args.forward_method,
-            noise_rms=physical_params["noise rms"].numpy(),
-            raytracer=raytracer,
-            psf_sigma=physical_params["psf_sigma"].numpy()
-        )
+    if args.raytracer is not None:
+        raytracer = RayTracer(**raytracer_hparams)
+        # load last checkpoint in the checkpoint directory
+        checkpoint = tf.train.Checkpoint(net=raytracer)
+        manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
+        checkpoint.restore(manager.latest_checkpoint).expect_partial()
+    else:
+        raytracer = None
+    
+    # =============== kappa vae ========================================
+    # Load first stage and freeze weights
+    with open(os.path.join(args.kappa_first_stage_vae, "model_hparams.json"), "r") as f:
+        kappa_vae_hparams = json.load(f)
+    kappa_vae = VAE(**kappa_vae_hparams)
+    ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=kappa_vae)
+    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.kappa_first_stage_vae, 1)
+    checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
+    kappa_vae.trainable = False
+    kappa_vae.encoder.trainable = False
+    kappa_vae.decoder.trainable = False
+    
+    # Setup sampling from second stage if provided
+    if args.kappa_second_stage_vae is not None:
+        with open(os.path.join(args.kappa_second_stage_vae, "model_hparams.json"), "r") as f:
+            kappa_vae2_hparams = json.load(f)
+        kappa_vae2 = VAESecondStage(**kappa_vae2_hparams)
+        ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=kappa_vae2)
+        checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.kappa_second_stage_vae, 1)
+        checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
+        kappa_vae2.trainable = False
+        kappa_vae2.encoder.trainable = False
+        kappa_vae2.decoder.trainable = False
+        kappa_sampling_function = lambda batch_size: 10 ** kappa_vae.decode(kappa_vae2.sample(batch_size))
+    else:
+        kappa_sampling_function = lambda batch_size: 10 ** kappa_vae.sample(batch_size)
 
-        unet = SharedUnetModel(
-            filters=args.filters,
-            filter_scaling=args.filter_scaling,
-            kernel_size=args.kernel_size,
-            layers=args.layers,
-            block_conv_layers=args.block_conv_layers,
-            strides=args.strides,
-            bottleneck_kernel_size=args.bottleneck_kernel_size,
-            bottleneck_filters=args.bottleneck_filters,
-            resampling_kernel_size=args.resampling_kernel_size,
-            gru_kernel_size=args.gru_kernel_size,
-            upsampling_interpolation=args.upsampling_interpolation,
-            kernel_regularizer_amp=args.kernel_regularizer_amp,
-            bias_regularizer_amp=args.bias_regularizer_amp,
-            activation=args.activation,
-            alpha=args.alpha,
-            initializer=args.initializer,
-        )
-        rim = RIMSharedUnet(
-            physical_model=phys,
-            unet=unet,
-            steps=args.steps,
-            adam=args.adam,
-            kappalog=args.kappalog,
-            source_link=args.source_link,
-            kappa_normalize=args.kappa_normalize,
-            kappa_init=args.kappa_init,
-            source_init=args.source_init
-        )
-        learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=args.initial_learning_rate,
-            decay_rate=args.decay_rate,
-            decay_steps=args.decay_steps,
-            staircase=args.staircase
-        )
-        optim = tf.keras.optimizers.deserialize(
-            {
-                "class_name": args.optimizer,
-                'config': {"learning_rate": learning_rate_schedule}
-            }
-        )
+    # =============== source vae ========================================
+    # Load first stage and freeze weights
+    with open(os.path.join(args.source_first_stage_vae, "model_hparams.json"), "r") as f:
+        source_vae_hparams = json.load(f)
+    source_vae = VAE(**source_vae_hparams)
+    ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=source_vae)
+    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.source_first_stage_vae, 1)
+    checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
+    source_vae.trainable = False
+    source_vae.encoder.trainable = False
+    source_vae.decoder.trainable = False
+
+    # Setup sampling from second stage if provided
+    if args.source_second_stage_vae is not None:
+        with open(os.path.join(args.source_second_stage_vae, "model_hparams.json"), "r") as f:
+            source_vae2_hparams = json.load(f)
+        source_vae2 = VAESecondStage(**source_vae2_hparams)
+        ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=source_vae2)
+        checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.source_second_stage_vae, 1)
+        checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
+        source_vae2.trainable = False
+        source_vae2.encoder.trainable = False
+        source_vae2.decoder.trainable = False
+        source_sampling_function = lambda batch_size: source_vae.decode(source_vae2.sample(batch_size))
+    else:
+        source_sampling_function = lambda batch_size: source_vae.sample(batch_size)
+
+    phys = PhysicalModel(
+        pixels=args.image_pixels,
+        kappa_pixels=kappa_vae_hparams["pixels"],
+        src_pixels=source_vae_hparams["pixels"],
+        image_fov=args.image_fov,
+        kappa_fov=args.kappa_fov,
+        src_fov=args.source_fov,
+        method=args.forward_method,
+        noise_rms=args.noise_rms,
+        raytracer=raytracer,
+        psf_sigma=args.psf_sigma
+    )
+
+    unet = SharedUnetModel(
+        filters=args.filters,
+        filter_scaling=args.filter_scaling,
+        kernel_size=args.kernel_size,
+        layers=args.layers,
+        block_conv_layers=args.block_conv_layers,
+        strides=args.strides,
+        bottleneck_kernel_size=args.bottleneck_kernel_size,
+        bottleneck_filters=args.bottleneck_filters,
+        resampling_kernel_size=args.resampling_kernel_size,
+        gru_kernel_size=args.gru_kernel_size,
+        upsampling_interpolation=args.upsampling_interpolation,
+        kernel_regularizer_amp=args.kernel_regularizer_amp,
+        bias_regularizer_amp=args.bias_regularizer_amp,
+        activation=args.activation,
+        alpha=args.alpha,
+        initializer=args.initializer,
+    )
+    rim = RIMSharedUnet(
+        physical_model=phys,
+        unet=unet,
+        steps=args.steps,
+        adam=args.adam,
+        kappalog=args.kappalog,
+        source_link=args.source_link,
+        kappa_normalize=args.kappa_normalize,
+        kappa_init=args.kappa_init,
+        source_init=args.source_init
+    )
+    learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=args.initial_learning_rate,
+        decay_rate=args.decay_rate,
+        decay_steps=args.decay_steps,
+        staircase=args.staircase
+    )
+    optim = tf.keras.optimizers.deserialize(
+        {
+            "class_name": args.optimizer,
+            'config': {"learning_rate": learning_rate_schedule}
+        }
+    )
 
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
@@ -191,8 +234,7 @@ def main(args):
         save_checkpoint = False
     # =================================================================================================================
 
-    def train_step(inputs):
-        X, source, kappa = inputs
+    def train_step(X, source, kappa):
         with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
             source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
@@ -208,58 +250,20 @@ def main(args):
         kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
 
-    @tf.function
-    def distributed_train_step(dist_inputs):
-        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(train_step, args=(dist_inputs,))
-        # Replica losses are aggregated by summing them
-        global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
-        global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
-        global_source_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_source_cost, axis=None)
-        global_kappa_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_kappa_cost, axis=None)
-        return global_loss, global_chi_squared, global_source_cost, global_kappa_cost
-
-    def test_step(inputs):
-        X, source, kappa = inputs
-        source_series, kappa_series, chi_squared = rim.call(X)
-        source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(0, 2, 3, 4))
-        kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
-        cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
-        chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
-        source_cost = tf.reduce_sum(source_cost) / args.batch_size
-        kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
-        return cost, chi_squared, source_cost, kappa_cost
-
-    @tf.function
-    def distributed_test_step(dist_inputs):
-        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(test_step, args=(dist_inputs,))
-        # Replica losses are aggregated by summing them
-        global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
-        global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
-        global_source_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_source_cost, axis=None)
-        global_kappa_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_kappa_cost, axis=None)
-        return global_loss, global_chi_squared, global_source_cost, global_kappa_cost
-
     # ====== Training loop ============================================================================================
     epoch_loss = tf.metrics.Mean()
     time_per_step = tf.metrics.Mean()
-    val_loss = tf.metrics.Mean()
     epoch_chi_squared = tf.metrics.Mean()
     epoch_source_cost = tf.metrics.Mean()
     epoch_kappa_cost = tf.metrics.Mean()
-    val_chi_squared = tf.metrics.Mean()
-    val_source_cost = tf.metrics.Mean()
-    val_kappa_cost = tf.metrics.Mean()
     history = {  # recorded at the end of an epoch only
-        "train_cost": [],
-        "train_chi_squared": [],
-        "train_source_cost": [],
-        "train_kappa_cost": [],
-        "val_cost": [],
-        "val_chi_squared": [],
-        "val_source_cost": [],
-        "val_kappa_cost": [],
+        "cost": [],
+        "chi_squared": [],
+        "source_cost": [],
+        "kappa_cost": [],
         "learning_rate": [],
-        "time_per_step": []
+        "time_per_step": [],
+        "step": []
     }
     best_loss = np.inf
     patience = args.patience
@@ -278,9 +282,14 @@ def main(args):
         epoch_kappa_cost.reset_states()
         time_per_step.reset_states()
         with writer.as_default():
-            for batch, distributed_inputs in enumerate(train_dataset):
+            for batch in range(args.total_items // args.batch_size):
                 start = time.time()
-                cost, chi_squared, source_cost, kappa_cost = distributed_train_step(distributed_inputs)
+                kappa = kappa_sampling_function(args.batch_size)
+                source = source_sampling_function(args.batch_size)
+                source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)  # preprocess source
+                X = tf.nn.relu(phys.noisy_forward(source, kappa, noise_rms=args.noise_rms))
+                cost, chi_squared, source_cost, kappa_cost = train_step(X, source, kappa)
+
         # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
                 tf.summary.scalar("Time per step", _time, step=step)
@@ -294,71 +303,44 @@ def main(args):
                 epoch_source_cost.update_state([source_cost])
                 epoch_kappa_cost.update_state([kappa_cost])
                 step += 1
-            # last batch we make a summary of residuals
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
-                lens_true = distributed_inputs[0][res_idx, ...]
-                source_true = distributed_inputs[1][res_idx, ...]
-                kappa_true = distributed_inputs[2][res_idx, ...]
-                source_pred, kappa_pred, chi_squared = rim.predict(lens_true[None, ...])
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
-                tf.summary.image(f"Residuals {res_idx}",
-                                 plot_to_image(
-                                     residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
-                                         kappa_pred[-1][0, ...], chi_squared[-1][0]
-                                     )), step=step)
+            if args.n_residuals > 0:
+                kappa_true = kappa_sampling_function(args.n_residuals)
+                source_true = source_sampling_function(args.n_residuals)
+                lens_true = tf.nn.relu(phys.noisy_forward(source_true, kappa_true, noise_rms=args.noise_rms))
+                source_pred, kappa_pred, chi_squared = rim.predict(lens_true)
+                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
+            for res_idx in range(args.n_residuals):
+                try:
+                    tf.summary.image(f"Residuals {res_idx}",
+                                     plot_to_image(
+                                         residual_plot(
+                                             lens_true[res_idx],
+                                             source_true[res_idx, ...],
+                                             kappa_true[res_idx, ...],
+                                             lens_pred[res_idx],
+                                             source_pred[-1][res_idx, ...],
+                                             kappa_pred[-1][res_idx, ...],
+                                             chi_squared[-1][res_idx]
+                                         )), step=step)
+                except ValueError:
+                    continue
 
-            # ========== Validation set ===================
-            val_loss.reset_states()
-            val_chi_squared.reset_states()
-            val_source_cost.reset_states()
-            val_kappa_cost.reset_states()
-            for distributed_inputs in val_dataset:
-                cost, chi_squared, source_cost, kappa_cost = distributed_test_step(distributed_inputs)
-                val_loss.update_state([cost])
-                val_chi_squared.update_state([chi_squared])
-                val_source_cost.update_state([source_cost])
-                val_kappa_cost.update_state([kappa_cost])
-
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
-                lens_true = distributed_inputs[0][res_idx, ...]
-                source_true = distributed_inputs[1][res_idx, ...]
-                kappa_true = distributed_inputs[2][res_idx, ...]
-                source_pred, kappa_pred, chi_squared = rim.predict(lens_true[None, ...])
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
-                tf.summary.image(f"Val Residuals {res_idx}",
-                                 plot_to_image(
-                                     residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
-                                         kappa_pred[-1][0, ...], chi_squared[-1][0]
-                                     )), step=step)
-            val_cost = val_loss.result().numpy()
-            val_chi_sq = val_chi_squared.result().numpy()
-            val_s_cost = val_source_cost.result().numpy()
-            val_k_cost = val_kappa_cost.result().numpy()
             train_cost = epoch_loss.result().numpy()
             train_chi_sq = epoch_chi_squared.result().numpy()
             train_s_cost = epoch_source_cost.result().numpy()
             train_k_cost = epoch_kappa_cost.result().numpy()
-            tf.summary.scalar("Val MSE", val_cost, step=step)
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
-            tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
-            tf.summary.scalar("Val Source Cost", val_s_cost, step=step)
-            tf.summary.scalar("Val Kappa Cost", val_k_cost, step=step)
-        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
+        print(f"step {step} | train loss {train_cost:.3e} | chi sq {train_chi_sq:.3e}"
               f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
-        history["train_cost"].append(train_cost)
-        history["val_cost"].append(val_cost)
+        history["cost"].append(train_cost)
         history["learning_rate"].append(optim.lr(step).numpy())
-        history["train_chi_squared"].append(train_chi_sq)
-        history["val_chi_squared"].append(val_chi_sq)
+        history["chi_squared"].append(train_chi_sq)
         history["time_per_step"].append(time_per_step.result().numpy())
-        history["train_kappa_cost"].append(train_k_cost)
-        history["train_source_cost"].append(train_s_cost)
-        history["val_kappa_cost"].append(val_k_cost)
-        history["val_source_cost"].append(val_s_cost)
+        history["kappa_cost"].append(train_k_cost)
+        history["source_cost"].append(train_s_cost)
+        history["step"].append(step)
 
-        cost = train_cost if args.track_train else val_cost
+        cost = train_cost
         if np.isnan(cost):
             print("Training broke the Universe")
             break
@@ -391,10 +373,12 @@ def main(args):
 if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument("--model_id",               default="None",                 help="Start from this model id checkpoint. None means start from scratch")
-    parser.add_argument("--load_checkpoint",        default="best",                 help="One of 'best', 'lastest' or the specific checkpoint index.")
-    parser.add_argument("--datasets",               required=True,  nargs="+",      help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
-    parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
+    parser.add_argument("--model_id",                   default="None",                 help="Start from this model id checkpoint. None means start from scratch")
+    parser.add_argument("--load_checkpoint",            default="best",                 help="One of 'best', 'lastest' or the specific checkpoint index.")
+    parser.add_argument("--kappa_first_stage_vae",      required=True)
+    parser.add_argument("--kappa_second_stage_vae",     default=None)
+    parser.add_argument("--source_first_stage_vae",     required=True)
+    parser.add_argument("--source_second_stage_vae",    default=None)
 
     # RIM hyperparameters
     parser.add_argument("--steps",              default=16,     type=int,       help="Number of time steps of RIM")
@@ -427,14 +411,16 @@ if __name__ == "__main__":
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
                                                                                          "'--raytracer' must be provided and point to model checkpoint directory.")
     parser.add_argument("--raytracer",              default=None,                   help="Path to raytracer checkpoint dir if method 'unet' is used.")
+    parser.add_argument("--image_pixels",           default=512,    type=int,       help="Number of pixels on a side of the lensed image")
+    parser.add_argument("--image_fov",              default=20,     type=float,     help="Field of view of lensed image in arcsec")
+    parser.add_argument("--kappa_fov",              default=18,     type=float,     help="Field of view of kappa map (in lens plane), in arcsec")
+    parser.add_argument("--source_fov",             default=3,      type=float,     help="Field of view of source map, in arcsec")
+    parser.add_argument("--noise_rms",              default=1e-2,   type=float,     help="RMS of white noise added to lensed image")
+    parser.add_argument("--psf_sigma",              default=0.08,   type=float,     help="Size, in arcseconds, of the gaussian blurring PSF")
 
     # Training set params
     parser.add_argument("-b", "--batch_size",       default=1,      type=int,       help="Number of images in a batch. ")
-    parser.add_argument("--train_split",            default=0.8,    type=float,     help="Fraction of the training set.")
     parser.add_argument("--total_items",            required=True,  type=int,       help="Total images in an epoch.")
-    # ... for tfrecord dataset
-    parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
-    parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files at a given moment.")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
@@ -446,13 +432,12 @@ if __name__ == "__main__":
     parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
-    parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
     parser.add_argument("--logname",                 default=None,                  help="Overwrite name of the log with this argument")
-    parser.add_argument("--logname_prefixe",         default="RIMUnet512",          help="If name of the log is not provided, this prefix is prepended to the date")
+    parser.add_argument("--logname_prefixe",         default="RIMSUwVAE",           help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
@@ -460,8 +445,7 @@ if __name__ == "__main__":
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
-    parser.add_argument("--json_override",          default=None, nargs="+",        help="A json filepath that will override every command line parameters. "
-                                                                                 "Useful for reproducibility")
+    parser.add_argument("--json_override",          default=None, nargs="+",        help="A json filepath that will override every command line parameters. Useful for reproducibility")
 
     args = parser.parse_args()
     if args.seed is not None:

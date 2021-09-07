@@ -63,7 +63,8 @@ def main(args):
             src_fov=physical_params["source fov"].numpy(),
             method=args.forward_method,
             noise_rms=physical_params["noise rms"].numpy(),
-            raytracer=raytracer
+            raytracer=raytracer,
+            psf_sigma=physical_params["psf_sigma"].numpy()
         )
         source_model = UnetModel512(num_cell_features=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4], strides=args.source_strides)
         kappa_model = UnetModel512(num_cell_features=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4], strides=args.source_strides)

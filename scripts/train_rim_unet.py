@@ -114,7 +114,8 @@ def main(args):
             src_fov=physical_params["source fov"].numpy(),
             method=args.forward_method,
             noise_rms=physical_params["noise rms"].numpy(),
-            raytracer=raytracer
+            raytracer=raytracer,
+            psf_sigma=physical_params["psf_sigma"].numpy()
         )
         kappa_model = UnetModel(
             filters=args.kappa_filters,
@@ -422,7 +423,7 @@ if __name__ == "__main__":
     
     # Kappa model hyperparameters
     parser.add_argument("--kappa_filters",                  default=32,     type=int)
-    parser.add_argument("--kappa_filter_scaling",           default=1,      type=int)
+    parser.add_argument("--kappa_filter_scaling",           default=1,      type=float)
     parser.add_argument("--kappa_kernel_size",              default=3,      type=int)
     parser.add_argument("--kappa_layers",                   default=2,      type=int)
     parser.add_argument("--kappa_block_conv_layers",        default=2,      type=int)
@@ -440,7 +441,7 @@ if __name__ == "__main__":
     
     # Source model hyperparameters
     parser.add_argument("--source_filters",                  default=32,     type=int)
-    parser.add_argument("--source_filter_scaling",           default=1,      type=int)
+    parser.add_argument("--source_filter_scaling",           default=1,      type=float)
     parser.add_argument("--source_kernel_size",              default=3,      type=int)
     parser.add_argument("--source_layers",                   default=2,      type=int)
     parser.add_argument("--source_block_conv_layers",        default=2,      type=int)
