@@ -56,7 +56,8 @@ EXTRA_PARAMS = [
     "seed",
     "batch_size",
     "initial_learning_rate",
-    "decay_rate"
+    "decay_rate",
+    "decay_steps"
 ]
 
 
@@ -68,6 +69,7 @@ PARAMS_NICKNAME["seed"] = ""
 PARAMS_NICKNAME["batch_size"] = "B"
 PARAMS_NICKNAME["initial_learning_rate"] = "lr"
 PARAMS_NICKNAME["decay_rate"] = "dr"
+PARAMS_NICKNAME["decay_steps"] = "ds"
 
 PARAMS_NICKNAME["filters"] = "F"
 PARAMS_NICKNAME["filter_scaling"] = "FS"
@@ -258,7 +260,7 @@ if __name__ == '__main__':
     parser.add_argument("--optimizer",              default="Adam", nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",  default=1e-3,   nargs="+",   type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     nargs="+",   type=float,     help="Exponential decay rate of learning rate (1=no decay).")
-    parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
+    parser.add_argument("--decay_steps",            default=1000,   nargs="+", type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
     parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
