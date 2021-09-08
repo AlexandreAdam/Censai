@@ -9,8 +9,8 @@
 #SBATCH --job-name=Rasterize_Kappa_Maps_512_k228_xz
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/rasterize_kappa_maps.py\
-  --output_dir=$HOME/scratch/Censai/data/kappa158_TNG100_512\
+python $CENSAI_PATH/scripts/rasterize_halo_kappa_maps.py\
+  --output_dir=$HOME/scratch/Censai/data/hkappa158_TNG100_512\
   --subhalo_id=$HOME/scratch/Censai/data/subhalo_TNG100-1_id.npy\
   --groupcat_dir=$HOME/projects/rrg-lplevass/data/TNG100-1/groupcat99/\
   --snapshot_dir=$HOME/projects/rrg-lplevass/data/TNG100-1/snapshot99/\
@@ -22,4 +22,4 @@ python $CENSAI_PATH/scripts/rasterize_kappa_maps.py\
   --n_neighbors=64\
   --fw_param=3\
   --use_gpu \
-  --batch_size=20
+  --batch_size=5
