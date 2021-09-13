@@ -55,7 +55,6 @@ UNET_MODEL_HPARAMS = [
 ]
 
 
-
 def main(args):
     files = []
     for dataset in args.datasets:
@@ -144,7 +143,14 @@ def main(args):
                 'config': {"learning_rate": learning_rate_schedule}
             }
         )
-
+        # # weights for time steps in the loss function
+        # if args.time_weights == "uniform":
+        #     wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
+        # elif args.time_weigth == "linear":
+        #     wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
+        # elif args.time_weight == "quadratic":
+        #     wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1)**2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
+        # wt = wt[..., tf.newaxis]  # [steps, batch]
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         logname = args.model_id
@@ -196,8 +202,13 @@ def main(args):
         with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
             source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
-            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(0, 2, 3, 4))
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
+            # mean over image residuals
+            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            # weighted mean over time steps
+            source_cost = tf.reduce_sum(source_cost, axis=0)
+            kappa_cost = tf.reduce_sum(kappa_cost, axis=0)
+            # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
         if args.clipping:
@@ -221,8 +232,13 @@ def main(args):
     def test_step(inputs):
         X, source, kappa = inputs
         source_series, kappa_series, chi_squared = rim.call(X)
-        source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(0, 2, 3, 4))
-        kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
+        # mean over image residuals
+        source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+        kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+        # weighted mean over time steps
+        source_cost = tf.reduce_sum(source_cost, axis=0)
+        kappa_cost = tf.reduce_sum(kappa_cost, axis=0)
+        # final cost is mean over global batch size
         cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
         source_cost = tf.reduce_sum(source_cost) / args.batch_size
@@ -448,6 +464,7 @@ if __name__ == "__main__":
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
+    # parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
