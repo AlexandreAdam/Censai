@@ -264,7 +264,7 @@ def main(args):
     # =================================================================================================================
 
     def train_step(X, source, kappa):
-        with tf.GradientTape() as tape:
+        with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
             tape.watch(rim.source_model.trainable_variables)
             tape.watch(rim.kappa_model.trainable_variables)
             source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
