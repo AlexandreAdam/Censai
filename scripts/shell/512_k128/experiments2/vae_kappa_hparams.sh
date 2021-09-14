@@ -22,8 +22,8 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --initial_learning_rate 1e-4\
   --decay_rate 0.5\
   --decay_steps=10000\
-  --beta_init=0\
-  --beta_end_value=0.1\
+  --beta_init 0\
+  --beta_end_value 0.1\
   --beta_decay_power 0.5\
   --beta_decay_steps=50000\
   --beta_cyclical 0\
