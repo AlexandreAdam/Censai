@@ -9,7 +9,7 @@
 #SBATCH --job-name=Train_RIM_TNG100_512_k128_wVAE
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
+python $CENSAI_PATH/scripts/experiments/rim_wvae_gridsearch.py\
   --kappa_first_stage_vae=$CENSAI_PATH/models/VAE1_kappa_HPARAMS2_010_CL2_F64_NLbipolar_relu_LS32_210812184741\
   --kappa_second_stage_vae=$CENSAI_PATH/models/VAE1_kappa_HPARAMS2_010_CL2_F64_NLbipolar_relu_LS32_210812184741_second_stage_210813104442\
   --source_first_stage_vae=$CENSAI_PATH/models/VAE1_cosmos_HPARAMS_029_L3_CL4_F16_NLleaky_relu_LS128_ssi0.001_210810161842\
