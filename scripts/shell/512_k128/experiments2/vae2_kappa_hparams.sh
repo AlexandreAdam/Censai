@@ -41,7 +41,7 @@ python $CENSAI_PATH/scripts/experiments/vae2_kappa_gridsearch.py\
   --units 32 64\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsVAE_kappa\
-  --logname_prefixe=VAE2_kappa_HPARAMS\
+  --logname_prefixe=VAE2_kappa_HPARAMS_1\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\

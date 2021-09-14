@@ -51,7 +51,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --latent_size 64 84 128 \
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsVAE_cosmos\
-  --logname_prefixe=VAE1_cosmos_HPARAMS\
+  --logname_prefixe=VAE1_cosmos_HPARAMS_1\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\
