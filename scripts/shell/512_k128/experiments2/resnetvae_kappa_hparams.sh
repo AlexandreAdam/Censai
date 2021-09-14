@@ -54,7 +54,7 @@ python $CENSAI_PATH/scripts/experiments/resnet_vae_kappa_gridsearch.py\
   --latent_size 64 128 512\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsRVAE_k\
-  --logname_prefixe=RVAE1_kap_HPARAMS\
+  --logname_prefixe=RVAE1_kap_HPARAMS_1\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\
