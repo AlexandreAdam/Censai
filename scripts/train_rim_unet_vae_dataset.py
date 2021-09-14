@@ -6,6 +6,14 @@ from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to
 import os, time, json
 from datetime import datetime
 
+# gpus = tf.config.list_physical_devices('GPU')
+# if len(gpus) == 2:
+#     rim_device = '/device:GPU:0'
+#     vae_device = '/device:GPU:1'
+# else:
+#     rim_device = '/device:GPU:0'
+#     vae_device = '/device:GPU:0'
+
 RIM_HPARAMS = [
     "adam",
     "steps",
@@ -65,6 +73,7 @@ def main(args):
     else:
         raytracer = None
 
+    # with tf.device(vae_device):
     # =============== kappa vae ========================================
     # Load first stage and freeze weights
     with open(os.path.join(args.kappa_first_stage_vae, "model_hparams.json"), "r") as f:
@@ -119,6 +128,7 @@ def main(args):
     else:
         source_sampling_function = lambda batch_size: source_vae.sample(batch_size)
 
+    # with tf.device(rim_device):
     phys = PhysicalModel(
         pixels=args.image_pixels,
         kappa_pixels=kappa_vae_hparams["pixels"],
@@ -307,10 +317,12 @@ def main(args):
         with writer.as_default():
             for batch in range(args.total_items // args.batch_size):
                 start = time.time()
+                # with tf.device(vae_device):
                 kappa = kappa_sampling_function(args.batch_size)
                 source = source_sampling_function(args.batch_size)
                 source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)  # preprocess source
                 X = tf.nn.relu(phys.noisy_forward(source, kappa, noise_rms=args.noise_rms))
+                # with tf.device(rim_device):
                 cost, chi_squared, source_cost, kappa_cost = train_step(X, source, kappa)
         # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
@@ -326,9 +338,11 @@ def main(args):
                 epoch_kappa_cost.update_state([kappa_cost])
                 step += 1
             if args.n_residuals > 0:
+                # with tf.device(vae_device):
                 kappa_true = kappa_sampling_function(args.n_residuals)
                 source_true = source_sampling_function(args.n_residuals)
                 lens_true = tf.nn.relu(phys.noisy_forward(source_true, kappa_true, noise_rms=args.noise_rms))
+                # with tf.device(rim_device):
                 source_pred, kappa_pred, chi_squared = rim.predict(lens_true)
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
             for res_idx in range(args.n_residuals):
