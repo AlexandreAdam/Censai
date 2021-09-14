@@ -27,7 +27,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_wvae_gridsearch.py\
   --source_fov=3\
   --noise_rms=5e-2\
   --psf_sigma=0.1\
-  --initial_learning_rate 5e-4\
+  --initial_learning_rate 1e-4\
   --decay_rate 0.5\
   --decay_steps 200000 100000\
   --optimizer ADAM\
