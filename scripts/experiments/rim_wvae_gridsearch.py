@@ -34,6 +34,7 @@ SOURCE_MODEL_HPARAMS = [
     "kappa_bottleneck_kernel_size",
     "kappa_bottleneck_filters",
     "kappa_resampling_kernel_size",
+    "kappa_gru_kernel_size",
     "kappa_upsampling_interpolation",
     "kappa_kernel_regularizer_amp",
     "kappa_bias_regularizer_amp",
@@ -51,6 +52,7 @@ KAPPA_MODEL_HPARAMS = [
     "source_bottleneck_kernel_size",
     "source_bottleneck_filters",
     "source_resampling_kernel_size",
+    "kappa_gru_kernel_size",
     "source_upsampling_interpolation",
     "source_kernel_regularizer_amp",
     "source_bias_regularizer_amp",
@@ -235,6 +237,7 @@ if __name__ == '__main__':
     parser.add_argument("--kappa_bottleneck_kernel_size",   default=None, nargs="+",    type=int)
     parser.add_argument("--kappa_bottleneck_filters",       default=None, nargs="+",    type=int)
     parser.add_argument("--kappa_resampling_kernel_size",   default=None, nargs="+",    type=int)
+    parser.add_argument("--kappa_gru_kernel_size",          default=None, nargs="+",    type=int)
     parser.add_argument("--kappa_upsampling_interpolation", action="store_true")
     parser.add_argument("--kappa_kernel_regularizer_amp",   default=1e-4, nargs="+",    type=float)
     parser.add_argument("--kappa_bias_regularizer_amp",     default=1e-4, nargs="+",    type=float)
@@ -252,6 +255,7 @@ if __name__ == '__main__':
     parser.add_argument("--source_bottleneck_kernel_size",   default=None, nargs="+",   type=int)
     parser.add_argument("--source_bottleneck_filters",       default=None, nargs="+",   type=int)
     parser.add_argument("--source_resampling_kernel_size",   default=None, nargs="+",   type=int)
+    parser.add_argument("--source_gru_kernel_size",           default=None,   nargs="+",  type=int)
     parser.add_argument("--source_upsampling_interpolation", action="store_true")
     parser.add_argument("--source_kernel_regularizer_amp",   default=1e-4, nargs="+",   type=float)
     parser.add_argument("--source_bias_regularizer_amp",     default=1e-4, nargs="+",   type=float)
