@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim import main
+from scripts.train_rim_unet_vae_dataset import main
 import copy
 import pandas as pd
 
