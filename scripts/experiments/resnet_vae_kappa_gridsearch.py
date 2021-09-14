@@ -140,7 +140,11 @@ def distributed_strategy(args):
             "experiment_id": run_args.logname,
             "train_cost": history["train_cost"][-1],
             "val_cost": history["val_cost"][-1],
-            "best_score": best_score
+            "best_score": best_score,
+            "train_reconstruction_loss": history["train_reconstruction_loss"][-1],
+            "val_reconstruction_loss": history["val_reconstruction_loss"][-1],
+            "train_kl_loss": history["train_kl_loss"][-1],
+            "val_kl_loss": history["val_kl_loss"][-1]
         })
         # Save hyperparameters and scores in shared csv for this gridsearch
         df = pd.DataFrame(params_dict, index=[gridsearch_id])
