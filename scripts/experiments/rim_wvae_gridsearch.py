@@ -261,10 +261,6 @@ if __name__ == '__main__':
 
     # Training set params
     parser.add_argument("--batch_size",             default=1,      nargs="+",  type=int,       help="Number of images in a batch. ")
-    parser.add_argument("--train_split",            default=0.8,                type=float,     help="Fraction of the training set.")
-    parser.add_argument("--total_items",            required=True,  nargs="+",  type=int,       help="Total images in an epoch.")
-    # Training set params
-    parser.add_argument("--batch_size",             default=1,      nargs="+",  type=int,       help="Number of images in a batch. ")
     parser.add_argument("--total_items",            required=True,  nargs="+",  type=int,       help="Total images in an epoch.")
     parser.add_argument("--image_pixels",           default=512,                type=int,       help="Number of pixels on a side of the lensed image")
     parser.add_argument("--image_fov",              default=20,                 type=float,     help="Field of view of lensed image in arcsec")
