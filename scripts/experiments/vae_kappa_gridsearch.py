@@ -39,7 +39,10 @@ EXTRA_PARAMS = [
     "beta_cyclical",
     "skip_strength_decay_power",
     "l2_bottleneck_decay_power",
-    "skip_strength_init"
+    "skip_strength_init",
+    "beta_init",
+    "beta_end_value"
+
 ]
 
 PARAMS_NICKNAME = {
@@ -60,9 +63,11 @@ PARAMS_NICKNAME = {
     "initial_learning_rate": "lr",
     "decay_rate": "dr",
     "beta_cyclical": "betaC",
+    "beta_init": "betaI",
+    "beta_end_value": "betaE",
     "skip_strength_decay_power": "SSDP",
     "l2_bottleneck_decay_power": "l2DP",
-    "skip_strength_init": "ssi"
+    "skip_strength_init": "ssi",
 }
 
 
