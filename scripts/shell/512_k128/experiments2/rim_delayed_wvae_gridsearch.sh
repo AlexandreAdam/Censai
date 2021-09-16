@@ -9,7 +9,7 @@
 #SBATCH --job-name=Train_RIM_TNG100_512_k128_wVAE
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/experiments/rim_wvae_gridsearch.py\
+python $CENSAI_PATH/scripts/experiments/rim_delayed_wvae_gridsearch.py\
   --kappa_first_stage_vae=$CENSAI_PATH/models/VAE1_kappa_HPARAMS2_010_CL2_F64_NLbipolar_relu_LS32_210812184741\
   --kappa_second_stage_vae=$CENSAI_PATH/models/VAE1_kappa_HPARAMS2_010_CL2_F64_NLbipolar_relu_LS32_210812184741_second_stage_210813104442\
   --source_first_stage_vae=$CENSAI_PATH/models/VAE1_cosmos_HPARAMS_029_L3_CL4_F16_NLleaky_relu_LS128_ssi0.001_210810161842\
@@ -31,14 +31,15 @@ python $CENSAI_PATH/scripts/experiments/rim_wvae_gridsearch.py\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --steps 5 10\
-  --adam 1\
+  --steps 10\
+  --adam 0 1\
   --kappalog\
+  --delay 1 4 8 16\
   --source_link relu\
   --kappa_filters 16\
   --kappa_filter_scaling 2\
   --kappa_kernel_size 3\
-  --kappa_layers 3 4\
+  --kappa_layers 4\
   --kappa_block_conv_layers 2\
   --kappa_strides 2\
   --kappa_upsampling_interpolation\
@@ -50,7 +51,7 @@ python $CENSAI_PATH/scripts/experiments/rim_wvae_gridsearch.py\
   --source_filters 16\
   --source_filter_scaling 2\
   --source_kernel_size 3\
-  --source_layers 3 4\
+  --source_layers 4\
   --source_block_conv_layers 2\
   --source_strides 2\
   --source_upsampling_interpolation\
@@ -59,9 +60,9 @@ python $CENSAI_PATH/scripts/experiments/rim_wvae_gridsearch.py\
   --source_activation leaky_relu\
   --source_alpha 0.1\
   --source_initializer glorot_normal\
-  --logdir=$CENSAI_PATH/logsRIMDU_wVAE\
-  --logname_prefixe=RIMDU_wVAE\
+  --logdir=$CENSAI_PATH/logsRIMDU_D_wVAE\
+  --logname_prefixe=RIMDU_D_wVAE\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\
-  --n_residuals=5
+  --n_residuals=2
