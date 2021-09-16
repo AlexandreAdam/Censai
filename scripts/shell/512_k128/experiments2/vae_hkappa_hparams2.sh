@@ -49,7 +49,7 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --bias_reg_amp=1e-4\
   --activation leaky_relu\
   --batch_norm 0 1\
-  --latent_size 84\
+  --latent_size 512\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsVAE_hkappa\
   --logname_prefixe=VAE1_hkappa_HPARAMS2\
