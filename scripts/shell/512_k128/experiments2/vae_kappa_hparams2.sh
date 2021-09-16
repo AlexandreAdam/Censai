@@ -25,7 +25,7 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --beta_init 0\
   --beta_end_value 0.1\
   --beta_decay_power 0.5\
-  --beta_decay_steps=50000\
+  --beta_decay_steps 50000\
   --beta_cyclical 0\
   --skip_strength_init 0.\
   --skip_strength_end_value=0.\
