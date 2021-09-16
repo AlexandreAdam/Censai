@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_unet import main
+from scripts.train_rim_delayed_vae_dataset import main
 import copy
 import pandas as pd
 
@@ -52,7 +52,7 @@ KAPPA_MODEL_HPARAMS = [
     "source_bottleneck_kernel_size",
     "source_bottleneck_filters",
     "source_resampling_kernel_size",
-    "source_gru_kernel_size",
+    "kappa_gru_kernel_size",
     "source_upsampling_interpolation",
     "source_kernel_regularizer_amp",
     "source_bias_regularizer_amp",
@@ -65,7 +65,11 @@ EXTRA_PARAMS = [
     "total_items",
     "optimizer",
     "seed",
-    "batch_size"
+    "batch_size",
+    "initial_learning_rate",
+    "decay_rate",
+    "decay_steps",
+    "delay"
 ]
 
 from collections import OrderedDict
@@ -74,6 +78,11 @@ PARAMS_NICKNAME["total_items"] = "TI"
 PARAMS_NICKNAME["optimizer"] = "O"
 PARAMS_NICKNAME["seed"] = ""
 PARAMS_NICKNAME["batch_size"] = "B"
+PARAMS_NICKNAME["initial_learning_rate"] = "lr"
+PARAMS_NICKNAME["decay_rate"] = "dr"
+PARAMS_NICKNAME["decay_steps"] = "ds"
+PARAMS_NICKNAME["delay"] = "D"
+
 
 PARAMS_NICKNAME["kappa_filters"] = "KF"
 PARAMS_NICKNAME["kappa_filter_scaling"] = "KFS"
@@ -83,7 +92,6 @@ PARAMS_NICKNAME["kappa_block_conv_layers"] = "KBCL"
 PARAMS_NICKNAME["kappa_strides"] = "KS"
 PARAMS_NICKNAME["kappa_upsampling_interpolation"] = "KBU"
 PARAMS_NICKNAME["kappa_resampling_kernel_size"] = "KRK"
-PARAMS_NICKNAME["kappa_gru_kernel_size"] = "KGK"
 PARAMS_NICKNAME["kappa_kernel_regularizer_amp"] = "KRA"
 
 PARAMS_NICKNAME["source_filters"] = "SF"
@@ -94,7 +102,6 @@ PARAMS_NICKNAME["source_block_conv_layers"] = "SBCL"
 PARAMS_NICKNAME["source_strides"] = "SS"
 PARAMS_NICKNAME["source_upsampling_interpolation"] = "SBU"
 PARAMS_NICKNAME["source_resampling_kernel_size"] = "SRK"
-PARAMS_NICKNAME["source_gru_kernel_size"] = "SGK"
 PARAMS_NICKNAME["source_kernel_regularizer_amp"] = "SRA"
 
 PARAMS_NICKNAME["steps"] = "TS"
@@ -179,10 +186,10 @@ def distributed_strategy(args):
         params_dict = {k: v for k, v in vars(run_args).items() if k in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS}
         params_dict.update({
             "experiment_id": run_args.logname,
-            "train_cost": history["train_cost"][-1],
-            "val_cost": history["val_cost"][-1],
-            "train_chi_squared": history["train_chi_squared"][-1],
-            "val_chi_squared": history["val_chi_squared"][-1],
+            "cost": history["cost"][-1],
+            "chi_squared": history["chi_squared"][-1],
+            "kappa_cost": history["kappa_cost"][-1],
+            "source_cost": history["source_cost"][-1],
             "best_score": best_score
         })
         # Save hyperparameters and scores in shared csv for this gridsearch
@@ -202,23 +209,25 @@ def distributed_strategy(args):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument("--n_models",               default=10,     type=int,       help="Models to train")
-    parser.add_argument("--datasets",               required=True,  nargs="+",      help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
-    parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
-    parser.add_argument("--strategy",               default="uniform",              help="Allowed startegies are 'uniform' and 'exhaustive'.")
+    parser.add_argument("--n_models",                   default=10,     type=int,       help="Models to train")
+    parser.add_argument("--strategy",                   default="uniform",              help="Allowed startegies are 'uniform' and 'exhaustive'.")
+    parser.add_argument("--kappa_first_stage_vae",      required=True)
+    parser.add_argument("--kappa_second_stage_vae",     default=None)
+    parser.add_argument("--source_first_stage_vae",     required=True)
+    parser.add_argument("--source_second_stage_vae",    default=None)
 
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
                                                                                          "'--raytracer' must be provided and point to model checkpoint directory.")
     parser.add_argument("--raytracer",              default=None,                   help="Path to raytracer checkpoint dir if method 'unet' is used.")
 
-    parser.add_argument("--steps",                  default=16, nargs="+", type=int, help="Number of time steps of RIM")
+    parser.add_argument("--steps",                  default=16, nargs="+", type=int,            help="Number of time steps of RIM")
     parser.add_argument("--adam",                   default=0,  nargs="+",  type=int,           help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",               action="store_true")
     parser.add_argument("--kappa_normalize",        action="store_true")
-    parser.add_argument("--source_link",            default="identity",  nargs="+",  help="One of 'exp', 'source' or 'identity' (default).")
-    parser.add_argument("--kappa_init",             default=1e-1, nargs="+",  type=float,     help="Initial value of kappa for RIM")
-    parser.add_argument("--source_init",            default=1e-3, nargs="+",  type=float,     help="Initial value of source for RIM")
+    parser.add_argument("--source_link",            default="identity",  nargs="+",             help="One of 'exp', 'source' or 'identity' (default).")
+    parser.add_argument("--kappa_init",             default=1e-1, nargs="+",  type=float,       help="Initial value of kappa for RIM")
+    parser.add_argument("--source_init",            default=1e-3, nargs="+",  type=float,       help="Initial value of source for RIM")
 
     # Kappa model hyperparameters
     parser.add_argument("--kappa_filters",                  default=32, nargs="+",      type=int)
@@ -248,7 +257,7 @@ if __name__ == '__main__':
     parser.add_argument("--source_bottleneck_kernel_size",   default=None, nargs="+",   type=int)
     parser.add_argument("--source_bottleneck_filters",       default=None, nargs="+",   type=int)
     parser.add_argument("--source_resampling_kernel_size",   default=None, nargs="+",   type=int)
-    parser.add_argument("--source_gru_kernel_size",          default=None, nargs="+",   type=int)
+    parser.add_argument("--source_gru_kernel_size",          default=None,   nargs="+",  type=int)
     parser.add_argument("--source_upsampling_interpolation", action="store_true")
     parser.add_argument("--source_kernel_regularizer_amp",   default=1e-4, nargs="+",   type=float)
     parser.add_argument("--source_bias_regularizer_amp",     default=1e-4, nargs="+",   type=float)
@@ -257,31 +266,31 @@ if __name__ == '__main__':
     parser.add_argument("--source_initializer",              default="glorot_normal")
 
     # Training set params
-    parser.add_argument("--batch_size",             default=1, nargs="+",  type=int,       help="Number of images in a batch. ")
-    parser.add_argument("--train_split",            default=0.8,    type=float,     help="Fraction of the training set.")
-    parser.add_argument("--total_items",            required=True,  nargs="+", type=int,  help="Total images in an epoch.")
-    # ... for tfrecord dataset
-    parser.add_argument("--num_parallel_reads",     default=10,     type=int,       help="TFRecord dataset number of parallel reads when loading data.")
-    parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
-    parser.add_argument("--cycle_length",           default=4,      type=int,       help="Number of files to read concurrently.")
-    parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files.")
+    parser.add_argument("--batch_size",             default=1,      nargs="+",  type=int,       help="Number of images in a batch. ")
+    parser.add_argument("--total_items",            required=True,  nargs="+",  type=int,       help="Total images in an epoch.")
+    parser.add_argument("--image_pixels",           default=512,                type=int,       help="Number of pixels on a side of the lensed image")
+    parser.add_argument("--image_fov",              default=20,                 type=float,     help="Field of view of lensed image in arcsec")
+    parser.add_argument("--kappa_fov",              default=18,                 type=float,     help="Field of view of kappa map (in lens plane), in arcsec")
+    parser.add_argument("--source_fov",             default=3,                  type=float,     help="Field of view of source map, in arcsec")
+    parser.add_argument("--noise_rms",              default=1e-2,               type=float,     help="RMS of white noise added to lensed image")
+    parser.add_argument("--psf_sigma",              default=0.08,               type=float,     help="Size, in arcseconds, of the gaussian blurring PSF")
 
     # Optimization params
-    parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
-    parser.add_argument("--optimizer",              default="Adam",  nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
-    parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float,     help="Initial learning rate.")
-    parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
-    parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
-    parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
-    parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
-    parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
-    parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
-    parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
-    parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
+    parser.add_argument("-e", "--epochs",           default=10,                 type=int,       help="Number of epochs for training.")
+    parser.add_argument("--delay",                  default=2,       nargs="+", type=int,       help="Number of epochs kappa model trains alone")
+    parser.add_argument("--optimizer",              default="Adam",  nargs="+",                 help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
+    parser.add_argument("--initial_learning_rate",  default=1e-3,    nargs="+", type=float,     help="Initial learning rate.")
+    parser.add_argument("--decay_rate",             default=1.,      nargs="+", type=float,     help="Exponential decay rate of learning rate (1=no decay).")
+    parser.add_argument("--decay_steps",            default=1000,    nargs="+", type=int,       help="Decay steps of exponential decay of the learning rate.")
+    parser.add_argument("--staircase",              action="store_true",                        help="Learning rate schedule only change after decay steps if enabled.")
+    parser.add_argument("--clipping",               action="store_true",                        help="Clip backprop gradients between -10 and 10.")
+    parser.add_argument("--patience",               default=np.inf,             type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
+    parser.add_argument("--tolerance",              default=0,                  type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
+    parser.add_argument("--max_time",               default=np.inf,             type=float,     help="Time allowed for the training, in hours.")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
-    parser.add_argument("--logname_prefixe",         default="RIMUnet512",          help="If name of the log is not provided, this prefix is prepended to the date")
+    parser.add_argument("--logname_prefixe",         default="RIMUnetwVAE",         help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
