@@ -41,8 +41,8 @@ EXTRA_PARAMS = [
     "l2_bottleneck_decay_power",
     "skip_strength_init",
     "beta_init",
-    "beta_end_value"
-
+    "beta_end_value",
+    "beta_decay_steps"
 ]
 
 PARAMS_NICKNAME = {
@@ -65,6 +65,7 @@ PARAMS_NICKNAME = {
     "beta_cyclical": "betaC",
     "beta_init": "betaI",
     "beta_end_value": "betaE",
+    "beta_decay_steps": "betaDS",
     "skip_strength_decay_power": "SSDP",
     "l2_bottleneck_decay_power": "l2DP",
     "skip_strength_init": "ssi",
@@ -205,7 +206,7 @@ if __name__ == '__main__':
     parser.add_argument("--beta_init",                      default=0.,     nargs="+",  type=float,     help="Initial value of the beta schedule")
     parser.add_argument("--beta_end_value",                 default=1.,     nargs="+",  type=float,     help="End value of the beta schedule")
     parser.add_argument("--beta_decay_power",               default=1.,                 type=float,     help="Power of the Polynomial schedule")
-    parser.add_argument("--beta_decay_steps",               default=1000,               type=int,       help="Number of steps until end of schedule is reached")
+    parser.add_argument("--beta_decay_steps",               default=1000,   nargs="+",  type=int,       help="Number of steps until end of schedule is reached")
     parser.add_argument("--beta_cyclical",                  default=0,      nargs="+",  type=int,       help="Make beta schedule cyclical if 1. 0: Monotone schedule.")
     parser.add_argument("--skip_strength_init",             default=1.,     nargs="+",  type=float,     help="Initial value of the skip_strength schedule")
     parser.add_argument("--skip_strength_end_value",        default=0.,                 type=float,     help="End value of the skip_strength schedule")
