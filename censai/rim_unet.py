@@ -172,3 +172,42 @@ class RIMUnet:
             return tf.reduce_mean(source_cost) + tf.reduce_mean(kappa_cost), tf.reduce_mean(chi)
         else:
             return tf.reduce_mean(source_cost, axis=(1, 2, 3)) + tf.reduce_mean(kappa_cost, axis=(1, 2, 3)), chi
+
+    def call_with_source(self, lensed_image, source_image, outer_tape=nulltape):
+        batch_size = lensed_image.shape[0]
+        _, _, kappa, kappa_states = self.initial_states(batch_size)
+
+        kappa_series = tf.TensorArray(DTYPE, size=self.steps)
+        chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        for current_step in range(self.steps):
+            with outer_tape.stop_recording():
+                with tf.GradientTape() as g:
+                    g.watch(kappa)
+                    log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=source_image, kappa=self.kappa_link(kappa))
+                    cost = tf.reduce_mean(log_likelihood)
+                source_grad, kappa_grad = g.gradient(cost, [source_image, kappa])
+                source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            kappa, kappa_states = self.kappa_model(kappa, kappa_states, kappa_grad)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+        return kappa_series.stack(), chi_squared_series.stack()
+
+    def call(self, lensed_image, kappa_image, outer_tape=nulltape):
+        batch_size = lensed_image.shape[0]
+        source, source_states, _, _ = self.initial_states(batch_size)
+
+        source_series = tf.TensorArray(DTYPE, size=self.steps)  # equivalent to empty list and append, but using tensorflow
+        chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        for current_step in range(self.steps):
+            with outer_tape.stop_recording():
+                with tf.GradientTape() as g:
+                    g.watch(source)
+                    log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=kappa_image)
+                    cost = tf.reduce_mean(log_likelihood)
+                source_grad, kappa_grad = g.gradient(cost, [source, kappa_image])
+                source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, source_states = self.source_model(source, source_states, source_grad)
+            source_series = source_series.write(index=current_step, value=source)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+        return source_series.stack(), chi_squared_series.stack()
+
