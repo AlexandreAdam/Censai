@@ -337,9 +337,9 @@ def main(args):
                 source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)  # preprocess source
                 X = tf.nn.relu(phys.noisy_forward(source, kappa, noise_rms=args.noise_rms))
                 # with tf.device(rim_device):
-                if epoch < args.kappa_training_epochs:
+                if epoch < args.delay:
                     cost, chi_squared, source_cost, kappa_cost = kappa_train_step(X, source, kappa)
-                else: # train both munet together
+                else: # train both unet together
                     cost, chi_squared, source_cost, kappa_cost = train_step(X, source, kappa)
         # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
