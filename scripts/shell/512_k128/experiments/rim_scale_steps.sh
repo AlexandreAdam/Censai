@@ -56,7 +56,7 @@ python $CENSAI_PATH/scripts/experiments/rim_gridsearch.py\
   --source_initializer glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logs\
-  --logname_prefixe=RIM512_k256_St\
+  --logname_prefixe=RIM512_k128_St\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\
