@@ -179,7 +179,11 @@ def distributed_strategy(args):
             "val_cost": history["val_cost"][-1],
             "train_chi_squared": history["train_chi_squared"][-1],
             "val_chi_squared": history["val_chi_squared"][-1],
-            "best_score": best_score
+            "best_score": best_score,
+            "train_kappa_cost": history["train_kappa_cost"][-1],
+            "val_kappa_cost": history["val_kappa_cost"][-1],
+            "train_source_cost": history["train_source_cost"][-1],
+            "val_source_cost": history["val_source_cost"][-1]
         })
         # Save hyperparameters and scores in shared csv for this gridsearch
         df = pd.DataFrame(params_dict, index=[gridsearch_id])
