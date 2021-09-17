@@ -64,7 +64,7 @@ def main(args):
             method=args.forward_method,
             noise_rms=physical_params["noise rms"].numpy(),
             raytracer=raytracer,
-            psf_sigma=physical_params["psf_sigma"].numpy()
+            psf_sigma=physical_params["psf sigma"].numpy()
         )
         source_model = UnetModel512(num_cell_features=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4], strides=args.source_strides)
         kappa_model = UnetModel512(num_cell_features=[args.state_size_1, args.state_size_2, args.state_size_3, args.state_size_4], strides=args.source_strides)

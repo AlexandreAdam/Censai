@@ -99,7 +99,7 @@ def main(args):
             method=args.forward_method,
             noise_rms=physical_params["noise rms"].numpy(),
             raytracer=raytracer,
-            psf_sigma=physical_params["psf_sigma"].numpy()
+            psf_sigma=physical_params["psf sigma"].numpy()
         )
 
         unet = SharedUnetModel(
