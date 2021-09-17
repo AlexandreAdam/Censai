@@ -354,16 +354,16 @@ def main(args):
                 step += 1
             # last batch we make a summary of residuals
             for res_idx in range(min(args.n_residuals, args.batch_size)):
-                lens_true = X
-                source_true = source
-                kappa_true = kappa
+                lens_true = X[res_idx]
+                source_true = source[res_idx]
+                kappa_true = kappa[res_idx]
                 source_pred, kappa_pred, chi_squared = rim.predict(lens_true[None, ...])
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
+                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0]
                 tf.summary.image(f"Residuals {res_idx}",
                                  plot_to_image(
                                      residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
-                                         kappa_pred[-1][0, ...], chi_squared[-1][0]
+                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0],
+                                         kappa_pred[-1][0], chi_squared[-1][0]
                                      )), step=step)
 
             # ========== Validation set ===================
@@ -377,9 +377,9 @@ def main(args):
                 val_source_loss.update_state([source_cost])
 
             for res_idx in range(min(args.n_residuals, args.batch_size)):
-                lens_true = X
-                source_true = source
-                kappa_true = kappa
+                lens_true = X[res_idx]
+                source_true = source[res_idx]
+                kappa_true = kappa[res_idx]
                 source_pred, kappa_pred, chi_squared = rim.predict(lens_true[None, ...])
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
                 tf.summary.image(f"Val Residuals {res_idx}",
@@ -518,7 +518,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_split",            default=0.8,    type=float,     help="Fraction of the training set.")
     parser.add_argument("--total_items",            required=True,  type=int,       help="Total images in an epoch.")
     # ... for tfrecord dataset
-    parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
+    parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use $SLURM_TMPDIR/cache")
     parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files.")
 
     # Optimization params
@@ -541,7 +541,7 @@ if __name__ == "__main__":
     parser.add_argument("--logname",                 default=None,                  help="Overwrite name of the log with this argument")
     parser.add_argument("--logname_prefixe",         default="RIMUnet512",          help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
-    parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
+    parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each x iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
     parser.add_argument("--n_residuals",             default=1,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
 
