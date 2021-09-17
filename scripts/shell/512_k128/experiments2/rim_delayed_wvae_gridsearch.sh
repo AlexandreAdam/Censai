@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --array=1-8
 #SBATCH --tasks=1
-#SBATCH --cpus-per-task=5 # maximum cpu per task is 3.5 per gpus
-#SBATCH --gres=gpu:2
+#SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
+#SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=2-00:00		# time (DD-HH:MM), A step takes roughly 2 sec per example with fft
 #SBATCH --account=rrg-lplevass
