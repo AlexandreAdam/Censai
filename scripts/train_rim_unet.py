@@ -115,7 +115,7 @@ def main(args):
         method=args.forward_method,
         noise_rms=physical_params["noise rms"].numpy(),
         raytracer=raytracer,
-        psf_sigma=physical_params["psf_sigma"].numpy()
+        psf_sigma=physical_params["psf sigma"].numpy()
     )
     kappa_model = UnetModel(
         filters=args.kappa_filters,
@@ -471,7 +471,6 @@ if __name__ == "__main__":
     parser.add_argument("--source_link",            default="identity",             help="One of 'exp', 'source', 'relu' or 'identity' (default).")
     parser.add_argument("--kappa_init",             default=1e-1,   type=float,     help="Initial value of kappa for RIM")
     parser.add_argument("--source_init",            default=1e-3,   type=float,     help="Initial value of source for RIM")
-
     
     # Kappa model hyperparameters
     parser.add_argument("--kappa_filters",                  default=32,     type=int)
