@@ -499,7 +499,7 @@ if __name__ == "__main__":
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
-    parser.add_argument("--delay",                  default=2,      type=int,       help="Number of epochs kappa model trains alone")
+    parser.add_argument("--delay",                  default=0,      type=int,       help="Number of epochs kappa model trains alone")
     parser.add_argument("--optimizer",              default="Adam",                 help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")

@@ -65,7 +65,8 @@ EXTRA_PARAMS = [
     "total_items",
     "optimizer",
     "seed",
-    "batch_size"
+    "batch_size",
+    "delay"
 ]
 
 from collections import OrderedDict
@@ -74,6 +75,7 @@ PARAMS_NICKNAME["total_items"] = "TI"
 PARAMS_NICKNAME["optimizer"] = "O"
 PARAMS_NICKNAME["seed"] = ""
 PARAMS_NICKNAME["batch_size"] = "B"
+PARAMS_NICKNAME["delay"] = "D"
 
 PARAMS_NICKNAME["kappa_filters"] = "KF"
 PARAMS_NICKNAME["kappa_filter_scaling"] = "KFS"
@@ -183,7 +185,11 @@ def distributed_strategy(args):
             "val_cost": history["val_cost"][-1],
             "train_chi_squared": history["train_chi_squared"][-1],
             "val_chi_squared": history["val_chi_squared"][-1],
-            "best_score": best_score
+            "best_score": best_score,
+            "train_kappa_cost": history["train_kappa_cost"][-1],
+            "val_kappa_cost": history["val_kappa_cost"][-1],
+            "train_source_cost": history["train_source_cost"][-1],
+            "val_source_cost": history["val_source_cost"][-1]
         })
         # Save hyperparameters and scores in shared csv for this gridsearch
         df = pd.DataFrame(params_dict, index=[gridsearch_id])
@@ -268,6 +274,7 @@ if __name__ == '__main__':
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
+    parser.add_argument("--delay",                  default=0,      nargs="+",  type=int,       help="Number of epochs kappa model trains alone")
     parser.add_argument("--optimizer",              default="Adam",  nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
