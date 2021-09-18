@@ -323,14 +323,14 @@ def main(args):
             # ========== Validation set ===================
             val_loss.reset_states()
             val_chi_squared.reset_states()
-            val_source_cost.reset_states()
-            val_kappa_cost.reset_states()
+            val_source_loss.reset_states()
+            val_kappa_loss.reset_states()
             for distributed_inputs in val_dataset:
                 cost, chi_squared, source_cost, kappa_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([cost])
                 val_chi_squared.update_state([chi_squared])
-                val_source_cost.update_state([source_cost])
-                val_kappa_cost.update_state([kappa_cost])
+                val_source_loss.update_state([source_cost])
+                val_kappa_loss.update_state([kappa_cost])
 
             for res_idx in range(min(args.n_residuals, args.batch_size)):
                 lens_true = distributed_inputs[0][res_idx, ...]
