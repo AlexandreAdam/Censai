@@ -369,6 +369,8 @@ def main(args):
             # ========== Validation set ===================
             val_loss.reset_states()
             val_chi_squared.reset_states()
+            val_source_cost.reset_states()
+            val_kappa_cost.reset_states()
             for X, source, kappa in val_dataset:
                 cost, chi_squared, source_cost, kappa_cost = test_step(X, source, kappa)
                 val_loss.update_state([cost])
