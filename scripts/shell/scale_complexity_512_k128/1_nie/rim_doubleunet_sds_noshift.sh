@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-30
+#SBATCH --array=1-32
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -13,7 +13,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses512_k128_NIE_10k\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=30\
+  --n_models=32\
   --forward_method=fft\
   --epochs=100000\
   --max_time=47\
@@ -21,9 +21,9 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --batch_size 1\
+  --batch_size 1 2\
   --train_split=1\
-  --total_items 1 10 100 1000 10000\
+  --total_items 2 10 100 1000\
   --block_length=1\
   --steps 10\
   --adam 1\
@@ -56,10 +56,10 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --source_initializer glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC\
-  --logname_prefixe=RIMSU512_k128_NIEns\
+  --logname_prefixe=RIMDU512_k128_NIEns\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
   --n_residuals=1\
-  --seed 2 4 8\
+  --seed 42 142\
   --track_train

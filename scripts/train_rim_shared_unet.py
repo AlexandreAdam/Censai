@@ -260,11 +260,11 @@ def main(args):
     time_per_step = tf.metrics.Mean()
     val_loss = tf.metrics.Mean()
     epoch_chi_squared = tf.metrics.Mean()
-    epoch_source_cost = tf.metrics.Mean()
-    epoch_kappa_cost = tf.metrics.Mean()
+    epoch_source_loss = tf.metrics.Mean()
+    epoch_kappa_loss = tf.metrics.Mean()
     val_chi_squared = tf.metrics.Mean()
-    val_source_cost = tf.metrics.Mean()
-    val_kappa_cost = tf.metrics.Mean()
+    val_source_loss = tf.metrics.Mean()
+    val_kappa_loss = tf.metrics.Mean()
     history = {  # recorded at the end of an epoch only
         "train_cost": [],
         "train_chi_squared": [],
@@ -275,7 +275,8 @@ def main(args):
         "val_source_cost": [],
         "val_kappa_cost": [],
         "learning_rate": [],
-        "time_per_step": []
+        "time_per_step": [],
+        "step": []
     }
     best_loss = np.inf
     patience = args.patience
@@ -290,8 +291,8 @@ def main(args):
         epoch_start = time.time()
         epoch_loss.reset_states()
         epoch_chi_squared.reset_states()
-        epoch_source_cost.reset_states()
-        epoch_kappa_cost.reset_states()
+        epoch_source_loss.reset_states()
+        epoch_kappa_loss.reset_states()
         time_per_step.reset_states()
         with writer.as_default():
             for batch, distributed_inputs in enumerate(train_dataset):
@@ -299,16 +300,11 @@ def main(args):
                 cost, chi_squared, source_cost, kappa_cost = distributed_train_step(distributed_inputs)
         # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
-                tf.summary.scalar("Time per step", _time, step=step)
-                tf.summary.scalar("MSE", cost, step=step)
-                tf.summary.scalar("Chi Squared", chi_squared, step=step)
-                tf.summary.scalar("Source Cost", source_cost, step=step)
-                tf.summary.scalar("Kappa Cost", kappa_cost, step=step)
                 time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
                 epoch_chi_squared.update_state([chi_squared])
-                epoch_source_cost.update_state([source_cost])
-                epoch_kappa_cost.update_state([kappa_cost])
+                epoch_source_loss.update_state([source_cost])
+                epoch_kappa_loss.update_state([kappa_cost])
                 step += 1
             # last batch we make a summary of residuals
             for res_idx in range(min(args.n_residuals, args.batch_size)):
@@ -349,18 +345,23 @@ def main(args):
                                          kappa_pred[-1][0, ...], chi_squared[-1][0]
                                      )), step=step)
             val_cost = val_loss.result().numpy()
-            val_chi_sq = val_chi_squared.result().numpy()
-            val_s_cost = val_source_cost.result().numpy()
-            val_k_cost = val_kappa_cost.result().numpy()
             train_cost = epoch_loss.result().numpy()
+            val_chi_sq = val_chi_squared.result().numpy()
             train_chi_sq = epoch_chi_squared.result().numpy()
-            train_s_cost = epoch_source_cost.result().numpy()
-            train_k_cost = epoch_kappa_cost.result().numpy()
+            val_kappa_cost = val_kappa_loss.result().numpy()
+            train_kappa_cost = epoch_kappa_loss.result().numpy()
+            val_source_cost = val_source_loss.result().numpy()
+            train_source_cost = epoch_source_loss.result().numpy()
+            tf.summary.scalar("Time per step", _time, step=step)
+            tf.summary.scalar("Chi Squared", train_chi_sq, step=step)
+            tf.summary.scalar("Kappa cost", train_kappa_cost, step=step)
+            tf.summary.scalar("Val Kappa cost", val_kappa_cost, step=step)
+            tf.summary.scalar("Source cost", train_source_cost, step=step)
+            tf.summary.scalar("Val Source cost", val_source_cost, step=step)
+            tf.summary.scalar("MSE", train_cost, step=step)
             tf.summary.scalar("Val MSE", val_cost, step=step)
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
             tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
-            tf.summary.scalar("Val Source Cost", val_s_cost, step=step)
-            tf.summary.scalar("Val Kappa Cost", val_k_cost, step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
         history["train_cost"].append(train_cost)
@@ -369,10 +370,10 @@ def main(args):
         history["train_chi_squared"].append(train_chi_sq)
         history["val_chi_squared"].append(val_chi_sq)
         history["time_per_step"].append(time_per_step.result().numpy())
-        history["train_kappa_cost"].append(train_k_cost)
-        history["train_source_cost"].append(train_s_cost)
-        history["val_kappa_cost"].append(val_k_cost)
-        history["val_source_cost"].append(val_s_cost)
+        history["train_kappa_cost"].append(train_kappa_cost)
+        history["train_source_cost"].append(train_source_cost)
+        history["val_kappa_cost"].append(val_kappa_cost)
+        history["val_source_cost"].append(val_source_cost)
 
         cost = train_cost if args.track_train else val_cost
         if np.isnan(cost):
