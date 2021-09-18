@@ -21,9 +21,9 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --batch_size 1\
+  --batch_size 1 5\
   --train_split=1\
-  --total_items 1 10 100 1000 10000\
+  --total_items 100 1000 10000\
   --block_length=1\
   --steps 10\
   --adam\
@@ -47,6 +47,6 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --checkpoints=5\
   --max_to_keep=1\
   --n_residuals=1\
-  --seed 2 4 8 16 32 42\
+  --seed 2 4 8 16 32\
   --track_train
 

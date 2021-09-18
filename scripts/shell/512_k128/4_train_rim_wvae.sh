@@ -43,7 +43,7 @@ python $CENSAI_PATH/scripts/train_rim_unet_vae_dataset.py\
   --kappa_upsampling_interpolation\
   --kappa_kernel_regularizer_amp=1e-4\
   --kappa_bias_regularizer_amp=1e-4\
-  --kappa_activatio=leaky_relu\
+  --kappa_activation=leaky_relu\
   --kappa_alpha=0.1\
   --kappa_initializer=glorot_normal\
   --source_filters=32\
