@@ -39,7 +39,7 @@ python $CENSAI_PATH/scripts/experiments/rim_gridsearch.py\
   --kappa_upsampling_interpolation\
   --kappa_kernel_regularizer_amp 0\
   --kappa_bias_regularizer_amp 0\
-  --kappa_activatio leaky_relu\
+  --kappa_activation leaky_relu\
   --kappa_alpha 0.1\
   --kappa_initializer glorot_normal\
   --source_filters 32\

@@ -44,7 +44,6 @@ class UnetModel(tf.keras.Model):
         gru_kernel_size = gru_kernel_size if gru_kernel_size is not None else kernel_size
         activation = get_activation(activation, alpha=alpha)
 
-
         self._num_layers = layers
         self._strides = strides
         self._init_filters = filters
