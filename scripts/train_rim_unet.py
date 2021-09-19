@@ -3,7 +3,7 @@ import numpy as np
 import math
 from censai import PhysicalModel, RIMUnet, RayTracer
 from censai.models import UnetModel
-from censai.data.lenses_tng import decode_train, decode_physical_model_info
+from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 import os, glob, time, json
 from datetime import datetime
@@ -82,7 +82,7 @@ def main(args):
     # Read off global parameters from first example in dataset
     for physical_params in dataset.map(decode_physical_model_info):
         break
-    dataset = dataset.map(decode_train).batch(args.batch_size)
+    dataset = dataset.map(decode_train).map(preprocess).batch(args.batch_size)
     # Do not prefetch in this script. Memory is more precious than latency
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file)#.prefetch(tf.data.experimental.AUTOTUNE)
@@ -378,7 +378,7 @@ def main(args):
                 val_kappa_loss.update_state([kappa_cost])
                 val_source_loss.update_state([source_cost])
 
-            for res_idx in range(min(args.n_residuals, args.batch_size)):
+            for res_idx in range(min(args.n_residuals, args.batch_size, math.ceil((1 - args.train_split) * args.total_items))):  # in case vaidation set is empty
                 lens_true = X[res_idx]
                 source_true = source[res_idx]
                 kappa_true = kappa[res_idx]
