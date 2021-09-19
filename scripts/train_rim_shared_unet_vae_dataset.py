@@ -286,8 +286,9 @@ def main(args):
                 start = time.time()
                 kappa = kappa_sampling_function(args.batch_size)
                 source = source_sampling_function(args.batch_size)
-                source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)  # preprocess source
+                source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)  # normalize source
                 X = tf.nn.relu(phys.noisy_forward(source, kappa, noise_rms=args.noise_rms))
+                X /= tf.reduce_max(X, axis=(1, 2, 3), keepdims=True)  # normalize lens
                 cost, chi_squared, source_cost, kappa_cost = train_step(X, source, kappa)
 
         # ========== Summary and logs ==================================================================================

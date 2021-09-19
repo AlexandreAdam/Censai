@@ -64,3 +64,11 @@ def decode_train_with_ps(record_bytes):
     params_keys = ['lens', 'source', 'ps', 'kappa']
     example = decode_all(record_bytes)
     return [example[key] for key in params_keys]
+
+
+def preprocess(lens, source, kappa):
+    lens = tf.nn.relu(lens)
+    lens /= tf.reduce_max(lens, axis=(1, 2, 3), keepdims=True)
+    # source = tf.nn.relu(source)
+    # source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)
+    return lens, source, kappa
