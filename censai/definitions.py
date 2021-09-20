@@ -13,6 +13,7 @@ KAPPA_LOG_MEAN = -0.52
 KAPPA_LOG_STD = 0.3
 KAPPA_LOG_MAX = 3
 KAPPA_LOG_MIN = tf.math.log(LOGFLOOR) / tf.math.log(10.)  # not actual min, which is 0
+LAMBDA = tf.constant(-0.5, DTYPE)  # Box-Cox transform
 
 SIGMOID_MIN = tf.constant(1e-3, DTYPE)
 SIGMOIN_MAX = tf.constant(1 - 1e-3, DTYPE)
@@ -120,11 +121,12 @@ def kappa_clipped_exponential(log_kappa):
     return 10**log_kappa
 
 
+# Box-Cox transformation -> LAMBDA should be negative but small. 1/2 is a good choice
 def logkappa_normalization(x, forward=True):
     if forward:
-        return (x - KAPPA_LOG_MEAN) / KAPPA_LOG_STD
+        return (x**LAMBDA - 3)/LAMBDA
     else:
-        return KAPPA_LOG_STD * x + KAPPA_LOG_MEAN
+        return tf.math.exp(tf.math.log(LAMBDA * x + 3) / LAMBDA)
 
 
 def lrelu4p(x, alpha=0.04):
