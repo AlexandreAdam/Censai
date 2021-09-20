@@ -68,7 +68,7 @@ def decode_train_with_ps(record_bytes):
 
 def preprocess(lens, source, kappa):
     lens = tf.nn.relu(lens)
-    lens /= tf.reduce_max(lens, axis=(1, 2, 3), keepdims=True)
+    lens /= tf.reduce_max(lens, keepdims=True)
     # source = tf.nn.relu(source)
     # source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)
     return lens, source, kappa
