@@ -62,7 +62,7 @@ def distributed_strategy(args):
             im = tf.nn.relu(im - ps[0, 0]).numpy()       # subtract backgroung, fold negative pixels to 0
             im /= im.sum()                               # normalize peak to 1
             signal_pixels = np.sum(im > args.signal_threshold)     # how many pixels have a value above a certain threshold
-            if signal_pixels < args.min_signal_pixels:  # argument used to select only examples that are more distinct galaxy features (it does however bias the dataset in redshift space)
+            if signal_pixels < args.signal_pixels:  # argument used to select only examples that are more distinct galaxy features (it does however bias the dataset in redshift space)
                 continue
 
             # Draw a kimage of the galaxy, just to figure out what maxk is, there might

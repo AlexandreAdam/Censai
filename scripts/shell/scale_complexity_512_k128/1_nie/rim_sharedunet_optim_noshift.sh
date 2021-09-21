@@ -28,6 +28,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --train_split=0.95\
   --total_items 2000\
   --block_length=1\
+  --buffer_size=1000\
   --steps 5 10 15\
   --adam 0 1\
   --upsampling_interpolation 0 1\
