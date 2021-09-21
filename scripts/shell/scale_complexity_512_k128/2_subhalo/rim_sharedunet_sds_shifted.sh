@@ -25,6 +25,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --train_split=1\
   --total_items 100 1000 10000\
   --block_length=1\
+  --buffer_size=1000\
   --steps 10\
   --adam\
   --kappalog\

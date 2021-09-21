@@ -27,6 +27,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --batch_size 5\
   --train_split=0.95\
   --total_items 1000\
+  --buffer_size=1000\
   --block_length=1\
   --steps 10\
   --adam 0 1\
