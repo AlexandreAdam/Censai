@@ -33,7 +33,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_wvae_gridsearch.py\
   --optimizer ADAM\
   --clipping\
   --steps 4 8\
-  --adam\
+  --adam 1\
   --kappalog\
   --source_link relu\
   --activation leaky_relu bipolar_relu\
