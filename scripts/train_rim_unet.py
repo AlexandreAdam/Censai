@@ -82,12 +82,9 @@ def main(args):
     # Read off global parameters from first example in dataset
     for physical_params in dataset.map(decode_physical_model_info):
         break
-    dataset = dataset.map(decode_train).map(preprocess).shuffle(buffer_size=args.buffer_size).batch(args.batch_size)
-    # Do not prefetch in this script. Memory is more precious than latency
     if args.cache_file is not None:
-        dataset = dataset.cache(args.cache_file)#.prefetch(tf.data.experimental.AUTOTUNE)
-    # else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
-    #     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+        dataset = dataset.cache(args.cache_file)
+    dataset = dataset.shuffle(buffer_size=args.buffer_size).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size)) # dont forget to divide by batch size!
     val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
     val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
