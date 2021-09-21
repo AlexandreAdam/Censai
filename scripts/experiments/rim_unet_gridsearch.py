@@ -271,6 +271,7 @@ if __name__ == '__main__':
     parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
     parser.add_argument("--cycle_length",           default=4,      type=int,       help="Number of files to read concurrently.")
     parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files.")
+    parser.add_argument("--buffer_size",            default=1000,   type=int,       help="Buffer size for shuffling at each epoch.")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")

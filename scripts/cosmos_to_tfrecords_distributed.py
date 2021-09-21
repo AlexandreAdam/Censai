@@ -128,7 +128,7 @@ if __name__ == '__main__':
     parser.add_argument("--exclusion_level",        default="marginal",             help="Galsim exclusion level of bad postage stamps")
     parser.add_argument("--min_flux",               default=0.,         type=float, help="Minimum flux for the original postage stamps")
     parser.add_argument("--signal_pixels",          default=0,          type=int,   help="Minimal number of pixel with value abover user defined signal threshold -- after peak is normalized to 1")
-    parser.add_argument("--min_signal_threshold",   default=0,          type=float, help="Value between 0 and 1, defines the pixel value below which there is no more signal")
+    parser.add_argument("--signal_threshold",       default=0,          type=float, help="Value between 0 and 1, defines the pixel value below which there is no more signal")
     parser.add_argument("--cosmos_dir",             default=None,                   help="Directory to cosmos data")
     parser.add_argument("--store_attributes",       action="store_true",            help="Wether to store ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'z_phot] or not")
     parser.add_argument("--rotation",               action="store_true",            help="Rotate randomly the postage stamp (and psf)")
