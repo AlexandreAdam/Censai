@@ -29,7 +29,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --total_items 200000\
   --block_length=1\
   --steps 4\
-  --adam\
+  --adam 1\
   --kappalog\
   --source_link sigmoid relu lrelu4p\
   --activation leaky_relu bipolar_leaky_relu\
