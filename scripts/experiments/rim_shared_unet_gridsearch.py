@@ -37,17 +37,15 @@ UNET_MODEL_HPARAMS = [
     "resampling_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
-    "kernel_regularizer_amp",
-    "bias_regularizer_amp",
+    "batch_norm",
+    "dropout",
+    "kernel_l2_amp",
+    "bias_l2_amp",
+    "kernel_l1_amp",
+    "bias_l1_amp",
     "activation",
     "alpha",
     "initializer",
-    "kappa_resize_filters",
-    "kappa_resize_method",
-    "kappa_resize_conv_layers",
-    "kappa_resize_strides",
-    "kappa_resize_kernel_size",
-    "kappa_resize_separate_grad_downsampling"
 ]
 
 EXTRA_PARAMS = [
@@ -61,42 +59,41 @@ EXTRA_PARAMS = [
 ]
 
 
-from collections import OrderedDict
-PARAMS_NICKNAME = OrderedDict()
-PARAMS_NICKNAME["total_items"] = "TI"
-PARAMS_NICKNAME["optimizer"] = "O"
-PARAMS_NICKNAME["seed"] = ""
-PARAMS_NICKNAME["batch_size"] = "B"
-PARAMS_NICKNAME["initial_learning_rate"] = "lr"
-PARAMS_NICKNAME["decay_rate"] = "dr"
-PARAMS_NICKNAME["decay_steps"] = "ds"
+PARAMS_NICKNAME = {
+    "total_items": "TI",
+    "optimizer": "O",
+    "seed": "",
+    "batch_size": "B",
+    "initial_learning_rate": "lr",
+    "decay_rate": "dr",
+    "decay_steps": "ds",
 
-PARAMS_NICKNAME["filters"] = "F"
-PARAMS_NICKNAME["filter_scaling"] = "FS"
-PARAMS_NICKNAME["kernel_size"] = "K"
-PARAMS_NICKNAME["layers"] = "L"
-PARAMS_NICKNAME["block_conv_layers"] = "BCL"
-PARAMS_NICKNAME["strides"] = "S"
-PARAMS_NICKNAME["upsampling_interpolation"] = "BU"
-PARAMS_NICKNAME["resampling_kernel_size"] = "RK"
-PARAMS_NICKNAME["gru_kernel_size"] = "GK"
-PARAMS_NICKNAME["kernel_regularizer_amp"] = "RA"
-PARAMS_NICKNAME["kappa_resize_separate_grad_downsampling"] = "KRS"
-PARAMS_NICKNAME["kappa_resize_filters"] = "KRF"
-PARAMS_NICKNAME["kappa_resize_conv_layers"] = "KRL"
-PARAMS_NICKNAME["kappa_resize_kernel_size"] = "KRK"
-PARAMS_NICKNAME["kappa_resize_method"] = "KRB"
-PARAMS_NICKNAME["kappa_resize_strides"] = "KRS"
-PARAMS_NICKNAME["kappalog"] = "KaL"
-PARAMS_NICKNAME["kappa_normalize"] = "KaN"
-PARAMS_NICKNAME["activation"] = "NL"
+    "filters": "F",
+    "filter_scaling": "FS",
+    "kernel_size": "K",
+    "layers": "L",
+    "block_conv_layers": "BCL",
+    "strides": "S",
+    "upsampling_interpolation": "BU",
+    "resampling_kernel_size": "RK",
+    "gru_kernel_size": "GK",
+    "kernel_l2_amp": "Kl2",
+    "kernel_l1_amp": "Kl1",
+    "bias_l2_amp": "Bl2",
+    "bias_l1_amp": "Bl1",
+    "kappalog": "KaL",
+    "kappa_normalize": "KaN",
+    "activation": "NL",
+    "batch_norm": "BN",
+    "dropout": "D",
 
-PARAMS_NICKNAME["adam"] = "A"
-PARAMS_NICKNAME["alpha"] = "al"
-PARAMS_NICKNAME["steps"] = "TS"
-PARAMS_NICKNAME["source_link"] = "Sli"
-PARAMS_NICKNAME["source_init"] = "Sini"
-PARAMS_NICKNAME["kappa_init"] = "Kini"
+    "adam": "A",
+    "alpha": "al",
+    "steps": "TS",
+    "source_link": "Sli",
+    "source_init": "Sini",
+    "kappa_init": "Kini",
+}
 
 
 def single_instance_args_generator(args):
@@ -235,17 +232,15 @@ if __name__ == '__main__':
     parser.add_argument("--resampling_kernel_size",                     default=None, nargs="+",  type=int)
     parser.add_argument("--gru_kernel_size",                            default=None, nargs="+",  type=int)
     parser.add_argument("--upsampling_interpolation",                   default=0,    nargs="+",  type=int)
-    parser.add_argument("--kernel_regularizer_amp",                     default=1e-4, nargs="+",  type=float)
-    parser.add_argument("--bias_regularizer_amp",                       default=1e-4, nargs="+",  type=float)
+    parser.add_argument("--batch_norm",                                 default=0,    nargs="+",  type=int)
+    parser.add_argument("--dropout",                                    default=None, nargs="+",  type=float)
+    parser.add_argument("--kernel_l2_amp",                              default=0, nargs="+",  type=float)
+    parser.add_argument("--bias_l2_amp",                                default=0, nargs="+",  type=float)
+    parser.add_argument("--kernel_l1_amp",                              default=0, nargs="+",  type=float)
+    parser.add_argument("--bias_l1_amp",                                default=0, nargs="+",  type=float)
     parser.add_argument("--activation",                                 default="leaky_relu", nargs="+")
     parser.add_argument("--alpha",                                      default=0.1,  nargs="+",  type=float)
     parser.add_argument("--initializer",                                default="glorot_normal", nargs="+",)
-    parser.add_argument("--kappa_resize_filters",                       default=4,  nargs="+",    type=int)
-    parser.add_argument("--kappa_resize_method",                        default="bilinear", nargs="+",)
-    parser.add_argument("--kappa_resize_conv_layers",                   default=1,  nargs="+",    type=int)
-    parser.add_argument("--kappa_resize_strides",                       default=2,  nargs="+",    type=int)
-    parser.add_argument("--kappa_resize_kernel_size",                   default=3,  nargs="+",    type=int)
-    parser.add_argument("--kappa_resize_separate_grad_downsampling",    action="store_true")
 
 
     # Training set params

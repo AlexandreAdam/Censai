@@ -13,8 +13,7 @@ python $CENSAI_PATH/scripts/cosmos_to_tfrecords_distributed.py\
   --pixels=128\
   --sample=23.5\
   --exclusion_level=marginal\
-  --min_flux=0.1\
-  --min_new_flux=5\
+  --min_flux=100\
   --cosmos_dir=$HOME/projects/rrg-lplevass/data/COSMOS/COSMOS_23.5_training_sample/\
   --store_attributes\
   --rotation\

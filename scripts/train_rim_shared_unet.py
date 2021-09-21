@@ -41,17 +41,15 @@ UNET_MODEL_HPARAMS = [
     "resampling_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
-    "kernel_regularizer_amp",
-    "bias_regularizer_amp",
+    "batch_norm",
+    "dropout",
+    "kernel_l2_amp",
+    "bias_l2_amp",
+    "kernel_l1_amp",
+    "bias_l1_amp",
     "activation",
     "alpha",
     "initializer",
-    "kappa_resize_filters",
-    "kappa_resize_method",
-    "kappa_resize_conv_layers",
-    "kappa_resize_strides",
-    "kappa_resize_kernel_size",
-    "kappa_resize_separate_grad_downsampling"
 ]
 
 
@@ -114,8 +112,10 @@ def main(args):
             resampling_kernel_size=args.resampling_kernel_size,
             gru_kernel_size=args.gru_kernel_size,
             upsampling_interpolation=args.upsampling_interpolation,
-            kernel_regularizer_amp=args.kernel_regularizer_amp,
-            bias_regularizer_amp=args.bias_regularizer_amp,
+            kernel_l2_amp=args.kernel_l2_amp,
+            bias_l2_amp=args.bias_l2_amp,
+            kernel_l1_amp=args.kernel_l1_amp,
+            bias_l1_amp=args.bias_l1_amp,
             activation=args.activation,
             alpha=args.alpha,
             initializer=args.initializer,
@@ -153,11 +153,14 @@ def main(args):
         # wt = wt[..., tf.newaxis]  # [steps, batch]
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
-        logname = args.model_id
+        logname = args.model_id + "_" + args.logname
+        model_id = args.model_id
     elif args.logname is not None:
         logname = args.logname
+        model_id = logname
     else:
         logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        model_id = logname
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
         if not os.path.isdir(logdir):
@@ -168,6 +171,7 @@ def main(args):
     # ===== Make sure directory and checkpoint manager are created to save model ===================================
     if args.model_dir.lower() != "none":
         checkpoints_dir = os.path.join(args.model_dir, logname)
+        old_checkpoints_dir = os.path.join(args.model_dir, model_id)  # in case they differ we load model from a different directory
         if not os.path.isdir(checkpoints_dir):
             os.mkdir(checkpoints_dir)
             with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
@@ -179,7 +183,7 @@ def main(args):
                 hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
                 json.dump(hparams_dict, f, indent=4)
         ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.unet)
-        checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
+        checkpoint_manager = tf.train.CheckpointManager(ckpt, old_checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
         # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
@@ -193,6 +197,9 @@ def main(args):
             else:
                 checkpoint = checkpoint_manager.checkpoints[int(args.load_checkpoint)]
                 checkpoint_manager.checkpoint.restore(checkpoint)
+        if old_checkpoints_dir != checkpoints_dir:
+            # save progress in another directory.
+            checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
     else:
         save_checkpoint = False
     # =================================================================================================================
@@ -434,8 +441,12 @@ if __name__ == "__main__":
     parser.add_argument("--resampling_kernel_size",                     default=None,   type=int)
     parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
     parser.add_argument("--upsampling_interpolation",                   action="store_true")
-    parser.add_argument("--kernel_regularizer_amp",                     default=1e-4,   type=float)
-    parser.add_argument("--bias_regularizer_amp",                       default=1e-4,   type=float)
+    parser.add_argument("--batch_norm",                                 action="store_true")
+    parser.add_argument("--dropout",                                    default=None,   type=float)
+    parser.add_argument("--kernel_l2_amp",                              default=0,      type=float)
+    parser.add_argument("--bias_l2_amp",                                default=0,      type=float)
+    parser.add_argument("--kernel_l1_amp",                              default=0,      type=float)
+    parser.add_argument("--bias_l1_amp",                                default=0,      type=float)
     parser.add_argument("--activation",                                 default="leaky_relu")
     parser.add_argument("--alpha",                                      default=0.1,    type=float)
     parser.add_argument("--initializer",                                default="glorot_normal")
@@ -478,7 +489,7 @@ if __name__ == "__main__":
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
-    parser.add_argument("--json_override",          default=None, nargs="+",        help="A json filepath that will override every command line parameters. "
+    parser.add_argument("--json_override",          default=None,    nargs="+",     help="A json filepath that will override every command line parameters. "
                                                                                  "Useful for reproducibility")
 
     args = parser.parse_args()

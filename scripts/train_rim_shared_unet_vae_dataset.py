@@ -27,17 +27,15 @@ UNET_MODEL_HPARAMS = [
     "resampling_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
-    "kernel_regularizer_amp",
-    "bias_regularizer_amp",
+    "batch_norm",
+    "dropout",
+    "kernel_l2_amp",
+    "bias_l2_amp",
+    "kernel_l1_amp",
+    "bias_l1_amp",
     "activation",
     "alpha",
     "initializer",
-    "kappa_resize_filters",
-    "kappa_resize_method",
-    "kappa_resize_conv_layers",
-    "kappa_resize_strides",
-    "kappa_resize_kernel_size",
-    "kappa_resize_separate_grad_downsampling"
 ]
 
 VAE_HPARAMS = [
@@ -402,8 +400,12 @@ if __name__ == "__main__":
     parser.add_argument("--resampling_kernel_size",                     default=None,   type=int)
     parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
     parser.add_argument("--upsampling_interpolation",                   action="store_true")
-    parser.add_argument("--kernel_regularizer_amp",                     default=1e-4,   type=float)
-    parser.add_argument("--bias_regularizer_amp",                       default=1e-4,   type=float)
+    parser.add_argument("--batch_norm",                                 action="store_true")
+    parser.add_argument("--dropout",                                    default=None,   type=float)
+    parser.add_argument("--kernel_l2_amp",                              default=0,      type=float)
+    parser.add_argument("--bias_l2_amp",                                default=0,      type=float)
+    parser.add_argument("--kernel_l1_amp",                              default=0,      type=float)
+    parser.add_argument("--bias_l1_amp",                                default=0,      type=float)
     parser.add_argument("--activation",                                 default="leaky_relu")
     parser.add_argument("--alpha",                                      default=0.1,    type=float)
     parser.add_argument("--initializer",                                default="glorot_normal")
