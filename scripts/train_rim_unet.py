@@ -82,7 +82,7 @@ def main(args):
     # Read off global parameters from first example in dataset
     for physical_params in dataset.map(decode_physical_model_info):
         break
-    dataset = dataset.map(decode_train).map(preprocess).batch(args.batch_size)
+    dataset = dataset.map(decode_train).map(preprocess).shuffle(buffer_size=args.buffer_size).batch(args.batch_size)
     # Do not prefetch in this script. Memory is more precious than latency
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file)#.prefetch(tf.data.experimental.AUTOTUNE)
@@ -522,6 +522,7 @@ if __name__ == "__main__":
     # ... for tfrecord dataset
     parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use $SLURM_TMPDIR/cache")
     parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files.")
+    parser.add_argument("--buffer_size",            default=1000,   type=int,       help="Buffer size for shuffling at each epoch.")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")

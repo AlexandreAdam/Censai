@@ -15,7 +15,7 @@ python $CENSAI_PATH/scripts/cosmos_to_tfrecords_distributed.py\
   --exclusion_level=marginal\
   --min_flux=10\
   --signal_pixels=500\
-  --min_signal_threshold=0.05\
+  --signal_threshold=0.05\
   --cosmos_dir=$HOME/projects/rrg-lplevass/data/COSMOS/COSMOS_23.5_training_sample/\
   --store_attributes\
   --rotation\
