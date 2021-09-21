@@ -21,8 +21,10 @@ class SharedUnetModel(tf.keras.Model):
             gru_kernel_size=None,
             batch_norm=False,
             upsampling_interpolation=False,  # use strided transposed convolution if false
-            kernel_regularizer_amp=0.,
-            bias_regularizer_amp=0.,
+            kernel_l1_amp=0.,
+            bias_l1_amp=0.,
+            kernel_l2_amp=0.,
+            bias_l2_amp=0.,
             activation="leaky_relu",
             alpha=0.1,                       # for leaky relu
             use_bias=True,
@@ -34,9 +36,9 @@ class SharedUnetModel(tf.keras.Model):
 
         common_params = {"padding": "same", "kernel_initializer": initializer,
                          "data_format": "channels_last", "use_bias": use_bias,
-                         "kernel_regularizer": tf.keras.regularizers.L2(l2=kernel_regularizer_amp)}
+                         "kernel_regularizer": tf.keras.regularizers.L1L2(l1=kernel_l1_amp, l2=kernel_l2_amp)}
         if use_bias:
-            common_params.update({"bias_regularizer": tf.keras.regularizers.L2(l2=bias_regularizer_amp)})
+            common_params.update({"bias_regularizer": tf.keras.regularizers.L1L2(l1=bias_l1_amp, l2=bias_l2_amp)})
 
         resampling_kernel_size = resampling_kernel_size if resampling_kernel_size is not None else kernel_size
         bottleneck_kernel_size = bottleneck_kernel_size if bottleneck_kernel_size is not None else kernel_size
@@ -94,12 +96,12 @@ class SharedUnetModel(tf.keras.Model):
             activation=activation,
             **common_params
         )
-        self.bottleneck_layer2 = tf.keras.layers.Conv2D(
-            filters=bottleneck_filters,
-            kernel_size=bottleneck_kernel_size,
-            activation=activation,
-            **common_params
-        )
+        # self.bottleneck_layer2 = tf.keras.layers.Conv2D(
+        #     filters=bottleneck_filters,
+        #     kernel_size=bottleneck_kernel_size,
+        #     activation=activation,
+        #     **common_params
+        # )
         self.bottleneck_gru = ConvGRUBlock(
             filters=2*bottleneck_filters,
             kernel_size=bottleneck_kernel_size,
@@ -123,7 +125,7 @@ class SharedUnetModel(tf.keras.Model):
             c_i, delta_xt = self.encoding_layers[i](delta_xt)
             skip_connections.append(c_i)
         delta_xt = self.bottleneck_layer1(delta_xt)
-        delta_xt = self.bottleneck_layer2(delta_xt)
+        # delta_xt = self.bottleneck_layer2(delta_xt)
         # Pass skip connections through GRUS and update states
         new_states = []
         for i in range(len(self.gated_recurrent_blocks)):

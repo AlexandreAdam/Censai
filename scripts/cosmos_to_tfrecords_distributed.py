@@ -60,8 +60,9 @@ def distributed_strategy(args):
             # is a good estimate of the STD
             # Background is interpreted as the sqrt(Var(im)).
             im = tf.nn.relu(im - ps[0, 0]).numpy()       # subtract backgroung, fold negative pixels to 0
-            new_flux = im.sum()
-            if new_flux < args.min_new_flux:  # should we keep this example?
+            im /= im.sum()                               # normalize peak to 1
+            signal_pixels = np.sum(im > args.signal_threshold)     # how many pixels have a value above a certain threshold
+            if signal_pixels < args.min_signal_pixels:  # argument used to select only examples that are more distinct galaxy features (it does however bias the dataset in redshift space)
                 continue
 
             # Draw a kimage of the galaxy, just to figure out what maxk is, there might
@@ -126,7 +127,8 @@ if __name__ == '__main__':
     parser.add_argument("--sample",                 default="25.2",                 help="Either 25.2 or 23.5")
     parser.add_argument("--exclusion_level",        default="marginal",             help="Galsim exclusion level of bad postage stamps")
     parser.add_argument("--min_flux",               default=0.,         type=float, help="Minimum flux for the original postage stamps")
-    parser.add_argument("--min_new_flux",           default=0.,         type=float, help="Minimum flux after background subtraction. This parameter controls much better the quality of images. 5 is generally a good number.")
+    parser.add_argument("--signal_pixels",          default=0,          type=int,   help="Minimal number of pixel with value abover user defined signal threshold -- after peak is normalized to 1")
+    parser.add_argument("--min_signal_threshold",   default=0,          type=float, help="Value between 0 and 1, defines the pixel value below which there is no more signal")
     parser.add_argument("--cosmos_dir",             default=None,                   help="Directory to cosmos data")
     parser.add_argument("--store_attributes",       action="store_true",            help="Wether to store ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'z_phot] or not")
     parser.add_argument("--rotation",               action="store_true",            help="Rotate randomly the postage stamp (and psf)")
