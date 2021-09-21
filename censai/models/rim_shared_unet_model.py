@@ -19,6 +19,7 @@ class SharedUnetModel(tf.keras.Model):
             bottleneck_filters=None,
             resampling_kernel_size=None,
             gru_kernel_size=None,
+            batch_norm=False,
             upsampling_interpolation=False,  # use strided transposed convolution if false
             kernel_regularizer_amp=0.,
             bias_regularizer_amp=0.,
@@ -61,6 +62,7 @@ class SharedUnetModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     strides=strides,
+                    batch_norm=batch_norm,
                     **common_params
                 )
             )
@@ -72,6 +74,7 @@ class SharedUnetModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     bilinear=upsampling_interpolation,
+                    batch_norm=batch_norm,
                     **common_params
                 )
             )

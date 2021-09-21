@@ -70,7 +70,6 @@ class UnetEncodingLayer(tf.keras.layers.Layer):
                 tf.keras.layers.Conv2D(
                     filters=self.filters,
                     kernel_size=self.kernel_size,
-                    activation=self.activation,
                     **kwargs
                 )
             )
