@@ -27,7 +27,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --block_length=1\
   --buffer_size=1000\
   --steps 10\
-  --adam\
+  --adam 1\
   --kappalog\
   --source_link relu\
   --filters 16\
