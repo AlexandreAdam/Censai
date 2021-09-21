@@ -6,7 +6,7 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=2-00:00		# time (DD-HH:MM), A step takes roughly 2 sec per example with fft
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_DoubleUnet_NIEns_512k18_SDS
+#SBATCH --job-name=Train_RIM_DoubleUnet_TNGns_512k18_SDS
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
