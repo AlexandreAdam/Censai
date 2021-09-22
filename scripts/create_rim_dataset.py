@@ -43,8 +43,11 @@ def distributed_strategy(args):
         rescaling_theta_bins=args.bins
     )
     cosmos_files = glob.glob(os.path.join(args.cosmos_dir, "*.tfrecords"))
-    n_galaxies = len(cosmos_files) * args.buffer_size
-    cosmos = tf.data.TFRecordDataset(cosmos_files).map(decode).map(preprocess)
+    cosmos = tf.data.TFRecordDataset(cosmos_files)
+    n_galaxies = 0
+    for _ in cosmos:  # count the number of samples in the dataset
+        n_galaxies += 1
+    cosmos = cosmos.map(decode).map(preprocess)
     if args.shuffle_cosmos:
         cosmos = cosmos.shuffle(buffer_size=args.buffer_size)
     cosmos = cosmos.batch(args.batch)
