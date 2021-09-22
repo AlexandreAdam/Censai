@@ -39,6 +39,7 @@ UNET_MODEL_HPARAMS = [
     "bottleneck_kernel_size",
     "bottleneck_filters",
     "resampling_kernel_size",
+    "input_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
     "batch_norm",
@@ -109,6 +110,7 @@ def main(args):
             bottleneck_kernel_size=args.bottleneck_kernel_size,
             bottleneck_filters=args.bottleneck_filters,
             resampling_kernel_size=args.resampling_kernel_size,
+            input_kernel_size=args.input_kernel_size,
             gru_kernel_size=args.gru_kernel_size,
             upsampling_interpolation=args.upsampling_interpolation,
             kernel_l2_amp=args.kernel_l2_amp,
@@ -152,7 +154,7 @@ def main(args):
         # wt = wt[..., tf.newaxis]  # [steps, batch]
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
-        logname = args.model_id + "_" + args.logname
+        logname = args.model_id + "_" + args.logname if args.logname is not None else args.model_id
         model_id = args.model_id
     elif args.logname is not None:
         logname = args.logname
@@ -186,16 +188,7 @@ def main(args):
         save_checkpoint = True
         # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
-            if args.load_checkpoint == "lastest":
-                checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
-            elif args.load_checkpoint == "best":
-                scores = np.loadtxt(os.path.join(checkpoints_dir, "score_sheet.txt"))
-                _checkpoint = scores[np.argmin(scores[:, 1]), 0]
-                checkpoint = checkpoint_manager.checkpoints[_checkpoint]
-                checkpoint_manager.checkpoint.restore(checkpoint)
-            else:
-                checkpoint = checkpoint_manager.checkpoints[int(args.load_checkpoint)]
-                checkpoint_manager.checkpoint.restore(checkpoint)
+            checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
         if old_checkpoints_dir != checkpoints_dir:
             # save progress in another directory.
             checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
@@ -220,7 +213,7 @@ def main(args):
         if args.clipping:
             gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
-        chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
+        chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size # take chi squared of converged prediction
         source_cost = tf.reduce_sum(source_cost) / args.batch_size
         kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
@@ -246,7 +239,7 @@ def main(args):
         kappa_cost = tf.reduce_sum(kappa_cost, axis=0)
         # final cost is mean over global batch size
         cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
-        chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
+        chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         source_cost = tf.reduce_sum(source_cost) / args.batch_size
         kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
@@ -416,7 +409,6 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("--model_id",               default="None",                 help="Start from this model id checkpoint. None means start from scratch")
-    parser.add_argument("--load_checkpoint",        default="best",                 help="One of 'best', 'lastest' or the specific checkpoint index.")
     parser.add_argument("--datasets",               required=True,  nargs="+",      help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
     parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
 
@@ -439,6 +431,7 @@ if __name__ == "__main__":
     parser.add_argument("--bottleneck_kernel_size",                     default=None,   type=int)
     parser.add_argument("--bottleneck_filters",                         default=None,   type=int)
     parser.add_argument("--resampling_kernel_size",                     default=None,   type=int)
+    parser.add_argument("--input_kernel_size",                          default=11,     type=int)
     parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
     parser.add_argument("--upsampling_interpolation",                   action="store_true")
     parser.add_argument("--batch_norm",                                 action="store_true")

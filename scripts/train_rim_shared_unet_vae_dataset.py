@@ -218,16 +218,7 @@ def main(args):
         save_checkpoint = True
         # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
-            if args.load_checkpoint == "lastest":
-                checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
-            elif args.load_checkpoint == "best":
-                scores = np.loadtxt(os.path.join(checkpoints_dir, "score_sheet.txt"))
-                _checkpoint = scores[np.argmin(scores[:, 1]), 0]
-                checkpoint = checkpoint_manager.checkpoints[_checkpoint]
-                checkpoint_manager.checkpoint.restore(checkpoint)
-            else:
-                checkpoint = checkpoint_manager.checkpoints[int(args.load_checkpoint)]
-                checkpoint_manager.checkpoint.restore(checkpoint)
+            checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
     else:
         save_checkpoint = False
     # =================================================================================================================
@@ -243,7 +234,7 @@ def main(args):
         if args.clipping:
             gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
-        chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
+        chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         source_cost = tf.reduce_sum(source_cost) / args.batch_size
         kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
@@ -373,7 +364,6 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("--model_id",                   default="None",                 help="Start from this model id checkpoint. None means start from scratch")
-    parser.add_argument("--load_checkpoint",            default="best",                 help="One of 'best', 'lastest' or the specific checkpoint index.")
     parser.add_argument("--kappa_first_stage_vae",      required=True)
     parser.add_argument("--kappa_second_stage_vae",     default=None)
     parser.add_argument("--source_first_stage_vae",     required=True)

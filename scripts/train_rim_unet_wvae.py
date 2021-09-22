@@ -242,23 +242,8 @@ def main(args):
         save_checkpoint = True
         # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
-            if args.load_checkpoint == "lastest":
-                kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint_manager.latest_checkpoint)
-                source_checkpoint_manager.checkpoint.restore(source_checkpoint_manager.latest_checkpoint)
-            elif args.load_checkpoint == "best":
-                kappa_scores = np.loadtxt(os.path.join(kappa_checkpoints_dir, "score_sheet.txt"))
-                source_scores = np.loadtxt(os.path.join(source_checkpoints_dir, "score_sheet.txt"))
-                _kappa_checkpoint = kappa_scores[np.argmin(kappa_scores[:, 1]), 0]
-                _source_checkpoint = source_scores[np.argmin(source_scores[:, 1]), 0]
-                kappa_checkpoint = kappa_checkpoint_manager.checkpoints[_kappa_checkpoint]
-                kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint)
-                source_checkpoint = kappa_checkpoint_manager.checkpoints[_source_checkpoint]
-                source_checkpoint_manager.checkpoint.restore(source_checkpoint)
-            else:
-                kappa_checkpoint = kappa_checkpoint_manager.checkpoints[int(args.load_checkpoint)]
-                source_checkpoint = source_checkpoint_manager.checkpoints[int(args.load_checkpoint)]
-                kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint)
-                source_checkpoint_manager.checkpoint.restore(source_checkpoint)
+            kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint_manager.latest_checkpoint)
+            source_checkpoint_manager.checkpoint.restore(source_checkpoint_manager.latest_checkpoint)
     else:
         save_checkpoint = False
     # =================================================================================================================
@@ -278,7 +263,7 @@ def main(args):
             gradient2 = [tf.clip_by_value(grad, -10, 10) for grad in gradient2]
         optim.apply_gradients(zip(gradient1, rim.source_model.trainable_variables))
         optim.apply_gradients(zip(gradient2, rim.kappa_model.trainable_variables))
-        chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
+        chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         source_cost = tf.reduce_sum(source_cost) / args.batch_size
         kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
@@ -293,7 +278,7 @@ def main(args):
         if args.clipping:
             gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.kappa_model.trainable_variables))
-        chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
+        chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
         return cost, chi_squared, 0, kappa_cost
 
@@ -432,7 +417,6 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("--model_id",                   default="None",                 help="Start from this model id checkpoint. None means start from scratch")
-    parser.add_argument("--load_checkpoint",            default="best",                 help="One of 'best', 'lastest' or the specific checkpoint index.")
     parser.add_argument("--kappa_first_stage_vae",      required=True)
     parser.add_argument("--kappa_second_stage_vae",     default=None)
     parser.add_argument("--source_first_stage_vae",     required=True)
