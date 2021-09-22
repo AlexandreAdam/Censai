@@ -177,8 +177,6 @@ def main(args):
                 cost, reconstruction_loss, kl_loss = train_step(x, step=step)
                 # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
-                tf.summary.scalar("beta", beta_schedule(step), step=step)
-                tf.summary.scalar("l2 bottleneck", l2_bottleneck_schedule(step), step=step)
                 time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
                 epoch_reconstruction_loss.update_state([reconstruction_loss])
@@ -216,6 +214,8 @@ def main(args):
             tf.summary.scalar("MSE", train_cost, step=step)
             tf.summary.scalar("Val MSE", val_cost, step=step)
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
+            tf.summary.scalar("beta", beta_schedule(step), step=step)
+            tf.summary.scalar("l2 bottleneck", l2_bottleneck_schedule(step), step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
               f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
         history["train_cost"].append(train_cost)
@@ -315,7 +315,7 @@ if __name__ == '__main__':
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
     parser.add_argument("--logname",                 default=None,                  help="Overwrite name of the log with this argument")
-    parser.add_argument("--logname_prefixe",         default="CosmosVAE",            help="If name of the log is not provided, this prefix is prepended to the date")
+    parser.add_argument("--logname_prefixe",         default="CosmosVAE",           help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
