@@ -35,6 +35,7 @@ UNET_MODEL_HPARAMS = [
     "bottleneck_kernel_size",
     "bottleneck_filters",
     "resampling_kernel_size",
+    "input_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
     "batch_norm",
@@ -76,6 +77,7 @@ PARAMS_NICKNAME = {
     "strides": "S",
     "upsampling_interpolation": "BU",
     "resampling_kernel_size": "RK",
+    "input_kernel_size": "IK",
     "gru_kernel_size": "GK",
     "kernel_l2_amp": "Kl2",
     "kernel_l1_amp": "Kl1",
@@ -229,6 +231,7 @@ if __name__ == '__main__':
     parser.add_argument("--bottleneck_filters",                         default=None, nargs="+",  type=int)
     parser.add_argument("--resampling_kernel_size",                     default=None, nargs="+",  type=int)
     parser.add_argument("--gru_kernel_size",                            default=None, nargs="+",  type=int)
+    parser.add_argument("--input_kernel_size",                          default=11,   nargs="+",  type=int)
     parser.add_argument("--upsampling_interpolation",                   default=0,    nargs="+",  type=int)
     parser.add_argument("--batch_norm",                                 default=0,    nargs="+",  type=int)
     parser.add_argument("--dropout",                                    default=None, nargs="+",  type=float)
@@ -276,7 +279,6 @@ if __name__ == '__main__':
     # Keep these as default, they need to be in Namespace but we dont use them for this script
     parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
                                                                                           "checkpoint of this model if provided")
-    parser.add_argument("--load_checkpoint",            default="best",              help="One of 'best', 'lastest' or the specific checkpoint index")
     parser.add_argument("--json_override",                  default=None,            help="A json filepath that will override every command line parameters. "
                                                                                            "Useful for reproducibility")
     args = parser.parse_args()

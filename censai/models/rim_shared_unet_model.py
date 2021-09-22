@@ -18,6 +18,7 @@ class SharedUnetModel(tf.keras.Model):
             bottleneck_kernel_size=None,     # use kernel_size as default
             bottleneck_filters=None,
             resampling_kernel_size=None,
+            input_kernel_size=11,
             gru_kernel_size=None,
             batch_norm=False,
             upsampling_interpolation=False,  # use strided transposed convolution if false
@@ -115,11 +116,19 @@ class SharedUnetModel(tf.keras.Model):
             **common_params
         )
 
+        self.input_layer = tf.keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=input_kernel_size,
+            activation=activation,
+            **common_params
+        )
+
     def __call__(self, source, kappa, source_grad, kappa_grad, states):
         return self.call(source, kappa, source_grad, kappa_grad, states)
 
     def call(self, source, kappa, source_grad, kappa_grad, states):
         delta_xt = tf.concat([source, source_grad, kappa, kappa_grad], axis=-1)
+        delta_xt = self.input_layer(delta_xt)
         skip_connections = []
         for i in range(len(self.encoding_layers)):
             c_i, delta_xt = self.encoding_layers[i](delta_xt)

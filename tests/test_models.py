@@ -1,5 +1,6 @@
 from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE, VAESecondStage
 from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM
+from censai.models.layers import ConvGRU
 import tensorflow as tf
 
 
@@ -185,6 +186,13 @@ def test_vae_second_stage():
     x = tf.random.normal(shape=[100, 64])
     y = vae(x)
     vae.cost_function(x)
+
+
+def test_convGRU():
+    gru = ConvGRU(filters=32)
+    x = tf.random.normal(shape=(1, 8, 8, 32))
+    states = tf.random.normal(shape=(1, 8, 8, 64))
+    gru.call(x, states)
 
 
 if __name__ == '__main__':
