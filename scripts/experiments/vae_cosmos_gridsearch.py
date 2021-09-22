@@ -37,9 +37,12 @@ EXTRA_PARAMS = [
     "initial_learning_rate",
     "decay_rate",
     "beta_cyclical",
+    "beta_init",
+    "beta_end_value",
     "skip_strength_decay_power",
     "l2_bottleneck_decay_power",
-    "skip_strength_init"
+    "skip_strength_init",
+    "beta_decay_steps"
 ]
 
 PARAMS_NICKNAME = {
@@ -60,6 +63,9 @@ PARAMS_NICKNAME = {
     "initial_learning_rate": "lr",
     "decay_rate": "dr",
     "beta_cyclical": "betaC",
+    "beta_init": "betaI",
+    "beta_end_value": "betaE",
+    "beta_decay_steps": "betaDS",
     "skip_strength_decay_power": "SSDP",
     "l2_bottleneck_decay_power": "l2DP",
     "skip_strength_init": "ssi"
@@ -197,10 +203,10 @@ if __name__ == '__main__':
     parser.add_argument("--initial_learning_rate",          default=1e-3,   nargs="+",  type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",                     default=1.,     nargs="+",  type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",                    default=1000,               type=int,       help="Decay steps of exponential decay of the learning rate.")
-    parser.add_argument("--beta_init",                      default=0.,                 type=float,     help="Initial value of the beta schedule")
-    parser.add_argument("--beta_end_value",                 default=1.,                 type=float,     help="End value of the beta schedule")
+    parser.add_argument("--beta_init",                      default=0.,     nargs="+",  type=float,     help="Initial value of the beta schedule")
+    parser.add_argument("--beta_end_value",                 default=1.,     nargs="+",  type=float,     help="End value of the beta schedule")
     parser.add_argument("--beta_decay_power",               default=1.,                 type=float,     help="Power of the Polynomial schedule")
-    parser.add_argument("--beta_decay_steps",               default=1000,               type=int,       help="Number of steps until end of schedule is reached")
+    parser.add_argument("--beta_decay_steps",               default=1000,   nargs="+",  type=int,       help="Number of steps until end of schedule is reached")
     parser.add_argument("--beta_cyclical",                  default=0,      nargs="+",  type=int,       help="Make beta schedule cyclical if 1. 0: Monotone schedule.")
     parser.add_argument("--skip_strength_init",             default=1.,     nargs="+",  type=float,     help="Initial value of the skip_strength schedule")
     parser.add_argument("--skip_strength_end_value",        default=0.,                 type=float,     help="End value of the skip_strength schedule")
