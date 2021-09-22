@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-32
+#SBATCH --array=1-9
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -13,7 +13,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --datasets $CENSAI_PATH/data/cosmos_23.5_preprocessed_highSNR_verydiffuse/\
   --strategy=exhaustive\
   --epochs=200\
-  --n_models=32\
+  --n_models=9\
   --batch_size 20\
   --train_split=0.95\
   --total_items 3649\
