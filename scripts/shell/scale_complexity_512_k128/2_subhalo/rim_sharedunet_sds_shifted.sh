@@ -36,10 +36,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --layers 4\
   --block_conv_layers 2\
   --kernel_size 3\
-  --resampling_kernel_size 5\
-  --gru_kernel_size 5\
-  --kernel_regularizer_amp 1e-4\
-  --bias_regularizer_amp 1e-4\
+  --gru_kernel_size 3\
   --alpha 0.1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC\
