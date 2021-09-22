@@ -1,6 +1,5 @@
 from .conv_gru import ConvGRU
 import tensorflow as tf
-from censai.models.utils import get_activation
 
 
 class ConvGRUBlock(tf.keras.Model):
@@ -11,8 +10,7 @@ class ConvGRUBlock(tf.keras.Model):
             self,
             filters,
             kernel_size=5,
-            activation="leaky_relu",
-            **kwargs
+            activation=tf.keras.layers.LeakyReLU(alpha=0.1)
     ):
         gru_filters = filters//2
         super(ConvGRUBlock, self).__init__()
@@ -20,7 +18,7 @@ class ConvGRUBlock(tf.keras.Model):
             filters=filters,
             kernel_size=kernel_size,
             strides=1,
-            activation=get_activation(activation, **kwargs),
+            activation=activation,
             padding='same')
         self.gru1 = ConvGRU(gru_filters, kernel_size)
         self.gru2 = ConvGRU(gru_filters, kernel_size)
