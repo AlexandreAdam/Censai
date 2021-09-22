@@ -380,6 +380,7 @@ def main(args):
         history["train_source_cost"].append(train_source_cost)
         history["val_kappa_cost"].append(val_kappa_cost)
         history["val_source_cost"].append(val_source_cost)
+        history["step"].append(step)
 
         cost = train_cost if args.track_train else val_cost
         if np.isnan(cost):
