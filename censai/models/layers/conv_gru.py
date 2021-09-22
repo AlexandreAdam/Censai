@@ -11,7 +11,7 @@ class ConvGRU(tf.keras.layers.Layer):
             strides=(1, 1),
             activation='sigmoid',
             padding='same',
-            kernel_initializer=tf.keras.initializers.GlorotUniform()
+            # kernel_initializer=tf.keras.initializers.GlorotUniform()
         )
         self.reset_gate = tf.keras.layers.Conv2D(
             filters=filters,
@@ -19,7 +19,7 @@ class ConvGRU(tf.keras.layers.Layer):
             strides=(1, 1),
             activation='sigmoid',
             padding='same',
-            kernel_initializer=tf.keras.initializers.GlorotUniform()
+            # kernel_initializer=tf.keras.initializers.GlorotUniform()
         )
         self.candidate_activation_gate = tf.keras.layers.Conv2D(
             filters=filters,
@@ -27,7 +27,7 @@ class ConvGRU(tf.keras.layers.Layer):
             strides=(1, 1),
             activation='tanh',
             padding='same',
-            kernel_initializer=tf.keras.initializers.GlorotUniform()
+            # kernel_initializer=tf.keras.initializers.GlorotUniform()
         )
 
     def call(self, features, ht):
@@ -36,7 +36,7 @@ class ConvGRU(tf.keras.layers.Layer):
         """
         stacked_input = tf.concat([features, ht], axis=3)
         z = self.update_gate(stacked_input)  # Update gate vector
-        r = self.reset_gate(stacked_input)  # Reset gate vector
+        r = self.reset_gate(stacked_input)   # Reset gate vector
         r_state = tf.multiply(r, ht)
         stacked_r_state = tf.concat([features, r_state], axis=3)
         tilde_h = self.candidate_activation_gate(stacked_r_state)

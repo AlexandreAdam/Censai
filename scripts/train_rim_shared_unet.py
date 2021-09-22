@@ -5,6 +5,7 @@ from censai import PhysicalModel, RIMSharedUnet
 from censai.models import SharedUnetModel, RayTracer
 from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
+from censai.definitions import DTYPE
 import os, glob, time, json
 from datetime import datetime
 
@@ -144,14 +145,16 @@ def main(args):
                 'config': {"learning_rate": learning_rate_schedule}
             }
         )
-        # # weights for time steps in the loss function
-        # if args.time_weights == "uniform":
-        #     wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
-        # elif args.time_weigth == "linear":
-        #     wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
-        # elif args.time_weight == "quadratic":
-        #     wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1)**2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
-        # wt = wt[..., tf.newaxis]  # [steps, batch]
+        # weights for time steps in the loss function
+        if args.time_weights == "uniform":
+            wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
+        elif args.time_weigth == "linear":
+            wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
+        elif args.time_weight == "quadratic":
+            wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1)**2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
+        else:
+            raise ValueError("time_weigth must be in ['uniform', 'linear', 'quadratic']")
+        wt = wt[..., tf.newaxis]  # [steps, batch]
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         logname = args.model_id + "_" + args.logname if args.logname is not None else args.model_id
@@ -205,8 +208,8 @@ def main(args):
             source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
             kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
             # weighted mean over time steps
-            source_cost = tf.reduce_sum(source_cost, axis=0)
-            kappa_cost = tf.reduce_sum(kappa_cost, axis=0)
+            source_cost = tf.reduce_sum(wt * source_cost, axis=0)
+            kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
             # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
@@ -235,8 +238,8 @@ def main(args):
         source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
         kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
         # weighted mean over time steps
-        source_cost = tf.reduce_sum(source_cost, axis=0)
-        kappa_cost = tf.reduce_sum(kappa_cost, axis=0)
+        source_cost = tf.reduce_sum(wt * source_cost, axis=0)
+        kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
         # final cost is mean over global batch size
         cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
@@ -275,7 +278,8 @@ def main(args):
         "val_kappa_cost": [],
         "learning_rate": [],
         "time_per_step": [],
-        "step": []
+        "step": [],
+        "wall_time": []
     }
     best_loss = np.inf
     patience = args.patience
@@ -362,7 +366,7 @@ def main(args):
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
             tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
-              f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
+              f"|  lr {optim.lr(step).numpy():.2e} | kappa cost {train_kappa_cost:.2e} | source cost {train_source_cost:.2e}")
         history["train_cost"].append(train_cost)
         history["val_cost"].append(val_cost)
         history["learning_rate"].append(optim.lr(step).numpy())
@@ -374,6 +378,7 @@ def main(args):
         history["val_kappa_cost"].append(val_kappa_cost)
         history["val_source_cost"].append(val_source_cost)
         history["step"].append(step)
+        history["wall_time"].append(time.time() - global_start)
 
         cost = train_cost if args.track_train else val_cost
         if np.isnan(cost):
@@ -470,7 +475,7 @@ if __name__ == "__main__":
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
-    # parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
+    parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

@@ -56,7 +56,8 @@ EXTRA_PARAMS = [
     "batch_size",
     "initial_learning_rate",
     "decay_rate",
-    "decay_steps"
+    "decay_steps",
+    "time_weights"
 ]
 
 
@@ -68,6 +69,7 @@ PARAMS_NICKNAME = {
     "initial_learning_rate": "lr",
     "decay_rate": "dr",
     "decay_steps": "ds",
+    "time_weights": "TW",
 
     "filters": "F",
     "filter_scaling": "FS",
@@ -264,6 +266,7 @@ if __name__ == '__main__':
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
+    parser.add_argument("--time_weights",           default="uniform", nargs="+",   help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

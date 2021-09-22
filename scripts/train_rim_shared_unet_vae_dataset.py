@@ -156,8 +156,10 @@ def main(args):
         resampling_kernel_size=args.resampling_kernel_size,
         gru_kernel_size=args.gru_kernel_size,
         upsampling_interpolation=args.upsampling_interpolation,
-        kernel_regularizer_amp=args.kernel_regularizer_amp,
-        bias_regularizer_amp=args.bias_regularizer_amp,
+        kernel_l2_amp=args.kernel_l2_amp,
+        bias_l2_amp=args.bias_l2_amp,
+        kernel_l1_amp=args.kernel_l1_amp,
+        bias_l1_amp=args.bias_l1_amp,
         activation=args.activation,
         alpha=args.alpha,
         initializer=args.initializer,
@@ -185,6 +187,16 @@ def main(args):
             'config': {"learning_rate": learning_rate_schedule}
         }
     )
+    # weights for time steps in the loss function
+    if args.time_weights == "uniform":
+        wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
+    elif args.time_weigth == "linear":
+        wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
+    elif args.time_weight == "quadratic":
+        wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1) ** 2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
+    else:
+        raise ValueError("time_weigth must be in ['uniform', 'linear', 'quadratic']")
+    wt = wt[..., tf.newaxis]  # [steps, batch]
 
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
@@ -227,8 +239,13 @@ def main(args):
         with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
             source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
-            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(0, 2, 3, 4))
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
+            # mean over residuals
+            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            # weighted mean over time steps
+            source_cost = tf.reduce_sum(wt * source_cost, axis=0)
+            kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+            # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
         if args.clipping:
@@ -252,7 +269,8 @@ def main(args):
         "kappa_cost": [],
         "learning_rate": [],
         "time_per_step": [],
-        "step": []
+        "step": [],
+        "wall_time": []
     }
     best_loss = np.inf
     patience = args.patience
@@ -281,18 +299,13 @@ def main(args):
                 cost, chi_squared, source_cost, kappa_cost = train_step(X, source, kappa)
 
         # ========== Summary and logs ==================================================================================
-                _time = time.time() - start
-                tf.summary.scalar("Time per step", _time, step=step)
-                tf.summary.scalar("MSE", cost, step=step)
-                tf.summary.scalar("Chi Squared", chi_squared, step=step)
-                tf.summary.scalar("Source Cost", source_cost, step=step)
-                tf.summary.scalar("Kappa Cost", kappa_cost, step=step)
-                time_per_step.update_state([_time])
+                time_per_step.update_state([time.time() - start])
                 epoch_loss.update_state([cost])
                 epoch_chi_squared.update_state([chi_squared])
                 epoch_source_cost.update_state([source_cost])
                 epoch_kappa_cost.update_state([kappa_cost])
                 step += 1
+
             if args.n_residuals > 0:
                 kappa_true = kappa_sampling_function(args.n_residuals)
                 source_true = source_sampling_function(args.n_residuals)
@@ -319,9 +332,14 @@ def main(args):
             train_chi_sq = epoch_chi_squared.result().numpy()
             train_s_cost = epoch_source_cost.result().numpy()
             train_k_cost = epoch_kappa_cost.result().numpy()
+            tf.summary.scalar("Time per step", time_per_step.result().numpy(), step=step)
+            tf.summary.scalar("MSE", train_cost, step=step)
+            tf.summary.scalar("Chi Squared", train_chi_sq, step=step)
+            tf.summary.scalar("Source Cost", train_s_cost, step=step)
+            tf.summary.scalar("Kappa Cost", train_k_cost, step=step)
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
         print(f"step {step} | train loss {train_cost:.3e} | chi sq {train_chi_sq:.3e}"
-              f"| learning rate {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s")
+              f"| lr {optim.lr(step).numpy():.2e} | kappa cost {train_k_cost:.2e} | source cost {train_s_cost:.2e}")
         history["cost"].append(train_cost)
         history["learning_rate"].append(optim.lr(step).numpy())
         history["chi_squared"].append(train_chi_sq)
@@ -329,6 +347,7 @@ def main(args):
         history["kappa_cost"].append(train_k_cost)
         history["source_cost"].append(train_s_cost)
         history["step"].append(step)
+        history["wall_time"].append(time.time() - global_start)
 
         cost = train_cost
         if np.isnan(cost):
@@ -426,6 +445,7 @@ if __name__ == "__main__":
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
+    parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
