@@ -426,7 +426,7 @@ def main(args):
             train_kappa_cost = epoch_kappa_loss.result().numpy()
             val_source_cost = val_source_loss.result().numpy()
             train_source_cost = epoch_source_loss.result().numpy()
-            tf.summary.scalar("Time per step", _time, step=step)
+            tf.summary.scalar("Time per step", time_per_step.result(), step=step)
             tf.summary.scalar("Chi Squared", train_chi_sq, step=step)
             tf.summary.scalar("Kappa cost", train_kappa_cost, step=step)
             tf.summary.scalar("Val Kappa cost", val_kappa_cost, step=step)
