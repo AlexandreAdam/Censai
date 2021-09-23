@@ -20,6 +20,7 @@ class SharedUnetModel(tf.keras.Model):
             input_kernel_size=11,
             gru_kernel_size=None,
             batch_norm=False,
+            dropout_rate=None,
             upsampling_interpolation=False,  # use strided transposed convolution if false
             kernel_l1_amp=0.,
             bias_l1_amp=0.,
@@ -67,6 +68,7 @@ class SharedUnetModel(tf.keras.Model):
                     activation=activation,
                     strides=strides,
                     batch_norm=batch_norm,
+                    dropout_rate=dropout_rate
                     **common_params
                 )
             )
@@ -79,6 +81,7 @@ class SharedUnetModel(tf.keras.Model):
                     activation=activation,
                     bilinear=upsampling_interpolation,
                     batch_norm=batch_norm,
+                    dropout_rate=dropout_rate
                     **common_params
                 )
             )

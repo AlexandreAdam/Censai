@@ -15,18 +15,22 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --strategy=exhaustive\
   --n_models=32\
   --forward_method=fft\
-  --epochs=100000\
+  --epochs=1000\
   --max_time=47\
+  --optimizer ADAMAX\
   --initial_learning_rate 1e-4\
+  --decay_rate 0.8\
+  --decay_steps 1000\
   --clipping\
-  --patience=40\
+  --patience=100\
   --tolerance=0.01\
-  --batch_size 1 5\
+  --batch_size 5\
   --train_split=1\
   --total_items 5 10 100 1000\
   --block_length=1\
   --buffer_size=1000\
   --steps 10\
+  --time_weights linear quadratic\
   --adam 1\
   --kappalog\
   --source_link relu\
@@ -36,14 +40,15 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --layers 4\
   --block_conv_layers 2\
   --kernel_size 3\
-  --resampling_kernel_size 5\
-  --gru_kernel_size 5\
-  --kernel_l2_amp 1e-4\
-  --bias_l2_amp 1e-4\
-  --alpha 0.1\
+  --resampling_kernel_size 3\
+  --input_kernel_size 7\
+  --gru_kernel_size 3\
+  --activation relu\
+  --gru_architecture plus\
+  --alpha 0.3\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsSC\
-  --logname_prefixe=RIMSU512_k128_NIEns\
+  --logdir=$CENSAI_PATH/logsSC2\
+  --logname_prefixe=RIMSU512_k128_NIE2ns\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\

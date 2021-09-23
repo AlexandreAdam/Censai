@@ -39,8 +39,8 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --gru_kernel_size 3\
   --alpha 0.1\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsSC\
-  --logname_prefixe=RIMSU512_k128_TNGs\
+  --logdir=$CENSAI_PATH/logsSC2\
+  --logname_prefixe=RIMSU512_k128_TNG2s\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\

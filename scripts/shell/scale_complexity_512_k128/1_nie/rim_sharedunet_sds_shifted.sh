@@ -42,8 +42,8 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --bias_l2_amp 1e-4\
   --alpha 0.1\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsSC\
-  --logname_prefixe=RIMSU512_k128_NIEs\
+  --logdir=$CENSAI_PATH/logsSC2\
+  --logname_prefixe=RIMSU512_k128_NIE2s\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\

@@ -36,14 +36,13 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --layers 4\
   --block_conv_layers 2\
   --kernel_size 3\
-  --resampling_kernel_size 5\
-  --gru_kernel_size 5\
-  --kernel_l2_amp 1e-4\
-  --bias_l2_amp 1e-4\
+  --resampling_kernel_size 3\
+  --input_kernel_size 7\
+  --gru_kernel_size 3\
   --alpha 0.1\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsSC\
-  --logname_prefixe=RIMSU512_k128_NIEnsvd\
+  --logdir=$CENSAI_PATH/logsSC2\
+  --logname_prefixe=RIMSU512_k128_NIE2nsvd\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
