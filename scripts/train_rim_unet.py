@@ -133,6 +133,8 @@ def main(args):
         activation=args.kappa_activation,
         alpha=args.kappa_alpha,  # for leaky relu
         initializer=args.kappa_initializer,
+        # batch_norm=args.source_batch_norm,
+        # dropout_rate=args.source_dropout_rate
     )
     source_model = UnetModel(
         filters=args.source_filters,
@@ -151,6 +153,8 @@ def main(args):
         activation=args.source_activation,
         alpha=args.source_alpha,  # for leaky relu
         initializer=args.source_initializer,
+        # batch_norm=args.source_batch_norm,
+        # dropout_rate=args.source_dropout_rate
     )
     rim = RIMUnet(
         physical_model=phys,

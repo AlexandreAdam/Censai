@@ -3,6 +3,7 @@ import numpy as np
 from censai import PhysicalModel, RIMSharedUnet
 from censai.models import SharedUnetModel, RayTracer, VAE, VAESecondStage
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
+from censai.definitions import DTYPE
 import os, time, json
 from datetime import datetime
 
@@ -25,10 +26,11 @@ UNET_MODEL_HPARAMS = [
     "bottleneck_kernel_size",
     "bottleneck_filters",
     "resampling_kernel_size",
+    "input_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
     "batch_norm",
-    "dropout",
+    "dropout_rate",
     "kernel_l2_amp",
     "bias_l2_amp",
     "kernel_l1_amp",
@@ -36,6 +38,7 @@ UNET_MODEL_HPARAMS = [
     "activation",
     "alpha",
     "initializer",
+    "gru_architecture"
 ]
 
 VAE_HPARAMS = [
@@ -154,6 +157,7 @@ def main(args):
         bottleneck_kernel_size=args.bottleneck_kernel_size,
         bottleneck_filters=args.bottleneck_filters,
         resampling_kernel_size=args.resampling_kernel_size,
+        input_kernel_size=args.input_kernel_size,
         gru_kernel_size=args.gru_kernel_size,
         upsampling_interpolation=args.upsampling_interpolation,
         kernel_l2_amp=args.kernel_l2_amp,
@@ -163,6 +167,9 @@ def main(args):
         activation=args.activation,
         alpha=args.alpha,
         initializer=args.initializer,
+        gru_architecture=args.gru_architecture,
+        dropout_rate=args.dropout_rate,
+        batch_norm=args.batch_norm
     )
     rim = RIMSharedUnet(
         physical_model=phys,
@@ -407,10 +414,11 @@ if __name__ == "__main__":
     parser.add_argument("--bottleneck_kernel_size",                     default=None,   type=int)
     parser.add_argument("--bottleneck_filters",                         default=None,   type=int)
     parser.add_argument("--resampling_kernel_size",                     default=None,   type=int)
+    parser.add_argument("--input_kernel_size",                          default=11,     type=int)
     parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
     parser.add_argument("--upsampling_interpolation",                   action="store_true")
     parser.add_argument("--batch_norm",                                 action="store_true")
-    parser.add_argument("--dropout",                                    default=None,   type=float)
+    parser.add_argument("--dropout_rate",                               default=None,   type=float)
     parser.add_argument("--kernel_l2_amp",                              default=0,      type=float)
     parser.add_argument("--bias_l2_amp",                                default=0,      type=float)
     parser.add_argument("--kernel_l1_amp",                              default=0,      type=float)
@@ -418,6 +426,7 @@ if __name__ == "__main__":
     parser.add_argument("--activation",                                 default="leaky_relu")
     parser.add_argument("--alpha",                                      default=0.1,    type=float)
     parser.add_argument("--initializer",                                default="glorot_normal")
+    parser.add_argument("--gru_architecture",                           default="concat",   help="'concat': architecture of Laurence. 'plus': original RNN architecture")
 
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "

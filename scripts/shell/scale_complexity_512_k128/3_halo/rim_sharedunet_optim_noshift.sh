@@ -6,11 +6,11 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=2-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_SharedUnet_NIEns_512k128_O
+#SBATCH --job-name=Train_RIM_SharedUnet_TNG100ns_512k128_O
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
-  --datasets $CENSAI_PATH/data/lenses512_k128_NIE_10k_verydiffuse\
+  --datasets $CENSAI_PATH/data/lenses512_hk128_TNG100_10k_verydiffuse\
   --compression_type=GZIP\
   --strategy=uniform\
   --n_models=40\
@@ -50,7 +50,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --alpha 0.1 0.04\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
-  --logname_prefixe=RIMSU512_k128_NIE2nsvdO\
+  --logname_prefixe=RIMSU512_k128_TNG2nsO\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
