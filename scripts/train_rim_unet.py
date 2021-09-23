@@ -86,10 +86,10 @@ def main(args):
     dataset = dataset.map(decode_train).map(preprocess)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file)
-    dataset = dataset.shuffle(buffer_size=args.buffer_size).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size)) # dont forget to divide by batch size!
-    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
-    val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
+    train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size))\
+        .shuffle(buffer_size=args.buffer_size).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))\
+        .take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size)).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     # train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     # val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
@@ -183,12 +183,12 @@ def main(args):
     # weights for time steps in the loss function
     if args.time_weights == "uniform":
         wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
-    elif args.time_weigths == "linear":
+    elif args.time_weights == "linear":
         wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
     elif args.time_weights == "quadratic":
         wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1) ** 2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
     else:
-        raise ValueError("time_weigth must be in ['uniform', 'linear', 'quadratic']")
+        raise ValueError("time_weights must be in ['uniform', 'linear', 'quadratic']")
     wt = wt[..., tf.newaxis]  # [steps, batch]
 
     # ==== Take care of where to write logs and stuff =================================================================
@@ -235,8 +235,7 @@ def main(args):
         if args.model_id.lower() != "none":
             kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint_manager.latest_checkpoint)
             source_checkpoint_manager.checkpoint.restore(source_checkpoint_manager.latest_checkpoint)
-        if old_checkpoints_dir != checkpoints_dir: # save progress in another directory
-            # save progress in another directory.
+        if old_checkpoints_dir != checkpoints_dir:  # save progress in another directory
             source_checkpoint_manager = tf.train.CheckpointManager(source_ckpt, source_checkpoints_dir, max_to_keep=args.max_to_keep)
             kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, kappa_checkpoints_dir, max_to_keep=args.max_to_keep)
     else:
@@ -337,7 +336,8 @@ def main(args):
         "val_source_cost": [],
         "learning_rate": [],
         "time_per_step": [],
-        "step": []
+        "step": [],
+        "wall_time": []
     }
     best_loss = np.inf
     patience = args.patience
@@ -396,18 +396,28 @@ def main(args):
                 val_kappa_loss.update_state([kappa_cost])
                 val_source_loss.update_state([source_cost])
 
-            for res_idx in range(min(args.n_residuals, args.batch_size, math.ceil((1 - args.train_split) * args.total_items))):  # in case vaidation set is empty
-                lens_true = X[res_idx]
-                source_true = source[res_idx]
-                kappa_true = kappa[res_idx]
-                source_pred, kappa_pred, chi_squared = rim.predict(lens_true[None, ...])
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0, ...]
-                tf.summary.image(f"Val Residuals {res_idx}",
-                                 plot_to_image(
-                                     residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0, ...],
-                                         kappa_pred[-1][0, ...], chi_squared[-1][0]
-                                     )), step=step)
+            if args.n_residuals > 0 and math.ceil((1 - args.train_split) * args.total_items) > 0:  # validation set not empty set not empty
+                lens_true = X
+                source_true = source
+                kappa_true = kappa
+                source_pred, kappa_pred, chi_squared = rim.predict(lens_true)
+                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
+                lam = phys.lagrange_multiplier(y_true=lens_true, y_pred=lens_pred)
+            for res_idx in range(min(args.n_residuals, args.batch_size, math.ceil((1 - args.train_split) * args.total_items))):
+                try:
+                    tf.summary.image(f"Val Residuals {res_idx}",
+                                     plot_to_image(
+                                         residual_plot(
+                                             lam[res_idx]*lens_true[res_idx],  # rescale intensity like it is done in the likelihood
+                                             source_true[res_idx],
+                                             kappa_true[res_idx],
+                                             lens_pred[res_idx],
+                                             source_pred[-1][res_idx],
+                                             kappa_pred[-1][res_idx],
+                                             chi_squared[-1][res_idx]
+                                         )), step=step)
+                except ValueError:
+                    continue
             val_cost = val_loss.result().numpy()
             train_cost = epoch_loss.result().numpy()
             val_chi_sq = val_chi_squared.result().numpy()
@@ -440,6 +450,7 @@ def main(args):
         history["val_source_cost"].append(val_kappa_cost)
         history["time_per_step"].append(time_per_step.result().numpy())
         history["step"].append(step)
+        history["wall_time"].append(time.time() - global_start)
 
         cost = train_cost if args.track_train else val_cost
         if np.isnan(cost):
