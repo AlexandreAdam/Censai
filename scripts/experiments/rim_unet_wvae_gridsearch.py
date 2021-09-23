@@ -69,48 +69,48 @@ EXTRA_PARAMS = [
     "initial_learning_rate",
     "decay_rate",
     "decay_steps",
-    "delay"
+    "delay",
+    "time_weights"
 ]
 
-from collections import OrderedDict
-PARAMS_NICKNAME = OrderedDict()
-PARAMS_NICKNAME["total_items"] = "TI"
-PARAMS_NICKNAME["optimizer"] = "O"
-PARAMS_NICKNAME["seed"] = ""
-PARAMS_NICKNAME["batch_size"] = "B"
-PARAMS_NICKNAME["initial_learning_rate"] = "lr"
-PARAMS_NICKNAME["decay_rate"] = "dr"
-PARAMS_NICKNAME["decay_steps"] = "ds"
-PARAMS_NICKNAME["delay"] = "D"
+PARAMS_NICKNAME = {
+    "total_items": "TI",
+    "optimizer": "O",
+    "seed": "",
+    "batch_size": "B",
+    "delay": "D",
+    "time_weights": "TW",
 
+    "kappa_filters": "KF",
+    "kappa_filter_scaling": "KFS",
+    "kappa_kernel_size": "KK",
+    "kappa_layers": "KL",
+    "kappa_block_conv_layers": "KBCL",
+    "kappa_strides": "KS",
+    "kappa_upsampling_interpolation": "KBU",
+    "kappa_resampling_kernel_size": "KRK",
+    "kappa_gru_kernel_size": "KGK",
+    "kappa_kernel_regularizer_amp": "KRA",
 
-PARAMS_NICKNAME["kappa_filters"] = "KF"
-PARAMS_NICKNAME["kappa_filter_scaling"] = "KFS"
-PARAMS_NICKNAME["kappa_kernel_size"] = "KK"
-PARAMS_NICKNAME["kappa_layers"] = "KL"
-PARAMS_NICKNAME["kappa_block_conv_layers"] = "KBCL"
-PARAMS_NICKNAME["kappa_strides"] = "KS"
-PARAMS_NICKNAME["kappa_upsampling_interpolation"] = "KBU"
-PARAMS_NICKNAME["kappa_resampling_kernel_size"] = "KRK"
-PARAMS_NICKNAME["kappa_kernel_regularizer_amp"] = "KRA"
+    "source_filters": "SF",
+    "source_filter_scaling": "SFS",
+    "source_kernel_size": "SK",
+    "source_layers": "SL",
+    "source_block_conv_layers": "SBCL",
+    "source_strides": "SS",
+    "source_upsampling_interpolation": "SBU",
+    "source_resampling_kernel_size": "SRK",
+    "source_gru_kernel_size": "SGK",
+    "source_kernel_regularizer_amp": "SRA",
 
-PARAMS_NICKNAME["source_filters"] = "SF"
-PARAMS_NICKNAME["source_filter_scaling"] = "SFS"
-PARAMS_NICKNAME["source_kernel_size"] = "SK"
-PARAMS_NICKNAME["source_layers"] = "SL"
-PARAMS_NICKNAME["source_block_conv_layers"] = "SBCL"
-PARAMS_NICKNAME["source_strides"] = "SS"
-PARAMS_NICKNAME["source_upsampling_interpolation"] = "SBU"
-PARAMS_NICKNAME["source_resampling_kernel_size"] = "SRK"
-PARAMS_NICKNAME["source_kernel_regularizer_amp"] = "SRA"
-
-PARAMS_NICKNAME["steps"] = "TS"
-PARAMS_NICKNAME["kappalog"] = "KaL"
-PARAMS_NICKNAME["kappa_normalize"] = "KaN"
-PARAMS_NICKNAME["adam"] = "A"
-PARAMS_NICKNAME["source_link"] = "Sli"
-PARAMS_NICKNAME["source_init"] = "Sini"
-PARAMS_NICKNAME["kappa_init"] = "Kini"
+    "steps": "TS",
+    "kappalog": "KaL",
+    "kappa_normalize": "KaN",
+    "adam": "A",
+    "source_link": "Sli",
+    "source_init": "Sini",
+    "kappa_init": "Kini",
+}
 
 
 def single_instance_args_generator(args):
@@ -287,6 +287,7 @@ if __name__ == '__main__':
     parser.add_argument("--patience",               default=np.inf,             type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,                  type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--max_time",               default=np.inf,             type=float,     help="Time allowed for the training, in hours.")
+    parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
