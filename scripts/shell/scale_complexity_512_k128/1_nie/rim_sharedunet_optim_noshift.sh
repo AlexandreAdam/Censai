@@ -17,6 +17,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --forward_method=fft\
   --epochs=100000\
   --max_time=47\
+  --optimizer ADAMAX\
   --initial_learning_rate 1e-4 5e-5 1e-5\
   --decay_rate 1 0.9 0.8 0.5\
   --decay_steps 200 1000 10000\
@@ -46,8 +47,8 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --bias_l2_amp 1e-4\
   --alpha 0.1\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsSC\
-  --logname_prefixe=RIMSU512_k128_NIEnsO\
+  --logdir=$CENSAI_PATH/logsSC2\
+  --logname_prefixe=RIMSU512_k128_NIE2nsO\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\

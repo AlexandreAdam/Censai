@@ -44,7 +44,7 @@ UNET_MODEL_HPARAMS = [
     "gru_kernel_size",
     "upsampling_interpolation",
     "batch_norm",
-    "dropout",
+    "dropout_rate",
     "kernel_l2_amp",
     "bias_l2_amp",
     "kernel_l1_amp",
@@ -52,6 +52,7 @@ UNET_MODEL_HPARAMS = [
     "activation",
     "alpha",
     "initializer",
+    "gru_architecture"
 ]
 
 
@@ -121,6 +122,8 @@ def main(args):
             activation=args.activation,
             alpha=args.alpha,
             initializer=args.initializer,
+            batch_norm=args.batch_norm,
+            dropout_rate=args.dropout_rate
         )
         rim = RIMSharedUnet(
             physical_model=phys,
@@ -440,14 +443,15 @@ if __name__ == "__main__":
     parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
     parser.add_argument("--upsampling_interpolation",                   action="store_true")
     parser.add_argument("--batch_norm",                                 action="store_true")
-    parser.add_argument("--dropout",                                    default=None,   type=float)
+    parser.add_argument("--dropout_rate",                               default=None,   type=float)
     parser.add_argument("--kernel_l2_amp",                              default=0,      type=float)
     parser.add_argument("--bias_l2_amp",                                default=0,      type=float)
     parser.add_argument("--kernel_l1_amp",                              default=0,      type=float)
     parser.add_argument("--bias_l1_amp",                                default=0,      type=float)
     parser.add_argument("--activation",                                 default="leaky_relu")
-    parser.add_argument("--alpha",                                      default=0.1,    type=float)
+    parser.add_argument("--alpha",                                      default=0.3,    type=float)
     parser.add_argument("--initializer",                                default="glorot_normal")
+    parser.add_argument("--gru_architecture",                           default="concat",   help="'concat': architecture of Laurence. 'plus': original RNN architecture")
 
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
