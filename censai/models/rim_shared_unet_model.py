@@ -68,7 +68,7 @@ class SharedUnetModel(tf.keras.Model):
                     activation=activation,
                     strides=strides,
                     batch_norm=batch_norm,
-                    dropout_rate=dropout_rate
+                    dropout_rate=dropout_rate,
                     **common_params
                 )
             )
@@ -81,7 +81,7 @@ class SharedUnetModel(tf.keras.Model):
                     activation=activation,
                     bilinear=upsampling_interpolation,
                     batch_norm=batch_norm,
-                    dropout_rate=dropout_rate
+                    dropout_rate=dropout_rate,
                     **common_params
                 )
             )
