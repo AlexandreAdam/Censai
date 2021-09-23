@@ -183,9 +183,9 @@ def main(args):
     # weights for time steps in the loss function
     if args.time_weights == "uniform":
         wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
-    elif args.time_weigth == "linear":
+    elif args.time_weigths == "linear":
         wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
-    elif args.time_weight == "quadratic":
+    elif args.time_weights == "quadratic":
         wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1) ** 2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
     else:
         raise ValueError("time_weigth must be in ['uniform', 'linear', 'quadratic']")
