@@ -90,7 +90,8 @@ PARAMS_NICKNAME = {
     "kappa_normalize": "KaN",
     "activation": "NL",
     "batch_norm": "BN",
-    "dropout": "D",
+    "dropout_rate": "D",
+    "gru_architecture": "GA",
 
     "adam": "A",
     "alpha": "al",

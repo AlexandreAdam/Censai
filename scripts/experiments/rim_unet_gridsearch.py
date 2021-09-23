@@ -67,7 +67,10 @@ EXTRA_PARAMS = [
     "seed",
     "batch_size",
     "delay",
-    "time_weights"
+    "time_weights",
+    "initial_learning_rate",
+    "decay_rate",
+    "decay_steps",
 ]
 
 
@@ -78,6 +81,9 @@ PARAMS_NICKNAME = {
     "batch_size": "B",
     "delay": "D",
     "time_weights": "TW",
+    "initial_learning_rate": "lr",
+    "decay_rate": "dr",
+    "decay_steps": "ds",
 
     "kappa_filters": "KF",
     "kappa_filter_scaling": "KFS",
@@ -280,9 +286,9 @@ if __name__ == '__main__':
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
     parser.add_argument("--delay",                  default=0,      nargs="+",  type=int,       help="Number of epochs kappa model trains alone")
     parser.add_argument("--optimizer",              default="Adam",  nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
-    parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float,     help="Initial learning rate.")
-    parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
-    parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
+    parser.add_argument("--initial_learning_rate",  default=1e-3,   nargs="+",  type=float,     help="Initial learning rate.")
+    parser.add_argument("--decay_rate",             default=1.,     nargs="+",  type=float,     help="Exponential decay rate of learning rate (1=no decay).")
+    parser.add_argument("--decay_steps",            default=1000,   nargs="+",  type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
     parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")

@@ -36,10 +36,11 @@ UNET_MODEL_HPARAMS = [
     "bottleneck_filters",
     "resampling_kernel_size",
     "input_kernel_size",
+    "input_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
     "batch_norm",
-    "dropout",
+    "dropout_rate",
     "kernel_l2_amp",
     "bias_l2_amp",
     "kernel_l1_amp",
@@ -47,6 +48,7 @@ UNET_MODEL_HPARAMS = [
     "activation",
     "alpha",
     "initializer",
+    "gru_architecture"
 ]
 
 EXTRA_PARAMS = [
@@ -89,7 +91,7 @@ PARAMS_NICKNAME = {
     "kappa_normalize": "KaN",
     "activation": "NL",
     "batch_norm": "BN",
-    "dropout": "D",
+    "dropout_rate": "D",
 
     "adam": "A",
     "alpha": "al",
@@ -232,11 +234,12 @@ if __name__ == '__main__':
     parser.add_argument("--bottleneck_kernel_size",                     default=None, nargs="+",  type=int)
     parser.add_argument("--bottleneck_filters",                         default=None, nargs="+",  type=int)
     parser.add_argument("--resampling_kernel_size",                     default=None, nargs="+",  type=int)
+    parser.add_argument("--input_kernel_size",                          default=11,   nargs="+",  type=int)
     parser.add_argument("--gru_kernel_size",                            default=None, nargs="+",  type=int)
     parser.add_argument("--input_kernel_size",                          default=11,   nargs="+",  type=int)
     parser.add_argument("--upsampling_interpolation",                   default=0,    nargs="+",  type=int)
     parser.add_argument("--batch_norm",                                 default=0,    nargs="+",  type=int)
-    parser.add_argument("--dropout",                                    default=None, nargs="+",  type=float)
+    parser.add_argument("--dropout_rate",                               default=None, nargs="+",  type=float)
     parser.add_argument("--kernel_l2_amp",                              default=0, nargs="+",  type=float)
     parser.add_argument("--bias_l2_amp",                                default=0, nargs="+",  type=float)
     parser.add_argument("--kernel_l1_amp",                              default=0, nargs="+",  type=float)
@@ -244,6 +247,7 @@ if __name__ == '__main__':
     parser.add_argument("--activation",                                 default="leaky_relu", nargs="+")
     parser.add_argument("--alpha",                                      default=0.1,  nargs="+",  type=float)
     parser.add_argument("--initializer",                                default="glorot_normal", nargs="+",)
+    parser.add_argument("--gru_architecture",                           default="concat", nargs="+",   help="'concat': architecture of Laurence. 'plus': original RNN architecture")
 
     # Training set params
     parser.add_argument("--batch_size",             default=1, nargs="+",  type=int,       help="Number of images in a batch. ")
