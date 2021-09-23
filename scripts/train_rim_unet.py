@@ -5,6 +5,7 @@ from censai import PhysicalModel, RIMUnet, RayTracer
 from censai.models import UnetModel
 from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
+from censai.definitions import DTYPE
 import os, glob, time, json
 from datetime import datetime
 # """ # NOTE ON THE USE OF MULTIPLE GPUS #
@@ -82,6 +83,7 @@ def main(args):
     # Read off global parameters from first example in dataset
     for physical_params in dataset.map(decode_physical_model_info):
         break
+    dataset = dataset.map(decode_train).map(preprocess)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file)
     dataset = dataset.shuffle(buffer_size=args.buffer_size).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
@@ -174,14 +176,27 @@ def main(args):
             'config': {"learning_rate": learning_rate_schedule}
         }
     )
+    # weights for time steps in the loss function
+    if args.time_weights == "uniform":
+        wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
+    elif args.time_weigth == "linear":
+        wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
+    elif args.time_weight == "quadratic":
+        wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1) ** 2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
+    else:
+        raise ValueError("time_weigth must be in ['uniform', 'linear', 'quadratic']")
+    wt = wt[..., tf.newaxis]  # [steps, batch]
 
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
-        logname = args.model_id
+        logname = args.model_id + "_" + args.logname if args.logname is not None else args.model_id
+        model_id = args.model_id
     elif args.logname is not None:
         logname = args.logname
+        model_id = logname
     else:
-        logname = args.logname_prefixe + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        model_id = logname
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
         if not os.path.isdir(logdir):
@@ -191,32 +206,35 @@ def main(args):
         writer = nullwriter()
     # ===== Make sure directory and checkpoint manager are created to save model ===================================
     if args.model_dir.lower() != "none":
-        models_dir = os.path.join(args.model_dir, logname)
-        if not os.path.isdir(models_dir):
-            os.mkdir(models_dir)
-            with open(os.path.join(models_dir, "script_params.json"), "w") as f:
+        checkpoints_dir = os.path.join(args.model_dir, logname)
+        old_checkpoints_dir = os.path.join(args.model_dir, model_id)  # we load model from old directory in case its different
+        source_checkpoints_dir = os.path.join(checkpoints_dir, "source_checkpoints")
+        kappa_checkpoints_dir = os.path.join(checkpoints_dir, "kappa_checkpoints")
+        if not os.path.isdir(checkpoints_dir):
+            os.mkdir(checkpoints_dir)
+            with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
                 json.dump(vars(args), f, indent=4)
-        source_checkpoints_dir = os.path.join(models_dir, "source_checkpoints")
-        if not os.path.isdir(source_checkpoints_dir):
             os.mkdir(source_checkpoints_dir)
             with open(os.path.join(source_checkpoints_dir, "hparams.json"), "w") as f:
                 hparams_dict = {key: vars(args)["source_" + key] for key in SOURCE_MODEL_HPARAMS}
                 json.dump(hparams_dict, f, indent=4)
-        kappa_checkpoints_dir = os.path.join(models_dir, "kappa_checkpoints")
-        if not os.path.isdir(kappa_checkpoints_dir):
             os.mkdir(kappa_checkpoints_dir)
             with open(os.path.join(kappa_checkpoints_dir, "hparams.json"), "w") as f:
                 hparams_dict = {key: vars(args)["kappa_" + key] for key in KAPPA_MODEL_HPARAMS}
                 json.dump(hparams_dict, f, indent=4)
         source_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.source_model)
-        source_checkpoint_manager = tf.train.CheckpointManager(source_ckpt, source_checkpoints_dir, max_to_keep=args.max_to_keep)
+        source_checkpoint_manager = tf.train.CheckpointManager(source_ckpt, os.path.join(old_checkpoints_dir, "source_checkpoints"), max_to_keep=args.max_to_keep)
         kappa_ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.kappa_model)
-        kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, kappa_checkpoints_dir, max_to_keep=args.max_to_keep)
+        kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, os.path.join(old_checkpoints_dir, "kappa_checkpoints"), max_to_keep=args.max_to_keep)
         save_checkpoint = True
         # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
             kappa_checkpoint_manager.checkpoint.restore(kappa_checkpoint_manager.latest_checkpoint)
             source_checkpoint_manager.checkpoint.restore(source_checkpoint_manager.latest_checkpoint)
+        if old_checkpoints_dir != checkpoints_dir: # save progress in another directory
+            # save progress in another directory.
+            source_checkpoint_manager = tf.train.CheckpointManager(source_ckpt, source_checkpoints_dir, max_to_keep=args.max_to_keep)
+            kappa_checkpoint_manager = tf.train.CheckpointManager(kappa_ckpt, kappa_checkpoints_dir, max_to_keep=args.max_to_keep)
     else:
         save_checkpoint = False
     # =================================================================================================================
@@ -226,8 +244,13 @@ def main(args):
             tape.watch(rim.source_model.trainable_variables)
             tape.watch(rim.kappa_model.trainable_variables)
             source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
-            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(0, 2, 3, 4))
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
+            # mean over image residuals
+            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            # weighted mean over time steps
+            source_cost = tf.reduce_sum(wt * source_cost, axis=0)
+            kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+            # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
         gradient2 = tape.gradient(cost, rim.kappa_model.trainable_variables)
@@ -245,13 +268,17 @@ def main(args):
         with tf.GradientTape() as tape:
             tape.watch(rim.kappa_model.trainable_variables)
             kappa_series, chi_squared = rim.call_with_source(X, source, outer_tape=tape)
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
+            # mean over image residuals
+            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            # weighted mean over time steps
+            kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+            # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.kappa_model.trainable_variables)
         if args.clipping:
             gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.kappa_model.trainable_variables))
-        chi_squared = tf.reduce_sum(chi_squared) / args.batch_size
+        chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
         return cost, chi_squared, 0, kappa_cost
 
@@ -265,8 +292,13 @@ def main(args):
 
     def test_step(X, source, kappa ):
         source_series, kappa_series, chi_squared = rim.predict(X)
-        source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(0, 2, 3, 4))
-        kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
+        # mean over image residuals
+        source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+        kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+        # weighted mean over time steps
+        source_cost = tf.reduce_sum(wt * source_cost, axis=0)
+        kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+        # final cost is mean over global batch size
         cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         source_cost = tf.reduce_sum(source_cost) / args.batch_size
@@ -518,7 +550,7 @@ if __name__ == "__main__":
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
-
+    parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

@@ -3,6 +3,7 @@ import numpy as np
 from censai import PhysicalModel, RIMUnet, RayTracer
 from censai.models import UnetModel, VAE, VAESecondStage
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
+from censai.definitions import DTYPE
 import os, time, json
 from datetime import datetime
 
@@ -201,6 +202,16 @@ def main(args):
             'config': {"learning_rate": learning_rate_schedule}
         }
     )
+    # weights for time steps in the loss function
+    if args.time_weights == "uniform":
+        wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
+    elif args.time_weigth == "linear":
+        wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
+    elif args.time_weight == "quadratic":
+        wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1) ** 2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
+    else:
+        raise ValueError("time_weigth must be in ['uniform', 'linear', 'quadratic']")
+    wt = wt[..., tf.newaxis]  # [steps, batch]
 
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
@@ -253,8 +264,13 @@ def main(args):
             tape.watch(rim.source_model.trainable_variables)
             tape.watch(rim.kappa_model.trainable_variables)
             source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
-            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(0, 2, 3, 4))
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
+            # mean over image residuals
+            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            # weighted mean over time steps
+            source_cost = tf.reduce_sum(wt * source_cost, axis=0)
+            kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+            # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
         gradient2 = tape.gradient(cost, rim.kappa_model.trainable_variables)
@@ -272,7 +288,11 @@ def main(args):
         with tf.GradientTape() as tape:
             tape.watch(rim.kappa_model.trainable_variables)
             kappa_series, chi_squared = rim.call_with_source(X, source, outer_tape=tape)
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(0, 2, 3, 4))
+            # mean over image residuals
+            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            # weighted mean over time steps
+            kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+            # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.kappa_model.trainable_variables)
         if args.clipping:
@@ -494,6 +514,7 @@ if __name__ == "__main__":
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
+    parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
 
 
     # logs

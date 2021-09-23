@@ -18,6 +18,7 @@ class UnetModel(tf.keras.Model):
             bottleneck_kernel_size=None,     # use kernel_size as default
             bottleneck_filters=None,
             resampling_kernel_size=None,
+            input_kernel_size=11,
             gru_kernel_size=None,
             upsampling_interpolation=False,  # use strided transposed convolution if false
             kernel_regularizer_amp=0.,
@@ -111,31 +112,35 @@ class UnetModel(tf.keras.Model):
             activation="linear",
             **common_params
         )
+        self.input_layer = tf.keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=input_kernel_size,
+            activation=activation,
+            **common_params
+        )
 
     def __call__(self, xt, states, grad):
         return self.call(xt, states, grad)
 
     def call(self, xt, states, grad):
         delta_xt = tf.concat([tf.identity(xt), grad], axis=3)
+        delta_xt = self.input_layer(delta_xt)
         skip_connections = []
+        new_states = []
         for i in range(len(self.encoding_layers)):
             c_i, delta_xt = self.encoding_layers[i](delta_xt)
+            c_i, new_state = self.gated_recurrent_blocks[i](c_i, states[
+                i])  # Pass skip connections through GRU and update states
             skip_connections.append(c_i)
-        delta_xt = self.bottleneck_layer1(delta_xt)
-        delta_xt = self.bottleneck_layer2(delta_xt)
-        # Pass skip connections through GRUS and update states
-        new_states = []
-        for i in range(len(self.gated_recurrent_blocks)):
-            c_i, new_state = self.gated_recurrent_blocks[i](skip_connections[i], states[i])
-            skip_connections[i] = c_i
             new_states.append(new_state)
         skip_connections = skip_connections[::-1]
+        delta_xt = self.bottleneck_layer1(delta_xt)
+        delta_xt = self.bottleneck_layer2(delta_xt)
         delta_xt, new_state = self.bottleneck_gru(delta_xt, states[-1])
         new_states.append(new_state)
         for i in range(len(self.decoding_layers)):
             delta_xt = self.decoding_layers[i](delta_xt, skip_connections[i])
         delta_xt = self.output_layer(delta_xt)
-
         xt_1 = xt + delta_xt  # update image
         return xt_1, new_states
 
