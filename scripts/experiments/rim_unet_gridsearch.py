@@ -95,6 +95,7 @@ PARAMS_NICKNAME = {
     "kappa_resampling_kernel_size": "KRK",
     "kappa_gru_kernel_size": "KGK",
     "kappa_kernel_regularizer_amp": "KRA",
+    "kappa_activation": "KA",
 
     "source_filters": "SF",
     "source_filter_scaling": "SFS",
@@ -106,6 +107,7 @@ PARAMS_NICKNAME = {
     "source_resampling_kernel_size": "SRK",
     "source_gru_kernel_size": "SGK",
     "source_kernel_regularizer_amp": "SRA",
+    "source_activation": "SA",
 
     "steps": "TS",
     "kappalog": "KaL",
