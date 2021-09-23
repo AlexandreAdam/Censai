@@ -3,7 +3,7 @@ import numpy as np
 import math
 from censai import PhysicalModel, RIM, RayTracer
 from censai.models import Model
-from censai.data.lenses_tng import decode_train, decode_physical_model_info
+from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 import os, glob, time, json
 from datetime import datetime
@@ -80,15 +80,17 @@ def main(args):
     # Read off global parameters from first example in dataset
     for physical_params in dataset.map(decode_physical_model_info):
         break
-    dataset = dataset.map(decode_train).batch(args.batch_size)
-    # Do not prefetch in this script. Memory is more precious than latency
+    # Read off global parameters from first example in dataset
+    for physical_params in dataset.map(decode_physical_model_info):
+        break
+    # preprocessing
+    dataset = dataset.map(decode_train).map(preprocess)
     if args.cache_file is not None:
-        dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
-    else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
-        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size)) # dont forget to divide by batch size!
-    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
-    val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
+        dataset = dataset.cache(args.cache_file)
+    train_dataset = dataset.take(math.floor(args.train_split * args.total_items))\
+        .shuffle(buffer_size=args.buffer_size).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items))\
+        .take(math.ceil((1 - args.train_split) * args.total_items)).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
