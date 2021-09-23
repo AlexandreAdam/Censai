@@ -72,10 +72,10 @@ def main(args):
     dataset = dataset.map(decode_train).map(preprocess)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file)
-    train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size))\
+    train_dataset = dataset.take(math.floor(args.train_split * args.total_items))\
         .shuffle(buffer_size=args.buffer_size).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
-    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))\
-        .take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size)).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items))\
+        .take(math.ceil((1 - args.train_split) * args.total_items)).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     # train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     # val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
