@@ -1,6 +1,5 @@
 import tensorflow as tf
-from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer
-from .layers.conv_gru_component import ConvGRUBlock
+from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer, ConvGRUBlock, ConvGRUPlusBlock
 from .utils import get_activation
 from censai.definitions import DTYPE
 
@@ -30,6 +29,7 @@ class SharedUnetModel(tf.keras.Model):
             alpha=0.1,                       # for leaky relu
             use_bias=True,
             trainable=True,
+            gru_architecture="concat",  # or "plus"
             initializer="glorot_uniform",
     ):
         super(SharedUnetModel, self).__init__(name=name)
@@ -46,6 +46,7 @@ class SharedUnetModel(tf.keras.Model):
         bottleneck_filters = bottleneck_filters if bottleneck_filters is not None else int(filter_scaling**(layers + 1) * filters)
         gru_kernel_size = gru_kernel_size if gru_kernel_size is not None else kernel_size
         activation = get_activation(activation, alpha=alpha)
+        GRU = ConvGRUBlock if gru_architecture == "concat" else ConvGRUPlusBlock
 
         self._num_layers = layers
         self._strides = strides
@@ -82,8 +83,8 @@ class SharedUnetModel(tf.keras.Model):
                 )
             )
             self.gated_recurrent_blocks.append(
-                    ConvGRUBlock(
-                        filters=2*int(filter_scaling**(i) * filters),
+                    GRU(
+                        filters=int(filter_scaling**(i) * filters),
                         kernel_size=gru_kernel_size,
                         activation=activation
                 )
@@ -103,8 +104,8 @@ class SharedUnetModel(tf.keras.Model):
             activation=activation,
             **common_params
         )
-        self.bottleneck_gru = ConvGRUBlock(
-            filters=2*bottleneck_filters,
+        self.bottleneck_gru = GRU(
+            filters=bottleneck_filters,
             kernel_size=bottleneck_kernel_size,
             activation=activation
         )
@@ -130,24 +131,20 @@ class SharedUnetModel(tf.keras.Model):
         delta_xt = tf.concat([source, source_grad, kappa, kappa_grad], axis=-1)
         delta_xt = self.input_layer(delta_xt)
         skip_connections = []
+        new_states = []
         for i in range(len(self.encoding_layers)):
             c_i, delta_xt = self.encoding_layers[i](delta_xt)
+            c_i, new_state = self.gated_recurrent_blocks[i](c_i, states[i])  # Pass skip connections through GRU and update states
             skip_connections.append(c_i)
-        delta_xt = self.bottleneck_layer1(delta_xt)
-        delta_xt = self.bottleneck_layer2(delta_xt)
-        # Pass skip connections through GRUS and update states
-        new_states = []
-        for i in range(len(self.gated_recurrent_blocks)):
-            c_i, new_state = self.gated_recurrent_blocks[i](skip_connections[i], states[i])
-            skip_connections[i] = c_i
             new_states.append(new_state)
         skip_connections = skip_connections[::-1]
+        delta_xt = self.bottleneck_layer1(delta_xt)
+        delta_xt = self.bottleneck_layer2(delta_xt)
         delta_xt, new_state = self.bottleneck_gru(delta_xt, states[-1])
         new_states.append(new_state)
         for i in range(len(self.decoding_layers)):
             delta_xt = self.decoding_layers[i](delta_xt, skip_connections[i])
         delta_xt = self.output_layer(delta_xt)
-
         source_delta, kappa_delta = tf.split(delta_xt, 2, axis=-1)
         new_source = source + source_delta
         new_kappa = kappa + kappa_delta
