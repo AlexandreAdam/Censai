@@ -1,6 +1,5 @@
 import tensorflow as tf
-from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer
-from .layers.conv_gru_component import ConvGRUBlock
+from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer, ConvGRUPlusBlock, ConvGRUBlock
 from .utils import get_activation
 from censai.definitions import DTYPE
 
@@ -27,6 +26,7 @@ class UnetModel(tf.keras.Model):
             alpha=0.1,                       # for leaky relu
             use_bias=True,
             trainable=True,
+            gru_architecture="concat", # or "plus"
             initializer="glorot_uniform",
     ):
         super(UnetModel, self).__init__(name=name)
@@ -43,6 +43,7 @@ class UnetModel(tf.keras.Model):
         bottleneck_filters = bottleneck_filters if bottleneck_filters is not None else int(filter_scaling**(layers + 1) * filters)
         gru_kernel_size = gru_kernel_size if gru_kernel_size is not None else kernel_size
         activation = get_activation(activation, alpha=alpha)
+        GRU = ConvGRUBlock if gru_architecture == "concat" else ConvGRUPlusBlock
 
         self._num_layers = layers
         self._strides = strides
@@ -77,8 +78,8 @@ class UnetModel(tf.keras.Model):
                 )
             )
             self.gated_recurrent_blocks.append(
-                    ConvGRUBlock(
-                        filters=2*int(filter_scaling**(i) * filters),
+                    GRU(
+                        filters=int(filter_scaling**(i) * filters),
                         kernel_size=gru_kernel_size,
                         activation=activation
                 )
@@ -98,8 +99,8 @@ class UnetModel(tf.keras.Model):
             activation=activation,
             **common_params
         )
-        self.bottleneck_gru = ConvGRUBlock(
-            filters=2*bottleneck_filters,
+        self.bottleneck_gru = GRU(
+            filters=bottleneck_filters,
             kernel_size=bottleneck_kernel_size,
             activation=activation
         )

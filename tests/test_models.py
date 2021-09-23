@@ -1,6 +1,6 @@
 from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE, VAESecondStage
 from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM
-from censai.models.layers import ConvGRU
+from censai.models.layers import ConvGRU, ConvGRUBlock, ConvGRUPlusBlock
 import tensorflow as tf
 
 
@@ -92,7 +92,7 @@ def test_unet_model():
 
 def test_shared_unet_model():
     # test out plumbing
-    model = SharedUnetModel(filters=32, layers=2)
+    model = SharedUnetModel(filters=32, layers=2, gru_architecture="plus")
     source = tf.random.normal([10, 32, 32, 1])
     source_grad = tf.random.normal([10, 32, 32, 1])
     kappa = tf.random.normal([10, 32, 32, 1])
@@ -191,20 +191,25 @@ def test_vae_second_stage():
 def test_convGRU():
     gru = ConvGRU(filters=32)
     x = tf.random.normal(shape=(1, 8, 8, 32))
-    states = tf.random.normal(shape=(1, 8, 8, 64))
+    states = tf.random.normal(shape=(1, 8, 8, 32))
     gru.call(x, states)
 
+    gru = ConvGRUBlock(filters=32)
+    x = tf.random.normal(shape=(1, 8, 8, 32))
+    states = tf.random.normal(shape=(1, 8, 8, 64))
+    gru.call(x, states)
 
 if __name__ == '__main__':
     # test_ray_tracer_512()
     # test_raytracer()
     # test_resnet_autoencoder()
     # test_unet_model()
-    # test_shared_unet_model()
+    test_shared_unet_model()
     # test_rim_shared_unet()
     # test_rim()
     # test_rim_unet()
     # test_resnet_vae()
     # test_resnet_encoder()
     # test_vae()
-    test_vae_second_stage()
+    # test_vae_second_stage()
+    # test_convGRU()

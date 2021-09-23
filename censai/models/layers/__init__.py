@@ -5,3 +5,4 @@ from .unet_decoding_layer import UnetDecodingLayer
 from .unet_encoding_layer import UnetEncodingLayer
 from .conv_block import ConvBlock
 from .conv_gru_component import ConvGRUBlock
+from .conv_gru_plus_component import ConvGRUPlusBlock
