@@ -202,7 +202,7 @@ def main(args):
     elif args.time_weights == "quadratic":
         wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1) ** 2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
     else:
-        raise ValueError("time_weigth must be in ['uniform', 'linear', 'quadratic']")
+        raise ValueError("time_weights must be in ['uniform', 'linear', 'quadratic']")
     wt = wt[..., tf.newaxis]  # [steps, batch]
 
     # ==== Take care of where to write logs and stuff =================================================================
@@ -317,19 +317,21 @@ def main(args):
                 kappa_true = kappa_sampling_function(args.n_residuals)
                 source_true = source_sampling_function(args.n_residuals)
                 lens_true = tf.nn.relu(phys.noisy_forward(source_true, kappa_true, noise_rms=args.noise_rms))
+                lens_true /= tf.reduce_max(lens_true, axis=(1, 2, 3), keepdims=True)  # normalize lens
                 source_pred, kappa_pred, chi_squared = rim.predict(lens_true)
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
+                lam = phys.lagrange_multiplier(y_true=lens_true, y_pred=lens_pred)
             for res_idx in range(args.n_residuals):
                 try:
                     tf.summary.image(f"Residuals {res_idx}",
                                      plot_to_image(
                                          residual_plot(
-                                             lens_true[res_idx],
-                                             source_true[res_idx, ...],
-                                             kappa_true[res_idx, ...],
+                                             lam[res_idx]*lens_true[res_idx],
+                                             source_true[res_idx],
+                                             kappa_true[res_idx],
                                              lens_pred[res_idx],
-                                             source_pred[-1][res_idx, ...],
-                                             kappa_pred[-1][res_idx, ...],
+                                             source_pred[-1][res_idx],
+                                             kappa_pred[-1][res_idx],
                                              chi_squared[-1][res_idx]
                                          )), step=step)
                 except ValueError:

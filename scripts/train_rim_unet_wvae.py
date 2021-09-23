@@ -210,7 +210,7 @@ def main(args):
     elif args.time_weight == "quadratic":
         wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1) ** 2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
     else:
-        raise ValueError("time_weigth must be in ['uniform', 'linear', 'quadratic']")
+        raise ValueError("time_weights must be in ['uniform', 'linear', 'quadratic']")
     wt = wt[..., tf.newaxis]  # [steps, batch]
 
     # ==== Take care of where to write logs and stuff =================================================================
@@ -315,7 +315,8 @@ def main(args):
         "time_per_step": [],
         "source_cost": [],
         "kappa_cost": [],
-        "step": []
+        "step": [],
+        "wall_time": []
     }
     best_loss = np.inf
     patience = args.patience
@@ -398,6 +399,7 @@ def main(args):
         history["kappa_cost"].append(train_k_cost)
         history["source_cost"].append(train_s_cost)
         history["step"].append(step)
+        history["wall_time"].append(time.time() - global_start)
 
         cost = train_cost
         if np.isnan(cost):
