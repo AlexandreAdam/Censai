@@ -36,11 +36,15 @@ SOURCE_MODEL_HPARAMS = [
     "kappa_resampling_kernel_size",
     "kappa_gru_kernel_size",
     "kappa_upsampling_interpolation",
-    "kappa_kernel_regularizer_amp",
-    "kappa_bias_regularizer_amp",
+    "kappa_kernel_l2_amp",
+    "kappa_bias_l2_amp",
+    "kappa_kernel_l1_amp",
+    "kappa_bias_l1_amp",
     "kappa_activation",
     "kappa_alpha",
-    "kappa_initializer"
+    "kappa_initializer",
+    "kappa_batch_norm",
+    "kappa_dropout_rate"
 ]
 KAPPA_MODEL_HPARAMS = [
     "source_filters",
@@ -52,13 +56,17 @@ KAPPA_MODEL_HPARAMS = [
     "source_bottleneck_kernel_size",
     "source_bottleneck_filters",
     "source_resampling_kernel_size",
-    "kappa_gru_kernel_size",
+    "source_gru_kernel_size",
     "source_upsampling_interpolation",
-    "source_kernel_regularizer_amp",
-    "source_bias_regularizer_amp",
+    "source_kernel_l2_amp",
+    "source_bias_l2_amp",
+    "source_kernel_l1_amp",
+    "source_bias_l1_amp",
     "source_activation",
     "source_alpha",
-    "source_initializer"
+    "source_initializer",
+    "source_batch_norm",
+    "source_dropout_rate"
 ]
 
 EXTRA_PARAMS = [
@@ -90,7 +98,13 @@ PARAMS_NICKNAME = {
     "kappa_upsampling_interpolation": "KBU",
     "kappa_resampling_kernel_size": "KRK",
     "kappa_gru_kernel_size": "KGK",
-    "kappa_kernel_regularizer_amp": "KRA",
+    "kappa_kernel_l2_amp": "KKl2",
+    "kappa_kernel_l1_amp": "KKl1",
+    "kappa_bias_l2_amp": "KBl2",
+    "kappa_bias_l1_amp": "KBl1",
+    "kappa_activation": "KA",
+    "kappa_batch_norm": "KBN",
+    "kappa_dropout_rate": "Kdr",
 
     "source_filters": "SF",
     "source_filter_scaling": "SFS",
@@ -101,7 +115,13 @@ PARAMS_NICKNAME = {
     "source_upsampling_interpolation": "SBU",
     "source_resampling_kernel_size": "SRK",
     "source_gru_kernel_size": "SGK",
-    "source_kernel_regularizer_amp": "SRA",
+    "source_kernel_l2_amp": "SKl2",
+    "source_kernel_l1_amp": "SKl1",
+    "source_bias_l2_amp": "SBl2",
+    "source_bias_l1_amp": "SBl1",
+    "source_activation": "SA",
+    "source_batch_norm": "SBN",
+    "source_dropout_rate": "Sdr",
 
     "steps": "TS",
     "kappalog": "KaL",
@@ -241,11 +261,15 @@ if __name__ == '__main__':
     parser.add_argument("--kappa_resampling_kernel_size",   default=None, nargs="+",    type=int)
     parser.add_argument("--kappa_gru_kernel_size",          default=None, nargs="+",    type=int)
     parser.add_argument("--kappa_upsampling_interpolation", action="store_true")
-    parser.add_argument("--kappa_kernel_regularizer_amp",   default=1e-4, nargs="+",    type=float)
-    parser.add_argument("--kappa_bias_regularizer_amp",     default=1e-4, nargs="+",    type=float)
+    parser.add_argument("--kappa_kernel_l2_amp",            default=1e-4, nargs="+",    type=float)
+    parser.add_argument("--kappa_bias_l2_amp",              default=1e-4, nargs="+",    type=float)
+    parser.add_argument("--kappa_kernel_l1_amp",            default=1e-4, nargs="+",    type=float)
+    parser.add_argument("--kappa_bias_l1_amp",              default=1e-4, nargs="+",    type=float)
     parser.add_argument("--kappa_activation",               default="leaky_relu", nargs="+")
     parser.add_argument("--kappa_alpha",                    default=0.1, nargs="+",     type=float)
     parser.add_argument("--kappa_initializer",              default="glorot_normal")
+    parser.add_argument("--kappa_batch_norm",               default=0,   nargs="+",    type=int)
+    parser.add_argument("--kappa_dropout_rate",             default=None, nargs="+",   type=float)
 
     # Source model hyperparameters
     parser.add_argument("--source_filters",                  default=32, nargs="+",     type=int)
@@ -259,11 +283,15 @@ if __name__ == '__main__':
     parser.add_argument("--source_resampling_kernel_size",   default=None, nargs="+",   type=int)
     parser.add_argument("--source_gru_kernel_size",          default=None,   nargs="+",  type=int)
     parser.add_argument("--source_upsampling_interpolation", action="store_true")
-    parser.add_argument("--source_kernel_regularizer_amp",   default=1e-4, nargs="+",   type=float)
-    parser.add_argument("--source_bias_regularizer_amp",     default=1e-4, nargs="+",   type=float)
+    parser.add_argument("--source_kernel_l2_amp",           default=0, nargs="+",   type=float)
+    parser.add_argument("--source_bias_l2_amp",             default=0, nargs="+",   type=float)
+    parser.add_argument("--source_kernel_l1_amp",           default=0, nargs="+",   type=float)
+    parser.add_argument("--source_bias_l1_amp",             default=0, nargs="+",   type=float)
     parser.add_argument("--source_activation",               default="leaky_relu", nargs="+")
     parser.add_argument("--source_alpha",                    default=0.1, nargs="+",    type=float)
     parser.add_argument("--source_initializer",              default="glorot_normal")
+    parser.add_argument("--source_batch_norm",               default=0,   nargs="+",    type=int)
+    parser.add_argument("--source_dropout_rate",             default=None, nargs="+",   type=float)
 
     # Training set params
     parser.add_argument("--batch_size",             default=1,      nargs="+",  type=int,       help="Number of images in a batch. ")

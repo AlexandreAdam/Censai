@@ -36,9 +36,6 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --kappa_layers 4\
   --kappa_block_conv_layers 2\
   --kappa_strides 2\
-  --kappa_upsampling_interpolation\
-  --kappa_kernel_regularizer_amp 0\
-  --kappa_bias_regularizer_amp 0\
   --kappa_activation leaky_relu\
   --kappa_alpha 0.1\
   --kappa_initializer glorot_normal\
@@ -48,15 +45,12 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --source_layers 3\
   --source_block_conv_layers 2\
   --source_strides 2\
-  --source_upsampling_interpolation\
-  --source_kernel_regularizer_amp 0\
-  --source_bias_regularizer_amp 0\
   --source_activation leaky_relu\
   --source_alpha 0.1\
   --source_initializer glorot_normal\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
-  --logname_prefixe=RIMDU512_k128_NIE2s\
+  --logname_prefixe=RIMDU512_k128_NIE3s\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
