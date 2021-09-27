@@ -35,30 +35,17 @@ SOURCE_MODEL_HPARAMS = [
     "resampling_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
-    "kernel_regularizer_amp",
-    "bias_regularizer_amp",
+    "kernel_l2_amp",
+    "bias_l2_amp",
+    "kernel_l1_amp",
+    "bias_l1_amp",
     "activation",
     "alpha",
-    "initializer"
+    "initializer",
+    "batch_norm",
+    "dropout_rate"
 ]
-KAPPA_MODEL_HPARAMS = [
-    "filters",
-    "filter_scaling",
-    "kernel_size",
-    "layers",
-    "block_conv_layers",
-    "strides",
-    "bottleneck_kernel_size",
-    "bottleneck_filters",
-    "resampling_kernel_size",
-    "gru_kernel_size",
-    "upsampling_interpolation",
-    "kernel_regularizer_amp",
-    "bias_regularizer_amp",
-    "activation",
-    "alpha",
-    "initializer"
-]
+KAPPA_MODEL_HPARAMS = SOURCE_MODEL_HPARAMS
 
 
 def main(args):
@@ -154,11 +141,16 @@ def main(args):
         resampling_kernel_size=args.kappa_resampling_kernel_size,
         gru_kernel_size=args.kappa_gru_kernel_size,
         upsampling_interpolation=args.kappa_upsampling_interpolation,
-        kernel_regularizer_amp=args.kappa_kernel_regularizer_amp,
-        bias_regularizer_amp=args.kappa_bias_regularizer_amp,
+        kernel_l2_amp=args.kappa_kernel_l2_amp,
+        bias_l2_amp=args.kappa_bias_l2_amp,
+        kernel_l1_amp=args.kappa_kernel_l1_amp,
+        bias_l1_amp=args.kappa_bias_l1_amp,
         activation=args.kappa_activation,
         alpha=args.kappa_alpha,  # for leaky relu
         initializer=args.kappa_initializer,
+        batch_norm=args.kappa_batch_norm,
+        dropout_rate=args.kappa_dropout_rate,
+        input_kernel_size=args.kappa_input_kernel_size
     )
     source_model = UnetModel(
         filters=args.source_filters,
@@ -172,11 +164,16 @@ def main(args):
         resampling_kernel_size=args.source_resampling_kernel_size,
         gru_kernel_size=args.source_gru_kernel_size,
         upsampling_interpolation=args.source_upsampling_interpolation,
-        kernel_regularizer_amp=args.source_kernel_regularizer_amp,
-        bias_regularizer_amp=args.source_bias_regularizer_amp,
+        kernel_l2_amp=args.source_kernel_l2_amp,
+        bias_l2_amp=args.source_bias_l2_amp,
+        kernel_l1_amp=args.source_kernel_l1_amp,
+        bias_l1_amp=args.source_bias_l1_amp,
         activation=args.source_activation,
         alpha=args.source_alpha,  # for leaky relu
         initializer=args.source_initializer,
+        batch_norm=args.source_batch_norm,
+        dropout_rate=args.source_dropout_rate,
+        input_kernel_size=args.source_input_kernel_size
     )
     rim = RIMUnet(
         physical_model=phys,
@@ -390,8 +387,9 @@ def main(args):
             train_s_cost = epoch_source_cost.result().numpy()
             train_k_cost = epoch_kappa_cost.result().numpy()
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
-        print(f"step {step} | train loss {train_cost:.3e} | chi sq {train_chi_sq:.3e}"
-              f"| learning rate {optim.lr(step).numpy():.2e} | kappa cost {train_k_cost:.2e} | source cost {train_s_cost}")
+        print(f"epoch {epoch} | train loss {train_cost:.3e}"
+              f"| lr {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s"
+              f"| kappa cost {train_k_cost:.2e} | source cost {train_s_cost:.2e} | chi sq {train_chi_sq:.2e}")
         history["cost"].append(train_cost)
         history["learning_rate"].append(optim.lr(step).numpy())
         history["chi_squared"].append(train_chi_sq)
@@ -465,11 +463,16 @@ if __name__ == "__main__":
     parser.add_argument("--kappa_resampling_kernel_size",   default=None,   type=int)
     parser.add_argument("--kappa_gru_kernel_size",          default=None,   type=int)
     parser.add_argument("--kappa_upsampling_interpolation", action="store_true")
-    parser.add_argument("--kappa_kernel_regularizer_amp",   default=1e-4,   type=float)
-    parser.add_argument("--kappa_bias_regularizer_amp",     default=1e-4,   type=float)
+    parser.add_argument("--kappa_kernel_l2_amp",            default=0,      type=float)
+    parser.add_argument("--kappa_bias_l2_amp",              default=0,      type=float)
+    parser.add_argument("--kappa_kernel_l1_amp",            default=0,      type=float)
+    parser.add_argument("--kappa_bias_l1_amp",              default=0,      type=float)
     parser.add_argument("--kappa_activation",               default="leaky_relu")
     parser.add_argument("--kappa_alpha",                    default=0.1,    type=float)
     parser.add_argument("--kappa_initializer",              default="glorot_normal")
+    parser.add_argument("--kappa_batch_norm",               action="store_true")
+    parser.add_argument("--kappa_dropout_rate",             default=None,   type=float)
+    parser.add_argument("--kappa_input_kernel_size",        default=11,     type=int)
     
     # Source model hyperparameters
     parser.add_argument("--source_filters",                  default=32,     type=int)
@@ -483,11 +486,16 @@ if __name__ == "__main__":
     parser.add_argument("--source_resampling_kernel_size",   default=None,   type=int)
     parser.add_argument("--source_gru_kernel_size",          default=None,   type=int)
     parser.add_argument("--source_upsampling_interpolation", action="store_true")
-    parser.add_argument("--source_kernel_regularizer_amp",   default=1e-4,   type=float)
-    parser.add_argument("--source_bias_regularizer_amp",     default=1e-4,   type=float)
+    parser.add_argument("--source_kernel_l2_amp",            default=0,      type=float)
+    parser.add_argument("--source_bias_l2_amp",              default=0,      type=float)
+    parser.add_argument("--source_kernel_l1_amp",            default=0,      type=float)
+    parser.add_argument("--source_bias_l1_amp",              default=0,      type=float)
     parser.add_argument("--source_activation",               default="leaky_relu")
     parser.add_argument("--source_alpha",                    default=0.1,    type=float)
     parser.add_argument("--source_initializer",              default="glorot_normal")
+    parser.add_argument("--source_batch_norm",               action="store_true")
+    parser.add_argument("--source_dropout_rate",             default=None,   type=float)
+    parser.add_argument("--source_input_kernel_size",        default=11,     type=int)
 
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "

@@ -42,9 +42,6 @@ python $CENSAI_PATH/scripts/experiments/rim_delayed_wvae_gridsearch.py\
   --kappa_layers 4\
   --kappa_block_conv_layers 2\
   --kappa_strides 2\
-  --kappa_upsampling_interpolation\
-  --kappa_kernel_regularizer_amp 1e-4\
-  --kappa_bias_regularizer_amp 1e-4\
   --kappa_activation leaky_relu\
   --kappa_alpha 0.1\
   --kappa_initializer glorot_normal\
@@ -54,9 +51,6 @@ python $CENSAI_PATH/scripts/experiments/rim_delayed_wvae_gridsearch.py\
   --source_layers 4\
   --source_block_conv_layers 2\
   --source_strides 2\
-  --source_upsampling_interpolation\
-  --source_kernel_regularizer_amp 1e-4\
-  --source_bias_regularizer_amp 1e-4\
   --source_activation leaky_relu\
   --source_alpha 0.1\
   --source_initializer glorot_normal\

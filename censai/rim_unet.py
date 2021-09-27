@@ -112,7 +112,7 @@ class RIMUnet:
         batch_size = lensed_image.shape[0]
         source, source_states, kappa, kappa_states = self.initial_states(batch_size)
 
-        source_series = tf.TensorArray(DTYPE, size=self.steps)  # equivalent to empty list and append, but using tensorflow
+        source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in range(self.steps):

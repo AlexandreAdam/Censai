@@ -11,23 +11,27 @@ class UnetModel(tf.keras.Model):
             filters=32,
             filter_scaling=1,
             kernel_size=3,
-            layers=2,                        # before bottleneck
+            layers=2,
             block_conv_layers=2,
             strides=2,
             output_filters=1,
-            bottleneck_kernel_size=None,     # use kernel_size as default
+            bottleneck_kernel_size=None,
             bottleneck_filters=None,
             resampling_kernel_size=None,
             input_kernel_size=11,
             gru_kernel_size=None,
-            upsampling_interpolation=False,  # use strided transposed convolution if false
-            kernel_regularizer_amp=0.,
-            bias_regularizer_amp=0.,
+            upsampling_interpolation=False,
+            kernel_l1_amp=0.,
+            bias_l1_amp=0.,
+            kernel_l2_amp=0.,
+            bias_l2_amp=0.,
             activation="leaky_relu",
-            alpha=0.1,                       # for leaky relu
+            alpha=0.1,
             use_bias=True,
             trainable=True,
-            gru_architecture="concat", # or "plus"
+            batch_norm=False,
+            dropout_rate=None,
+            gru_architecture="concat",
             initializer="glorot_uniform",
     ):
         super(UnetModel, self).__init__(name=name)
@@ -35,9 +39,9 @@ class UnetModel(tf.keras.Model):
 
         common_params = {"padding": "same", "kernel_initializer": initializer,
                          "data_format": "channels_last", "use_bias": use_bias,
-                         "kernel_regularizer": tf.keras.regularizers.L2(l2=kernel_regularizer_amp)}
+                         "kernel_regularizer": tf.keras.regularizers.L1L2(l1=kernel_l1_amp, l2=kernel_l2_amp)}
         if use_bias:
-            common_params.update({"bias_regularizer": tf.keras.regularizers.L2(l2=bias_regularizer_amp)})
+            common_params.update({"bias_regularizer": tf.keras.regularizers.L1L2(l1=bias_l1_amp, l2=bias_l2_amp)})
 
         resampling_kernel_size = resampling_kernel_size if resampling_kernel_size is not None else kernel_size
         bottleneck_kernel_size = bottleneck_kernel_size if bottleneck_kernel_size is not None else kernel_size
@@ -64,6 +68,8 @@ class UnetModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     strides=strides,
+                    batch_norm=batch_norm,
+                    dropout_rate=dropout_rate,
                     **common_params
                 )
             )
@@ -75,6 +81,8 @@ class UnetModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     bilinear=upsampling_interpolation,
+                    batch_norm=batch_norm,
+                    dropout_rate=dropout_rate,
                     **common_params
                 )
             )
@@ -129,8 +137,7 @@ class UnetModel(tf.keras.Model):
         new_states = []
         for i in range(len(self.encoding_layers)):
             c_i, delta_xt = self.encoding_layers[i](delta_xt)
-            c_i, new_state = self.gated_recurrent_blocks[i](c_i, states[
-                i])  # Pass skip connections through GRU and update states
+            c_i, new_state = self.gated_recurrent_blocks[i](c_i, states[i])  # Pass skip connections through GRU and update states
             skip_connections.append(c_i)
             new_states.append(new_state)
         skip_connections = skip_connections[::-1]
@@ -157,4 +164,3 @@ class UnetModel(tf.keras.Model):
             constant * tf.ones(shape=[batch_size, pixels, pixels, 2 * self._bottleneck_filters], dtype=DTYPE)
         )
         return hidden_states
-

@@ -381,7 +381,8 @@ def main(args):
             tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
             tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
-              f"|  lr {optim.lr(step).numpy():.2e} | kappa cost {train_kappa_cost:.2e} | source cost {train_source_cost:.2e}")
+              f"| lr {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s"
+              f"| kappa cost {train_kappa_cost:.2e} | source cost {train_source_cost:.2e} | chi sq {train_chi_sq:.2e}")
         history["train_cost"].append(train_cost)
         history["val_cost"].append(val_cost)
         history["learning_rate"].append(optim.lr(step).numpy())
