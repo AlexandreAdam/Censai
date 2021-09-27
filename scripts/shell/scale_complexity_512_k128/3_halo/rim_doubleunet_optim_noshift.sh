@@ -50,7 +50,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --source_activation relu leaky_relu\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
-  --logname_prefixe=RIMDU512_hk128_TNG2nsvdO\
+  --logname_prefixe=RIMDU512_hk128_TNG3nsvdO\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
