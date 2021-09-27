@@ -6,11 +6,11 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=2-00:00		# time (DD-HH:MM), A step takes roughly 2 sec per example with fft
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_DoubleUnet_TNGns_512hk18_O
+#SBATCH --job-name=Train_RIM_DoubleUnet_hTNGnsvd_128_O
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
-  --datasets $CENSAI_PATH/data/lenses512_hk128_TNG100_10k_verydiffuse\
+  --datasets $CENSAI_PATH/data/lenses128_TNG100_10k_verydiffuse\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=32\
@@ -24,12 +24,12 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --batch_size 2 3\
+  --batch_size 5 10\
   --train_split=1\
   --total_items 10000\
   --block_length=1\
   --steps 10\
-  --time_weights linear quadratic\
+  --time_weights uniform linear quadratic\
   --adam 1\
   --kappalog\
   --delay 0 5\
@@ -39,18 +39,16 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --kappa_kernel_size 3\
   --kappa_layers 3 4\
   --kappa_block_conv_layers 2\
-  --kappa_strides 2\
   --kappa_activation relu leaky_relu\
   --source_filters 16\
   --source_filter_scaling 2\
   --source_kernel_size 3\
   --source_layers 3\
   --source_block_conv_layers 2\
-  --source_strides 2\
   --source_activation relu leaky_relu\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
-  --logname_prefixe=RIMDU512_hk128_TNG3nsvdO\
+  --logname_prefixe=RIMDU128_hTNG2nsvdO\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\

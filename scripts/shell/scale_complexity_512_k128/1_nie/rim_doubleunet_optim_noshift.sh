@@ -39,18 +39,16 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --kappa_kernel_size 3\
   --kappa_layers 3 4\
   --kappa_block_conv_layers 2\
-  --kappa_strides 2\
   --kappa_activation relu leaky_relu\
   --source_filters 16\
   --source_filter_scaling 2\
   --source_kernel_size 3\
   --source_layers 3\
   --source_block_conv_layers 2\
-  --source_strides 2\
   --source_activation relu leaky_relu\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
-  --logname_prefixe=RIMDU512_k128_NIE2ns\
+  --logname_prefixe=RIMDU512_k128_NIE3nsvdO\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
