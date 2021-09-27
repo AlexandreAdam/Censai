@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_analytical_kappa_maps.py\
-  --output_dir=$HOME/scratch/Censai/data/lenses512_k128_NIE_10k_verydiffuse/\
+  --output_dir=$HOME/scratch/Censai/data/lenses128_NIE_10k_verydiffuse/\
   --len_dataset=10000\
   --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5_preprocessed_highSNR_verydiffuse/\
   --compression_type=GZIP\
