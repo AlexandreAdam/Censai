@@ -29,7 +29,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --steps 10\
-  --time_weights uniform linear quadratic\
+  --time_weights linear quadratic\
   --adam 1\
   --kappalog\
   --delay 0 5\

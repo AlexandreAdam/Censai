@@ -12,7 +12,7 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --datasets $CENSAI_PATH/data/cosmos_23.5_preprocessed_highSNR_verydiffuse/\
   --strategy=exhaustive\
-  --epochs=200\
+  --epochs=1000\
   --n_models=9\
   --batch_size 20\
   --train_split=0.95\
@@ -36,7 +36,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --l2_bottleneck_decay_steps=1000\
   --staircase\
   --clipping\
-  --patience=50\
+  --patience=200\
   --tolerance=0.01\
   --block_length=1\
   --layers 3\
@@ -50,7 +50,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --batch_norm 0\
   --latent_size 32 64 256\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsVAE_cosmos\
+  --logdir=$CENSAI_PATH/logsSC\
   --logname_prefixe=VAE1_cosmos_vd\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
