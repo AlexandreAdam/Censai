@@ -127,7 +127,12 @@ class RIMUnet:
             source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
             source_series = source_series.write(index=current_step, value=source)
             kappa_series = kappa_series.write(index=current_step, value=kappa)
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source),
+                                                            kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def predict(self, lensed_image):
@@ -148,7 +153,12 @@ class RIMUnet:
             source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
             source_series = source_series.write(index=current_step, value=self.source_link(source))
             kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source),
+                                                            kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):
@@ -189,5 +199,10 @@ class RIMUnet:
                 _, kappa_grad = self.grad_update(kappa_grad, kappa_grad, current_step)  # a little hack (twice the computation but half the code)
             kappa, kappa_states = self.kappa_model(kappa, kappa_states, kappa_grad)
             kappa_series = kappa_series.write(index=current_step, value=kappa)
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=source_image,
+                                                            kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return kappa_series.stack(), chi_squared_series.stack()

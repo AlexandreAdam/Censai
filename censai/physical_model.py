@@ -101,9 +101,9 @@ class PhysicalModel:
 
     def log_likelihood(self, source, kappa, y_true):
         y_pred = self.forward(source, kappa)
-        lam = self.lagrange_multiplier(y_true, y_pred)
-        return 0.5 * tf.reduce_mean((y_pred - lam*y_true)**2/self.noise_rms**2, axis=(1, 2, 3))
-        # return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
+        # lam = self.lagrange_multiplier(y_true, y_pred)
+        # return 0.5 * tf.reduce_mean((y_pred - lam * y_true)**2/self.noise_rms**2, axis=(1, 2, 3))
+        return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
 
     @staticmethod
     def lagrange_multiplier(y_true, y_pred):

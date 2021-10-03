@@ -136,7 +136,7 @@ class RIMSharedUnet:
                 chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
-        chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def predict(self, lensed_image):
@@ -165,7 +165,7 @@ class RIMSharedUnet:
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source),
                                                             kappa=self.kappa_link(kappa))
-        chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()  # stack along 0-th dimension
 
     def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):
