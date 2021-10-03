@@ -23,10 +23,10 @@ def distributed_strategy(args):
         z_lens=args.z_lens
     )
 
-    min_theta_e = 0.05 * args.image_fov if args.min_theta_e is None else args.min_theta_e
-    max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
+    min_theta_e = 0.1 * args.image_fov if args.min_theta_e is None else args.min_theta_e
+    max_theta_e = 0.45 * args.image_fov if args.max_theta_e is None else args.max_theta_e
 
-    phys = PhysicalModel(image_fov=args.image_fov, pixels=args.pixels,
+    phys = PhysicalModel(image_fov=args.kappa_fov, pixels=args.pixels,
                          kappa_fov=args.kappa_fov, method="conv2d")
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
