@@ -125,7 +125,7 @@ class AugmentedTNGKappaGenerator:
             uniform distribution between minimum and maximum allowed value (defined at instantiation of class)
         """
         p = np.zeros_like(rescaling_array)
-        kappa = rescaling_array[..., np.newaxis, np.newaxis, np.newaxis] * kappa[np.newaxis, ...] # breadcast onto resaling array
+        kappa = rescaling_array[..., np.newaxis, np.newaxis, np.newaxis] * kappa[np.newaxis, ...] # broadcast onto resaling array
         theta_e = self.einstein_radius(kappa)
         # compute theta distribution
         select = (theta_e >= self.min_theta_e) & (theta_e <= self.max_theta_e)
