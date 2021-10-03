@@ -28,8 +28,6 @@ def distributed_strategy(args):
         keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
         kappa_files = [kap_file for i, kap_file in enumerate(kappa_files) if keep_kappa[i]]
 
-    min_theta_e = 0.05 * args.image_fov if args.min_theta_e is None else args.min_theta_e
-    max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
     kappa_gen = AugmentedTNGKappaGenerator(
         kappa_fits_files=kappa_files,
         z_lens=args.z_lens,
@@ -37,8 +35,8 @@ def distributed_strategy(args):
         crop=args.crop,
         max_shift=args.max_shift,
         rotate_by=args.rotate_by,
-        min_theta_e=min_theta_e,
-        max_theta_e=max_theta_e,
+        min_theta_e=args.min_theta_e,
+        max_theta_e=args.max_theta_e,
         rescaling_size=args.rescaling_size,
         rescaling_theta_bins=args.bins
     )
@@ -56,7 +54,7 @@ def distributed_strategy(args):
     window = np.outer(window, window)
     phys = PhysicalModel(
         psf_sigma=args.psf_sigma,
-        image_fov=args.image_fov,
+        image_fov=kappa_gen.kappa_fov,
         src_fov=args.source_fov,
         pixels=args.lens_pixels,
         kappa_pixels=kappa_gen.crop_pixels,
@@ -90,7 +88,7 @@ def distributed_strategy(args):
                 rescalings=rescaling_factors,
                 z_source=args.z_source,
                 z_lens=args.z_lens,
-                image_fov=args.image_fov,
+                image_fov=phys.image_fov,
                 kappa_fov=phys.kappa_fov,
                 source_fov=args.source_fov,
                 sigma_crit=(kappa_gen.sigma_crit / (1e10 * M_sun)).decompose().value,  # 10^{10} M_sun / Mpc^2
@@ -118,7 +116,7 @@ if __name__ == '__main__':
     # Physical model params
     parser.add_argument("--lens_pixels",    default=512,        type=int,   help="Size of the lens postage stamp.")
     parser.add_argument("--src_pixels",     default=128,        type=int,   help="Size of Cosmos postage stamps")
-    parser.add_argument("--image_fov",      default=20,         type=float, help="Field of view of the image (lens plane) in arc seconds")
+    parser.add_argument("--image_fov",      default=20,         type=float, help="Field of view of the image (lens plane) in arc seconds") # not used anymore
     parser.add_argument("--source_fov",     default=3,          type=float,
                         help="Field of view of the source plane in arc seconds")
     parser.add_argument("--noise_rms",      default=0.3e-3,     type=float,

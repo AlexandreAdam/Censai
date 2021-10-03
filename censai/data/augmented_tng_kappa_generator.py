@@ -20,8 +20,8 @@ class AugmentedTNGKappaGenerator:
             crop: int = 0,
             max_shift: float = 1.,
             rotate_by: str = "90",          # Either rotate by 90 degrees or 'uniform'
-            min_theta_e: float = 1,
-            max_theta_e: float = 5,
+            min_theta_e: float = None,
+            max_theta_e: float = None,
             rescaling_size: int = 100,
             rescaling_theta_bins: int = 10
     ):
@@ -49,8 +49,8 @@ class AugmentedTNGKappaGenerator:
         self.pixel_scale = header["CD1_1"]  # pixel scale in arc seconds
         self.kappa_fov = self.pixel_scale * self.crop_pixels
 
-        self.min_theta_e = min_theta_e
-        self.max_theta_e = max_theta_e
+        self.min_theta_e = min_theta_e if min_theta_e is not None else 0.1 * self.kappa_fov
+        self.max_theta_e = max_theta_e if max_theta_e is not None else 0.45 * self.kappa_fov
         # ====================================================
         self.max_shift = min(int(max_shift / self.pixel_scale), self._crop - 1)
         self.index = 0
