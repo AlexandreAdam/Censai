@@ -25,8 +25,6 @@ def distributed_strategy(args):
         keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
         kappa_files = [kap_file for i, kap_file in enumerate(kappa_files) if keep_kappa[i]]
 
-    min_theta_e = 1. if args.min_theta_e is None else args.min_theta_e
-    max_theta_e = 5. if args.max_theta_e is None else args.max_theta_e
     kappa_gen = AugmentedTNGKappaGenerator(
         kappa_fits_files=kappa_files,
         z_lens=args.z_lens,
@@ -34,8 +32,8 @@ def distributed_strategy(args):
         crop=args.crop,
         max_shift=args.max_shift,
         rotate_by=args.rotate_by,
-        min_theta_e=min_theta_e,
-        max_theta_e=max_theta_e,
+        min_theta_e=args.min_theta_e,
+        max_theta_e=args.max_theta_e,
         rescaling_size=args.rescaling_size,
         rescaling_theta_bins=args.bins
     )

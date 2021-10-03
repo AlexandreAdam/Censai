@@ -132,7 +132,11 @@ class RIMSharedUnet:
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step, value=source)
             kappa_series = kappa_series.write(index=current_step, value=kappa)
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def predict(self, lensed_image):
@@ -156,7 +160,12 @@ class RIMSharedUnet:
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step, value=self.source_link(source))
             kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source),
+                                                            kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()  # stack along 0-th dimension
 
     def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):

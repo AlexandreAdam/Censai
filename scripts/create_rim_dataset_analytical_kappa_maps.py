@@ -28,8 +28,8 @@ def distributed_strategy(args):
         z_lens=args.z_lens
     )
 
-    min_theta_e = 0.05 * args.image_fov if args.min_theta_e is None else args.min_theta_e
-    max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
+    min_theta_e = 0.1 * args.image_fov if args.min_theta_e is None else args.min_theta_e
+    max_theta_e = 0.45 * args.image_fov if args.max_theta_e is None else args.max_theta_e
 
     cosmos_files = glob.glob(os.path.join(args.cosmos_dir, "*.tfrecords"))
     cosmos = tf.data.TFRecordDataset(cosmos_files)
@@ -86,7 +86,7 @@ def distributed_strategy(args):
                 rescalings=[1] * args.batch,
                 z_source=args.z_source,
                 z_lens=args.z_lens,
-                image_fov=args.image_fov,
+                image_fov=phys.image_fov,
                 kappa_fov=phys.kappa_fov,
                 source_fov=args.source_fov,
                 sigma_crit=kappa_gen.sigma_crit,  # 10^{10} M_sun / Mpc^2

@@ -72,8 +72,8 @@ class PhysicalModel:
             y_kernel_tilde = tf.signal.fft2d(tf.cast(-yconv_kernel[..., 0], tf.complex64))
 
             batch_size = kappa.shape[0]
-            alpha_x = []
-            alpha_y = []
+            alpha_x = tf.TensorArray(dtype=DTYPE, size=batch_size)
+            alpha_y = tf.TensorArray(dtype=DTYPE, size=batch_size)
             for i in range(batch_size):
                 kap = tf.image.pad_to_bounding_box(kappa[i, ...],  # pad kappa one by one to save memory space
                                                    offset_height=0,
@@ -81,15 +81,15 @@ class PhysicalModel:
                                                    target_width=4 * self.pixels + 1,
                                                    target_height=4 * self.pixels + 1)
                 kappa_tilde = tf.signal.fft2d(tf.cast(kap[..., 0], tf.complex64))
-                alpha_x.append(tf.math.real(tf.signal.ifft2d(kappa_tilde * x_kernel_tilde)) * (self.dx_kap**2/np.pi))
-                alpha_y.append(tf.math.real(tf.signal.ifft2d(kappa_tilde * y_kernel_tilde)) * (self.dx_kap**2/np.pi))
-            alpha_x = tf.stack(alpha_x, axis=0)[..., tf.newaxis]
+                alpha_x = alpha_x.write(index=i, value=tf.math.real(tf.signal.ifft2d(kappa_tilde * x_kernel_tilde)) * (self.dx_kap**2/np.pi))
+                alpha_y = alpha_y.write(index=i, value=tf.math.real(tf.signal.ifft2d(kappa_tilde * y_kernel_tilde)) * (self.dx_kap**2/np.pi))
+            alpha_x = alpha_x.stack()
             alpha_x = tf.image.crop_to_bounding_box(alpha_x,
                                                     offset_height=self.pixels,
                                                     offset_width=self.pixels,
                                                     target_width=self.pixels,
                                                     target_height=self.pixels)
-            alpha_y = tf.stack(alpha_y, axis=0)[..., tf.newaxis]
+            alpha_y = alpha_y.stack()
             alpha_y = tf.image.crop_to_bounding_box(alpha_y,
                                                     offset_height=self.pixels,
                                                     offset_width=self.pixels,
@@ -101,9 +101,9 @@ class PhysicalModel:
 
     def log_likelihood(self, source, kappa, y_true):
         y_pred = self.forward(source, kappa)
-        lam = self.lagrange_multiplier(y_true, y_pred)
-        return 0.5 * tf.reduce_mean((y_pred - lam*y_true)**2/self.noise_rms**2, axis=(1, 2, 3))
-        # return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
+        # lam = self.lagrange_multiplier(y_true, y_pred)
+        # return 0.5 * tf.reduce_mean((y_pred - lam * y_true)**2/self.noise_rms**2, axis=(1, 2, 3))
+        return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
 
     @staticmethod
     def lagrange_multiplier(y_true, y_pred):
