@@ -23,34 +23,28 @@ def distributed_strategy(args):
         keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
         kappa_files = [kap_file for i, kap_file in enumerate(kappa_files) if keep_kappa[i]]
 
-    min_theta_e = 0.05 * args.image_fov if args.min_theta_e is None else args.min_theta_e
-    max_theta_e = 0.35 * args.image_fov if args.max_theta_e is None else args.max_theta_e
     kappa_gen = AugmentedTNGKappaGenerator(
         kappa_fits_files=kappa_files,
         z_lens=args.z_lens,
         z_source=args.z_source,
         crop=args.crop,
-        min_theta_e=min_theta_e,
-        max_theta_e=max_theta_e,
+        min_theta_e=args.min_theta_e,
+        max_theta_e=args.max_theta_e,
         max_shift=args.max_shift,
         rescaling_size=args.rescaling_size,
         rescaling_theta_bins=args.bins
     )
 
-    phys = PhysicalModel(image_fov=args.image_fov, pixels=kappa_gen.crop_pixels,
+    phys = PhysicalModel(image_fov=kappa_gen.kappa_fov, pixels=kappa_gen.crop_pixels,
                          kappa_fov=kappa_gen.kappa_fov, method="conv2d")
 
     if args.smoke_test:
         kappa_files = kappa_files[:N_WORKERS*args.batch]
 
     if args.augment:
-        dataset_size = int((1 + args.augment) * len(kappa_files))
-        _original_len = len(kappa_files)
-        for i in range(int(args.augment + 1)):
-            # make copies of the dataset so its length >= the augmented dataset size
-            kappa_files = kappa_files + kappa_files[:_original_len]
+        dataset_size = args.len_dataset
     else:
-        dataset_size = len(kappa_files)
+        dataset_size = min(len(kappa_files), args.len_dataset)
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"kappa_alpha_{THIS_WORKER}.tfrecords"), options=options) as writer:
@@ -71,7 +65,7 @@ def distributed_strategy(args):
                 rescalings=rescaling_factors,
                 kappa_ids=kappa_ids,
                 einstein_radius=einstein_radius,
-                image_fov=args.image_fov,
+                image_fov=kappa_gen.kappa_fov,
                 kappa_fov=kappa_gen.kappa_fov
             )
             for record in records:
@@ -83,18 +77,19 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("--kappa_dir",      required=True, help="Path to kappa fits files directory")
+    parser.add_argument("--len_dataset",    required=True, type=int,       help="Size of the dataset")
     parser.add_argument("--output_dir",     required=True, help="Path where tfrecords are stored")
     parser.add_argument("--smoke_test",     action="store_true")
     parser.add_argument("--compression_type", default=None, help="Default is no compression. Use 'GZIP' to compress data")
 
-    # Physical Model params
-    parser.add_argument("--image_fov",      default=20,     type=float,     help="Field of view of the image (lens plane) in arc seconds")
+    # Physical Model params -- Not used anymore
+    parser.add_argument("--image_fov",      default=None,     type=float,     help="Field of view of the image (lens plane) in arc seconds")
 
     # Data generation params
     parser.add_argument("--batch",          default=1,      type=int,       help="Number of label maps to be computed at the same time")
     parser.add_argument("--crop",           default=0,      type=int,       help="Crop kappa map by N pixels. After crop, the size of the kappa map should correspond to pixel argument "
                                                                                  "(e.g. kappa of 612 pixels cropped by N=50 on each side -> 512 pixels)")
-    parser.add_argument("--augment",        default=0.,     type=float,     help="Percentage by which to augment the data. (0=no augmentation)."
+    parser.add_argument("--augment",        action="store_true",            help="Percentage by which to augment the data. (0=no augmentation)."
                                                                                  "Random shift of the position of the kappa maps if crops > 0, and random rescaling.")
     parser.add_argument("--shift",          action="store_true",            help="Shift center of kappa map with a budget defined by the crop argument.")
     parser.add_argument("--rotate",         action="store_true",            help="If augment, we rotate the kappa map")

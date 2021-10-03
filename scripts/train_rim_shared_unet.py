@@ -78,11 +78,10 @@ def main(args):
         .take(math.ceil((1 - args.train_split) * args.total_items)).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     # train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     # val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
+    # with STRATEGY.scope():  # Replicate ops accross gpus
     if args.raytracer is not None:
         with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
             raytracer_hparams = json.load(f)
-    # with STRATEGY.scope():  # Replicate ops accross gpus
-    if args.raytracer is not None:
         raytracer = RayTracer(**raytracer_hparams)
         # load last checkpoint in the checkpoint directory
         checkpoint = tf.train.Checkpoint(net=raytracer)
