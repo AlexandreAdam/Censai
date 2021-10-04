@@ -188,10 +188,9 @@ if __name__ == '__main__':
     parser.add_argument("--train_split",                    default=0.8,    type=float,             help="Fraction of the training set")
     parser.add_argument("--total_items",                    required=True,  nargs="+", type=int,    help="Total images in an epoch.")
     # ... for tfrecord dataset
-    parser.add_argument("--num_parallel_reads",             default=10,     type=int,               help="TFRecord dataset number of parallel reads when loading data")
     parser.add_argument("--cache_file",                     default=None,                           help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
-    parser.add_argument("--cycle_length",                   default=4,      type=int,               help="Number of files to read concurrently.")
     parser.add_argument("--block_length",                   default=1,      type=int,               help="Number of example to read from each files.")
+    parser.add_argument("--buffer_size",                    default=1000,   type=int,               help="Buffer size for shuffling at each epoch.")
 
     # Logs
     parser.add_argument("--logdir",                         default="None",                         help="Path of logs directory.")
