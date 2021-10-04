@@ -10,9 +10,9 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_alpha_labels.py\
-  --kappa_dir=$HOME/scratch/Censai/data/hkappa158_TNG100_512_15k\
+  --kappa_dir=$HOME/scratch/Censai/data/hkappa158_TNG100_512\
   --len_dataset=15000\
-  --output_dir=$HOME/scratch/Censai/data/alpha128_512_hTNG\
+  --output_dir=$HOME/scratch/Censai/data/alpha128_512_hTNG_15k\
   --compression_type=GZIP\
   --max_shift=0.5\
   --crop=15\
