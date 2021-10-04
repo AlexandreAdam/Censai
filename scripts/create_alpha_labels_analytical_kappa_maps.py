@@ -43,7 +43,7 @@ def distributed_strategy(args):
 
             kappa = kappa_gen.kappa_field(x0, y0, ellipticity, phi, einstein_radius)
 
-            alpha = tf.concat(phys.deflection_angle(kappa)[2:], axis=-1)
+            alpha = tf.concat(phys.deflection_angle(kappa), axis=-1)
 
             records = encode_examples(
                 kappa=kappa,

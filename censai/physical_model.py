@@ -83,13 +83,13 @@ class PhysicalModel:
                 kappa_tilde = tf.signal.fft2d(tf.cast(kap[..., 0], tf.complex64))
                 alpha_x = alpha_x.write(index=i, value=tf.math.real(tf.signal.ifft2d(kappa_tilde * x_kernel_tilde)) * (self.dx_kap**2/np.pi))
                 alpha_y = alpha_y.write(index=i, value=tf.math.real(tf.signal.ifft2d(kappa_tilde * y_kernel_tilde)) * (self.dx_kap**2/np.pi))
-            alpha_x = alpha_x.stack()
+            alpha_x = alpha_x.stack()[..., tf.newaxis]
             alpha_x = tf.image.crop_to_bounding_box(alpha_x,
                                                     offset_height=self.pixels,
                                                     offset_width=self.pixels,
                                                     target_width=self.pixels,
                                                     target_height=self.pixels)
-            alpha_y = alpha_y.stack()
+            alpha_y = alpha_y.stack()[..., tf.newaxis]
             alpha_y = tf.image.crop_to_bounding_box(alpha_y,
                                                     offset_height=self.pixels,
                                                     offset_width=self.pixels,
