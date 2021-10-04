@@ -12,7 +12,7 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --datasets $CENSAI_PATH/data/alpha128_512_hTNG_15k $CENSAI_PATH/data/alpha128_512_TNG_15k $CENSAI_PATH/data/alpha128_512_SIE_15k\
   --compression_type=GZIP\
-  --strategy=unfiform\
+  --strategy=uniform\
   --n_models=30\
   --total_items 45000\
   --epochs=5000\
