@@ -263,12 +263,15 @@ def main(args):
                 lastest_checkpoint += 1
                 checkpoint_manager.save()
                 print("Saved checkpoint for step {}: {}".format(int(checkpoint_manager.checkpoint.step), checkpoint_manager.latest_checkpoint))
+        if patience == 0:
+            print("Reached patience")
+            break
         if out_of_time:
             break
         if epoch > 0:  # First epoch is always very slow and not a good estimate of an epoch time.
             estimated_time_for_epoch = time.time() - epoch_start
-        if patience == 0:
-            print("Reached patience")
+        if optim.lr(step).numpy() < 1e-9:
+            print("Reached learning rate limit")
             break
     return history, best_loss
 
