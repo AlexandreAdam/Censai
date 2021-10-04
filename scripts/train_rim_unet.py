@@ -477,6 +477,9 @@ def main(args):
             break
         if epoch > 0:  # First epoch is always very slow and not a good estimate of an epoch time.
             estimated_time_for_epoch = time.time() - epoch_start
+        if optim.lr(step).numpy() < 1e-9:
+            print("Reached learning rate limit")
+            break
     return history, best_loss
 
 
