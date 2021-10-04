@@ -29,33 +29,39 @@ RAYTRACER_HPARAMS = [
     "kernel_regularizer_amp",
     "activation",
     "initializer",
-    "kappalog",
-    "normalize",
+    # "kappalog",
+    # "normalize",
 ]
 
 EXTRA_PARAMS = [
     "total_items",
     "seed",
-    "batch_size"
+    "batch_size",
+    "initial_learning_rate",
+    "decay_rate",
+    "decay_steps",
 ]
 
-from collections import OrderedDict
-PARAMS_NICKNAME = OrderedDict()
-PARAMS_NICKNAME["total_items"] = "TI"
-PARAMS_NICKNAME["seed"] = ""
-PARAMS_NICKNAME["batch_size"] = "B"
+PARAMS_NICKNAME = {
+    "total_items": "TI",
+    "seed": "",
+    "batch_size": "B",
+    "initial_learning_rate": "lr",
+    "decay_rate": "dr",
+    "decay_steps": "ds",
 
-PARAMS_NICKNAME["filters"] = "F"
-PARAMS_NICKNAME["filter_scaling"] = "FS"
-PARAMS_NICKNAME["kernel_size"] = "K"
-PARAMS_NICKNAME["layers"] = "L"
-PARAMS_NICKNAME["block_conv_layers"] = "BCL"
-PARAMS_NICKNAME["strides"] = "S"
-PARAMS_NICKNAME["upsampling_interpolation"] = "BU"
-PARAMS_NICKNAME["resampling_kernel_size"] = "RK"
-PARAMS_NICKNAME["kernel_regularizer_amp"] = "RA"
-PARAMS_NICKNAME["kappalog"] = "KaL"
-PARAMS_NICKNAME["normalize"] = "KaN"
+    "filters": "F",
+    "filter_scaling": "FS",
+    "kernel_size": "K",
+    "layers": "L",
+    "block_conv_layers": "BCL",
+    "strides": "S",
+    "upsampling_interpolation": "BU",
+    "resampling_kernel_size": "RK",
+    "kernel_regularizer_amp": "RA",
+    # "kappalog": "KaL",
+    # "normalize": "KaN",
+}
 
 
 def single_instance_args_generator(args):
@@ -205,21 +211,21 @@ if __name__ == '__main__':
 
     # Optimization params
     parser.add_argument("-e", "--epochs",                   default=10,     type=int,               help="Number of epochs for training.")
-    parser.add_argument("--initial_learning_rate",          default=1e-3,   type=float,             help="Initial learning rate.")
-    parser.add_argument("--decay_rate",                     default=1.,     type=float,             help="Exponential decay rate of learning rate (1=no decay).")
-    parser.add_argument("--decay_steps",                    default=1000,   type=int,               help="Decay steps of exponential decay of the learning rate.")
+    parser.add_argument("--optimizer",                      default="Adam", nargs="+",              help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
+    parser.add_argument("--initial_learning_rate",          default=1e-3,   nargs="+",   type=float, help="Initial learning rate.")
+    parser.add_argument("--decay_rate",                     default=1.,     nargs="+",   type=float, help="Exponential decay rate of learning rate (1=no decay).")
+    parser.add_argument("--decay_steps",                    default=1000,   nargs="+",   type=int,   help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--clipping",                       action="store_true",                    help="Clip backprop gradients between -10 and 10")
     parser.add_argument("--patience",                       default=np.inf, type=int,               help="Number of step at which training is stopped if no improvement is recorder")
     parser.add_argument("--tolerance",                      default=0,      type=float,             help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",                    action="store_true")
 
     # Make sure each model train on the same dataset
-    parser.add_argument("--seed",                   default=42, nargs="+",  type=int, help="Random seed for numpy and tensorflow.")
+    parser.add_argument("--seed",                           default=42, nargs="+",  type=int, help="Random seed for numpy and tensorflow.")
 
     # Keep these as default, they need to be in Namespace but we dont use them for this script
-    parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
+    parser.add_argument("--model_id",                       default="None",              help="Start training from previous "
                                                                                           "checkpoint of this model if provided")
-    parser.add_argument("--load_checkpoint",            default="best",              help="One of 'best', 'lastest' or the specific checkpoint index")
     parser.add_argument("--json_override",                  default=None,             help="A json filepath that will override every command line parameters. "
                                                                                            "Useful for reproducibility")
 
