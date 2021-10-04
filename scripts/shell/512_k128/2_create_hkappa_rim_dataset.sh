@@ -6,30 +6,30 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=1-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Create-RIM-Dataset-20k-512_k128
+#SBATCH --job-name=Create-RIM-Dataset-100k-512_k128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset.py\
-  --output_dir=$HOME/scratch/Censai/data/lenses512_hk128_TNG100_noshift40k/\
-  --len_dataset=40000\
+  --output_dir=$HOME/scratch/Censai/data/lenses512_hk128_TNG100_100k/\
+  --len_dataset=100000\
   --kappa_dir=$HOME/scratch/Censai/data/hkappa158_TNG100_512\
-  --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5_preprocessed/\
+  --cosmos_dir=$HOME/scratch/Censai/data/cosmos_23.5_preprocessed_highSNR/\
   --compression_type=GZIP\
   --lens_pixels=512\
   --src_pixels=128\
-  --image_fov=20\
-  --source_fov=3\
-  --noise_rms=6e-3\
-  --psf_sigma=0.09\
+  --image_fov=17.425909\
+  --source_fov=10\
+  --noise_rms=0.01\
+  --psf_sigma=0.06\
   --crop=15\
-  --max_shift=0\
-  --min_theta_e=1.5\
+  --max_shift=0.5\
+  --max_theta_e=5.\
   --rotate\
   --rotate_by=90\
   --shuffle_cosmos\
   --buffer_size=1000\
   --batch=20\
-  --tukey_alpha=0.6\
+  --tukey_alpha=0\
   --bins=10\
   --rescaling_size=100\
   --z_source=2.379\
