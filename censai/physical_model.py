@@ -169,6 +169,7 @@ class PhysicalModel:
         theta_y = tf.cast(theta_y, DTYPE)
         theta_x = theta_x[..., tf.newaxis, tf.newaxis] # [..., in_channels, out_channels]
         theta_y = theta_y[..., tf.newaxis, tf.newaxis]
+        kappa = self.kappa_to_image_grid(kappa)  # resampling to shape of image
         with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
             tape.watch(theta_x)
             tape.watch(theta_y)
