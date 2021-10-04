@@ -173,7 +173,9 @@ def main(args):
     time_per_step = tf.metrics.Mean()
     history = {  # recorded at the end of an epoch only
         "train_cost": [],
+        "train_lens_residuals": [],
         "val_cost": [],
+        "val_lens_residuals": [],
         "learning_rate": [],
         "step": [],
         "wall_time": []
@@ -201,16 +203,16 @@ def main(args):
                 epoch_loss.update_state([cost])
                 step += 1
 
+            # Deflection angle residual
+            kappa_true, alpha_true = distributed_inputs
+            alpha_pred = ray_tracer.call(kappa_true)
+            # Lens residual
+            lens_true = phys.lens_source_func(kappa_true)
+            lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)
+            train_chi_squared = tf.reduce_mean(tf.square(lens_true - lens_pred))
             for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in train set
-                # Deflection angle residual
-                alpha_true = distributed_inputs[1][res_idx, ...]
-                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
-                # Lens residual
-                kappa = distributed_inputs[0][res_idx, ...][None, ...]
-                lens_true = phys.lens_source_func(kappa)[0, ...]
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
                 tf.summary.image(f"Residuals {res_idx}",
-                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
+                                 plot_to_image(residual_plot(alpha_true[res_idx], alpha_pred[res_idx], lens_true[res_idx], lens_pred[res_idx])), step=step)
 
         # ========== Validation set ===================
             val_loss.reset_states()
@@ -218,27 +220,29 @@ def main(args):
                 test_cost = distributed_test_step(distributed_inputs)
                 val_loss.update_state([test_cost])
 
+            kappa_true, alpha_true = distributed_inputs
+            alpha_pred = ray_tracer.call(kappa_true)
+            lens_true = phys.lens_source_func(kappa_true)
+            lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)
+            val_chi_squared = tf.reduce_mean(tf.square(lens_true - lens_pred))
             for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in val set
-                # Deflection angle residual
-                alpha_true = distributed_inputs[1][res_idx, ...]
-                alpha_pred = ray_tracer.call(distributed_inputs[0][res_idx, ...][None, ...])[0, ...]
-                # Lens residual
-                kappa = distributed_inputs[0][res_idx, ...][None, ...]
-                lens_true = phys.lens_source_func(kappa)[0, ...]
-                lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)[0, ...]
                 tf.summary.image(f"Val Residuals {res_idx}",
-                                 plot_to_image(residual_plot(alpha_true, alpha_pred, lens_true, lens_pred)), step=step)
+                                 plot_to_image(residual_plot(alpha_true[res_idx], alpha_pred[res_idx], lens_true[res_idx], lens_pred[res_idx])), step=step)
 
-        train_cost = epoch_loss.result().numpy()
-        val_cost = val_loss.result().numpy()
-        tf.summary.scalar("Time per step", time_per_step.result().numpy(), step=step)
-        tf.summary.scalar("MSE", train_cost, step=step)
-        tf.summary.scalar("Val MSE", val_cost, step=step)
-        tf.summary.scalar("Learning rate", optim.lr(step), step=step)
+            train_cost = epoch_loss.result().numpy()
+            val_cost = val_loss.result().numpy()
+            tf.summary.scalar("Time per step", time_per_step.result().numpy(), step=step)
+            tf.summary.scalar("Train lens residual", train_chi_squared, step=step)
+            tf.summary.scalar("Val lens residual", val_chi_squared, step=step)
+            tf.summary.scalar("MSE", train_cost, step=step)
+            tf.summary.scalar("Val MSE", val_cost, step=step)
+            tf.summary.scalar("Learning rate", optim.lr(step), step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
               f"time per step {time_per_step.result():.2e} s")
         history["train_cost"].append(train_cost)
+        history["train_lens_residuals"].append(train_chi_squared)
         history["val_cost"].append(val_cost)
+        history["val_lens_residuals"].append(val_chi_squared)
         history["learning_rate"].append(optim.lr(step).numpy())
         history["step"].append(step)
         history["wall_time"].append(time.time() - global_start)
