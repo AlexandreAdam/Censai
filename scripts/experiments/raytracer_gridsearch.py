@@ -16,7 +16,6 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 DATE = datetime.now().strftime("%y%m%d%H%M%S")
 
 RAYTRACER_HPARAMS = [
-    "pixels",
     "filter_scaling",
     "layers",
     "block_conv_layers",
@@ -28,9 +27,6 @@ RAYTRACER_HPARAMS = [
     "upsampling_interpolation",
     "kernel_regularizer_amp",
     "activation",
-    "initializer",
-    # "kappalog",
-    # "normalize",
 ]
 
 EXTRA_PARAMS = [
@@ -40,6 +36,7 @@ EXTRA_PARAMS = [
     "initial_learning_rate",
     "decay_rate",
     "decay_steps",
+    "optimizer"
 ]
 
 PARAMS_NICKNAME = {
@@ -49,6 +46,7 @@ PARAMS_NICKNAME = {
     "initial_learning_rate": "lr",
     "decay_rate": "dr",
     "decay_steps": "ds",
+    "optimizer": "O",
 
     "filters": "F",
     "filter_scaling": "FS",
@@ -59,8 +57,6 @@ PARAMS_NICKNAME = {
     "upsampling_interpolation": "BU",
     "resampling_kernel_size": "RK",
     "kernel_regularizer_amp": "RA",
-    # "kappalog": "KaL",
-    # "normalize": "KaN",
 }
 
 
@@ -220,7 +216,6 @@ if __name__ == '__main__':
     parser.add_argument("--tolerance",                      default=0,      type=float,             help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",                    action="store_true")
     parser.add_argument("--max_time",                       default=np.inf, type=float,             help="Time allowed for the training, in hours.")
-
 
     # Make sure each model train on the same dataset
     parser.add_argument("--seed",                           default=42, nargs="+",  type=int, help="Random seed for numpy and tensorflow.")
