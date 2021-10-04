@@ -249,6 +249,9 @@ def main(args):
         #     cost = distributed_train_step(distributed_inputs)
         #     tf.profiler.experimental.stop()
         cost = train_cost if args.track_train else val_cost
+        if np.isnan(cost):
+            print("Training broke the Universe")
+            break
         if cost < best_loss * (1 - args.tolerance):
             best_loss = cost
             patience = args.patience
