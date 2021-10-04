@@ -16,7 +16,6 @@ python $CENSAI_PATH/scripts/create_kappa_autoencoder_dataset.py\
   --compression_type=GZIP\
   --crop=15\
   --max_shift=1\
-  --min_theta_e=1.5\
   --rotate\
   --rotate_by=90\
   --batch=20\
