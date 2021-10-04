@@ -337,7 +337,6 @@ if __name__ == "__main__":
     parser.add_argument("--track_train",                    action="store_true",                    help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",                       default=np.inf, type=float,             help="Time allowed for the training, in hours.")
 
-
     # Reproducibility params
     parser.add_argument("--seed",                           default=None,   type=int, help="Random seed for numpy and tensorflow")
     parser.add_argument("--json_override",                  default=None, nargs="+",  help="A json filepath that will override every command line parameters. "

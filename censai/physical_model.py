@@ -234,7 +234,7 @@ class PhysicalModel:
         self.dx_kap = self.kappa_fov / (self.pixels - 1)  # dx on image grid
 
         # Convolution kernel
-        x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_fov
+        x = tf.cast(tf.linspace(-1, 1, 2 * self.pixels + 1), dtype=DTYPE) * self.kappa_fov
         xx, yy = tf.meshgrid(x, x)
         rho = xx**2 + yy**2
         xconv_kernel = -self._safe_divide(xx, rho)
@@ -244,7 +244,7 @@ class PhysicalModel:
         self.yconv_kernel = tf.cast(yconv_kernel[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
 
         # coordinates for image
-        x = tf.linspace(-1, 1, self.pixels) * self.image_fov / 2
+        x = tf.cast(tf.linspace(-1, 1, self.pixels), dtype=DTYPE) * self.image_fov / 2
         xx, yy = tf.meshgrid(x, x)
         # reshape for broadcast to [batch_size, pixels, pixels, 1]
         self.ximage = tf.cast(xx[tf.newaxis, ..., tf.newaxis], dtype=DTYPE)
