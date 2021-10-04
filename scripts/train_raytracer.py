@@ -181,8 +181,9 @@ def main(args):
     best_loss = np.inf
     global_start = time.time()
     estimated_time_for_epoch = 0
+    out_of_time = False
     patience = args.patience
-    step = 1
+    step = 0
     lastest_checkpoint = 1
     for epoch in range(1, args.epochs + 1):
         if (time.time() - global_start) > args.max_time*3600 - estimated_time_for_epoch:
