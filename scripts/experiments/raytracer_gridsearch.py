@@ -140,6 +140,8 @@ def distributed_strategy(args):
             "experiment_id": run_args.logname,
             "train_cost": history["train_cost"][-1],
             "val_cost": history["val_cost"][-1],
+            "train_lens_residuals": history["train_lens_residuals"][-1],
+            "val_lens_residuals": history["val_lens_residuals"][-1],
             "best_score": best_score
         })
         # Save hyperparameters and scores in shared csv for this gridsearch
