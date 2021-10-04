@@ -237,8 +237,8 @@ class PhysicalModel:
         x = tf.cast(tf.linspace(-1, 1, 2 * self.pixels + 1), dtype=DTYPE) * self.kappa_fov
         xx, yy = tf.meshgrid(x, x)
         rho = xx**2 + yy**2
-        xconv_kernel = -self._safe_divide(xx, rho)
-        yconv_kernel = -self._safe_divide(yy, rho)
+        xconv_kernel = -self._safe_divide(-xx, rho)
+        yconv_kernel = -self._safe_divide(-yy, rho)
         # reshape to [filter_height, filter_width, in_channels, out_channels]
         self.xconv_kernel = tf.cast(xconv_kernel[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
         self.yconv_kernel = tf.cast(yconv_kernel[..., tf.newaxis, tf.newaxis], dtype=DTYPE)
