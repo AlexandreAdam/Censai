@@ -201,10 +201,10 @@ def test_convGRU():
 
 if __name__ == '__main__':
     # test_ray_tracer_512()
-    # test_raytracer()
+    test_raytracer()
     # test_resnet_autoencoder()
     # test_unet_model()
-    test_shared_unet_model()
+    # test_shared_unet_model()
     # test_rim_shared_unet()
     # test_rim()
     # test_rim_unet()

@@ -52,7 +52,7 @@ def main(args):
     # extract physical info from first example
     for image_fov, kappa_fov in dataset.map(decode_physical_info):
         break
-    dataset = dataset.map(decode_train).batch(args.batch_size)
+    dataset = dataset.map(decode_train)
     if args.cache_file is not None:
         dataset = dataset.cache(args.cache_file)
     train_dataset = dataset.take(math.floor(args.train_split * args.total_items))\
