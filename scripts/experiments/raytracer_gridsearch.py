@@ -219,6 +219,8 @@ if __name__ == '__main__':
     parser.add_argument("--patience",                       default=np.inf, type=int,               help="Number of step at which training is stopped if no improvement is recorder")
     parser.add_argument("--tolerance",                      default=0,      type=float,             help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",                    action="store_true")
+    parser.add_argument("--max_time",                       default=np.inf, type=float,             help="Time allowed for the training, in hours.")
+
 
     # Make sure each model train on the same dataset
     parser.add_argument("--seed",                           default=42, nargs="+",  type=int, help="Random seed for numpy and tensorflow.")
