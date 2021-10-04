@@ -47,19 +47,18 @@ def main(args):
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
     np.random.shuffle(files)
     files = tf.data.Dataset.from_tensor_slices(files)
-    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=args.num_parallel_reads, compression_type=args.compression_type),
-                               cycle_length=args.cycle_length, block_length=args.block_length)
+    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
+                               block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
     # extract physical info from first example
     for image_fov, kappa_fov in dataset.map(decode_physical_info):
         break
     dataset = dataset.map(decode_train).batch(args.batch_size)
     if args.cache_file is not None:
-        dataset = dataset.cache(args.cache_file).prefetch(tf.data.experimental.AUTOTUNE)
-    else:  # do not cache if no file is provided, dataset is huge and does not fit in GPU or RAM
-        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = dataset.take(math.floor(args.train_split * args.total_items / args.batch_size)) # dont forget to divide by batch size!
-    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items / args.batch_size))
-    val_dataset = val_dataset.take(math.ceil((1 - args.train_split) * args.total_items / args.batch_size))
+        dataset = dataset.cache(args.cache_file)
+    train_dataset = dataset.take(math.floor(args.train_split * args.total_items))\
+        .shuffle(buffer_size=args.buffer_size).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items))\
+        .take(math.ceil((1 - args.train_split) * args.total_items)).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
 
@@ -91,7 +90,12 @@ def main(args):
             decay_steps=args.decay_steps,
             decay_rate=args.decay_rate,
             staircase=True)
-        optim = tf.keras.optimizers.Adam(learning_rate=lr_schedule, beta_1=0.9, beta_2=0.999)
+        optim = tf.keras.optimizers.deserialize(
+            {
+                "class_name": args.optimizer,
+                'config': {"learning_rate": lr_schedule}
+            }
+        )
 
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
@@ -124,16 +128,7 @@ def main(args):
         save_checkpoint = True
         # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
-            if args.load_checkpoint == "lastest":
-                checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
-            elif args.load_checkpoint == "best":
-                scores = np.loadtxt(os.path.join(checkpoints_dir, "score_sheet.txt"))
-                _checkpoint = scores[np.argmin(scores[:, 1]), 0]
-                checkpoint = checkpoint_manager.checkpoints[_checkpoint]
-                checkpoint_manager.checkpoint.restore(checkpoint)
-            else:
-                checkpoint = checkpoint_manager.checkpoints[int(args.load_checkpoint)]
-                checkpoint_manager.checkpoint.restore(checkpoint)
+            checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
     else:
         save_checkpoint = False
     # =================================================================================================================
@@ -180,13 +175,19 @@ def main(args):
         "train_cost": [],
         "val_cost": [],
         "learning_rate": [],
-        "time_per_step": []
+        "step": [],
+        "wall_time": []
     }
     best_loss = np.inf
+    global_start = time.time()
+    estimated_time_for_epoch = 0
     patience = args.patience
     step = 1
     lastest_checkpoint = 1
     for epoch in range(1, args.epochs + 1):
+        if (time.time() - global_start) > args.max_time*3600 - estimated_time_for_epoch:
+            break
+        epoch_start = time.time()
         epoch_loss.reset_states()
         time_per_step.reset_states()
         with writer.as_default():
@@ -197,9 +198,8 @@ def main(args):
                 _time = time.time() - start
                 time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
-                tf.summary.scalar("Time per step", _time, step=step)
-                tf.summary.scalar("MSE", cost, step=step)
                 step += 1
+
             for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in train set
                 # Deflection angle residual
                 alpha_true = distributed_inputs[1][res_idx, ...]
@@ -230,6 +230,8 @@ def main(args):
 
         train_cost = epoch_loss.result().numpy()
         val_cost = val_loss.result().numpy()
+        tf.summary.scalar("Time per step", time_per_step.result().numpy(), step=step)
+        tf.summary.scalar("MSE", train_cost, step=step)
         tf.summary.scalar("Val MSE", val_cost, step=step)
         tf.summary.scalar("Learning rate", optim.lr(step), step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
@@ -237,28 +239,34 @@ def main(args):
         history["train_cost"].append(train_cost)
         history["val_cost"].append(val_cost)
         history["learning_rate"].append(optim.lr(step).numpy())
-        history["time_per_step"].append(time_per_step.result().numpy())
+        history["step"].append(step)
+        history["wall_time"].append(time.time() - global_start)
         # =============================================================================================================
-        if args.profile and epoch == 1:
-            # redo the last training step for debugging purposes
-            tf.profiler.experimental.start(logdir=logdir)
-            cost = distributed_train_step(distributed_inputs)
-            tf.profiler.experimental.stop()
+        # if args.profile and epoch == 1:
+        #     # redo the last training step for debugging purposes
+        #     tf.profiler.experimental.start(logdir=logdir)
+        #     cost = distributed_train_step(distributed_inputs)
+        #     tf.profiler.experimental.stop()
         cost = train_cost if args.track_train else val_cost
         if cost < best_loss * (1 - args.tolerance):
             best_loss = cost
             patience = args.patience
         else:
             patience -= 1
-
+        if (time.time() - global_start) > args.max_time * 3600:
+            out_of_time = True
         if save_checkpoint:
             checkpoint_manager.checkpoint.step.assign_add(1)  # a bit of a hack
-            if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1:
+            if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1 or out_of_time:
                 with open(os.path.join(checkpoints_dir, "score_sheet.txt"), mode="a") as f:
                     np.savetxt(f, np.array([[lastest_checkpoint, cost]]))
                 lastest_checkpoint += 1
                 checkpoint_manager.save()
                 print("Saved checkpoint for step {}: {}".format(int(checkpoint_manager.checkpoint.step), checkpoint_manager.latest_checkpoint))
+        if out_of_time:
+            break
+        if epoch > 0:  # First epoch is always very slow and not a good estimate of an epoch time.
+            estimated_time_for_epoch = time.time() - epoch_start
         if patience == 0:
             print("Reached patience")
             break
@@ -271,7 +279,6 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
                                                                                           "checkpoint of this model if provided")
-    parser.add_argument("--load_checkpoint",            default="best",              help="One of 'best', 'lastest' or the specific checkpoint index")
     parser.add_argument("--datasets",                   required=True,  nargs="+",   help="Datasets to use, paths that contains tfrecords of dataset. User can provide multiple "
                                                                                           "directories to mix datasets")
     parser.add_argument("--compression_type",           default=None,                help="Compression type used to write data. Default assumes no compression.")
@@ -298,10 +305,9 @@ if __name__ == "__main__":
     parser.add_argument("--train_split",                    default=0.8,    type=float,             help="Fraction of the training set")
     parser.add_argument("--total_items",                    required=True,  type=int,               help="Total images in an epoch.")
     # ... for tfrecord dataset
-    parser.add_argument("--num_parallel_reads",             default=10,     type=int,               help="TFRecord dataset number of parallel reads when loading data")
     parser.add_argument("--cache_file",                     default=None,                           help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
-    parser.add_argument("--cycle_length",                   default=4,      type=int,               help="Number of files to read concurrently.")
     parser.add_argument("--block_length",                   default=1,      type=int,               help="Number of example to read from each files.")
+    parser.add_argument("--buffer_size",                    default=1000,   type=int,               help="Buffer size for shuffling at each epoch.")
 
     # Logs
     parser.add_argument("--logdir",                         default="None",                         help="Path of logs directory.")
@@ -311,13 +317,14 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoints",                    default=10,     type=int,               help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3,      type=int,               help="Max model checkpoint to keep")
     parser.add_argument("--n_residuals",                    default=1,      type=int,               help="Number of residual plots to save. Add overhead at the end of an epoch only.")
-    parser.add_argument("--profile",                        action="store_true",                    help="If added, we will profile the last training step of the first epochAnalyticalPhysicalModel")
+    # parser.add_argument("--profile",                        action="store_true",                    help="If added, we will profile the last training step of the first epochAnalyticalPhysicalModel")
     parser.add_argument("--source_fov",                     default=3,      type=float,             help="Source fov for lens residuals")
     parser.add_argument("--source_w",                       default=0.1,    type=float,             help="Width of gaussian of source gaussian")
     parser.add_argument("--psf_sigma",                      default=0.04,   type=float,             help="Sigma of PSF for lens resiudal")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",                   default=10,     type=int,               help="Number of epochs for training.")
+    parser.add_argument("--optimizer",                      default="Adam",                         help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",          default=1e-3,   type=float,             help="Initial learning rate.")
     parser.add_argument("--decay_rate",                     default=1.,     type=float,             help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",                    default=1000,   type=int,               help="Decay steps of exponential decay of the learning rate.")
@@ -325,6 +332,8 @@ if __name__ == "__main__":
     parser.add_argument("--patience",                       default=np.inf, type=int,               help="Number of step at which training is stopped if no improvement is recorder")
     parser.add_argument("--tolerance",                      default=0,      type=float,             help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",                    action="store_true",                    help="Track training metric instead of validation metric, in case we want to overfit")
+    parser.add_argument("--max_time",                       default=np.inf, type=float,             help="Time allowed for the training, in hours.")
+
 
     # Reproducibility params
     parser.add_argument("--seed",                           default=None,   type=int, help="Random seed for numpy and tensorflow")
