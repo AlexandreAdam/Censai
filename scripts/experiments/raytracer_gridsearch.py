@@ -178,7 +178,7 @@ if __name__ == '__main__':
     parser.add_argument("--strides",                        default=2, nargs="+",           type=int,     help="Strides of downsampling and upsampling layers")
     parser.add_argument("--bottleneck_filters",             default=None, nargs="+",        type=int,     help="Number of filters of bottleneck layers. Default None, use normal scaling of filters.")
     parser.add_argument("--resampling_kernel_size",         default=None, nargs="+",        type=int,     help="Kernel size of downsampling and upsampling layers. None, use same kernel size as the others.")
-    parser.add_argument("--upsampling_interpolation",       action="store_true",                          help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
+    parser.add_argument("--upsampling_interpolation",       default=0,    nargs="+",        type=int,     help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
     parser.add_argument("--kernel_regularizer_amp",         default=1e-3, nargs="+",        type=float,   help="l2 regularization on weights")
     parser.add_argument("--kappalog",                       action="store_true",                          help="Input is log of kappa")
     parser.add_argument("--normalize",                      action="store_true",                          help="Normalize log of kappa with max and minimum values defined in definitions.py")
