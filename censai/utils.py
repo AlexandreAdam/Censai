@@ -180,7 +180,7 @@ def raytracer_residual_plot(y_true, y_pred, lens_true, lens_pred):
         axs[i, 1].axis("off")
 
         residual = np.abs(y_true[..., i] - y_pred[..., i])
-        im = axs[i, 2].imshow(residual, cmap="seismic", norm=SymLogNorm(linthresh=1e-3, base=10), origin="lower")
+        im = axs[i, 2].imshow(residual, cmap="seismic", norm=CenteredNorm(), origin="lower")
         divider = make_axes_locatable(axs[i, 2])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
