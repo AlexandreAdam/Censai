@@ -240,9 +240,9 @@ def main(args):
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} | learning rate {optim.lr(step).numpy():.2e} | "
               f"time per step {time_per_step.result():.2e} s")
         history["train_cost"].append(train_cost)
-        history["train_lens_residuals"].append(train_chi_squared)
+        history["train_lens_residuals"].append(train_chi_squared.numpy())
         history["val_cost"].append(val_cost)
-        history["val_lens_residuals"].append(val_chi_squared)
+        history["val_lens_residuals"].append(val_chi_squared.numpy())
         history["learning_rate"].append(optim.lr(step).numpy())
         history["step"].append(step)
         history["wall_time"].append(time.time() - global_start)
