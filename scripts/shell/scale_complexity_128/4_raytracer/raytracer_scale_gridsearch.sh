@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
-  --datasets $CENSAI_PATH/data/alpha128_512_hTNG_15k $CENSAI_PATH/data/alpha128_512_TNG_15k $CENSAI_PATH/data/alpha128_512_SIE_15k\
+  --datasets $CENSAI_PATH/data/alpha128_512_hTNG_15k $CENSAI_PATH/data/alpha128_512_TNG $CENSAI_PATH/data/alpha128_512_SIE_15k\
   --compression_type=GZIP\
   --strategy=uniform\
   --n_models=30\
@@ -19,14 +19,14 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --epochs=5000\
   --train_split=0.95\
   --pixels=128\
-  --initial_learning_rate 1e-3 1e-4\
-  --decay_rate 0.9 0.5\
+  --initial_learning_rate 1e-4 1e-5\
+  --decay_rate 0.5\
   --decay_steps 10000 50000 100000\
   --kernel_size 3\
-  --filters  8 16\
-  --filter_scaling 1 2\
+  --filters  16 32 64\
+  --filter_scaling 1\
   --layers 4\
-  --block_conv_layers 2 3\
+  --block_conv_layers 2\
   --strides 2\
   --resampling_kernel_size 3\
   --kappalog\
@@ -34,7 +34,7 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --block_length=1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsRT\
-  --logname_prefixe=RT128_512_grid2\
+  --logname_prefixe=RT128_512_grid3\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=1\
   --max_to_keep=3\
