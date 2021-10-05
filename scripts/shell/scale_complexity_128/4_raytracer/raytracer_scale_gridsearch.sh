@@ -21,12 +21,12 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --pixels=128\
   --initial_learning_rate 1e-4 1e-5\
   --decay_rate 0.5\
-  --decay_steps 10000 50000 100000\
-  --kernel_size 3\
-  --filters  16 32 64\
+  --decay_steps 5000 10000 \
+  --kernel_size 3 5\
+  --filters  2 4 8 16\
   --filter_scaling 1\
   --layers 4\
-  --block_conv_layers 2\
+  --block_conv_layers 1 2\
   --strides 2\
   --resampling_kernel_size 3\
   --kappalog\
