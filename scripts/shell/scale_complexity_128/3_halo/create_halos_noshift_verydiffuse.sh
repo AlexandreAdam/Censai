@@ -23,7 +23,8 @@ python $CENSAI_PATH/scripts/create_rim_dataset.py\
   --psf_sigma=0.2\
   --crop=15\
   --max_shift=0\
-  --min_theta_e=1.5\
+  --min_theta_e=2\
+  --max_theta_e=6\
   --rotate\
   --rotate_by=90\
   --shuffle_cosmos\
