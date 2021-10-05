@@ -23,7 +23,7 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --decay_rate 0.5\
   --decay_steps 5000 10000 \
   --kernel_size 3 5\
-  --filters  2 4 8 16\
+  --filters  8 16 32 64\
   --filter_scaling 1\
   --layers 4\
   --block_conv_layers 1 2\
@@ -35,7 +35,7 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --block_length=1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsRT\
-  --logname_prefixe=RT128_512_grid3\
+  --logname_prefixe=RT128_512_grid4\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=1\
   --max_to_keep=3\
