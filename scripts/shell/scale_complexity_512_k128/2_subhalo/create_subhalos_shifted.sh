@@ -19,11 +19,12 @@ python $CENSAI_PATH/scripts/create_rim_dataset.py\
   --src_pixels=128\
   --image_fov=17.425909\
   --source_fov=10\
-  --noise_rms=6e-3\
+  --noise_rms=0.01\
   --psf_sigma=0.08\
   --crop=15\
   --max_shift=1\
-  --min_theta_e=1.5\
+  --min_theta_e=2\
+  --max_theta_e=6\
   --rotate\
   --rotate_by=90\
   --shuffle_cosmos\

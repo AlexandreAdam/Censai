@@ -23,6 +23,8 @@ python $CENSAI_PATH/scripts/create_rim_dataset_analytical_kappa_maps.py\
   --noise_rms=0.01\
   --psf_sigma=0.2\
   --max_shift=0\
+  --min_theta_e=2\
+  --max_theta_e=6\
   --max_ellipticity=0.6\
   --shuffle_cosmos\
   --buffer_size=1000\
