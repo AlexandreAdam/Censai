@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-40
+#SBATCH --array=1-10
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -13,9 +13,9 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses512_hk128_TNG100_10k_verydiffuse\
   --compression_type=GZIP\
   --strategy=uniform\
-  --n_models=40\
+  --n_models=10\
   --forward_method=fft\
-  --epochs=100000\
+  --epochs=1000\
   --max_time=47\
   --optimizer ADAMAX\
   --initial_learning_rate 5e-4 1e-4\
@@ -30,8 +30,8 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --buffer_size=1000\
-  --steps 5 10\
-  --time_weights uniform linear quadratic\
+  --steps 10\
+  --time_weights quadratic\
   --adam 1\
   --upsampling_interpolation 0\
   --kappalog\
@@ -39,15 +39,15 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --filters 8 16\
   --filter_scaling 2\
   --kernel_size 3\
-  --layers 3 4 5\
+  --layers 4\
   --block_conv_layers 2\
   --kernel_size 3\
   --resampling_kernel_size 3\
   --input_kernel_size 7 11\
   --gru_kernel_size 3\
   --activation relu leaky_relu\
-  --gru_architecture concat plus\
-  --alpha 0.1 0.04\
+  --gru_architecture concat\
+  --alpha 0.1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
   --logname_prefixe=RIMSU512_hk128_TNG2nsO\
