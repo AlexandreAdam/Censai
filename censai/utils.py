@@ -167,13 +167,13 @@ def lens_residual_plot(lens_true, lens_pred, title=""):
 def raytracer_residual_plot(y_true, y_pred, lens_true, lens_pred):
     fig, axs = plt.subplots(3, 3, figsize=(12, 12))
     for i in range(2):
-        im = axs[i, 0].imshow(y_true[..., i], cmap="jet", origin="lower")
+        im = axs[i, 0].imshow(y_true[..., i], cmap="seismic", norm=CenteredNorm(), origin="lower")
         divider = make_axes_locatable(axs[i, 0])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
         axs[i, 0].axis("off")
 
-        im = axs[i, 1].imshow(y_pred[..., i], cmap="jet", origin="lower")
+        im = axs[i, 1].imshow(y_pred[..., i], cmap="seismic", norm=CenteredNorm(), origin="lower")
         divider = make_axes_locatable(axs[i, 1])
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
