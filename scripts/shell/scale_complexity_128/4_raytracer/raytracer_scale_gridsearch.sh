@@ -21,15 +21,16 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --pixels=128\
   --initial_learning_rate 1e-4 1e-5\
   --decay_rate 0.5\
-  --decay_steps 5000 10000 \
+  --decay_steps 10000 50000\
   --kernel_size 3 5\
-  --filters  8 16 32 64\
-  --filter_scaling 1\
+  --filters  16 32 64 128\
+  --filter_scaling 1 2\
   --layers 4\
-  --block_conv_layers 1 2\
+  --block_conv_layers 2\
   --strides 2\
-  --upsampling_interpolation 0 1\
-  --resampling_kernel_size 3\
+  --upsampling_interpolation 1\
+  --resampling_kernel_size 5\
+  --kernel_regularizer_amp 0\
   --kappalog\
   --initializer glorot_uniform\
   --block_length=1\
