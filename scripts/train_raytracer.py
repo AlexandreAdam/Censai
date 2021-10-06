@@ -207,7 +207,7 @@ def main(args):
             kappa_true, alpha_true = distributed_inputs
             alpha_pred = ray_tracer.call(kappa_true)
             # Lens residual
-            lens_true = phys.lens_source_func(kappa_true)
+            lens_true = phys.lens_source_func(kappa_true, w=args.source_w)
             lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)
             train_chi_squared = tf.reduce_mean(tf.square(lens_true - lens_pred))
             for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in train set
@@ -222,7 +222,7 @@ def main(args):
 
             kappa_true, alpha_true = distributed_inputs
             alpha_pred = ray_tracer.call(kappa_true)
-            lens_true = phys.lens_source_func(kappa_true)
+            lens_true = phys.lens_source_func(kappa_true, args.source_w)
             lens_pred = phys.lens_source_func_given_alpha(alpha_pred, w=args.source_w)
             val_chi_squared = tf.reduce_mean(tf.square(lens_true - lens_pred))
             for res_idx in range(min(args.n_residuals, args.batch_size)):  # Residuals in val set
@@ -305,7 +305,7 @@ if __name__ == "__main__":
     parser.add_argument("--bottleneck_filters",             default=None,             type=int,     help="Number of filters of bottleneck layers. Default None, use normal scaling of filters.")
     parser.add_argument("--resampling_kernel_size",         default=None,             type=int,     help="Kernel size of downsampling and upsampling layers. None, use same kernel size as the others.")
     parser.add_argument("--upsampling_interpolation",       action="store_true",                    help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
-    parser.add_argument("--kernel_regularizer_amp",         default=1e-3,             type=float,   help="l2 regularization on weights")
+    parser.add_argument("--kernel_regularizer_amp",         default=0,                type=float,   help="l2 regularization on weights")
     parser.add_argument("--kappalog",                       action="store_true",                    help="Input is log of kappa")
     parser.add_argument("--normalize",                      action="store_true",                    help="Normalize log of kappa with max and minimum values defined in definitions.py")
     parser.add_argument("--activation",                     default="linear",         type=str,     help="Non-linearity of layers")
