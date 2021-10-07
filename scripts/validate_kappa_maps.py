@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from astropy.visualization import ImageNormalize, LogStretch
 import os, glob
 from argparse import ArgumentParser
+import math
 
 
 def visualize(args):
@@ -44,6 +45,13 @@ def main(args):
             print(file)
             continue
 
+    good_kappa_index = np.loadtxt(output_file_path)
+    train_size = math.floor(args.train_split * good_kappa_index.size)
+    train_index = np.random.choice(good_kappa_index, size=train_size, replace=False)
+    test_index = np.array(list(set(good_kappa_index).difference(train_index)))
+    np.savetxt(fname=os.path.join(args.kappa_dir, "train_kappa.txt"), X=train_index, fmt="%d")
+    np.savetxt(fname=os.path.join(args.kappa_dir, "test_kappa.txt"), X=test_index, fmt="%d")
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -61,6 +69,8 @@ if __name__ == '__main__':
     parser.add_argument("--good_kappa_cutoff", default=1, type=float,
                              help="Threshold for the maximum value of a pixel in kappa map, below which "
                                   "we discard the map.")
+
+    parser.add_argument("--train_split", default=0.9, type=float, help="At the end of the script, split validated kappa maps into a training set and a test set")
 
     args = parser.parse_args()
 

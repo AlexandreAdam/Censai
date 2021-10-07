@@ -1,6 +1,5 @@
 import tensorflow as tf
 from censai import RayTracer, PhysicalModel
-from censai.data.alpha_tng import decode_train, decode_physical_info
 from censai.utils import nullwriter, plot_to_image, raytracer_residual_plot as residual_plot
 import os, glob, json
 import numpy as np
@@ -41,6 +40,10 @@ RAYTRACER_HPARAMS = [
 
 
 def main(args):
+    if args.v2: # overwrite decoding procedure with version 2
+        from censai.data.alpha_tng_v2 import decode_train, decode_physical_info
+    else:
+        from censai.data.alpha_tng import decode_train, decode_physical_info
     # ========= Dataset=================================================================================================
     files = []
     for dataset in args.datasets:
@@ -246,12 +249,7 @@ def main(args):
         history["learning_rate"].append(optim.lr(step).numpy())
         history["step"].append(step)
         history["wall_time"].append(time.time() - global_start)
-        # =============================================================================================================
-        # if args.profile and epoch == 1:
-        #     # redo the last training step for debugging purposes
-        #     tf.profiler.experimental.start(logdir=logdir)
-        #     cost = distributed_train_step(distributed_inputs)
-        #     tf.profiler.experimental.stop()
+
         cost = train_cost if args.track_train else val_cost
         if np.isnan(cost):
             print("Training broke the Universe")
@@ -310,6 +308,9 @@ if __name__ == "__main__":
     parser.add_argument("--normalize",                      action="store_true",                    help="Normalize log of kappa with max and minimum values defined in definitions.py")
     parser.add_argument("--activation",                     default="linear",         type=str,     help="Non-linearity of layers")
     parser.add_argument("--initializer",                    default="glorot_uniform", type=str,     help="Weight initializer")
+    # parser.add_argument("--input_kernel_size",              default=11,               type=int,     help="Input layer kernel size")
+    # parser.add_argument("--input_layer",                    action="store_true",                    help="Add a perception layer to the model (generally have large kernel)")
+
 
     # Training set params
     parser.add_argument("-b", "--batch_size",               default=10,     type=int,               help="Number of images in a batch")
@@ -328,9 +329,8 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoints",                    default=10,     type=int,               help="Save a checkpoint of the models each {%} iteration")
     parser.add_argument("--max_to_keep",                    default=3,      type=int,               help="Max model checkpoint to keep")
     parser.add_argument("--n_residuals",                    default=1,      type=int,               help="Number of residual plots to save. Add overhead at the end of an epoch only.")
-    # parser.add_argument("--profile",                        action="store_true",                    help="If added, we will profile the last training step of the first epochAnalyticalPhysicalModel")
-    parser.add_argument("--source_fov",                     default=3,      type=float,             help="Source fov for lens residuals")
-    parser.add_argument("--source_w",                       default=0.1,    type=float,             help="Width of gaussian of source gaussian")
+    parser.add_argument("--source_fov",                     default=5,      type=float,             help="Source fov for lens residuals")
+    parser.add_argument("--source_w",                       default=1,      type=float,             help="Width of gaussian of source gaussian")
     parser.add_argument("--psf_sigma",                      default=0.04,   type=float,             help="Sigma of PSF for lens resiudal")
 
     # Optimization params
@@ -347,8 +347,8 @@ if __name__ == "__main__":
 
     # Reproducibility params
     parser.add_argument("--seed",                           default=None,   type=int, help="Random seed for numpy and tensorflow")
-    parser.add_argument("--json_override",                  default=None, nargs="+",  help="A json filepath that will override every command line parameters. "
-                                                                                            "Useful for reproducibility")
+    parser.add_argument("--json_override",                  default=None, nargs="+",  help="A json filepath that will override every command line parameters. Useful for reproducibility")
+    parser.add_argument("--v2",                     action="store_true",            help="Use v2 decoding of tfrecords")
 
     args = parser.parse_args()
     if args.seed is not None:
