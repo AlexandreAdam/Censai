@@ -3,7 +3,6 @@ import numpy as np
 import math
 from censai import PhysicalModel, RIMUnet, RayTracer
 from censai.models import UnetModel
-from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 from censai.definitions import DTYPE
 import os, glob, time, json
@@ -60,6 +59,11 @@ KAPPA_MODEL_HPARAMS = SOURCE_MODEL_HPARAMS
 
 
 def main(args):
+    if args.v2: # overwrite decoding procedure with version 2
+        from censai.data.lenses_tng_v2 import decode_train, decode_physical_model_info, preprocess
+    else:
+        from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
+
     files = []
     for dataset in args.datasets:
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
@@ -242,11 +246,11 @@ def main(args):
             tape.watch(rim.kappa_model.trainable_variables)
             source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
             # mean over image residuals
-            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+            kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
             # weighted mean over time steps
-            source_cost = tf.reduce_sum(wt * source_cost, axis=0)
-            kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+            source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
+            kappa_cost = tf.reduce_sum(wt * kappa_cost1, axis=0)
             # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
@@ -256,9 +260,10 @@ def main(args):
             gradient2 = [tf.clip_by_value(grad, -10, 10) for grad in gradient2]
         optim.apply_gradients(zip(gradient1, rim.source_model.trainable_variables))
         optim.apply_gradients(zip(gradient2, rim.kappa_model.trainable_variables))
+        # Update metrics with "converged" score
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
-        source_cost = tf.reduce_sum(source_cost) / args.batch_size
-        kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
+        source_cost = tf.reduce_sum(source_cost1[-1]) / args.batch_size
+        kappa_cost = tf.reduce_sum(kappa_cost1[-1]) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
 
     def kappa_train_step(X, source, kappa):
@@ -266,17 +271,18 @@ def main(args):
             tape.watch(rim.kappa_model.trainable_variables)
             kappa_series, chi_squared = rim.call_with_source(X, source, outer_tape=tape)
             # mean over image residuals
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
             # weighted mean over time steps
-            kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+            kappa_cost = tf.reduce_sum(wt * kappa_cost1, axis=0)
             # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.kappa_model.trainable_variables)
         if args.clipping:
             gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.kappa_model.trainable_variables))
+        # Update metrics with "converged" score
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
-        kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
+        kappa_cost = tf.reduce_sum(kappa_cost1[-1]) / args.batch_size
         return cost, chi_squared, 0, kappa_cost
 
     # @tf.function
@@ -290,16 +296,16 @@ def main(args):
     def test_step(X, source, kappa ):
         source_series, kappa_series, chi_squared = rim.predict(X)
         # mean over image residuals
-        source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
-        kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+        source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+        kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
         # weighted mean over time steps
-        source_cost = tf.reduce_sum(wt * source_cost, axis=0)
-        kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+        source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
+        kappa_cost = tf.reduce_sum(wt * kappa_cost1, axis=0)
         # final cost is mean over global batch size
         cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
-        source_cost = tf.reduce_sum(source_cost) / args.batch_size
-        kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
+        source_cost = tf.reduce_sum(source_cost1[-1]) / args.batch_size
+        kappa_cost = tf.reduce_sum(kappa_cost1[-1]) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
 
     # @tf.function
@@ -365,18 +371,25 @@ def main(args):
                 epoch_source_loss.update_state([source_cost])
                 step += 1
             # last batch we make a summary of residuals
+            if args.n_residuals > 0:
+                source_pred, kappa_pred, chi_squared = rim.predict(X)
+                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
+                lam = phys.lagrange_multiplier(y_true=X, y_pred=lens_pred)
             for res_idx in range(min(args.n_residuals, args.batch_size)):
-                lens_true = X[res_idx]
-                source_true = source[res_idx]
-                kappa_true = kappa[res_idx]
-                source_pred, kappa_pred, chi_squared = rim.predict(lens_true[None, ...])
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])[0]
-                tf.summary.image(f"Residuals {res_idx}",
-                                 plot_to_image(
-                                     residual_plot(
-                                         lens_true, source_true, kappa_true, lens_pred, source_pred[-1][0],
-                                         kappa_pred[-1][0], chi_squared[-1][0]
-                                     )), step=step)
+                try:
+                    tf.summary.image(f"Residuals {res_idx}",
+                                     plot_to_image(
+                                         residual_plot(
+                                             X[res_idx],
+                                             source[res_idx],
+                                             kappa[res_idx],
+                                             lam[res_idx]*lens_pred[res_idx],
+                                             source_pred[-1][res_idx],
+                                             kappa_pred[-1][res_idx],
+                                             chi_squared[-1][res_idx]
+                                         )), step=step)
+                except ValueError:
+                    continue
 
             # ========== Validation set ===================
             val_loss.reset_states()
@@ -402,10 +415,10 @@ def main(args):
                     tf.summary.image(f"Val Residuals {res_idx}",
                                      plot_to_image(
                                          residual_plot(
-                                             lam[res_idx]*lens_true[res_idx],  # rescale intensity like it is done in the likelihood
+                                             lens_true[res_idx],  # rescale intensity like it is done in the likelihood
                                              source_true[res_idx],
                                              kappa_true[res_idx],
-                                             lens_pred[res_idx],
+                                             lam[res_idx]*lens_pred[res_idx],
                                              source_pred[-1][res_idx],
                                              kappa_pred[-1][res_idx],
                                              chi_squared[-1][res_idx]
@@ -587,6 +600,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
     parser.add_argument("--json_override",          default=None,   nargs="+",      help="A json filepath that will override every command line parameters. "
                                                                                  "Useful for reproducibility")
+    parser.add_argument("--v2",                     action="store_true",            help="Use v2 decoding of tfrecords")
 
     args = parser.parse_args()
     if args.seed is not None:

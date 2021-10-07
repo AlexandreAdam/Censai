@@ -19,8 +19,8 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 def distributed_strategy(args):
     kappa_files = glob.glob(os.path.join(args.kappa_dir, "*.fits"))
-    if os.path.exists(os.path.join(args.kappa_dir, "good_kappa.txt")):  # filter out bad data (see validate_kappa_maps script)
-        good_kappa = np.loadtxt(os.path.join(args.kappa_dir, "good_kappa.txt"))
+    if os.path.exists(os.path.join(args.kappa_dir, "train_kappa.txt")):  # filter out bad data (see validate_kappa_maps script)
+        good_kappa = np.loadtxt(os.path.join(args.kappa_dir, "train_kappa.txt"))
         kappa_ids = [int(os.path.split(kap)[-1].split("_")[1]) for kap in kappa_files]
         keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
         kappa_files = [kap_file for i, kap_file in enumerate(kappa_files) if keep_kappa[i]]
