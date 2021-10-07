@@ -22,14 +22,18 @@ class PowerSpectrum:
             mask = tf.cast(mask, DTYPE)
             masks = masks.write(index=i, value=mask)
         masks = masks.stack()[..., tf.newaxis]
+        # masks = tf.image.pad_to_bounding_box(masks, self.pixels//2, self.pixels//2, 2*self.pixels, 2*self.pixels)
         return masks
 
     def power_spectrum(self, x):
-        x_hat = tf.signal.fftshift(tf.signal.fft2d(tf.cast(x, tf.complex64)))
+        mean = tf.reduce_mean(x, axis=(1, 2, 3), keepdims=True)
+        std = tf.reduce_mean((x - mean)**2, axis=(1, 2, 3), keepdims=True)
+        x_padded = tf.image.pad_to_bounding_box((x - mean)/std, self.pixels//2, self.pixels//2, 2*self.pixels, 2*self.pixels)
+        x_hat = tf.signal.fftshift(tf.signal.fft2d(tf.cast(x_padded, tf.complex64)))
+        x_hat = tf.image.crop_to_bounding_box(x_hat, offset_height=self.pixels, offset_width=self.pixels, target_width=self.pixels, target_height=self.pixels)
         ps = tf.TensorArray(DTYPE, size=self.bins)
         for i in range(self.bins):
-            value = tf.reduce_sum(tf.abs(x_hat)**2 * self.masks[i][None, ...], axis=(1, 2, 3)) / (self.pixels//2)**2 / (4 * np.pi)
-            value = value / tf.reduce_sum(self.masks[i])
+            value = tf.reduce_sum(tf.abs(x_hat)**2 * self.masks[i][None, ...], axis=(1, 2, 3)) / tf.reduce_sum(self.masks[i])
             ps = ps.write(index=i, value=value)
         ps = tf.transpose(ps.stack())  # reshape into [batch_size, bins]
         return ps
@@ -148,17 +152,17 @@ class PowerSpectrum:
 
 
 if __name__ == '__main__':
-    ps = PowerSpectrum(bins=32, pixels=128)
-    y = tf.random.normal(shape=[1, 128, 128, 1])
+    ps = PowerSpectrum(bins=12, pixels=32)
+    y = tf.random.normal(shape=[1, 32, 32, 1])
     # y = tf.nn.relu(y)
     # y /= tf.reduce_max(y, axis=(1, 2, 3), keepdims=True)
-    _x = np.linspace(-1, 1, 128) * 10/2
+    _x = np.linspace(-1, 1, 32) * 10/2
     _x, _y = np.meshgrid(_x, _x)
     r = np.sqrt(_x**2 + _y**2)
     circle = np.cos(2 * np.pi * r / 3)
     x = 10 * tf.cast(circle[np.newaxis, ..., np.newaxis], tf.float32)
     circle2 = np.cos(2 * np.pi * r / 3)
-    # y = 10 * tf.cast(circle2[np.newaxis, ..., np.newaxis], tf.float32)
+    y = y + 10 * tf.cast(circle2[np.newaxis, ..., np.newaxis], tf.float32)
 
     # ell = ps.power_spectrum(x)
 
@@ -167,6 +171,16 @@ if __name__ == '__main__':
 
     y = tf.nn.relu(y)
     y /= tf.reduce_sum(y, axis=(1, 2, 3), keepdims=True)
+
+    # ps = PowerSpectrum(bins=5, pixels=16)
+    # x = tf.random.normal(shape=[100, 16, 16, 1])
+    # plt.imshow(tf.math.abs(tf.signal.fftshift(tf.signal.fft2d(tf.cast(x[0], tf.complex64)))))
+    # plt.colorbar()
+    # plt.show()
+    # ell = ps.power_spectrum(x)
+    # ps.plot_power_spectrum_statistics(x, 10)
+    # ps.plot_power_spectrum(x, 10)
+    # plt.show()
 
 
     # print(x.shape)
@@ -202,5 +216,43 @@ if __name__ == '__main__':
     # # ps.plot_power_spectrum_statistics(x, 10)
     # ps.plot_power_spectrum(x, 10)
     # plt.show()
-    ps.plot_cross_power_spectrum(x, y, 10)
+    # ps.plot_cross_power_spectrum(x, y, 10)
+    # plt.show()
+
+    plt.figure()
+    pixels = 32
+    from scipy.signal import correlate2d
+    x_std = np.random.normal(size=(pixels, pixels))
+    # x_std /= x_std.sum()
+    x_std = x[0, ..., 0].numpy()
+    x_std = (x_std - x_std.mean()) / x_std.std()
+    im = correlate2d(x_std, x_std, "same") #/ x_std.shape[0]**2 / (2 * np.pi)**2
+    # im_f = np.fft.fftshift(np.fft.fft2(im))
+    plt.imshow(im)
+    plt.colorbar()
+
+    import tensorflow as tf
+    x = x_std[..., None]
+    plt.figure()
+    x_padded = tf.image.pad_to_bounding_box(x, pixels//2, pixels//2, 2 *pixels, 2 * pixels)
+    plt.imshow(x_padded[..., 0])
+    plt.figure()
+    x_hat = tf.signal.fftshift(tf.signal.fft2d(tf.cast(x, tf.complex64)))
+    # x_hat = tf.image.crop_to_bounding_box(x_hat, offset_height=pixels, offset_width=pixels, target_width=pixels, target_height=pixels)
+    # P  = np.conj(x_hat) * x_hat
+    P  = np.abs(x_hat)**2 / x_hat.shape[0]**2 / (2 * np.pi)**2
+    plt.imshow(P)
+    plt.colorbar()
+    C = np.fft.ifft2(np.fft.fftshift(P))
+
+    plt.figure()
+    plt.imshow(np.abs(C))
+    plt.colorbar()
     plt.show()
+    # plt.figure()
+    # x_hat = tf.signal.fft2d(tf.cast(x - tf.reduce_mean(x, axis=(1, 2, 3), keepdims=True), tf.complex64))
+    # correlation = tf.math.conj(x_hat) * x_hat# / 128**2
+    # C = tf.signal.ifft2d(correlation)
+    # plt.imshow(tf.abs(C)[0, ..., 0])
+    # plt.colorbar()
+    # plt.show()

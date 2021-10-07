@@ -16,6 +16,7 @@ class RayTracer(tf.keras.Model):
             strides=2,
             bottleneck_filters=None,
             resampling_kernel_size=None,
+            input_kernel_size=11,
             upsampling_interpolation=False,     # use strided transposed convolution if false
             kernel_regularizer_amp=0.,
             bias_regularizer_amp=0.,            # if bias is used
@@ -25,6 +26,7 @@ class RayTracer(tf.keras.Model):
             kappalog=True,
             normalize=False,
             trainable=True,
+            input_layer=False,
             name="ray_tracer",
     ):
         super(RayTracer, self).__init__(name=name)
@@ -92,6 +94,16 @@ class RayTracer(tf.keras.Model):
             **common_params
         )
 
+        if input_layer is True:
+            self.input_layer = tf.keras.layers.Conv2D(
+                filters=filters,
+                kernel_size=input_kernel_size,
+                activation="linear",
+                **common_params
+            )
+        else:
+            self.input_layer = tf.identity
+
         if self.kappalog:
             if self.kappa_normalize:
                 self.kappa_link = tf.keras.layers.Lambda(lambda x: log_10(logkappa_normalization(x, forward=True)))
@@ -106,7 +118,7 @@ class RayTracer(tf.keras.Model):
     def call(self, kappa):
         kappa = self.kappa_link(kappa)
         skip_connections = []
-        z = kappa
+        z = self.input_layer(kappa)
         for i in range(len(self.encoding_layers)):
             c_i, z = self.encoding_layers[i](z)
             skip_connections.append(c_i)

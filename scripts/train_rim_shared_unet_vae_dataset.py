@@ -247,11 +247,11 @@ def main(args):
             tape.watch(rim.unet.trainable_variables)
             source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
             # mean over residuals
-            source_cost = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
-            kappa_cost = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+            kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
             # weighted mean over time steps
-            source_cost = tf.reduce_sum(wt * source_cost, axis=0)
-            kappa_cost = tf.reduce_sum(wt * kappa_cost, axis=0)
+            source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
+            kappa_cost = tf.reduce_sum(wt * kappa_cost1, axis=0)
             # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
@@ -259,8 +259,8 @@ def main(args):
             gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
-        source_cost = tf.reduce_sum(source_cost) / args.batch_size
-        kappa_cost = tf.reduce_sum(kappa_cost) / args.batch_size
+        source_cost = tf.reduce_sum(source_cost1[-1]) / args.batch_size
+        kappa_cost = tf.reduce_sum(kappa_cost1[-1]) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
 
     # ====== Training loop ============================================================================================
