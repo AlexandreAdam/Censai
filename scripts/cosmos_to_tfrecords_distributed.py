@@ -5,6 +5,7 @@ import galsim
 from censai.utils import _bytes_feature, _float_feature, _int64_feature
 from numpy.lib.recfunctions import append_fields
 import numpy as np
+import time
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -138,7 +139,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.store_attributes:
         vars(args)["attributes"] = ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'zphot']
-    if not os.path.isdir(args.output_dir) and THIS_WORKER <= 1:
+    if THIS_WORKER > 1:
+        time.sleep(3)
+    if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
 
     distributed_strategy(args)

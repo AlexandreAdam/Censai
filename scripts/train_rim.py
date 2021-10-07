@@ -3,7 +3,6 @@ import numpy as np
 import math
 from censai import PhysicalModel, RIM, RayTracer
 from censai.models import Model
-from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 import os, glob, time, json
 from datetime import datetime
@@ -69,6 +68,10 @@ def reduce_dict(d: dict):
 
 
 def main(args):
+    if args.v2: # overwrite decoding procedure with version 2
+        from censai.data.lenses_tng_v2 import decode_train, decode_physical_model_info, preprocess
+    else:
+        from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
     files = []
     for dataset in args.datasets:
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
@@ -77,9 +80,6 @@ def main(args):
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
                                block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-    # Read off global parameters from first example in dataset
-    for physical_params in dataset.map(decode_physical_model_info):
-        break
     # Read off global parameters from first example in dataset
     for physical_params in dataset.map(decode_physical_model_info):
         break
@@ -493,6 +493,8 @@ if __name__ == "__main__":
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
     parser.add_argument("--json_override",          default=None,   nargs="+",      help="A json filepath that will override every command line parameters. "
                                                                                  "Useful for reproducibility")
+    parser.add_argument("--v2",                     action="store_true",            help="Use v2 decoding of tfrecords")
+
 
     args = parser.parse_args()
     if args.seed is not None:
