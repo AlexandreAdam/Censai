@@ -19,13 +19,13 @@ python $CENSAI_PATH/scripts/experiments/raytracer_gridsearch.py\
   --epochs=5000\
   --train_split=0.95\
   --pixels=128\
-  --initial_learning_rate 1e-4 1e-5\
+  --initial_learning_rate 1e-5 5e-6\
   --decay_rate 0.5\
-  --decay_steps 10000 50000\
+  --decay_steps 10000 50000 5000\
   --kernel_size 3 5\
-  --filters  16 32 64 128\
-  --filter_scaling 1 2\
-  --layers 4\
+  --filters  4 8 16\
+  --filter_scaling 2 3\
+  --layers 4 5\
   --block_conv_layers 2\
   --strides 2\
   --upsampling_interpolation 1\
