@@ -22,6 +22,12 @@ def main(args):
     tf.data.experimental.save(train_dataset, args.dataset + "_train")
     tf.data.experimental.save(test_dataset, args.dataset + "_test")
 
+    with open(os.path.join(args.dataset + "_train", "dataset_size.txt")) as f:
+        f.write(f"{train_items:d}")
+
+    with open(os.path.join(args.dataset + "_test", "dataset_size.txt")) as f:
+        f.write(f"{total_items-train_items:d}")
+
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
