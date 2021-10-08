@@ -227,6 +227,8 @@ if __name__ == '__main__':
                                                                                           "checkpoint of this model if provided")
     parser.add_argument("--json_override",                  default=None,               help="A json filepath that will override every command line parameters. "
                                                                                            "Useful for reproducibility")
+    parser.add_argument("--v2",                     action="store_true",            help="Use v2 decoding of tfrecords")
+
 
     args = parser.parse_args()
     distributed_strategy(args)
