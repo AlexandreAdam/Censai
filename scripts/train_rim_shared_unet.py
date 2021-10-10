@@ -164,8 +164,12 @@ def main(args):
     wt = wt[..., tf.newaxis]  # [steps, batch]
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
-        logname = args.model_id + "_" + args.logname if args.logname is not None else args.model_id
-        model_id = args.model_id
+        if args.logname is not None:
+            logname = args.model_id + "_" + args.logname
+            model_id = args.model_id
+        else:
+            logname = args.model_id + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+            model_id = args.model_id
     elif args.logname is not None:
         logname = args.logname
         model_id = logname
