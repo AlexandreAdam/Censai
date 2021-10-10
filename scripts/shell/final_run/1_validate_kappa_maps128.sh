@@ -11,4 +11,4 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/validate_kappa_maps.py\
   --kappa_dir=$HOME/scratch/Censai/data/kappa158_TNG100_512\
   --good_kappa_cutoff=1\
-  --split_train=0.9
+  --train_split=0.9
