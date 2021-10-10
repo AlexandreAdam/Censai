@@ -12,7 +12,7 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_kappa_autoencoder_dataset.py\
   --output_dir=$HOME/scratch/Censai/data/hkappa512_TNG100_trainset/\
   --len_dataset=50000\
-  --kappa_dir=$HOME/scratch/Censai/data/hkappa612_TNG100\
+  --kappa_dir=$HOME/scratch/Censai/data/hkappa612_TNG100_512\
   --compression_type=GZIP\
   --crop=50\
   --max_shift=1.\
