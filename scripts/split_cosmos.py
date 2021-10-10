@@ -33,10 +33,10 @@ def main(args):
         for record in test_dataset:
             writer.write(record)
 
-    with open(os.path.join(train_dir, "dataset_size.txt")) as f:
+    with open(os.path.join(train_dir, "dataset_size.txt"), "w") as f:
         f.write(f"{train_items:d}")
 
-    with open(os.path.join(test_dir, "dataset_size.txt")) as f:
+    with open(os.path.join(test_dir, "dataset_size.txt"), "w") as f:
         f.write(f"{total_items-train_items:d}")
 
 
