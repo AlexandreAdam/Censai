@@ -2,7 +2,8 @@
 import tensorflow as tf
 import math
 import glob, os
-
+from censai.data.cosmos import decode_image
+from censai.utils import _bytes_feature, _int64_feature
 
 def main(args):
     files = [glob.glob(os.path.join(args.dataset, "*.tfrecords"))]
@@ -27,10 +28,20 @@ def main(args):
         os.mkdir(test_dir)
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(train_dir, "data.tfrecords"), options=options) as writer:
-        for record in train_dataset:
+        for example in train_dataset.map(decode_image):
+            features = {
+                "image": _bytes_feature(example["image"].numpy().tobytes()),
+                "height": _int64_feature(example["height"]),
+            }
+            record = tf.train.Example(features=tf.train.Features(feature=features)).SerializeToString()
             writer.write(record)
     with tf.io.TFRecordWriter(os.path.join(test_dir, "data.tfrecords"), options=options) as writer:
-        for record in test_dataset:
+        for example in test_dataset.map(decode_image):
+            features = {
+                "image": _bytes_feature(example["image"].numpy().tobytes()),
+                "height": _int64_feature(example["height"]),
+            }
+            record = tf.train.Example(features=tf.train.Features(feature=features)).SerializeToString()
             writer.write(record)
 
     with open(os.path.join(train_dir, "dataset_size.txt"), "w") as f:
