@@ -19,13 +19,24 @@ def main(args):
     train_dataset = dataset.take(train_items).shuffle(args.buffer_size)
     test_dataset = dataset.skip(train_items)
 
-    tf.data.experimental.save(train_dataset, args.dataset + "_train")
-    tf.data.experimental.save(test_dataset, args.dataset + "_test")
+    train_dir = args.dataset + "_train"
+    if not os.path.isdir(train_dir):
+        os.mkdir(train_dir)
+    test_dir = args.dataset + "_test"
+    if not os.path.isdir(test_dir):
+        os.mkdir(test_dir)
+    options = tf.io.TFRecordOptions(compression_type=args.compression_type)
+    with tf.io.TFRecordWriter(os.path.join(train_dir, "data.tfrecords"), options=options) as writer:
+        for record in train_dataset:
+            writer.write(record)
+    with tf.io.TFRecordWriter(os.path.join(test_dir, "data.tfrecords"), options=options) as writer:
+        for record in test_dataset:
+            writer.write(record)
 
-    with open(os.path.join(args.dataset + "_train", "dataset_size.txt")) as f:
+    with open(os.path.join(train_dir, "dataset_size.txt")) as f:
         f.write(f"{train_items:d}")
 
-    with open(os.path.join(args.dataset + "_test", "dataset_size.txt")) as f:
+    with open(os.path.join(test_dir, "dataset_size.txt")) as f:
         f.write(f"{total_items-train_items:d}")
 
 
