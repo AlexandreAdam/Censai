@@ -28,18 +28,18 @@ def main(args):
         os.mkdir(test_dir)
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(train_dir, "data.tfrecords"), options=options) as writer:
-        for example in train_dataset.map(decode_image):
+        for image in train_dataset.map(decode_image):
             features = {
-                "image": _bytes_feature(example["image"].numpy().tobytes()),
-                "height": _int64_feature(example["height"]),
+                "image": _bytes_feature(image.numpy().tobytes()),
+                "height": _int64_feature(image.shape[0]),
             }
             record = tf.train.Example(features=tf.train.Features(feature=features)).SerializeToString()
             writer.write(record)
     with tf.io.TFRecordWriter(os.path.join(test_dir, "data.tfrecords"), options=options) as writer:
         for example in test_dataset.map(decode_image):
             features = {
-                "image": _bytes_feature(example["image"].numpy().tobytes()),
-                "height": _int64_feature(example["height"]),
+                "image": _bytes_feature(image.numpy().tobytes()),
+                "height": _int64_feature(image.shape[0]),
             }
             record = tf.train.Example(features=tf.train.Features(feature=features)).SerializeToString()
             writer.write(record)
