@@ -294,8 +294,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
                                                                                           "checkpoint of this model if provided")
     parser.add_argument("--load_checkpoint",            default="best",              help="One of 'best', 'lastest' or the specific checkpoint index")
-    parser.add_argument("--json_override",              default=None,                help="A json filepath that will override every command line parameters. "
-                                                                                           "Useful for reproducibility")
+    parser.add_argument("--json_override",                  default=None,   nargs="+",      help="A json filepath that will override every command line parameters. Useful for reproducibility")
     parser.add_argument("--v2",                     action="store_true",            help="Use v2 decoding of tfrecords")
 
     args = parser.parse_args()

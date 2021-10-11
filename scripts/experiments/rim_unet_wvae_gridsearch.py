@@ -334,7 +334,6 @@ if __name__ == '__main__':
     # Keep these as default, they need to be in Namespace but we dont use them for this script
     parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
                                                                                           "checkpoint of this model if provided")
-    parser.add_argument("--json_override",              default=None,                help="A json filepath that will override every command line parameters. "
-                                                                                           "Useful for reproducibility")
+    parser.add_argument("--json_override", default=None, nargs="+", help="A json filepath that will override every command line parameters. Useful for reproducibility")
     args = parser.parse_args()
     distributed_strategy(args)
