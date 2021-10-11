@@ -68,6 +68,19 @@ def reduce_dict(d: dict):
 
 
 def main(args):
+    if args.seed is not None:
+        tf.random.set_seed(args.seed)
+        np.random.seed(args.seed)
+    if args.json_override is not None:
+        if isinstance(args.json_override, list):
+            files = args.json_override
+        else:
+            files = [args.json_override,]
+        for file in files:
+            with open(file, "r") as f:
+                json_override = json.load(f)
+            args_dict = vars(args)
+            args_dict.update(json_override)
     if args.v2: # overwrite decoding procedure with version 2
         from censai.data.lenses_tng_v2 import decode_train, decode_physical_model_info, preprocess
     else:
@@ -497,18 +510,6 @@ if __name__ == "__main__":
 
 
     args = parser.parse_args()
-    if args.seed is not None:
-        tf.random.set_seed(args.seed)
-        np.random.seed(args.seed)
-    if args.json_override is not None:
-        if isinstance(args.json_override, list):
-            files = args.json_override
-        else:
-            files = [args.json_override,]
-        for file in files:
-            with open(file, "r") as f:
-                json_override = json.load(f)
-            args_dict = vars(args)
-            args_dict.update(json_override)
+
 
     main(args)

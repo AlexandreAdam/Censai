@@ -49,6 +49,19 @@ KAPPA_MODEL_HPARAMS = SOURCE_MODEL_HPARAMS
 
 
 def main(args):
+    if args.seed is not None:
+        tf.random.set_seed(args.seed)
+        np.random.seed(args.seed)
+    if args.json_override is not None:
+        if isinstance(args.json_override, list):
+            files = args.json_override
+        else:
+            files = [args.json_override,]
+        for file in files:
+            with open(file, "r") as f:
+                json_override = json.load(f)
+            args_dict = vars(args)
+            args_dict.update(json_override)
     if args.raytracer is not None:
         with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
             raytracer_hparams = json.load(f)
@@ -542,18 +555,6 @@ if __name__ == "__main__":
                                                                                  "Useful for reproducibility")
 
     args = parser.parse_args()
-    if args.seed is not None:
-        tf.random.set_seed(args.seed)
-        np.random.seed(args.seed)
-    if args.json_override is not None:
-        if isinstance(args.json_override, list):
-            files = args.json_override
-        else:
-            files = [args.json_override,]
-        for file in files:
-            with open(file, "r") as f:
-                json_override = json.load(f)
-            args_dict = vars(args)
-            args_dict.update(json_override)
+
 
     main(args)
