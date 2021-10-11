@@ -234,7 +234,6 @@ if __name__ == '__main__':
     parser.add_argument("--bottleneck_kernel_size",                     default=None, nargs="+",  type=int)
     parser.add_argument("--bottleneck_filters",                         default=None, nargs="+",  type=int)
     parser.add_argument("--resampling_kernel_size",                     default=None, nargs="+",  type=int)
-    parser.add_argument("--input_kernel_size",                          default=11,   nargs="+",  type=int)
     parser.add_argument("--gru_kernel_size",                            default=None, nargs="+",  type=int)
     parser.add_argument("--input_kernel_size",                          default=11,   nargs="+",  type=int)
     parser.add_argument("--upsampling_interpolation",                   default=0,    nargs="+",  type=int)
