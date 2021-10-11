@@ -170,12 +170,12 @@ if __name__ == '__main__':
 
     # Model hyper parameters
     parser.add_argument("--pixels",                         required=True,                  type=int,     help="Size of input tensors, need to match dataset size!!")
-    parser.add_argument("--kernel_size",                    default=3, nargs="+",           type=int,     help="Main kernel size of U-net")
+    parser.add_argument("--kernel_size",                    default=3,  nargs="+",           type=int,     help="Main kernel size of U-net")
     parser.add_argument("--filters",                        default=32, nargs="+",          type=int,     help="Number of filters of conv layers")
-    parser.add_argument("--filter_scaling",                 default=1, nargs="+",           type=float,   help="Scaling of the number of filters at each layers (1=no scaling)")
-    parser.add_argument("--layers",                         default=2, nargs="+",           type=int,     help="Number of layers of Unet (number of downsampling and upsampling")
-    parser.add_argument("--block_conv_layers",              default=2, nargs="+",           type=int,     help="Number of convolutional layers in a unet layer")
-    parser.add_argument("--strides",                        default=2, nargs="+",           type=int,     help="Strides of downsampling and upsampling layers")
+    parser.add_argument("--filter_scaling",                 default=1,  nargs="+",           type=float,   help="Scaling of the number of filters at each layers (1=no scaling)")
+    parser.add_argument("--layers",                         default=2,  nargs="+",           type=int,     help="Number of layers of Unet (number of downsampling and upsampling")
+    parser.add_argument("--block_conv_layers",              default=2,  nargs="+",           type=int,     help="Number of convolutional layers in a unet layer")
+    parser.add_argument("--strides",                        default=2,  nargs="+",           type=int,     help="Strides of downsampling and upsampling layers")
     parser.add_argument("--bottleneck_filters",             default=None, nargs="+",        type=int,     help="Number of filters of bottleneck layers. Default None, use normal scaling of filters.")
     parser.add_argument("--resampling_kernel_size",         default=None, nargs="+",        type=int,     help="Kernel size of downsampling and upsampling layers. None, use same kernel size as the others.")
     parser.add_argument("--upsampling_interpolation",       default=0,    nargs="+",        type=int,     help="True: Use Bilinear interpolation for upsampling, False use Fractional Striding Convolution")
@@ -225,10 +225,9 @@ if __name__ == '__main__':
     # Keep these as default, they need to be in Namespace but we dont use them for this script
     parser.add_argument("--model_id",                       default="None",              help="Start training from previous "
                                                                                           "checkpoint of this model if provided")
-    parser.add_argument("--json_override",                  default=None,               help="A json filepath that will override every command line parameters. "
+    parser.add_argument("--json_override",                  default=None,                   help="A json filepath that will override every command line parameters. "
                                                                                            "Useful for reproducibility")
-    parser.add_argument("--v2",                     action="store_true",            help="Use v2 decoding of tfrecords")
-
+    parser.add_argument("--v2",                             action="store_true",            help="Use v2 decoding of tfrecords")
 
     args = parser.parse_args()
     distributed_strategy(args)
