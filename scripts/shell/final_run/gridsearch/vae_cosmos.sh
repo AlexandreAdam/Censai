@@ -36,8 +36,8 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --l2_bottleneck_decay_steps=10000\
   --staircase\
   --clipping\
-  --patience=60\
-  --tolerance=0.01\
+  --patience=100\
+  --tolerance=0.0\
   --block_length=1\
   --layers 3 4\
   --conv_layers 2 3\
