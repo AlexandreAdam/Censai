@@ -9,7 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/plot_vae_first_stage_results.py\
-  --model_prefixe=VAE1_cosmos_HPARAMS_1\
+  --model_prefixe=VAE1_COSMOS_O\
   --dataset=$CENSAI_PATH/data/cosmos_23.5_finalrun_train/\
   --type=cosmos\
   --batch_size=30\
