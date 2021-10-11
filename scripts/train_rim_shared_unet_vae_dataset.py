@@ -207,11 +207,18 @@ def main(args):
 
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
-        logname = args.model_id
+        if args.logname is not None:
+            logname = args.model_id + "_" + args.logname
+            model_id = args.model_id
+        else:
+            logname = args.model_id + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+            model_id = args.model_id
     elif args.logname is not None:
         logname = args.logname
+        model_id = logname
     else:
         logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        model_id = logname
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
         if not os.path.isdir(logdir):
@@ -222,6 +229,7 @@ def main(args):
     # ===== Make sure directory and checkpoint manager are created to save model ===================================
     if args.model_dir.lower() != "none":
         checkpoints_dir = os.path.join(args.model_dir, logname)
+        old_checkpoints_dir = os.path.join(args.model_dir, model_id)  # in case they differ we load model from a different directory
         if not os.path.isdir(checkpoints_dir):
             os.mkdir(checkpoints_dir)
             with open(os.path.join(checkpoints_dir, "script_params.json"), "w") as f:
@@ -233,11 +241,13 @@ def main(args):
                 hparams_dict = {key: vars(args)[key] for key in RIM_HPARAMS}
                 json.dump(hparams_dict, f, indent=4)
         ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.unet)
-        checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
+        checkpoint_manager = tf.train.CheckpointManager(ckpt, old_checkpoints_dir, max_to_keep=args.max_to_keep)
         save_checkpoint = True
         # ======= Load model if model_id is provided ===============================================================
         if args.model_id.lower() != "none":
             checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
+        if old_checkpoints_dir != checkpoints_dir:  # save progress in another directory.
+            checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
     else:
         save_checkpoint = False
     # =================================================================================================================
