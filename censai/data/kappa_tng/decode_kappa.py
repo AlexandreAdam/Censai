@@ -32,7 +32,14 @@ def decode_einstein_radii_info(record_bytes):
 
 
 def decode_shape(record_bytes):
-    example = decode_all(record_bytes)
+    example = tf.io.parse_single_example(
+          # Data
+          record_bytes,
+          # Schema
+          features={
+              'kappa': tf.io.FixedLenFeature([], tf.string),
+              'kappa pixels': tf.io.FixedLenFeature([], tf.int64),
+          })
     return example["kappa pixels"]
 
 

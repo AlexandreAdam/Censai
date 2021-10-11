@@ -163,11 +163,12 @@ def uniform_grid_search(args):
         nicknames = []
         params = []
         for p in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS:
-            if len(args_dict[p]) > 1:
-                # this way, numpy does not cast int to int64 or float to float32
-                args_dict[p] = args_dict[p][np.random.choice(range(len(args_dict[p])))]
-                nicknames.append(PARAMS_NICKNAME[p])
-                params.append(args_dict[p])
+            if isinstance(args_dict[p], list):
+                if len(args_dict[p]) > 1:
+                    # this way, numpy does not cast int to int64 or float to float32
+                    args_dict[p] = args_dict[p][np.random.choice(range(len(args_dict[p])))]
+                    nicknames.append(PARAMS_NICKNAME[p])
+                    params.append(args_dict[p])
         param_str = "_" + "_".join([f"{nickname}{param}" for nickname, param in zip(nicknames, params)])
         args_dict.update({"logname": args.logname_prefixe + "_" + f"{gridsearch_id:03d}" + param_str + "_" + DATE})
         yield new_args
