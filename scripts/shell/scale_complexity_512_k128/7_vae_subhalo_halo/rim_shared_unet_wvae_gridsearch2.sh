@@ -40,4 +40,4 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_wvae_gridsearch.py\
   --max_to_keep=3\
   --n_residuals=5\
   --seed 1 2 3\
-  --json_override=$CENSAI_PATH/models/RIMSU512_hk128_TNG2nsO_008_F16_IK7_NLrelu_82_B10_lr0.0005_dr0.5_ds10000_211005114812/unet_hparams.json $CENSAI_PATH/models/RIMSU512_hk128_TNG2nsO_008_F16_IK7_NLrelu_82_B10_lr0.0005_dr0.5_ds10000_211005114812/rim_hparams.json
+  --json_override $CENSAI_PATH/models/RIMSU512_hk128_TNG2nsO_008_F16_IK7_NLrelu_82_B10_lr0.0005_dr0.5_ds10000_211005114812/unet_hparams.json $CENSAI_PATH/models/RIMSU512_hk128_TNG2nsO_008_F16_IK7_NLrelu_82_B10_lr0.0005_dr0.5_ds10000_211005114812/rim_hparams.json
