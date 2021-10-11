@@ -48,7 +48,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size",                 default=1,          type=int,    help="Number of examples worked out in a single pass by a worker")
     parser.add_argument("--kappa_datasets",             required=True,      nargs="+",              help="Path to kappa tfrecords directories")
     parser.add_argument("--kappa_datasets_weights",     default=None,       nargs="+", type=float,  help="How much to sample from a dataset vs another. Must sum to 1/")
-    parser.add_argument("--output_dir",                  required=True,     help="Path where tfrecords are stored")
+    parser.add_argument("--output_dir",                 required=True,      help="Path where tfrecords are stored")
     parser.add_argument("--compression_type",           default="GZIP",     help="Default is no compression. Use 'GZIP' to compress data")
     parser.add_argument("--shard_size",                 default=1000,       type=int,   help="Number of example stored in a shard")
 
