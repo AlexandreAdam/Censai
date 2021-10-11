@@ -9,8 +9,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_alpha_labels_v2.py\
-  --kappa_datasets $CENSAI_PATH/data/kappa512_TNG100_trainset $CENSAI_PATH/data/hkappa512_TNG100_trainset\
-  --kappa_datasets_weights 0.5 0.5\
+  --kappa_datasets $CENSAI_PATH/data/kappa512_TNG100_trainset $CENSAI_PATH/data/hkappa512_TNG100_trainset $CENSAI_PATH/data/kappa512_VAE_trainset/\
   --output_dir=$HOME/scratch/Censai/data/alpha512_TNG100_trainset\
   --compression_type=GZIP\
   --batch=20\

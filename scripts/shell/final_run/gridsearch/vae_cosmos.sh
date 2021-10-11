@@ -36,16 +36,16 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --l2_bottleneck_decay_steps=10000\
   --staircase\
   --clipping\
-  --patience=40\
-  --tolerance=0.01\
+  --patience=100\
+  --tolerance=0.0\
   --block_length=1\
   --layers 3 4\
   --conv_layers 3 4\
   --filter_scaling 2\
   --filters 16 32\
   --kernel_size 3\
-  --kernel_reg_amp=1e-4\
-  --bias_reg_amp=1e-4\
+  --kernel_reg_amp=0\
+  --bias_reg_amp=0\
   --activation leaky_relu bipolar_relu\
   --batch_norm 0\
   --latent_size 64 84 128 \
