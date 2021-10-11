@@ -63,5 +63,12 @@ def preprocess_image(image):
 
 
 def decode_shape(record_bytes):
-    example = decode_all(record_bytes)
+    example = tf.io.parse_single_example(
+          # Data
+          record_bytes,
+          # Schema
+          features={
+              'image': tf.io.FixedLenFeature([], tf.string),
+              'height': tf.io.FixedLenFeature([], tf.int64),
+          })
     return example['height']
