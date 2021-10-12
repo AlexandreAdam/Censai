@@ -25,7 +25,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --batch_size 5 10\
+  --batch_size 1\
   --train_split=0.95\
   --total_items 10000\
   --block_length=1\
@@ -36,7 +36,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --upsampling_interpolation 0\
   --kappalog\
   --source_link lrelu4p\
-  --filters 8 16\
+  --filters 8\
   --filter_scaling 2\
   --kernel_size 3\
   --layers 4\

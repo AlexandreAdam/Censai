@@ -20,7 +20,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --optimizer ADAMAX\
   --initial_learning_rate 1e-4\
   --decay_rate 0.9\
-  --decay_steps 10000\
+  --decay_steps 20000\
   --staircase\
   --clipping\
   --patience=40\
