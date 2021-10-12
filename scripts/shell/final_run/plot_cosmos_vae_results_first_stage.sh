@@ -15,4 +15,5 @@ python $CENSAI_PATH/scripts/plot_vae_first_stage_results.py\
   --batch_size=30\
   --sampling_size=81\
   --n_plots=5\
-  --seed=42
+  --seed=42\
+  --cache=$SLURM_TMPDIR/cache
