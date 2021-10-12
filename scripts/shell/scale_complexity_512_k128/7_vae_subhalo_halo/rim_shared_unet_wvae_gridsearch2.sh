@@ -28,9 +28,9 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_wvae_gridsearch.py\
   --source_fov=8\
   --noise_rms=0.05\
   --psf_sigma=0.1\
-  --initial_learning_rate 1e-4 1e-5\
-  --decay_rate 0.5\
-  --decay_steps 10000 50000\
+  --initial_learning_rate 1e-4\
+  --decay_rate 0.\
+  --decay_steps 10000\
   --optimizer ADAM\
   --clipping\
   --logdir=$CENSAI_PATH/logsSC2\

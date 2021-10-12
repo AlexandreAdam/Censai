@@ -117,7 +117,7 @@ class RIMSharedUnet:
         batch_size = lensed_image.shape[0]
         source, kappa, states = self.initial_states(batch_size)
 
-        source_series = tf.TensorArray(DTYPE, size=self.steps)  # equivalent to empty list and append, but using tensorflow
+        source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in range(self.steps):
@@ -139,6 +139,36 @@ class RIMSharedUnet:
         chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
+    @tf.function
+    def call_function(self, lensed_image):
+        """
+        Used in training. Return linked kappa and source maps.
+
+        This method use the tensorflow function autograph decorator, which enables us to use tf.gradients instead
+        of creating a tape at each time steps. Potentially faster, but also memory hungry because for loop is unrolled
+        when the graph is created.
+        """
+        batch_size = lensed_image.shape[0]
+        source, kappa, states = self.initial_states(batch_size)
+
+        source_series = tf.TensorArray(DTYPE, size=self.steps)
+        kappa_series = tf.TensorArray(DTYPE, size=self.steps)
+        chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        for current_step in range(self.steps):
+            log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+            cost = tf.reduce_mean(log_likelihood)
+            source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
+            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
+            source_series = source_series.write(index=current_step, value=source)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
+
     def predict(self, lensed_image):
         """
         Used in inference. Return physical kappa and source maps.
@@ -146,7 +176,7 @@ class RIMSharedUnet:
         batch_size = lensed_image.shape[0]
         source, kappa, states = self.initial_states(batch_size)
 
-        source_series = tf.TensorArray(DTYPE, size=self.steps)  # equivalent to empty list and append, but using tensorflow
+        source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in range(self.steps):

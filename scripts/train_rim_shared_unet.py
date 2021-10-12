@@ -225,7 +225,10 @@ def main(args):
     def train_step(X, source, kappa):
         with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
-            source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
+            if args.unroll_time_steps:
+                source_series, kappa_series, chi_squared = rim.call_function(X)
+            else:
+                source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
             # mean over image residuals
             source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
             kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
@@ -517,6 +520,7 @@ if __name__ == "__main__":
     parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
     parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
+    parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

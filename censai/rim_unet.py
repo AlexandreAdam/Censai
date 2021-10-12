@@ -130,8 +130,30 @@ class RIMUnet:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source),
-                                                            kappa=self.kappa_link(kappa))
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
+
+    @tf.function
+    def call_function(self, lensed_image):
+        batch_size = lensed_image.shape[0]
+        source, source_states, kappa, kappa_states = self.initial_states(batch_size)
+
+        source_series = tf.TensorArray(DTYPE, size=self.steps)
+        kappa_series = tf.TensorArray(DTYPE, size=self.steps)
+        chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        for current_step in range(self.steps):
+            log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+            cost = tf.reduce_mean(log_likelihood)
+            source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
+            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
+            source_series = source_series.write(index=current_step, value=source)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
         chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
