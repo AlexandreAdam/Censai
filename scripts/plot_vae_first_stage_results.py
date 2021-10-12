@@ -24,7 +24,7 @@ def main(args):
     for pixels in dataset.map(decode_shape):
         break
     vars(args).update({"pixels": int(pixels)})
-    dataset = dataset.map(decode).map(preprocess).batch(args.batch_size)
+    dataset = dataset.map(decode).map(preprocess).shuffle(args.buffer_size).batch(args.batch_size).take(args.n_plots).cache(args.cache)
 
     model_list = glob.glob(os.path.join(os.getenv("CENSAI_PATH"), "models", args.model_prefixe + "*"))
     for model in model_list:
@@ -51,8 +51,8 @@ def main(args):
             fig.suptitle(model_name)
             fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_sampling_" + model_name + "_" + args.output_postfixe + f"_{batch:02d}.png"))
 
-            if batch == args.n_plots-1:
-                break
+            # if batch == args.n_plots-1:
+            #     break
 
 
 if __name__ == '__main__':
@@ -68,6 +68,8 @@ if __name__ == '__main__':
     parser.add_argument("--block_length",       default=1,          type=int,          help="Number of example to read from tfrecords concurently")
     parser.add_argument("--compression_type",   default=None,                           help="Compression type used to write data. Default assumes no compression.")
     parser.add_argument("--seed",               default=None,       type=int)
+    parser.add_argument("--buffer_size",        default=10000,      type=int,           help="Buffer size of dataset shuffle")
+    parser.add_argument("--cache",              default=None,                           help="Path ot cache file")
 
     args = parser.parse_args()
 
