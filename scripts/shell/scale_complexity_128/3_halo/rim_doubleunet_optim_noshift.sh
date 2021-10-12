@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
-  --datasets $CENSAI_PATH/data/lenses128_TNG100_10k_verydiffuse\
+  --datasets $CENSAI_PATH/data/lenses128_hTNG100_10k_verydiffuse\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=32\

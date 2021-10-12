@@ -14,14 +14,13 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --compression_type=GZIP\
   --strategy=uniform\
   --n_models=10\
-  --forward_method=unet\
-  --raytracer=$CENSAI_PATH/models/RT128_512_grid4_010_FS2.0_K3_F16_42_lr0.0001_ds50000_211006132142\
+  --forward_method=fft\
   --epochs=1000\
   --max_time=47\
   --optimizer ADAMAX\
-  --initial_learning_rate 5e-4 1e-4\
-  --decay_rate 1 0.9 0.8 0.5\
-  --decay_steps 1000 5000 10000\
+  --initial_learning_rate 1e-4\
+  --decay_rate 0.9\
+  --decay_steps 20000\
   --staircase\
   --clipping\
   --patience=40\
@@ -47,11 +46,13 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --input_kernel_size 7 11\
   --gru_kernel_size 3\
   --activation relu leaky_relu\
-  --gru_architecture concat\
+  --gru_architecture plus\
   --alpha 0.1\
+  --source_init=1\
+  --kappa_init=0.1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
-  --logname_prefixe=RIMSU128_hTNGnsvdO\
+  --logname_prefixe=RIMSU128_hTNG2nsvdO_Sinit1\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
