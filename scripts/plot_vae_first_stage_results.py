@@ -46,13 +46,12 @@ def main(args):
             fig = reconstruction_plot(images, y_pred)
             fig.suptitle(model_name)
             fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_reconstruction_" + model_name + "_" + args.output_postfixe + f"_{batch:02d}.png"))
+            fig.clf()
             y_pred = vae.sample(args.sampling_size)
             fig = sampling_plot(y_pred)
             fig.suptitle(model_name)
             fig.savefig(os.path.join(os.getenv("CENSAI_PATH"), "results", "vae_sampling_" + model_name + "_" + args.output_postfixe + f"_{batch:02d}.png"))
-
-            # if batch == args.n_plots-1:
-            #     break
+            fig.clf()
 
 
 if __name__ == '__main__':
