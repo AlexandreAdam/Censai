@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-18
+#SBATCH --array=1-10
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -14,12 +14,12 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --compression_type=GZIP\
   --strategy=uniform\
   --epochs=1000\
-  --n_models=18\
+  --n_models=10\
   --batch_size 20\
   --train_split=0.9\
   --total_items 50000\
   --optimizer Adam\
-  --initial_learning_rate 1e-4\
+  --initial_learning_rate 1e-4 5e-5\
   --decay_rate 0.5\
   --decay_steps=50000\
   --staircase\
@@ -40,16 +40,17 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --patience=40\
   --tolerance=0.01\
   --block_length=1\
-  --layers 4 5 6\
+  --layers 4\
   --conv_layers 2\
-  --filter_scaling 2\
+  --filter_scaling 1\
   --filters 16\
-  --kernel_size 3\
+  --kernel_size 5\
+  --strides 4\
   --kernel_reg_amp=0\
   --bias_reg_amp=0\
   --activation leaky_relu\
   --batch_norm 0\
-  --latent_size 56 84 256\
+  --latent_size 84 256 512\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR\
   --logname_prefixe=VAE1_hk512O\
