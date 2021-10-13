@@ -11,4 +11,4 @@ __pycache__
 wandb
 logs
 *.out
-
+*.h5
