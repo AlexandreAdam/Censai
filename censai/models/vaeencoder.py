@@ -17,7 +17,8 @@ class VAEEncoder(tf.keras.Model):
             latent_size=16,
             batch_norm=False,
             activation="relu",
-            dropout_rate=None
+            dropout_rate=None,
+            strides=2
     ):
         super(VAEEncoder, self).__init__()
         common_params = {"padding": "same",
@@ -45,6 +46,7 @@ class VAEEncoder(tf.keras.Model):
                     activation=activation,
                     batch_norm=batch_norm,
                     dropout_rate=dropout_rate,
+                    strides=strides,
                     **common_params
                 )
             )

@@ -19,14 +19,14 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --train_split=0.9\
   --total_items 50000\
   --optimizer Adam\
-  --initial_learning_rate 1e-3 5e-4 1e-4\
+  --initial_learning_rate 1e-4\
   --decay_rate 0.5\
   --decay_steps=50000\
   --staircase\
   --beta_init 0.1\
-  --beta_end_value 0.3 0.5 1\
+  --beta_end_value 0.5 1\
   --beta_decay_power 1\
-  --beta_decay_steps 100000 200000\
+  --beta_decay_steps 10000 50000\
   --beta_cyclical 0\
   --skip_strength_init 0\
   --skip_strength_end_value=0.\
@@ -40,8 +40,8 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --patience=40\
   --tolerance=0.01\
   --block_length=1\
-  --layers 4\
-  --conv_layers 1 2\
+  --layers 4 5 6\
+  --conv_layers 2\
   --filter_scaling 2\
   --filters 16\
   --kernel_size 3\
