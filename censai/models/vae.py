@@ -39,7 +39,7 @@ class VAE(tf.keras.Model):
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
         b_filters = filters * int(filter_scaling ** layers)
-        pix = pixels//2 ** layers
+        pix = pixels//strides ** layers
         mlp_bottleneck = b_filters * pix**2
         self.decoder = Decoder(
             mlp_bottleneck=mlp_bottleneck,
