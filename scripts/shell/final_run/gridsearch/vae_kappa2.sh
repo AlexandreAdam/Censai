@@ -24,9 +24,9 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --decay_steps=50000\
   --staircase\
   --beta_init 0.1\
-  --beta_end_value 0.3 0.5 1\
+  --beta_end_value 0.5 1\
   --beta_decay_power 1\
-  --beta_decay_steps 100000 200000\
+  --beta_decay_steps 10000 50000\
   --beta_cyclical 0\
   --skip_strength_init 0\
   --skip_strength_end_value=0.\
@@ -45,7 +45,7 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --filter_scaling 1\
   --filters 16\
   --kernel_size 5\
-  --stride 4\
+  --strides 4\
   --kernel_reg_amp=0\
   --bias_reg_amp=0\
   --activation leaky_relu\
