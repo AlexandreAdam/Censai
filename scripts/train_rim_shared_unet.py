@@ -217,7 +217,16 @@ def main(args):
         if args.model_id.lower() != "none":
             checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
         if old_checkpoints_dir != checkpoints_dir:  # save progress in another directory.
+            # reset optimizer
+            optim = tf.keras.optimizers.deserialize(
+                {
+                    "class_name": args.optimizer,
+                    'config': {"learning_rate": learning_rate_schedule}
+                }
+            )
+            ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.unet)
             checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
+
     else:
         save_checkpoint = False
     # =================================================================================================================
@@ -446,7 +455,7 @@ def main(args):
             break
         if epoch > 0:  # First epoch is always very slow and not a good estimate of an epoch time.
             estimated_time_for_epoch = time.time() - epoch_start
-        if optim.lr(step).numpy() < 1e-9:
+        if optim.lr(step).numpy() < 1e-8:
             print("Reached learning rate limit")
             break
     print(f"Finished training after {(time.time() - global_start)/3600:.3f} hours.")
