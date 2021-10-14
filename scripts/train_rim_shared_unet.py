@@ -15,11 +15,11 @@ from datetime import datetime
 # In fact, using multiple gpus means one should at least multiply the batch size by the number of gpus introduced,
 # and optimize hyperparameters accordingly (learning rate should be scaled similarly).
 # """
-# gpus = tf.config.list_physical_devices('GPU')
-# if len(gpus) == 1:
-#     STRATEGY = tf.distribute.OneDeviceStrategy(device="/gpu:0")
-# elif len(gpus) > 1:
-#     STRATEGY = tf.distribute.MirroredStrategy()
+gpus = tf.config.list_physical_devices('GPU')
+if len(gpus) == 1:
+    STRATEGY = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+elif len(gpus) > 1:
+    STRATEGY = tf.distribute.MirroredStrategy()
 
 RIM_HPARAMS = [
     "adam",
@@ -93,88 +93,88 @@ def main(args):
         .shuffle(buffer_size=args.buffer_size).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     val_dataset = dataset.skip(math.floor(args.train_split * args.total_items))\
         .take(math.ceil((1 - args.train_split) * args.total_items)).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
-    # train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
-    # val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
-    # with STRATEGY.scope():  # Replicate ops accross gpus
-    if args.raytracer is not None:
-        with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
-            raytracer_hparams = json.load(f)
-        raytracer = RayTracer(**raytracer_hparams)
-        # load last checkpoint in the checkpoint directory
-        checkpoint = tf.train.Checkpoint(net=raytracer)
-        manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
-        checkpoint.restore(manager.latest_checkpoint).expect_partial()
-    else:
-        raytracer = None
-    phys = PhysicalModel(
-        pixels=physical_params["pixels"].numpy(),
-        kappa_pixels=physical_params["kappa pixels"].numpy(),
-        src_pixels=physical_params["src pixels"].numpy(),
-        image_fov=physical_params["image fov"].numpy(),
-        kappa_fov=physical_params["kappa fov"].numpy(),
-        src_fov=physical_params["source fov"].numpy(),
-        method=args.forward_method,
-        noise_rms=physical_params["noise rms"].numpy(),
-        raytracer=raytracer,
-        psf_sigma=physical_params["psf sigma"].numpy()
-    )
+    train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
+    val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
+    with STRATEGY.scope():  # Replicate ops accross gpus
+        if args.raytracer is not None:
+            with open(os.path.join(args.raytracer, "ray_tracer_hparams.json"), "r") as f:
+                raytracer_hparams = json.load(f)
+            raytracer = RayTracer(**raytracer_hparams)
+            # load last checkpoint in the checkpoint directory
+            checkpoint = tf.train.Checkpoint(net=raytracer)
+            manager = tf.train.CheckpointManager(checkpoint, directory=args.raytracer, max_to_keep=3)
+            checkpoint.restore(manager.latest_checkpoint).expect_partial()
+        else:
+            raytracer = None
+        phys = PhysicalModel(
+            pixels=physical_params["pixels"].numpy(),
+            kappa_pixels=physical_params["kappa pixels"].numpy(),
+            src_pixels=physical_params["src pixels"].numpy(),
+            image_fov=physical_params["image fov"].numpy(),
+            kappa_fov=physical_params["kappa fov"].numpy(),
+            src_fov=physical_params["source fov"].numpy(),
+            method=args.forward_method,
+            noise_rms=physical_params["noise rms"].numpy(),
+            raytracer=raytracer,
+            psf_sigma=physical_params["psf sigma"].numpy()
+        )
 
-    unet = SharedUnetModel(
-        filters=args.filters,
-        filter_scaling=args.filter_scaling,
-        kernel_size=args.kernel_size,
-        layers=args.layers,
-        block_conv_layers=args.block_conv_layers,
-        strides=args.strides,
-        bottleneck_kernel_size=args.bottleneck_kernel_size,
-        bottleneck_filters=args.bottleneck_filters,
-        resampling_kernel_size=args.resampling_kernel_size,
-        input_kernel_size=args.input_kernel_size,
-        gru_kernel_size=args.gru_kernel_size,
-        upsampling_interpolation=args.upsampling_interpolation,
-        kernel_l2_amp=args.kernel_l2_amp,
-        bias_l2_amp=args.bias_l2_amp,
-        kernel_l1_amp=args.kernel_l1_amp,
-        bias_l1_amp=args.bias_l1_amp,
-        activation=args.activation,
-        alpha=args.alpha,
-        initializer=args.initializer,
-        batch_norm=args.batch_norm,
-        dropout_rate=args.dropout_rate
-    )
-    rim = RIMSharedUnet(
-        physical_model=phys,
-        unet=unet,
-        steps=args.steps,
-        adam=args.adam,
-        kappalog=args.kappalog,
-        source_link=args.source_link,
-        kappa_normalize=args.kappa_normalize,
-        kappa_init=args.kappa_init,
-        source_init=args.source_init
-    )
-    learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=args.initial_learning_rate,
-        decay_rate=args.decay_rate,
-        decay_steps=args.decay_steps,
-        staircase=args.staircase
-    )
-    optim = tf.keras.optimizers.deserialize(
-        {
-            "class_name": args.optimizer,
-            'config': {"learning_rate": learning_rate_schedule}
-        }
-    )
-    # weights for time steps in the loss function
-    if args.time_weights == "uniform":
-        wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
-    elif args.time_weights == "linear":
-        wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
-    elif args.time_weights == "quadratic":
-        wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1)**2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
-    else:
-        raise ValueError("time_weights must be in ['uniform', 'linear', 'quadratic']")
-    wt = wt[..., tf.newaxis]  # [steps, batch]
+        unet = SharedUnetModel(
+            filters=args.filters,
+            filter_scaling=args.filter_scaling,
+            kernel_size=args.kernel_size,
+            layers=args.layers,
+            block_conv_layers=args.block_conv_layers,
+            strides=args.strides,
+            bottleneck_kernel_size=args.bottleneck_kernel_size,
+            bottleneck_filters=args.bottleneck_filters,
+            resampling_kernel_size=args.resampling_kernel_size,
+            input_kernel_size=args.input_kernel_size,
+            gru_kernel_size=args.gru_kernel_size,
+            upsampling_interpolation=args.upsampling_interpolation,
+            kernel_l2_amp=args.kernel_l2_amp,
+            bias_l2_amp=args.bias_l2_amp,
+            kernel_l1_amp=args.kernel_l1_amp,
+            bias_l1_amp=args.bias_l1_amp,
+            activation=args.activation,
+            alpha=args.alpha,
+            initializer=args.initializer,
+            batch_norm=args.batch_norm,
+            dropout_rate=args.dropout_rate
+        )
+        rim = RIMSharedUnet(
+            physical_model=phys,
+            unet=unet,
+            steps=args.steps,
+            adam=args.adam,
+            kappalog=args.kappalog,
+            source_link=args.source_link,
+            kappa_normalize=args.kappa_normalize,
+            kappa_init=args.kappa_init,
+            source_init=args.source_init
+        )
+        learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=args.initial_learning_rate,
+            decay_rate=args.decay_rate,
+            decay_steps=args.decay_steps,
+            staircase=args.staircase
+        )
+        optim = tf.keras.optimizers.deserialize(
+            {
+                "class_name": args.optimizer,
+                'config': {"learning_rate": learning_rate_schedule}
+            }
+        )
+        # weights for time steps in the loss function
+        if args.time_weights == "uniform":
+            wt = tf.ones(shape=(args.steps), dtype=DTYPE) / args.steps
+        elif args.time_weights == "linear":
+            wt = 2 * (tf.range(args.steps, dtype=DTYPE) + 1) / args.steps / (args.steps + 1)
+        elif args.time_weights == "quadratic":
+            wt = 6 * (tf.range(args.steps, dtype=DTYPE) + 1)**2 / args.steps / (args.steps + 1) / (2 * args.steps + 1)
+        else:
+            raise ValueError("time_weights must be in ['uniform', 'linear', 'quadratic']")
+        wt = wt[..., tf.newaxis]  # [steps, batch]
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         if args.logname is not None:
@@ -247,15 +247,15 @@ def main(args):
         kappa_cost = tf.reduce_sum(kappa_cost1[-1]) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
 
-    # @tf.function
-    # def distributed_train_step(dist_inputs):
-    #     per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(train_step, args=(dist_inputs,))
-    #     # Replica losses are aggregated by summing them
-    #     global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
-    #     global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
-    #     global_source_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_source_cost, axis=None)
-    #     global_kappa_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_kappa_cost, axis=None)
-    #     return global_loss, global_chi_squared, global_source_cost, global_kappa_cost
+    @tf.function
+    def distributed_train_step(X, source, kappa):
+        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(train_step, args=(X, source, kappa))
+        # Replica losses are aggregated by summing them
+        global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
+        global_source_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_source_cost, axis=None)
+        global_kappa_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_kappa_cost, axis=None)
+        return global_loss, global_chi_squared, global_source_cost, global_kappa_cost
 
     def test_step(X, source, kappa):
         source_series, kappa_series, chi_squared = rim.call(X)
@@ -272,15 +272,15 @@ def main(args):
         kappa_cost = tf.reduce_sum(kappa_cost1[-1]) / args.batch_size
         return cost, chi_squared, source_cost, kappa_cost
 
-    # @tf.function
-    # def distributed_test_step(dist_inputs):
-    #     per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(test_step, args=(dist_inputs,))
-    #     # Replica losses are aggregated by summing them
-    #     global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
-    #     global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
-    #     global_source_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_source_cost, axis=None)
-    #     global_kappa_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_kappa_cost, axis=None)
-    #     return global_loss, global_chi_squared, global_source_cost, global_kappa_cost
+    @tf.function
+    def distributed_test_step(X, source, kappa):
+        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(test_step, args=(X, source, kappa))
+        # Replica losses are aggregated by summing them
+        global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
+        global_source_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_source_cost, axis=None)
+        global_kappa_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_kappa_cost, axis=None)
+        return global_loss, global_chi_squared, global_source_cost, global_kappa_cost
 
     # ====== Training loop ============================================================================================
     epoch_loss = tf.metrics.Mean()
@@ -325,7 +325,7 @@ def main(args):
         with writer.as_default():
             for batch, (X, source, kappa) in enumerate(train_dataset):
                 start = time.time()
-                cost, chi_squared, source_cost, kappa_cost = train_step(X, source, kappa)
+                cost, chi_squared, source_cost, kappa_cost = distributed_train_step(X, source, kappa)
         # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
                 time_per_step.update_state([_time])
@@ -361,7 +361,7 @@ def main(args):
             val_source_loss.reset_states()
             val_kappa_loss.reset_states()
             for X, source, kappa in val_dataset:
-                cost, chi_squared, source_cost, kappa_cost = test_step(X, source, kappa)
+                cost, chi_squared, source_cost, kappa_cost = distributed_test_step(X, source, kappa)
                 val_loss.update_state([cost])
                 val_chi_squared.update_state([chi_squared])
                 val_source_loss.update_state([source_cost])

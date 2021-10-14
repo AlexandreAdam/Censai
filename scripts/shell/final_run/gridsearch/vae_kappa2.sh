@@ -41,15 +41,15 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --tolerance=0.01\
   --block_length=1\
   --layers 4\
-  --conv_layers 2\
-  --filter_scaling 1\
+  --conv_layers 1\
+  --filter_scaling 2\
   --filters 16\
   --kernel_size 5\
   --strides 4\
   --kernel_reg_amp=0\
   --bias_reg_amp=0\
   --activation leaky_relu\
-  --batch_norm 0\
+  --batch_norm 1\
   --latent_size 84 256 512\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR\

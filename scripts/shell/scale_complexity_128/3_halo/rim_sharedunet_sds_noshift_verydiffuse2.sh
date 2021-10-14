@@ -36,10 +36,10 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --upsampling_interpolation 0\
   --kappalog\
   --source_link lrelu4p\
-  --filters 8\
-  --filter_scaling 2\
+  --filters 32\
+  --filter_scaling 1\
   --kernel_size 3\
-  --layers 2 3\
+  --layers 3\
   --block_conv_layers 1\
   --kernel_size 3\
   --resampling_kernel_size 1\
@@ -59,5 +59,6 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --max_to_keep=1\
   --n_residuals=2\
   --seed 42\
+  --unroll_time_steps\
   --track_train
 

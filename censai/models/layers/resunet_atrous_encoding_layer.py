@@ -86,6 +86,12 @@ class ResUnetAtrousEncodingLayer(tf.keras.layers.Layer):
             **common_params
         )
 
+        self.combine = tf.keras.layers.Conv2D(
+            filters=self.filters,
+            kernel_size=1,
+            **common_params
+        )
+
     def call(self, x):
         out = []
         for group in self.groups:
@@ -93,7 +99,7 @@ class ResUnetAtrousEncodingLayer(tf.keras.layers.Layer):
             for layer in group:
                 z = layer(z)
             out.append(tf.identity(z))
-        y = tf.add_n(out)
+        y = self.combine(tf.concat(out, axis=-1))
         x = y + x  # resnet connection
         x_down = self.downsampling_layer(x)
         return x, x_down

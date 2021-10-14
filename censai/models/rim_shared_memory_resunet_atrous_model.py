@@ -186,8 +186,8 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
             self.kappa_psp_bottleneck = tf.identity
 
         if psp_output:
-            self.source_psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True, group_norm=group_norm)
-            self.kappa_psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True, group_norm=group_norm)
+            self.source_psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True)
+            self.kappa_psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True)
         else:
             self.source_psp_output = tf.identity
             self.kappa_psp_output = tf.identity
