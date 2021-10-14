@@ -74,7 +74,7 @@ class PhysicalModel:
             batch_size = kappa.shape[0]
             alpha_x = tf.TensorArray(dtype=DTYPE, size=batch_size)
             alpha_y = tf.TensorArray(dtype=DTYPE, size=batch_size)
-            for i in range(batch_size):
+            for i in tf.range(batch_size):
                 kap = tf.image.pad_to_bounding_box(kappa[i, ...],  # pad kappa one by one to save memory space
                                                    offset_height=0,
                                                    offset_width=0,

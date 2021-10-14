@@ -1,39 +1,46 @@
 import tensorflow as tf
-from censai.models import Model
+from censai.models import SharedResUnetAtrousModel
 from censai.definitions import logkappa_normalization, log_10, DTYPE, logit, lrelu4p
 from censai import PhysicalModel
 from censai.utils import nulltape
 
 
-class RIM:
+class RIMSharedResAtrous:
+    """
+    Architecture has only 1 Unet. Source and kappa information are stacked along channel dimension.
+
+    There are 2 intended structures:
+        1. Kappa has a larger shape than Source tensor:
+            1 - Use a half-strided convolution to upsample the output of the Unet
+            3 - Use bilinear interpolation to upsample
+        2. Kappa and Source have the same tensor shape -> Identity layer
+
+    In any case, we use the Source shape for the Unet
+    """
     def __init__(
             self,
             physical_model: PhysicalModel,
-            source_model: Model,
-            kappa_model: Model,
+            unet: SharedResUnetAtrousModel,
             steps: int,
             adam=True,
             kappalog=True,
-            kappa_normalize=True,
-            source_tukey_alpha=0.6,
-            source_link='relu',
+            kappa_normalize=False,
+            source_link="relu",
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-8,
-            source_init=1e-3,
-            kappa_init=1e-1
+            kappa_init=1e-1,
+            source_init=1e-3
     ):
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.kappa_pixels
         self.source_pixels = physical_model.src_pixels
+        self.unet = unet
         self.steps = steps
-        self.source_model = source_model
-        self.kappa_model = kappa_model
         self.adam = adam
         self.kappalog = kappalog
-        self.kappa_normalize = kappa_normalize
-        self.tukey_alpha = source_tukey_alpha
         self._source_link_func = source_link
+        self.kappa_normalize = kappa_normalize
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
@@ -47,7 +54,6 @@ class RIM:
             else:
                 self.kappa_inverse_link = tf.keras.layers.Lambda(lambda x: log_10(x))
                 self.kappa_link = tf.keras.layers.Lambda(lambda x: 10**x)
-
         else:
             self.kappa_link = tf.identity
             self.kappa_inverse_link = tf.identity
@@ -64,21 +70,18 @@ class RIM:
         elif self._source_link_func == "sigmoid":
             self.source_inverse_link = logit
             self.source_link = tf.nn.sigmoid
-        elif self._source_link_func == "leaky_relu":
+        elif self._source_link_func == "lrelu4p":
             self.source_inverse_link = tf.identity
             self.source_link = lrelu4p
-
         else:
-            raise NotImplementedError(f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'sigmoid']")
+            raise NotImplementedError(f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'lrelu4p', 'sigmoid']")
 
     def initial_states(self, batch_size):
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
         source_init = self.source_inverse_link(tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
         kappa_init = self.kappa_inverse_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
-
-        source_states = self.source_model.init_hidden_states(self.source_pixels, batch_size)
-        kappa_states = self.kappa_model.init_hidden_states(self.kappa_pixels, batch_size)
-        return source_init, source_states, kappa_init, kappa_states
+        states = self.unet.init_hidden_states(self.source_pixels, batch_size)
+        return source_init, kappa_init, states
 
     def grad_update(self, grad1, grad2, time_step):
         time_step = tf.cast(time_step, DTYPE)
@@ -101,39 +104,78 @@ class RIM:
         else:
             return grad1, grad2
 
-    def time_step(self, sources, source_states, source_grad, kappa, kappa_states, kappa_grad, scope=None):
-        new_source, new_source_states = self.source_model(sources, source_states, source_grad)
-        new_kappa, new_kappa_states = self.kappa_model(kappa, kappa_states, kappa_grad)
-        return new_source, new_source_states, new_kappa, new_kappa_states
+    def time_step(self, source, kappa, source_grad, kappa_grad, states, scope=None):
+        source, kappa, states = self.unet(source, kappa, source_grad, kappa_grad, states)
+        return source, kappa, states
 
     def __call__(self, lensed_image, outer_tape=nulltape):
         return self.call(lensed_image, outer_tape)
 
     def call(self, lensed_image, outer_tape=nulltape):
+        """
+        Used in training. Return linked kappa and source maps.
+        """
         batch_size = lensed_image.shape[0]
-        source, source_states, kappa, kappa_states = self.initial_states(batch_size)
+        source, kappa, states = self.initial_states(batch_size)
 
-        source_series = tf.TensorArray(DTYPE, size=self.steps)  # equivalent to empty list and append, but using tensorflow
+        source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
-        for current_step in range(self.steps):
+        for current_step in tf.range(self.steps):
             with outer_tape.stop_recording():
                 with tf.GradientTape() as g:
                     g.watch(source)
                     g.watch(kappa)
                     log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
                     cost = tf.reduce_mean(log_likelihood)
-            source_grad, kappa_grad = g.gradient(cost, [source, kappa])
-            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
-            source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
+                source_grad, kappa_grad = g.gradient(cost, [source, kappa])
+                source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step, value=source)
             kappa_series = kappa_series.write(index=current_step, value=kappa)
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
+
+    @tf.function
+    def call_function(self, lensed_image):
+        """
+        Used in training. Return linked kappa and source maps.
+
+        This method use the tensorflow function autograph decorator, which enables us to use tf.gradients instead
+        of creating a tape at each time steps. Potentially faster, but also memory hungry because for loop is unrolled
+        when the graph is created.
+        """
+        batch_size = lensed_image.shape[0]
+        source, kappa, states = self.initial_states(batch_size)
+
+        source_series = tf.TensorArray(DTYPE, size=self.steps)
+        kappa_series = tf.TensorArray(DTYPE, size=self.steps)
+        chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        for current_step in tf.range(self.steps):
+            log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+            cost = tf.reduce_mean(log_likelihood)
+            source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
+            source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
+            source_series = source_series.write(index=current_step, value=source)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def predict(self, lensed_image):
+        """
+        Used in inference. Return physical kappa and source maps.
+        """
         batch_size = lensed_image.shape[0]
-        source, source_states, kappa, kappa_states = self.initial_states(batch_size)
+        source, kappa, states = self.initial_states(batch_size)
 
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
@@ -146,11 +188,16 @@ class RIM:
                 cost = tf.reduce_mean(log_likelihood)
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
-            source, source_states, kappa, kappa_states = self.time_step(source, source_states, source_grad, kappa, kappa_states, kappa_grad)
+            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step, value=self.source_link(source))
             kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
-        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+        # last step score
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source),
+                                                            kappa=self.kappa_link(kappa))
+        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
+        return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()  # stack along 0-th dimension
 
     def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):
         """

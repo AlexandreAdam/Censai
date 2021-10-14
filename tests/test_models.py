@@ -1,5 +1,6 @@
 from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE, VAESecondStage
-from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM
+from censai.models import SharedResUnetModel, SharedResUnetAtrousModel, SharedMemoryResUnetAtrousModel, SharedUnetModel
+from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM, RIMSharedResAtrous, RIMSharedMemoryResAtrous, RIMSharedResUnet
 from censai.models.layers import ConvGRU, ConvGRUBlock, ConvGRUPlusBlock
 import tensorflow as tf
 
@@ -199,9 +200,33 @@ def test_convGRU():
     states = tf.random.normal(shape=(1, 8, 8, 64))
     gru.call(x, states)
 
+
+def test_rimsharedresunet():
+    phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
+    unet = SharedResUnetModel()
+    rim = RIMSharedResUnet(phys, unet, 2)
+    lens = tf.random.normal(shape=[1, 64, 64, 1], dtype=tf.float32)
+    source_series, kappa_series, chi_squared_series = rim.call(lens)
+
+
+def test_rimsharedresunetatrous():
+    phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
+    unet = SharedResUnetAtrousModel(dilation_rates=[[1, 4, 8, 32], [1, 2, 4, 6]], pixels=32)
+    rim = RIMSharedResAtrous(phys, unet, 2)
+    lens = tf.random.normal(shape=[1, 64, 64, 1], dtype=tf.float32)
+    source_series, kappa_series, chi_squared_series = rim.call(lens)
+
+def test_rim_shared_memoryresunetatrous():
+    phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
+    unet = SharedMemoryResUnetAtrousModel(dilation_rates=[[1, 4, 8, 32], [1, 2, 4, 6]], pixels=32)
+    rim = RIMSharedMemoryResAtrous(phys, unet, 2)
+    lens = tf.random.normal(shape=[1, 64, 64, 1], dtype=tf.float32)
+    source_series, kappa_series, chi_squared_series = rim.call(lens)
+
+
 if __name__ == '__main__':
     # test_ray_tracer_512()
-    test_raytracer()
+    # test_raytracer()
     # test_resnet_autoencoder()
     # test_unet_model()
     # test_shared_unet_model()
@@ -213,3 +238,6 @@ if __name__ == '__main__':
     # test_vae()
     # test_vae_second_stage()
     # test_convGRU()
+    # test_rimsharedresunet()
+    # test_rimsharedresunetatrous()
+    test_rim_shared_memoryresunetatrous()
