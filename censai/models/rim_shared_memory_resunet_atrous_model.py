@@ -198,7 +198,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
 
         skip_connections = []
         new_states = []
-        for i in tf.range(self._num_layers):
+        for i in range(self._num_layers):
             s_i, source_delta = self.source_encoding_layers[i](source_delta)
             k_i, kappa_delta = self.kappa_encoding_layers[i](kappa_delta)
             c_i = self.skip_connection_combine[i](tf.concat([s_i, k_i], axis=-1))
@@ -214,7 +214,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
         delta_xt, new_state = self.bottleneck_gru(c_bottleneck, states[-1])
         source_delta, kappa_delta = tf.split(delta_xt, 2, axis=-1)
         new_states.append(new_state)
-        for i in tf.range(self._num_layers):
+        for i in range(self._num_layers):
             source_delta = self.source_decoding_layers[i](source_delta, skip_connections[i])
             kappa_delta = self.source_decoding_layers[i](kappa_delta, skip_connections[i])
         source_delta = self.source_psp_output(source_delta)
