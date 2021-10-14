@@ -81,12 +81,13 @@ class RIM:
         return source_init, source_states, kappa_init, kappa_states
 
     def grad_update(self, grad1, grad2, time_step):
+        time_step = tf.cast(time_step, DTYPE)
         if self.adam:
             if time_step == 0:  # reset mean and variance for time t=-1
-                self._grad_mean1 = tf.zeros_like(grad1)
-                self._grad_var1 = tf.zeros_like(grad1)
-                self._grad_mean2 = tf.zeros_like(grad2)
-                self._grad_var2 = tf.zeros_like(grad2)
+                self._grad_mean1 = tf.zeros_like(grad1, dtype=DTYPE)
+                self._grad_var1 = tf.zeros_like(grad1, dtype=DTYPE)
+                self._grad_mean2 = tf.zeros_like(grad2, dtype=DTYPE)
+                self._grad_var2 = tf.zeros_like(grad2, dtype=DTYPE)
             self._grad_mean1 = self. beta_1 * self._grad_mean1 + (1 - self.beta_1) * grad1
             self._grad_var1  = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad1)
             self._grad_mean2 = self. beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
