@@ -12,7 +12,7 @@ class ConvGRU(tf.keras.layers.Layer):
             strides=(1, 1),
             activation='sigmoid',
             padding='same',
-            # kernel_initializer=tf.keras.initializers.GlorotUniform()
+            data_format="channels_last"
         )
         self.reset_gate = tf.keras.layers.Conv2D(
             filters=filters,
@@ -20,7 +20,7 @@ class ConvGRU(tf.keras.layers.Layer):
             strides=(1, 1),
             activation='sigmoid',
             padding='same',
-            # kernel_initializer=tf.keras.initializers.GlorotUniform()
+            data_format="channels_last"
         )
         self.candidate_activation_gate = tf.keras.layers.Conv2D(
             filters=filters,
@@ -28,7 +28,7 @@ class ConvGRU(tf.keras.layers.Layer):
             strides=(1, 1),
             activation='tanh',
             padding='same',
-            # kernel_initializer=tf.keras.initializers.GlorotUniform()
+            data_format="channels_last"
         )
 
     def call(self, features, ht):
