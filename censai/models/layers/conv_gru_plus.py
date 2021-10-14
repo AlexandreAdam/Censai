@@ -14,42 +14,48 @@ class ConvGRUPlus(tf.keras.layers.Layer):
             kernel_size=self.kernel_size,
             strides=(1, 1),
             padding='same',
+            data_format="channels_last"
         )
         self.u_z = tf.keras.layers.Conv2D(
             filters=self.filters,
             kernel_size=self.kernel_size,
             strides=(1, 1),
             padding='same',
+            data_format="channels_last"
         )
-        self.bias_z = tf.Variable(tf.random.truncated_normal(shape=input_shape[1:3], mean=0., stddev=1.0, dtype=DTYPE))
+        self.bias_z = tf.Variable(tf.random.truncated_normal(shape=input_shape, mean=0., stddev=1.0, dtype=DTYPE))
 
         self.w_r = tf.keras.layers.Conv2D(
             filters=self.filters,
             kernel_size=self.kernel_size,
             strides=(1, 1),
             padding='same',
+            data_format="channels_last"
         )
         self.u_r = tf.keras.layers.Conv2D(
             filters=self.filters,
             kernel_size=self.kernel_size,
             strides=(1, 1),
             padding='same',
+            data_format="channels_last"
         )
-        self.bias_r = tf.Variable(tf.random.truncated_normal(shape=input_shape[1:], mean=0., stddev=1.0, dtype=DTYPE))
+        self.bias_r = tf.Variable(tf.random.truncated_normal(shape=input_shape, mean=0., stddev=1.0, dtype=DTYPE))
 
         self.w_h = tf.keras.layers.Conv2D(
             filters=self.filters,
             kernel_size=self.kernel_size,
             strides=(1, 1),
             padding='same',
+            data_format="channels_last"
         )
         self.u_h = tf.keras.layers.Conv2D(
             filters=self.filters,
             kernel_size=self.kernel_size,
             strides=(1, 1),
             padding='same',
+            data_format="channels_last"
         )
-        self.bias_h = tf.Variable(tf.random.truncated_normal(shape=input_shape[1:], mean=0., stddev=1.0, dtype=DTYPE))
+        self.bias_h = tf.Variable(tf.random.truncated_normal(shape=input_shape, mean=0., stddev=1.0, dtype=DTYPE))
 
     def call(self, x, ht):
         """

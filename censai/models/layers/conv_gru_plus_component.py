@@ -19,7 +19,9 @@ class ConvGRUPlusBlock(tf.keras.Model):
             kernel_size=kernel_size,
             strides=1,
             activation=activation,
-            padding='same')
+            padding='same',
+            data_format="channels_last"
+        )
         self.gru1 = ConvGRUPlus(filters, kernel_size)
         self.gru2 = ConvGRUPlus(filters, kernel_size)
 

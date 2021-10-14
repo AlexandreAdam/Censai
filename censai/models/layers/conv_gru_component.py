@@ -13,7 +13,7 @@ class ConvGRUBlock(tf.keras.Model):
             activation=tf.keras.layers.LeakyReLU(alpha=0.1)
     ):
         gru_filters = filters
-        kenrel_size = (kernel_size,) * 2 if isinstance(kernel_size, int) else kernel_size
+        kernel_size = (kernel_size,) * 2 if isinstance(kernel_size, int) else kernel_size
         super(ConvGRUBlock, self).__init__()
         self.conv1 = tf.keras.layers.Conv2D(
             filters=filters,
