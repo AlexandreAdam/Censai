@@ -1,3 +1,4 @@
+
 logs*
 *.pyc
 *.npy
@@ -11,4 +12,5 @@ __pycache__
 wandb
 logs
 *.out
+slides*
 *.h5
