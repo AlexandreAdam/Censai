@@ -9,15 +9,15 @@ class UpsamplingLayer(tf.keras.layers.Layer):
             kernel_size,
             strides,
             group_norm,
-            groups=1,
-            **kwargs
+            groups=1
     ):
         super(UpsamplingLayer, self).__init__()
         self.conv = tf.keras.layers.Conv2DTranspose(
             filters=filters,
             kernel_size=kernel_size,
             strides=strides,
-            **kwargs
+            data_type="channels_last",
+            padding="same"
         )
         self.group_norm = GroupNormalization(groups) if group_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
 
@@ -36,21 +36,21 @@ class PSP(tf.keras.layers.Layer):
         self.max_pool3 = tf.keras.layers.MaxPool2D(pool_size=(pixels//scaling**2,)*2)
         self.max_pool4 = tf.keras.layers.MaxPool2D(pool_size=(pixels//scaling**3,)*2)
 
-        self.conv1 = tf.keras.layers.Conv2D(filters=1, kernel_size=1, padding="SAME")
-        self.conv2 = tf.keras.layers.Conv2D(filters=1, kernel_size=1, padding="SAME")
-        self.conv3 = tf.keras.layers.Conv2D(filters=1, kernel_size=1, padding="SAME")
-        self.conv4 = tf.keras.layers.Conv2D(filters=1, kernel_size=1, padding="SAME")
+        self.conv1 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_type="channels_last")
+        self.conv2 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_type="channels_last")
+        self.conv3 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_type="channels_last")
+        self.conv4 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_type="channels_last")
 
         if bilinear:
-            self.upsample1 = tf.keras.layers.UpSampling2D(size=pixels, interpolation="bilinear")
-            self.upsample2 = tf.keras.layers.UpSampling2D(size=pixels//scaling, interpolation="bilinear")
-            self.upsample3 = tf.keras.layers.UpSampling2D(size=pixels//scaling**2, interpolation="bilinear")
-            self.upsample4 = tf.keras.layers.UpSampling2D(size=pixels//scaling**3, interpolation="bilinear")
+            self.upsample1 = tf.keras.layers.UpSampling2D(size=(pixels,)*2, interpolation="bilinear")
+            self.upsample2 = tf.keras.layers.UpSampling2D(size=(pixels//scaling,)*2, interpolation="bilinear")
+            self.upsample3 = tf.keras.layers.UpSampling2D(size=(pixels//scaling**2,)*2, interpolation="bilinear")
+            self.upsample4 = tf.keras.layers.UpSampling2D(size=(pixels//scaling**3,)*2, interpolation="bilinear")
         else:
-            self.upsample1 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels, group_norm=group_norm, padding="same")
-            self.upsample2 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels//scaling, group_norm=group_norm, padding="same")
-            self.upsample3 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels//scaling**2, group_norm=group_norm, padding="same")
-            self.upsample4 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels//scaling**3, group_norm=group_norm, padding="same")
+            self.upsample1 = UpsamplingLayer(filters=1, kernel_size=(1,1), strides=(pixels,)*2, group_norm=group_norm)
+            self.upsample2 = UpsamplingLayer(filters=1, kernel_size=(1,1), strides=(pixels//scaling,)*2, group_norm=group_norm)
+            self.upsample3 = UpsamplingLayer(filters=1, kernel_size=(1,1), strides=(pixels//scaling**2,)*2, group_norm=group_norm)
+            self.upsample4 = UpsamplingLayer(filters=1, kernel_size=(1,1), strides=(pixels//scaling**3,)*2, group_norm=group_norm)
 
         self.conv_out = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding="SAME")
 
