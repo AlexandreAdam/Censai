@@ -18,7 +18,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --epochs=1000\
   --max_time=47\
   --optimizer ADAMAX\
-  --initial_learning_rate 1e-2\
+  --initial_learning_rate 1e-3\
   --decay_rate 0.9\
   --decay_steps 5000\
   --staircase\
