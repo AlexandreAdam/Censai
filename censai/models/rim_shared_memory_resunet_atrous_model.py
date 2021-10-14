@@ -46,6 +46,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
         if use_bias:
             common_params.update({"bias_regularizer": tf.keras.regularizers.L1L2(l1=bias_l1_amp, l2=bias_l2_amp)})
 
+        kernel_size = (kernel_size,)*2 if isinstance(kernel_size, int) else kernel_size
         resampling_kernel_size = resampling_kernel_size if resampling_kernel_size is not None else kernel_size
         bottleneck_kernel_size = bottleneck_kernel_size if bottleneck_kernel_size is not None else kernel_size
         bottleneck_filters = bottleneck_filters if bottleneck_filters is not None else 2*int(filter_scaling**layers * filters)
@@ -120,7 +121,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     group_norm=group_norm,
-                    groups=min(1, int(filter_scaling ** (i) * filters) // 8),
+                    groups=min(1, int(filter_scaling**(i) * filters)//8),
                     dropout_rate=dropout_rate,
                     dilation_rates=dilation_rates[i],
                     **common_params
@@ -128,7 +129,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
             )
             self.skip_connection_combine.append(tf.keras.layers.Conv2D(
                 filters=int(filter_scaling**(i) * filters),
-                kernel_size=1,
+                kernel_size=(1, 1),
                 **common_params
             ))
             self.skip_connection_group_norm.append(tf.keras.layers.BatchNormalization() if group_norm else tf.identity)

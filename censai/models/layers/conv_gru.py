@@ -5,6 +5,7 @@ from censai.definitions import DTYPE
 class ConvGRU(tf.keras.layers.Layer):
     def __init__(self, filters=32, kernel_size=5, **kwargs):
         super(ConvGRU, self).__init__(dtype=DTYPE, **kwargs)
+        kernel_size = (kernel_size,)*2 if isinstance(kernel_size, int) else kernel_size
         self.update_gate = tf.keras.layers.Conv2D(
             filters=filters,
             kernel_size=kernel_size,
