@@ -18,7 +18,8 @@ class VAE(tf.keras.Model):
             activation="bipolar_relu",
             dropout_rate=None,
             batch_norm=False,
-            latent_size=16
+            latent_size=16,
+            strides=2
     ):
         super(VAE, self).__init__(dtype=DTYPE)
         self.latent_size = latent_size
@@ -33,11 +34,12 @@ class VAE(tf.keras.Model):
             dropout_rate=dropout_rate,
             batch_norm=batch_norm,
             latent_size=latent_size,
-            activation=activation
+            activation=activation,
+            strides=strides
         )
         # compute size of mlp bottleneck from size of image and # of filters in the last encoding layer
         b_filters = filters * int(filter_scaling ** layers)
-        pix = pixels//2 ** layers
+        pix = pixels//strides ** layers
         mlp_bottleneck = b_filters * pix**2
         self.decoder = Decoder(
             mlp_bottleneck=mlp_bottleneck,
@@ -51,7 +53,8 @@ class VAE(tf.keras.Model):
             bias_reg_amp=bias_reg_amp,
             dropout_rate=dropout_rate,
             batch_norm=batch_norm,
-            activation=activation
+            activation=activation,
+            strides=strides
         )
 
     def encode(self, x):

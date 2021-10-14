@@ -11,3 +11,6 @@ from .resnet_encoder import ResnetEncoder
 from .vae import VAE
 from .decoder import Decoder
 from .vae_second_stage import VAESecondStage
+from .rim_shared_memory_resunet_atrous_model import SharedMemoryResUnetAtrousModel
+from .rim_shared_resunet_atrous_model import SharedResUnetAtrousModel
+from .rim_shared_resunet_model import SharedResUnetModel

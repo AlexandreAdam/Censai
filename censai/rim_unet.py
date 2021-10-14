@@ -71,6 +71,11 @@ class RIMUnet:
         else:
             raise NotImplementedError(f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'sigmoid']")
 
+        if adam:
+            self.grad_update = self.adam_grad_update
+        else:
+            self.grad_update = tf.keras.layers.Lambda(lambda x, y, t: (x, y))
+
     def initial_states(self, batch_size):
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
         source_init = self.source_inverse_link(tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
@@ -78,27 +83,26 @@ class RIMUnet:
 
         source_states = self.source_model.init_hidden_states(self.source_pixels, batch_size)
         kappa_states = self.kappa_model.init_hidden_states(self.kappa_pixels, batch_size)
+
+        # reset adam gradients
+        self._grad_mean1 = tf.zeros_like(source_init, dtype=DTYPE)
+        self._grad_var1 = tf.zeros_like(source_init, dtype=DTYPE)
+        self._grad_mean2 = tf.zeros_like(kappa_init, dtype=DTYPE)
+        self._grad_var2 = tf.zeros_like(kappa_init, dtype=DTYPE)
         return source_init, source_states, kappa_init, kappa_states
 
-    def grad_update(self, grad1, grad2, time_step):
-        if self.adam:
-            if time_step == 0:  # reset mean and variance for time t=-1
-                self._grad_mean1 = tf.zeros_like(grad1)
-                self._grad_var1 = tf.zeros_like(grad1)
-                self._grad_mean2 = tf.zeros_like(grad2)
-                self._grad_var2 = tf.zeros_like(grad2)
-            self._grad_mean1 = self. beta_1 * self._grad_mean1 + (1 - self.beta_1) * grad1
-            self._grad_var1  = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad1)
-            self._grad_mean2 = self. beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
-            self._grad_var2  = self.beta_2 * self._grad_var2 + (1 - self.beta_2) * tf.square(grad2)
-            # for grad update, unbias the moments
-            m_hat1 = self._grad_mean1 / (1 - self.beta_1**(time_step + 1))
-            v_hat1 = self._grad_var1 / (1 - self.beta_2**(time_step + 1))
-            m_hat2 = self._grad_mean2 / (1 - self.beta_1**(time_step + 1))
-            v_hat2 = self._grad_var2 / (1 - self.beta_2**(time_step + 1))
-            return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon), m_hat2 / (tf.sqrt(v_hat2) + self.epsilon)
-        else:
-            return grad1, grad2
+    def adam_grad_update(self, grad1, grad2, time_step):
+        time_step = tf.cast(time_step, DTYPE)
+        self._grad_mean1 = self.beta_1 * self._grad_mean1 + (1 - self.beta_1) * grad1
+        self._grad_var1 = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad1)
+        self._grad_mean2 = self.beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
+        self._grad_var2 = self.beta_2 * self._grad_var2 + (1 - self.beta_2) * tf.square(grad2)
+        # for grad update, unbias the moments
+        m_hat1 = self._grad_mean1 / (1 - self.beta_1 ** (time_step + 1))
+        v_hat1 = self._grad_var1 / (1 - self.beta_2 ** (time_step + 1))
+        m_hat2 = self._grad_mean2 / (1 - self.beta_1 ** (time_step + 1))
+        v_hat2 = self._grad_var2 / (1 - self.beta_2 ** (time_step + 1))
+        return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon), m_hat2 / (tf.sqrt(v_hat2) + self.epsilon)
 
     def time_step(self, sources, source_states, source_grad, kappa, kappa_states, kappa_grad, scope=None):
         new_source, new_source_states = self.source_model(sources, source_states, source_grad)
@@ -115,7 +119,7 @@ class RIMUnet:
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
-        for current_step in range(self.steps):
+        for current_step in tf.range(self.steps):
             with outer_tape.stop_recording():
                 with tf.GradientTape() as g:
                     g.watch(source)
@@ -142,7 +146,7 @@ class RIMUnet:
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
-        for current_step in range(self.steps):
+        for current_step in tf.range(self.steps):
             log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
             cost = tf.reduce_mean(log_likelihood)
             source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
@@ -164,7 +168,7 @@ class RIMUnet:
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
-        for current_step in range(self.steps):
+        for current_step in tf.range(self.steps):
             with tf.GradientTape() as g:
                 g.watch(source)
                 g.watch(kappa)

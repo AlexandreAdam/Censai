@@ -17,7 +17,8 @@ class Decoder(tf.keras.Model):
             activation="relu",
             dropout_rate=None,
             batch_norm=False,
-            bilinear=False
+            bilinear=False,
+            strides=2
     ):
         super(Decoder, self).__init__()
         self._z_pix = z_reshape_pix
@@ -35,7 +36,8 @@ class Decoder(tf.keras.Model):
                     batch_norm=batch_norm,
                     dropout_rate=dropout_rate,
                     bilinear=bilinear,
-                    activation=activation
+                    activation=activation,
+                    strides=strides
                 )
             )
         self.mlp_bottleneck = tf.keras.layers.Dense(
