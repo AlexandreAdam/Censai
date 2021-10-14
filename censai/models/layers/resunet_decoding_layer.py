@@ -22,7 +22,7 @@ class UpsamplingLayer(tf.keras.layers.Layer):
             strides=strides,
             **kwargs
         )
-        self.batch_norm = GroupNormalization(groups) if group_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.group_norm = GroupNormalization(groups) if group_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
         self.activation = activation
 
     def call(self, x):
