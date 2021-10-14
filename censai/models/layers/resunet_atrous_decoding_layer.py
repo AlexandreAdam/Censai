@@ -98,7 +98,7 @@ class ResUnetAtrousDecodingLayer(tf.keras.layers.Layer):
 
     def call(self, x, c_i):  # c_i is the skip connection
         x = self.upsampling_layer(x)
-        x = self.combine(tf.concat([x, self.activation(c_i)], axis=-1))
+        x = self.combine(tf.concat([x, c_i], axis=-1))
         out = []
         for group in self.groups:
             z = tf.identity(x)
