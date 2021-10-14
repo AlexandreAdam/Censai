@@ -1,6 +1,7 @@
 import tensorflow as tf
 from censai.models.utils import get_activation
 from censai.definitions import DTYPE
+from tensorflow_addons.layers import GroupNormalization
 
 
 class DownsamplingLayer(tf.keras.layers.Layer):
@@ -38,7 +39,8 @@ class ResUnetAtrousEncodingLayer(tf.keras.layers.Layer):
             downsampling_kernel_size=None,
             downsampling_filters=None,
             activation="linear",
-            batch_norm=False,
+            group_norm=False,
+            groups=1,
             dropout_rate=None,
             name=None,
             strides=2,
@@ -62,13 +64,13 @@ class ResUnetAtrousEncodingLayer(tf.keras.layers.Layer):
         for d in dilation_rates:
             group = []
             for i in range(self.num_conv_layers):
-                if batch_norm:
-                    group.append(tf.keras.layers.BatchNormalization())
+                if group_norm:
+                    group.append(GroupNormalization(groups))
                 group.append(activation)
                 if dropout_rate is not None:
                     group.append(tf.keras.layers.SpatialDropout2D(rate=dropout_rate, data_format="channels_last"))
                 group.append(
-                    tf.keras.layers.Conv2D(
+                    tf.keras.layers.Conv2DTranspose(
                         filters=self.filters,
                         kernel_size=self.kernel_size,
                         dilation_rate=d,

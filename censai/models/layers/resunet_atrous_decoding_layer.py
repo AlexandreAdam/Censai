@@ -1,6 +1,7 @@
 import tensorflow as tf
 from censai.models.utils import get_activation
 from censai.definitions import DTYPE
+from tensorflow_addons.layers import GroupNormalization
 
 
 class UpsamplingLayer(tf.keras.layers.Layer):
@@ -9,7 +10,8 @@ class UpsamplingLayer(tf.keras.layers.Layer):
             filters,
             kernel_size,
             strides,
-            batch_norm,
+            group_norm,
+            groups=1, # default is equivalent to LayerNormalisation
             **kwargs
     ):
         super(UpsamplingLayer, self).__init__()
@@ -19,11 +21,11 @@ class UpsamplingLayer(tf.keras.layers.Layer):
             strides=strides,
             **kwargs
         )
-        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.group_norm = GroupNormalization(groups) if group_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
 
     def call(self, x):
         x = self.conv(x)
-        x = self.batch_norm(x)
+        x = self.group_norm(x)
         return x
 
 
@@ -39,7 +41,8 @@ class ResUnetAtrousDecodingLayer(tf.keras.layers.Layer):
             filters=32,
             conv_layers=2,
             activation="linear",
-            batch_norm=False,
+            group_norm=False,
+            groups=1,
             dropout_rate=None,
             name=None,
             strides=2,       # for final layer
@@ -61,8 +64,8 @@ class ResUnetAtrousDecodingLayer(tf.keras.layers.Layer):
         for d in dilation_rates:
             group = []
             for i in range(self.num_conv_layers):
-                if batch_norm:
-                    group.append(tf.keras.layers.BatchNormalization())
+                if group_norm:
+                    group.append(GroupNormalization(groups))
                 group.append(activation)
                 if dropout_rate is not None:
                     group.append(tf.keras.layers.SpatialDropout2D(rate=dropout_rate, data_format="channels_last"))
@@ -80,7 +83,8 @@ class ResUnetAtrousDecodingLayer(tf.keras.layers.Layer):
             filters=self.filters,
             kernel_size=self.upsampling_kernel_size,
             strides=self.strides,
-            batch_norm=batch_norm,
+            group_norm=group_norm,
+            groups=groups,
             **common_params
             )
         if dropout_rate is None:

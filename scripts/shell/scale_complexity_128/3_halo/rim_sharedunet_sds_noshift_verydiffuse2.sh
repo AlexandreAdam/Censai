@@ -18,14 +18,14 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --epochs=1000\
   --max_time=47\
   --optimizer ADAMAX\
-  --initial_learning_rate 1e-4\
+  --initial_learning_rate 1e-2\
   --decay_rate 0.9\
-  --decay_steps 20000\
+  --decay_steps 5000\
   --staircase\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --batch_size 1\
+  --batch_size 10\
   --train_split=0.95\
   --total_items 10000\
   --block_length=1\
@@ -59,6 +59,5 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --max_to_keep=1\
   --n_residuals=2\
   --seed 42\
-  --track_train\
-  --unroll_time_steps
+  --track_train
 

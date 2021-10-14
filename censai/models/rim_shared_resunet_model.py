@@ -19,7 +19,7 @@ class SharedResUnetModel(tf.keras.Model):
             resampling_kernel_size=None,
             input_kernel_size=11,
             gru_kernel_size=None,
-            batch_norm=False,
+            group_norm=False,
             dropout_rate=None,
             upsampling_interpolation=False,  # use strided transposed convolution if false
             kernel_l1_amp=0.,
@@ -68,7 +68,8 @@ class SharedResUnetModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     strides=strides,
-                    batch_norm=batch_norm,
+                    group_norm=group_norm,
+                    groups=min(1, int(filter_scaling ** (i) * filters) // 8),
                     dropout_rate=dropout_rate,
                     **common_params
                 )
@@ -81,7 +82,8 @@ class SharedResUnetModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     bilinear=upsampling_interpolation,
-                    batch_norm=batch_norm,
+                    group_norm=group_norm,
+                    groups=min(1, int(filter_scaling ** (i) * filters) // 8),
                     dropout_rate=dropout_rate,
                     **common_params
                 )

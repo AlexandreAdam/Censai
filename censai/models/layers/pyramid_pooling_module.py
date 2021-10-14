@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow_addons.layers import GroupNormalization
 
 
 class UpsamplingLayer(tf.keras.layers.Layer):
@@ -7,7 +8,8 @@ class UpsamplingLayer(tf.keras.layers.Layer):
             filters,
             kernel_size,
             strides,
-            batch_norm,
+            group_norm,
+            groups=1,
             **kwargs
     ):
         super(UpsamplingLayer, self).__init__()
@@ -17,7 +19,7 @@ class UpsamplingLayer(tf.keras.layers.Layer):
             strides=strides,
             **kwargs
         )
-        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.batch_norm = GroupNormalization(groups) if group_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
 
     def call(self, x):
         x = self.conv(x)
@@ -27,7 +29,7 @@ class UpsamplingLayer(tf.keras.layers.Layer):
 
 class PSP(tf.keras.layers.Layer):
 
-    def __init__(self, filters, pixels, scaling:int=2, bilinear=True, batch_norm=True):
+    def __init__(self, filters, pixels, scaling:int=2, bilinear=True, group_norm=True, groups=1):
         super(PSP, self).__init__()
         self.max_pool1 = tf.keras.layers.MaxPool2D(pool_size=pixels)
         self.max_pool2 = tf.keras.layers.MaxPool2D(pool_size=pixels//scaling)
@@ -45,13 +47,13 @@ class PSP(tf.keras.layers.Layer):
             self.upsample3 = tf.keras.layers.UpSampling2D(size=pixels//scaling**2, interpolation="bilinear")
             self.upsample4 = tf.keras.layers.UpSampling2D(size=pixels//scaling**3, interpolation="bilinear")
         else:
-            self.upsample1 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels, batch_norm=batch_norm, padding="SAME")
-            self.upsample2 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels//scaling, batch_norm=batch_norm, padding="SAME")
-            self.upsample3 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels//scaling**2, batch_norm=batch_norm, padding="SAME")
-            self.upsample4 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels//scaling**3, batch_norm=batch_norm, padding="SAME")
+            self.upsample1 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels, batch_norm=group_norm, groups=groups, padding="SAME")
+            self.upsample2 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels//scaling, batch_norm=group_norm, groups=groups, padding="SAME")
+            self.upsample3 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels//scaling**2, batch_norm=group_norm, groups=groups, padding="SAME")
+            self.upsample4 = UpsamplingLayer(filters=1, kernel_size=1, strides=pixels//scaling**3, batch_norm=group_norm, groups=groups, padding="SAME")
 
         self.conv_out = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding="SAME")
-        self.batch_norm_out = tf.keras.layers.BatchNormalization() if batch_norm else tf.identity
+        self.batch_norm_out = tf.keras.layers.BatchNormalization() if group_norm else tf.identity
 
     def call(self, x):
         x1, x2, x3, x4 = tf.split(tf.identity(x), 4, axis=3)
