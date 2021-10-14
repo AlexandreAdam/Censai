@@ -249,6 +249,7 @@ if __name__ == '__main__':
     parser.add_argument("--kernel_l1_amp",                              default=0, nargs="+",  type=float)
     parser.add_argument("--bias_l1_amp",                                default=0, nargs="+",  type=float)
     parser.add_argument("--activation",                                 default="relu", nargs="+")
+    parser.add_argument("--dilation_rates",                             required=True,  nargs="+", action="append", help="List of list, dilation rates for each atrous convolutional layer in each residual block")
     parser.add_argument("--alpha",                                      default=0.1,  nargs="+",  type=float)
     parser.add_argument("--initializer",                                default="glorot_normal", nargs="+",)
     parser.add_argument("--gru_architecture",                           default="concat", nargs="+",  help="'concat': architecture of Laurence. 'plus': original RNN architecture")

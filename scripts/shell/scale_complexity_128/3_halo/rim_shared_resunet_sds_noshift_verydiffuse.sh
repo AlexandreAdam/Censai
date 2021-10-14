@@ -6,7 +6,7 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=2-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_SharedUnet_TNGns_128_SDS
+#SBATCH --job-name=Train_RIM_SharedResUnet_TNGns_128_SDS
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_shared_resunet_gridsearch.py\
