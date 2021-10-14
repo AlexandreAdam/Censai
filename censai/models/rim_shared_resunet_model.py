@@ -64,6 +64,7 @@ class SharedResUnetModel(tf.keras.Model):
                     kernel_size=kernel_size,
                     downsampling_kernel_size=resampling_kernel_size,
                     filters=int(filter_scaling**(i) * filters),
+                    downsampling_filters=int(filter_scaling**(i+1) * filters),
                     conv_layers=block_conv_layers,
                     activation=activation,
                     strides=strides,

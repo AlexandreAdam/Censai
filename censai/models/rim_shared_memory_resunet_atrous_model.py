@@ -71,6 +71,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
                 ResUnetAtrousEncodingLayer(
                     kernel_size=kernel_size,
                     downsampling_kernel_size=resampling_kernel_size,
+                    downsampling_filters=int(filter_scaling ** (i + 1) * filters),
                     filters=int(filter_scaling**(i) * filters),
                     conv_layers=block_conv_layers,
                     activation=activation,
@@ -85,6 +86,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
                 ResUnetAtrousEncodingLayer(
                     kernel_size=kernel_size,
                     downsampling_kernel_size=resampling_kernel_size,
+                    downsampling_filters=int(filter_scaling ** (i + 1) * filters),
                     filters=int(filter_scaling**(i) * filters),
                     conv_layers=block_conv_layers,
                     activation=activation,
