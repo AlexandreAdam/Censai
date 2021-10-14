@@ -135,7 +135,7 @@ class UnetModel(tf.keras.Model):
         delta_xt = self.input_layer(delta_xt)
         skip_connections = []
         new_states = []
-        for i in tf.range(self._num_layers):
+        for i in range(self._num_layers):
             c_i, delta_xt = self.encoding_layers[i](delta_xt)
             c_i, new_state = self.gated_recurrent_blocks[i](c_i, states[i])  # Pass skip connections through GRU and update states
             skip_connections.append(c_i)
@@ -145,7 +145,7 @@ class UnetModel(tf.keras.Model):
         delta_xt = self.bottleneck_layer2(delta_xt)
         delta_xt, new_state = self.bottleneck_gru(delta_xt, states[-1])
         new_states.append(new_state)
-        for i in tf.range(self._num_layers):
+        for i in range(self._num_layers):
             delta_xt = self.decoding_layers[i](delta_xt, skip_connections[i])
         delta_xt = self.output_layer(delta_xt)
         xt_1 = xt + delta_xt  # update image
