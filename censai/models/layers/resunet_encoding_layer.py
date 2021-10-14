@@ -93,6 +93,7 @@ class ResUnetEncodingLayer(tf.keras.layers.Layer):
             self.dropout = tf.identity
         else:
             self.dropout = tf.keras.layers.SpatialDropout2D(rate=dropout_rate, data_format="channels_last")
+        self.
 
     def call(self, x):
         y = tf.identity(x)
