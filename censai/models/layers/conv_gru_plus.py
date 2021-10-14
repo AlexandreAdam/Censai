@@ -6,7 +6,7 @@ class ConvGRUPlus(tf.keras.layers.Layer):
     def __init__(self, filters=32, kernel_size=5, **kwargs):
         super(ConvGRUPlus, self).__init__(dtype=DTYPE, **kwargs)
         self.filters = filters
-        self.kernel_size = kernel_size
+        self.kernel_size = (kernel_size,)*2 if isinstance(kernel_size, int) else kernel_size
 
     def build(self, input_shape):
         self.w_z = tf.keras.layers.Conv2D(

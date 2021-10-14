@@ -47,6 +47,7 @@ class SharedResUnetAtrousModel(tf.keras.Model):
         if use_bias:
             common_params.update({"bias_regularizer": tf.keras.regularizers.L1L2(l1=bias_l1_amp, l2=bias_l2_amp)})
 
+        kernel_size = (kernel_size,)*2
         resampling_kernel_size = resampling_kernel_size if resampling_kernel_size is not None else kernel_size
         bottleneck_kernel_size = bottleneck_kernel_size if bottleneck_kernel_size is not None else kernel_size
         bottleneck_filters = bottleneck_filters if bottleneck_filters is not None else int(filter_scaling**layers * filters)
