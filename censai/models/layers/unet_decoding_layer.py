@@ -50,14 +50,14 @@ class UnetDecodingLayer(tf.keras.layers.Layer):
             **common_params
     ):
         super(UnetDecodingLayer, self).__init__(name=name, dtype=DTYPE)
-        self.kernel_size = tuple([kernel_size]*2)
+        self.kernel_size = (kernel_size,)*2 if isinstance(kernel_size, int) else kernel_size
         if upsampling_kernel_size is None:
             self.upsampling_kernel_size = self.kernel_size
         else:
             self.upsampling_kernel_size = tuple([upsampling_kernel_size]*2)
         self.num_conv_layers = conv_layers
         self.filters = filters
-        self.strides = tuple([strides]*2)
+        self.strides = tuple([strides]*2) if isinstance(strides, int) else strides
         self.activation = get_activation(activation)
 
         self.conv_layers = []
