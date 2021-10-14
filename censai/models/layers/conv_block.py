@@ -16,7 +16,7 @@ class ConvBlock(tf.keras.layers.Layer):
             bias_reg_amp=0.01,
     ):
         super(ConvBlock, self).__init__(name=name)
-        self.kernel_size = tuple([kernel_size]*2)
+        self.kernel_size = (kernel_size,)*2 if isinstance(kernel_size, int) else kernel_size
         self.num_conv_layers = conv_layers
         self.filters = filters
         self.activation = get_activation(activation)
