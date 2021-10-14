@@ -16,7 +16,7 @@ class UpsamplingLayer(tf.keras.layers.Layer):
             filters=filters,
             kernel_size=kernel_size,
             strides=strides,
-            data_type="channels_last",
+            data_format="channels_last",
             padding="same"
         )
         self.group_norm = GroupNormalization(groups) if group_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
