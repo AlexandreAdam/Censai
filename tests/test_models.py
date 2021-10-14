@@ -206,7 +206,7 @@ def test_rimsharedresunet():
     unet = SharedResUnetModel()
     rim = RIMSharedResUnet(phys, unet, 10)
     lens = tf.random.normal(shape=[1, 64, 64, 1], dtype=tf.float32)
-    source_series, kappa_series, chi_squared_series = rim.call(lens)
+    source_series, kappa_series, chi_squared_series = rim.call_function(lens)
     pass
 
 
@@ -224,7 +224,7 @@ def test_rimsharedresunetatrous():
 def test_rim_shared_memoryresunetatrous():
     phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft", noise_rms=0.01)
     unet = SharedMemoryResUnetAtrousModel(dilation_rates=[[1, 4, 8, 32]], pixels=32, activation="relu", layers=1,
-           initializer = lambda shape, dtype: tf.keras.initializers.HeNormal()(shape, dtype) / 10)
+           initializer=lambda shape, dtype: tf.keras.initializers.HeNormal()(shape, dtype) / 10)
     rim = RIMSharedMemoryResAtrous(phys, unet, 10)
     lens = tf.nn.relu(tf.random.normal(shape=[1, 64, 64, 1], dtype=tf.float32))
     lens /= tf.reduce_max(lens)
@@ -246,6 +246,6 @@ if __name__ == '__main__':
     # test_vae()
     # test_vae_second_stage()
     # test_convGRU()
-    # test_rimsharedresunet()
+    test_rimsharedresunet()
     # test_rimsharedresunetatrous()
-    test_rim_shared_memoryresunetatrous()
+    # test_rim_shared_memoryresunetatrous()
