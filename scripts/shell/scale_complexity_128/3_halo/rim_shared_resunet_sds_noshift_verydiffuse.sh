@@ -18,14 +18,14 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_resunet_gridsearch.py\
   --epochs=1000\
   --max_time=47\
   --optimizer ADAMAX\
-  --initial_learning_rate 1e-2\
+  --initial_learning_rate 1e-3\
   --decay_rate 0.9\
   --decay_steps 5000\
   --staircase\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --batch_size 10\
+  --batch_size 1\
   --train_split=0.95\
   --total_items 10000\
   --block_length=1\
@@ -46,7 +46,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_resunet_gridsearch.py\
   --gru_kernel_size 3\
   --activation relu\
   --gru_architecture concat plus\
-  --source_init=0.5\
+  --source_init=0.1\
   --kappa_init=0.1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
@@ -56,4 +56,5 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_resunet_gridsearch.py\
   --max_to_keep=2\
   --n_residuals=2\
   --seed 42 82 128\
-  --track_train
+  --track_train\
+  --unroll_time_steps

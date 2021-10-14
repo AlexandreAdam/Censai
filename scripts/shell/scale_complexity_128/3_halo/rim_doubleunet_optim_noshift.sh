@@ -16,7 +16,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --n_models=32\
   --forward_method=fft\
   --epochs=100000\
-  --max_time=47\
+  --max_time=46\
   --optimizer ADAMAX\
   --initial_learning_rate 5e-4 1e-4\
   --decay_rate 0.5\
