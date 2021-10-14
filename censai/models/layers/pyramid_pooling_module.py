@@ -36,10 +36,10 @@ class PSP(tf.keras.layers.Layer):
         self.max_pool3 = tf.keras.layers.MaxPool2D(pool_size=(pixels//scaling**2,)*2)
         self.max_pool4 = tf.keras.layers.MaxPool2D(pool_size=(pixels//scaling**3,)*2)
 
-        self.conv1 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_type="channels_last")
-        self.conv2 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_type="channels_last")
-        self.conv3 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_type="channels_last")
-        self.conv4 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_type="channels_last")
+        self.conv1 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_format="channels_last")
+        self.conv2 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_format="channels_last")
+        self.conv3 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_format="channels_last")
+        self.conv4 = tf.keras.layers.Conv2D(filters=1, kernel_size=(1,1), padding="SAME", data_format="channels_last")
 
         if bilinear:
             self.upsample1 = tf.keras.layers.UpSampling2D(size=(pixels,)*2, interpolation="bilinear")
@@ -52,7 +52,7 @@ class PSP(tf.keras.layers.Layer):
             self.upsample3 = UpsamplingLayer(filters=1, kernel_size=(1,1), strides=(pixels//scaling**2,)*2, group_norm=group_norm)
             self.upsample4 = UpsamplingLayer(filters=1, kernel_size=(1,1), strides=(pixels//scaling**3,)*2, group_norm=group_norm)
 
-        self.conv_out = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding="SAME")
+        self.conv_out = tf.keras.layers.Conv2D(filters=filters, kernel_size=1, padding="SAME", data_format="channels_last")
 
     def call(self, x):
         x1, x2, x3, x4 = tf.split(tf.identity(x), 4, axis=3)
