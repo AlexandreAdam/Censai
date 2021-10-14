@@ -18,9 +18,9 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_resunet_gridsearch.py\
   --epochs=1000\
   --max_time=47\
   --optimizer ADAMAX\
-  --initial_learning_rate 1e-1 1e-2 1e-3 1e-4 1e-5\
+  --initial_learning_rate 1e-2\
   --decay_rate 0.9\
-  --decay_steps 20000\
+  --decay_steps 5000\
   --staircase\
   --clipping\
   --patience=40\
@@ -35,12 +35,12 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_resunet_gridsearch.py\
   --adam 1\
   --kappalog\
   --source_link lrelu4p\
-  --batch_norm 1\
+  --group_norm 1\
   --filters 16\
   --filter_scaling 2\
   --kernel_size 3\
-  --layers 4\
-  --block_conv_layers 2\
+  --layers 2 3 4\
+  --block_conv_layers 1 2\
   --resampling_kernel_size 1\
   --input_kernel_size 1\
   --gru_kernel_size 3\
@@ -56,5 +56,4 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_resunet_gridsearch.py\
   --max_to_keep=2\
   --n_residuals=2\
   --seed 42 82 128\
-  --track_train\
-  --unroll_time_steps
+  --track_train

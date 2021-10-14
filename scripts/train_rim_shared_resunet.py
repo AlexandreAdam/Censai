@@ -42,7 +42,7 @@ UNET_MODEL_HPARAMS = [
     "input_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
-    "batch_norm",
+    "group_norm",
     "dropout_rate",
     "kernel_l2_amp",
     "bias_l2_amp",
@@ -139,7 +139,7 @@ def main(args):
         activation=args.activation,
         alpha=args.alpha,
         initializer=args.initializer,
-        batch_norm=args.batch_norm,
+        group_norm=args.group_norm,
         dropout_rate=args.dropout_rate,
         gru_architecture=args.gru_architecture
     )
@@ -483,7 +483,7 @@ if __name__ == "__main__":
     parser.add_argument("--input_kernel_size",                          default=11,     type=int)
     parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
     parser.add_argument("--upsampling_interpolation",                   action="store_true")
-    parser.add_argument("--batch_norm",                                 action="store_true")
+    parser.add_argument("--group_norm",                                 action="store_true")
     parser.add_argument("--dropout_rate",                               default=None,   type=float)
     parser.add_argument("--kernel_l2_amp",                              default=0,      type=float)
     parser.add_argument("--bias_l2_amp",                                default=0,      type=float)

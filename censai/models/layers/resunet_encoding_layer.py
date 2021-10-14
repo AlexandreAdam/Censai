@@ -1,6 +1,7 @@
 import tensorflow as tf
 from censai.models.utils import get_activation
 from censai.definitions import DTYPE
+from tensorflow_addons.layers import GroupNormalization
 
 
 class DownsamplingLayer(tf.keras.layers.Layer):
@@ -10,7 +11,8 @@ class DownsamplingLayer(tf.keras.layers.Layer):
             kernel_size,
             activation,
             strides,
-            batch_norm,
+            group_norm,
+            groups=1,
             **kwargs
     ):
         super(DownsamplingLayer, self).__init__()
@@ -21,12 +23,12 @@ class DownsamplingLayer(tf.keras.layers.Layer):
             strides=strides,
             **kwargs
         )
-        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.group_norm = GroupNormalization(groups) if group_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
         self.activation = activation
 
     def call(self, x):
         x = self.conv(x)
-        x = self.batch_norm(x)
+        x = self.group_norm(x)
         x = self.activation(x)
         return x
 
@@ -44,7 +46,8 @@ class ResUnetEncodingLayer(tf.keras.layers.Layer):
             downsampling_kernel_size=None,
             downsampling_filters=None,
             activation="linear",
-            batch_norm=False,
+            group_norm=True,
+            groups=1,
             dropout_rate=None,
             name=None,
             strides=2,     # for final layer
@@ -64,7 +67,7 @@ class ResUnetEncodingLayer(tf.keras.layers.Layer):
         self.activation = get_activation(activation)
 
         self.conv_layers = []
-        self.batch_norms = []
+        self.group_norms = []
         for i in range(self.num_conv_layers):
             self.conv_layers.append(
                 tf.keras.layers.Conv2D(
@@ -73,19 +76,19 @@ class ResUnetEncodingLayer(tf.keras.layers.Layer):
                     **kwargs
                 )
             )
-            if batch_norm:
-                self.batch_norms.append(
-                    tf.keras.layers.BatchNormalization()
+            if group_norm:
+                self.group_norms.append(
+                    GroupNormalization(groups)
                 )
             else:
-                self.batch_norms.append(
+                self.group_norms.append(
                     tf.identity
                 )
         self.downsampling_layer = DownsamplingLayer(
             filters=downsampling_filters,
             kernel_size=self.downsampling_kernel_size,
             strides=self.strides,
-            batch_norm=batch_norm,
+            group_norm=group_norm,
             activation=self.activation,
             **kwargs
         )
@@ -97,7 +100,7 @@ class ResUnetEncodingLayer(tf.keras.layers.Layer):
     def call(self, x):
         y = tf.identity(x)
         for i, layer in enumerate(self.conv_layers):
-            x = self.batch_norms[i](x)
+            x = self.group_norms[i](x)
             x = self.activation(x)
             x = self.dropout(x)
             x = layer(x)

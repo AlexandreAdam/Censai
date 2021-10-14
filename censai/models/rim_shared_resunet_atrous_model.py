@@ -21,7 +21,7 @@ class SharedResUnetAtrousModel(tf.keras.Model):
             resampling_kernel_size=None,
             input_kernel_size=11,
             gru_kernel_size=None,
-            batch_norm=True,
+            group_norm=True,
             dropout_rate=None,
             kernel_l1_amp=0.,
             bias_l1_amp=0.,
@@ -73,7 +73,8 @@ class SharedResUnetAtrousModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     strides=strides,
-                    batch_norm=batch_norm,
+                    group_norm=group_norm,
+                    groups=min(1, int(filter_scaling ** (i) * filters) // 8),
                     dropout_rate=dropout_rate,
                     dilation_rates=dilation_rates[i],
                     **common_params
@@ -86,7 +87,8 @@ class SharedResUnetAtrousModel(tf.keras.Model):
                     filters=int(filter_scaling**(i) * filters),
                     conv_layers=block_conv_layers,
                     activation=activation,
-                    batch_norm=batch_norm,
+                    group_norm=group_norm,
+                    groups=min(1, int(filter_scaling ** (i) * filters) // 8),
                     dropout_rate=dropout_rate,
                     dilation_rates=dilation_rates[i],
                     **common_params
@@ -121,11 +123,11 @@ class SharedResUnetAtrousModel(tf.keras.Model):
             **common_params
         )
         if psp_bottleneck:
-            self.psp_bottleneck = PSP(filters=int(filter_scaling**layers * filters), pixels=pixels//strides**layers,  scaling=psp_scaling, bilinear=False, batch_norm=batch_norm)
+            self.psp_bottleneck = PSP(filters=int(filter_scaling**layers * filters), pixels=pixels//strides**layers,  scaling=psp_scaling, bilinear=False, group_norm=group_norm)
         else:
             self.psp_bottleneck = tf.identity
         if psp_output:
-            self.psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True, batch_norm=batch_norm)
+            self.psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True, group_norm=group_norm)
         else:
             self.psp_output = tf.identity
 

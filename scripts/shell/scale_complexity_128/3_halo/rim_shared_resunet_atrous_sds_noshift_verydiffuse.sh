@@ -35,7 +35,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_resunet_atrous_gridsearch.py\
   --adam 1\
   --kappalog\
   --source_link lrelu4p\
-  --batch_norm 1\
+  --group_norm 1\
   --filters 16\
   --filter_scaling 2\
   --kernel_size 3\
@@ -56,5 +56,4 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_resunet_atrous_gridsearch.py\
   --max_to_keep=2\
   --n_residuals=2\
   --seed 42 82 128\
-  --track_train\
-  --unroll_time_steps
+  --track_train

@@ -21,7 +21,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
             resampling_kernel_size=None,
             input_kernel_size=1,
             gru_kernel_size=None,
-            batch_norm=False,
+            group_norm=True,
             dropout_rate=None,
             kernel_l1_amp=0.,
             bias_l1_amp=0.,
@@ -65,7 +65,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
         self.source_decoding_layers = []
         self.gated_recurrent_blocks = []
         self.skip_connection_combine = []
-        self.skip_connection_batch_norm = []
+        self.skip_connection_group_norm = []
         for i in range(layers):
             self.kappa_encoding_layers.append(
                 ResUnetAtrousEncodingLayer(
@@ -76,7 +76,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     strides=strides,
-                    batch_norm=batch_norm,
+                    group_norm=group_norm,
                     dropout_rate=dropout_rate,
                     dilation_rates=dilation_rates[i],
                     **common_params
@@ -91,7 +91,8 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
                     conv_layers=block_conv_layers,
                     activation=activation,
                     strides=strides,
-                    batch_norm=batch_norm,
+                    group_norm=group_norm,
+                    groups=min(1, int(filter_scaling**(i) * filters)//8),
                     dropout_rate=dropout_rate,
                     dilation_rates=dilation_rates[i],
                     **common_params
@@ -104,7 +105,8 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
                     filters=int(filter_scaling**(i) * filters),
                     conv_layers=block_conv_layers,
                     activation=activation,
-                    batch_norm=batch_norm,
+                    group_norm=group_norm,
+                    groups=min(1, int(filter_scaling**(i) * filters)//8),
                     dropout_rate=dropout_rate,
                     dilation_rates=dilation_rates[i],
                     **common_params
@@ -117,7 +119,8 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
                     filters=int(filter_scaling**(i) * filters),
                     conv_layers=block_conv_layers,
                     activation=activation,
-                    batch_norm=batch_norm,
+                    group_norm=group_norm,
+                    groups=min(1, int(filter_scaling ** (i) * filters) // 8),
                     dropout_rate=dropout_rate,
                     dilation_rates=dilation_rates[i],
                     **common_params
@@ -128,7 +131,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
                 kernel_size=1,
                 **common_params
             ))
-            self.skip_connection_batch_norm.append(tf.keras.layers.BatchNormalization() if batch_norm else tf.identity)
+            self.skip_connection_group_norm.append(tf.keras.layers.BatchNormalization() if group_norm else tf.identity)
             self.gated_recurrent_blocks.append(
                     GRU(
                         filters=int(filter_scaling**(i) * filters),
@@ -144,7 +147,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
             filters=bottleneck_filters,
             kernel_size=1
         )
-        self.bottleneck_batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.identity
+        self.bottleneck_group_norm = tf.keras.layers.BatchNormalization() if group_norm else tf.identity
         self.bottleneck_gru = GRU(
             filters=bottleneck_filters,
             kernel_size=bottleneck_kernel_size,
@@ -176,15 +179,15 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
         )
 
         if psp_bottleneck:
-            self.source_psp_bottleneck = PSP(filters=int(filter_scaling**layers * filters), pixels=pixels//strides**layers,  scaling=psp_scaling, bilinear=False, batch_norm=batch_norm)
-            self.kappa_psp_bottleneck  = PSP(filters=int(filter_scaling**layers * filters), pixels=pixels//strides**layers,  scaling=psp_scaling, bilinear=False, batch_norm=batch_norm)
+            self.source_psp_bottleneck = PSP(filters=int(filter_scaling**layers * filters), pixels=pixels//strides**layers,  scaling=psp_scaling, bilinear=False, group_norm=group_norm)
+            self.kappa_psp_bottleneck  = PSP(filters=int(filter_scaling**layers * filters), pixels=pixels//strides**layers,  scaling=psp_scaling, bilinear=False, group_norm=group_norm)
         else:
             self.source_psp_bottleneck = tf.identity
             self.kappa_psp_bottleneck = tf.identity
 
         if psp_output:
-            self.source_psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True, batch_norm=batch_norm)
-            self.kappa_psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True, batch_norm=batch_norm)
+            self.source_psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True, group_norm=group_norm)
+            self.kappa_psp_output = PSP(filters=filters, pixels=pixels, scaling=psp_scaling, bilinear=True, group_norm=group_norm)
         else:
             self.source_psp_output = tf.identity
             self.kappa_psp_output = tf.identity
@@ -204,7 +207,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
             s_i, source_delta = self.source_encoding_layers[i](source_delta)
             k_i, kappa_delta = self.kappa_encoding_layers[i](kappa_delta)
             c_i = self.skip_connection_combine[i](tf.concat([s_i, k_i], axis=-1))
-            c_i = self.skip_connection_batch_norm[i](c_i)
+            c_i = self.skip_connection_group_norm[i](c_i)
             c_i, new_state = self.gated_recurrent_blocks[i](c_i, states[i])  # Pass skip connections through GRU and update states
             skip_connections.append(c_i)
             new_states.append(new_state)
@@ -212,7 +215,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
         source_delta = self.source_psp_bottleneck(source_delta)
         kappa_delta = self.kappa_psp_bottleneck(kappa_delta)
         c_bottleneck = self.bottleneck_combine(tf.concat([source_delta, kappa_delta], axis=-1))
-        c_bottleneck = self.bottleneck_batch_norm(c_bottleneck)
+        c_bottleneck = self.bottleneck_group_norm(c_bottleneck)
         delta_xt, new_state = self.bottleneck_gru(c_bottleneck, states[-1])
         source_delta, kappa_delta = tf.split(delta_xt, 2, axis=-1)
         new_states.append(new_state)

@@ -38,7 +38,7 @@ UNET_MODEL_HPARAMS = [
     "input_kernel_size",
     "gru_kernel_size",
     "upsampling_interpolation",
-    "batch_norm",
+    "group_norm",
     "dropout_rate",
     "kernel_l2_amp",
     "bias_l2_amp",
@@ -89,7 +89,7 @@ PARAMS_NICKNAME = {
     "kappalog": "KaL",
     "kappa_normalize": "KaN",
     "activation": "NL",
-    "batch_norm": "BN",
+    "group_norm": "GN",
     "dropout_rate": "D",
     "gru_architecture": "GA",
 
@@ -239,7 +239,7 @@ if __name__ == '__main__':
     parser.add_argument("--input_kernel_size",                          default=1,   nargs="+",  type=int)
     parser.add_argument("--gru_kernel_size",                            default=None, nargs="+",  type=int)
     parser.add_argument("--upsampling_interpolation",                   default=0,    nargs="+",  type=int)
-    parser.add_argument("--batch_norm",                                 default=1,    nargs="+",  type=int)
+    parser.add_argument("--group_norm",                                 default=1,    nargs="+",  type=int)
     parser.add_argument("--dropout_rate",                               default=None, nargs="+",  type=float)
     parser.add_argument("--kernel_l2_amp",                              default=0, nargs="+",  type=float)
     parser.add_argument("--bias_l2_amp",                                default=0, nargs="+",  type=float)
