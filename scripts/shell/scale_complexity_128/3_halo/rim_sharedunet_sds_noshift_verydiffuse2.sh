@@ -53,7 +53,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unet_gridsearch.py\
   --kappa_init=0.1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
-  --logname_prefixe=RIMSU128_hTNG2nsvdO_UnrolledSteps\
+  --logname_prefixe=RIMSU128_hTNG2nsvdO_UnrolledSteps2\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
