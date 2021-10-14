@@ -18,14 +18,14 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_memory_resunet_atrous_gridsea
   --epochs=1000\
   --max_time=47\
   --optimizer ADAMAX\
-  --initial_learning_rate 1e-1 1e-2 1e-3 1e-4 1e-5\
+  --initial_learning_rate 5e-3\
   --decay_rate 0.9\
-  --decay_steps 20000\
+  --decay_steps 50000\
   --staircase\
   --clipping\
   --patience=40\
   --tolerance=0.01\
-  --batch_size 10\
+  --batch_size 1\
   --train_split=0.95\
   --total_items 10000\
   --block_length=1\
@@ -36,7 +36,11 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_memory_resunet_atrous_gridsea
   --kappalog\
   --source_link lrelu4p\
   --group_norm 1\
-  --filters 16\
+  --dilation_rates 1 2 4 8\
+  --dilation_rates 1 2 4 8\
+  --dilation_rates 1 2 4 8\
+  --dilation_rates 1 2\
+  --filters 32\
   --filter_scaling 2\
   --kernel_size 3\
   --layers 4\
@@ -46,7 +50,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_memory_resunet_atrous_gridsea
   --gru_kernel_size 3\
   --activation relu\
   --gru_architecture concat plus\
-  --source_init=0.5\
+  --source_init=0.1\
   --kappa_init=0.1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
@@ -56,4 +60,5 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_memory_resunet_atrous_gridsea
   --max_to_keep=2\
   --n_residuals=2\
   --seed 42 82 128\
-  --track_train
+  --track_train\
+  --unroll_time_steps
