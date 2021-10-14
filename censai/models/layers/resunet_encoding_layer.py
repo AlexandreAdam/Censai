@@ -54,7 +54,7 @@ class ResUnetEncodingLayer(tf.keras.layers.Layer):
             **kwargs
     ):
         super(ResUnetEncodingLayer, self).__init__(name=name, dtype=DTYPE)
-        self.kernel_size = tuple([kernel_size]*2)
+        self.kernel_size = tuple([kernel_size]*2) if isinstance(kernel_size, int) else kernel_size
         if downsampling_kernel_size is None:
             self.downsampling_kernel_size = self.kernel_size
         else:
@@ -63,7 +63,7 @@ class ResUnetEncodingLayer(tf.keras.layers.Layer):
             downsampling_filters = filters
         self.num_conv_layers = conv_layers
         self.filters = filters
-        self.strides = tuple([strides]*2)
+        self.strides = tuple([strides]*2) if isinstance(strides, int) else strides
         self.activation = get_activation(activation)
 
         self.conv_layers = []
