@@ -218,7 +218,7 @@ def test_rimsharedresunetatrous():
 
 def test_rim_shared_memoryresunetatrous():
     phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
-    unet = SharedMemoryResUnetAtrousModel(dilation_rates=[[1, 4, 8, 32], [1, 2, 4, 6]], pixels=32)
+    unet = SharedMemoryResUnetAtrousModel(dilation_rates=[[1, 4, 8, 32], [1, 2, 4, 6]], pixels=32, activation="relu")
     rim = RIMSharedMemoryResAtrous(phys, unet, 2)
     lens = tf.random.normal(shape=[1, 64, 64, 1], dtype=tf.float32)
     source_series, kappa_series, chi_squared_series = rim.call(lens)
