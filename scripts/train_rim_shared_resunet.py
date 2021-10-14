@@ -50,7 +50,6 @@ UNET_MODEL_HPARAMS = [
     "bias_l1_amp",
     "activation",
     "alpha",
-    "initializer",
     "gru_architecture"
 ]
 
@@ -138,7 +137,7 @@ def main(args):
         bias_l1_amp=args.bias_l1_amp,
         activation=args.activation,
         alpha=args.alpha,
-        initializer=args.initializer,
+        initializer=lambda shape, dtype: tf.keras.initializers.HeNormal()(shape, dtype)/args.steps,
         group_norm=args.group_norm,
         dropout_rate=args.dropout_rate,
         gru_architecture=args.gru_architecture
@@ -491,7 +490,7 @@ if __name__ == "__main__":
     parser.add_argument("--bias_l1_amp",                                default=0,      type=float)
     parser.add_argument("--activation",                                 default="relu")
     parser.add_argument("--alpha",                                      default=0.3,    type=float)
-    parser.add_argument("--initializer",                                default="glorot_normal")
+    # parser.add_argument("--initializer",                                default="glorot_normal")
     parser.add_argument("--gru_architecture",                           default="concat",   help="'concat': architecture of Laurence. 'plus': original RNN architecture")
 
     # Physical model hyperparameter
