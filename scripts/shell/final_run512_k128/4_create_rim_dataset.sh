@@ -12,7 +12,7 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --output_dir=$HOME/scratch/Censai/data/lenses512_shuffled_200k/\
-  --kappa_datasets $CENSAI_PATH/data/kappa512_TNG100_trainset $CENSAI_PATH/data/hkappa512_TNG100_trainset\
+  --kappa_datasets $CENSAI_PATH/data/kappa512_TNG100_trainset_fr $CENSAI_PATH/data/hkappa512_TNG100_trainset_fr\
   --compression_type=GZIP\
   --lens_pixels=512\
   --src_pixels=128\
