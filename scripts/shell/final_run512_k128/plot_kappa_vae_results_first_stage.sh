@@ -9,8 +9,8 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/plot_vae_first_stage_results.py\
-  --model_prefixe=VAE1_hk512O\
-  --dataset=$CENSAI_PATH/data/hkappa512_TNG100_trainset/\
+  --model_prefixe=VAE1_hk128fr\
+  --dataset=$CENSAI_PATH/data/hkappa128_TNG100_trainset_fr/\
   --compression_type=GZIP\
   --type=kappa\
   --batch_size=10\
