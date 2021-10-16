@@ -52,8 +52,13 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --batch_norm 1\
   --latent_size 84 256 512\
   --cache_file=$SLURM_TMPDIR/cache\
+<<<<<<< HEAD
   --logdir=$CENSAI_PATH/logsFR\
   --logname_prefixe=VAE1_hk512O2\
+=======
+  --logdir=$CENSAI_PATH/logsFR128hst\
+  --logname_prefixe=VAE1_hk512O\
+>>>>>>> 6bfba9c8df45a3e1460d5d01e389fb1023009232
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=3\
