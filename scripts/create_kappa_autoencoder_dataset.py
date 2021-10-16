@@ -19,7 +19,12 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 def distributed_strategy(args):
     kappa_files = glob.glob(os.path.join(args.kappa_dir, "*.fits"))
-    if os.path.exists(os.path.join(args.kappa_dir, "train_kappa.txt")):  # filter out bad data (see validate_kappa_maps script)
+    if args.test_set:
+        good_kappa = np.loadtxt(os.path.join(args.kappa_dir, "test_kappa.txt"))
+        kappa_ids = [int(os.path.split(kap)[-1].split("_")[1]) for kap in kappa_files]
+        keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
+        kappa_files = [kap_file for i, kap_file in enumerate(kappa_files) if keep_kappa[i]]
+    else:
         good_kappa = np.loadtxt(os.path.join(args.kappa_dir, "train_kappa.txt"))
         kappa_ids = [int(os.path.split(kap)[-1].split("_")[1]) for kap in kappa_files]
         keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
@@ -70,6 +75,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size",     default=1,          type=int,   help="Number of examples worked out in a single pass by a worker")
     parser.add_argument("--kappa_dir",      required=True,      type=str,   help="Path to directory of kappa fits files")
     parser.add_argument("--compression_type", default=None,                 help="Default is no compression. Use 'GZIP' to compress data")
+    parser.add_argument("--test_set",       action="store_true",            help="Build dataset on test set of kappa maps")
 
     # Data generation params
     parser.add_argument("--crop",           default=0,          type=int,   help="Crop kappa map by 2*N pixels. After crop, the size of the kappa map should correspond to pixel argument "
