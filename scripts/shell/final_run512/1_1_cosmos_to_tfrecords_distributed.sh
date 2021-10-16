@@ -1,4 +1,5 @@
 #!/bin/bash
+#SBATCH --array=1-20
 #SBATCH --tasks=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
@@ -8,7 +9,12 @@
 #SBATCH --job-name=CosmosToTFRecords_Distributed
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/split_cosmos.py\
-  --dataset=$CENSAI_PATH/data/cosmos_23.5_finalrun\
-  --train_split=0.9\
-  --buffer_size=1000
+python $CENSAI_PATH/scripts/cosmos_to_tfrecords_distributed.py\
+  --pixels=158\
+  --sample=23.5\
+  --exclusion_level=marginal\
+  --min_flux=50\
+  --cosmos_dir=$HOME/projects/rrg-lplevass/data/COSMOS/COSMOS_23.5_training_sample/\
+  --store_attributes\
+  --rotation\
+  --output_dir=$HOME/scratch/Censai/data/cosmos_23.5_finalrun158/
