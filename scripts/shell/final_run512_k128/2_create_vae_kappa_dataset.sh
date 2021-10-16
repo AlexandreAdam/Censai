@@ -11,7 +11,7 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/make_kappa_vae_dataset.py\
   --kappa_first_stage_vae=$CENSAI_PATH/models/VAE1_hkappa_HPARAMS2_2_018_B20_betaE0.3_betaDS10000_210917123841\
-  --output_dir=$CENSAI_PATH/data/kappa512_VAE_trainset/\
+  --output_dir=$CENSAI_PATH/data/kappa512_VAE_trainset_fr/\
   --len_dataset=900000\
   --compression_type=GZIP\
   --kappa_fov=17.425909\
