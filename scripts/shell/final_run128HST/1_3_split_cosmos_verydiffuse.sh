@@ -11,4 +11,5 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/split_cosmos.py\
   --dataset=$CENSAI_PATH/data/cosmos_23.5_finalrun128_verydiffuse\
   --train_split=0.9\
-  --buffer_size=10000
+  --buffer_size=10000\
+  --compression_type=GZIP
