@@ -16,6 +16,12 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 
 def main(args):
+    if THIS_WORKER > 1:
+        time.sleep(5)
+    if not os.path.isdir(args.output_dir):
+        os.mkdir(args.output_dir)
+    if args.seed is not None:
+        tf.random.set_seed(args.seed)
     # Load first stage and freeze weights
     with open(os.path.join(args.cosmos_first_stage_vae, "model_hparams.json"), "r") as f:
         cosmos_vae_hparams = json.load(f)
@@ -23,6 +29,7 @@ def main(args):
     ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=cosmos_vae)
     checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.cosmos_first_stage_vae, 1)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
+    cosmos_vae.trainable = False
 
     # Setup sampling from second stage if provided
     if args.cosmos_second_stage_vae is not None:
@@ -33,6 +40,7 @@ def main(args):
         checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.cosmos_second_stage_vae, 1)
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
         cosmos_sampling_function = lambda batch_size: 10 ** cosmos_vae.decode(cosmos_vae2.sample(batch_size))
+        cosmos_vae2.trainable = False
     else:
         cosmos_sampling_function = lambda batch_size: 10 ** cosmos_vae.sample(batch_size)
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
@@ -62,11 +70,5 @@ if __name__ == '__main__':
     parser.add_argument("--seed",           default=None,       type=int,   help="Random seed for numpy and tensorflow")
 
     args = parser.parse_args()
-    if THIS_WORKER > 1:
-        time.sleep(5)
-    if not os.path.isdir(args.output_dir):
-        os.mkdir(args.output_dir)
-    if args.seed is not None:
-        tf.random.set_seed(args.seed)
 
     main(args)
