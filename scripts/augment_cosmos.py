@@ -19,9 +19,6 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 def distributed_strategy(args):
     cosmos_files = glob.glob(os.path.join(args.cosmos_dir, "*.tfrecords"))
     cosmos = tf.data.TFRecordDataset(cosmos_files)
-    n_galaxies = 0
-    for _ in cosmos:  # count the number of samples in the dataset
-        n_galaxies += 1
     cosmos = cosmos.map(decode).map(preprocess).batch(args.batch_size)
 
     max_shift = min(args.crop, args.max_shift)
@@ -29,7 +26,7 @@ def distributed_strategy(args):
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data.tfrecords"), options) as writer:
         for galaxies in cosmos:
-            for j in range(args.batch_size):
+            for j in range(galaxies.shape[0]):
                 angle = np.random.randint(low=0, high=3, size=1)[0]
                 galaxy = tf.image.rot90(galaxies[j], k=angle).numpy()
                 if args.crop > 0:
