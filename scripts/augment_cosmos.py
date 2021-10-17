@@ -2,7 +2,7 @@ import tensorflow as tf
 import os, glob
 import numpy as np
 from censai.utils import _bytes_feature, _int64_feature
-from censai.data.cosmos import preprocess, decode
+from censai.data.cosmos import preprocess_image as preprocess, decode_image as decode
 from datetime import datetime
 import json
 import time
