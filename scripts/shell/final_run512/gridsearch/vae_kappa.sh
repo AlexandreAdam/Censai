@@ -13,20 +13,20 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --datasets $CENSAI_PATH/data/hkappa512_TNG100_trainset/\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --epochs=250\
+  --epochs=100\
   --n_models=24\
   --batch_size 10\
   --train_split=0.9\
   --total_items 50000\
   --optimizer Adam\
   --initial_learning_rate 1e-4\
-  --decay_rate 0.7\
-  --decay_steps=200000\
+  --decay_rate 0.9\
+  --decay_steps=10000\
   --staircase\
   --beta_init 0.1\
-  --beta_end_value 0.8 1\
+  --beta_end_value 1\
   --beta_decay_power 1\
-  --beta_decay_steps 50000\
+  --beta_decay_steps 25000\
   --beta_cyclical 0\
   --skip_strength_init 0\
   --skip_strength_end_value=0.\
@@ -35,7 +35,7 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --l2_bottleneck_init=1e-2\
   --l2_bottleneck_end_value=0.\
   --l2_bottleneck_decay_power 0.5\
-  --l2_bottleneck_decay_steps=10000\
+  --l2_bottleneck_decay_steps=25000\
   --clipping\
   --block_length=1\
   --layers 5 6 7\
@@ -47,7 +47,7 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --bias_reg_amp=0\
   --activation leaky_relu\
   --batch_norm 0 1\
-  --latent_size 512 1024\
+  --latent_size 128 512 1024\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR\
   --logname_prefixe=VAE1_hk512O\
