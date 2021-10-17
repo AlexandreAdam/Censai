@@ -32,8 +32,8 @@ def distributed_strategy(args):
     kappa_dataset = tf.data.experimental.sample_from_datasets(kappa_datasets, weights=args.kappa_datasets_weights)
     # Read off global parameters from first example in dataset
     for example in kappa_dataset.map(decode_kappa_info):
-        kappa_fov = example["kappa fov"]
-        kappa_pixels = example["kappa pixels"]
+        kappa_fov = example["kappa fov"].numpy()
+        kappa_pixels = example["kappa pixels"].numpy()
         break
     kappa_dataset = kappa_dataset.map(decode_kappa).batch(args.batch_size)
 
