@@ -48,6 +48,7 @@ def distributed_strategy(args):
     cosmos_dataset = tf.data.experimental.sample_from_datasets(cosmos_datasets, weights=args.cosmos_datasets_weights)
     # Read off global parameters from first example in dataset
     for src_pixels in cosmos_dataset.map(decode_cosmos_info):
+        src_pixels = src_pixels.numpy()
         break
     cosmos_dataset = cosmos_dataset.map(decode_cosmos).map(preprocess_cosmos).batch(args.batch_size)
 
