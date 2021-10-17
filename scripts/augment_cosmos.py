@@ -24,7 +24,7 @@ def distributed_strategy(args):
     max_shift = min(args.crop, args.max_shift)
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
-    with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data.tfrecords"), options) as writer:
+    with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER:d}.tfrecords"), options) as writer:
         for galaxies in cosmos:
             for j in range(galaxies.shape[0]):
                 angle = np.random.randint(low=0, high=3, size=1)[0]
