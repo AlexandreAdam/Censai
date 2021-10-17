@@ -21,7 +21,7 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --optimizer Adam\
   --initial_learning_rate 1e-4\
   --decay_rate 0.9\
-  --decay_steps=10000\
+  --decay_steps=20000\
   --staircase\
   --beta_init 0.1\
   --beta_end_value 1\
