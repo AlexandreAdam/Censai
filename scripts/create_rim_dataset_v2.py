@@ -105,7 +105,7 @@ if __name__ == '__main__':
     parser.add_argument("--cosmos_datasets",            required=True,      nargs="+",              help="Path to galaxy tfrecords directories")
     parser.add_argument("--cosmos_datasets_weights",    default=None,       nargs="+", type=float,  help="How much to sample from a dataset vs another. Must sum to 1")
     parser.add_argument("--compression_type",           default="GZIP",                             help="Default is GZIP and should stay that way.")
-    parser.add_argument("--block_length",               default=1,                                  help="Number of example to read concurrently from a file")
+    parser.add_argument("--block_length",               default=1,           type=int,              help="Number of example to read concurrently from a file")
 
     # Physical model params
     parser.add_argument("--lens_pixels",    default=512,        type=int,   help="Size of the lens postage stamp.")
