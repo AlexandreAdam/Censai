@@ -217,14 +217,14 @@ def main(args):
         if args.model_id.lower() != "none":
             checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint)
         if old_checkpoints_dir != checkpoints_dir:  # save progress in another directory.
-            # reset optimizer
-            optim = tf.keras.optimizers.deserialize(
-                {
-                    "class_name": args.optimizer,
-                    'config': {"learning_rate": learning_rate_schedule}
-                }
-            )
-            ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.unet)
+            if args.reset_optimizer_states:
+                optim = tf.keras.optimizers.deserialize(
+                    {
+                        "class_name": args.optimizer,
+                        'config': {"learning_rate": learning_rate_schedule}
+                    }
+                )
+                ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optim, net=rim.unet)
             checkpoint_manager = tf.train.CheckpointManager(ckpt, checkpoints_dir, max_to_keep=args.max_to_keep)
 
     else:
@@ -530,6 +530,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
     parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
     parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
+    parser.add_argument("--reset_optimizer_states",  action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
