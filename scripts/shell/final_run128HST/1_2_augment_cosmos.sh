@@ -14,4 +14,5 @@ python $CENSAI_PATH/scripts/augment_cosmos.py\
     --batch_size=10\
     --cosmos_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun158/\
     --crop=15\
-    --max_shift=15
+    --max_shift=15\
+    --compression_type=GZIP
