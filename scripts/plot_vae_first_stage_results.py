@@ -38,7 +38,7 @@ def main(args):
         ckpt1 = tf.train.Checkpoint(net=vae)
         checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model, 1)
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
-
+        vae.trainable = False
         model_name = os.path.split(model)[-1]
 
         for batch, images in enumerate(dataset):

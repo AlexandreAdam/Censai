@@ -19,6 +19,7 @@ def main(args):
         ckpt1 = tf.train.Checkpoint(net=vae)
         checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, model, 1)
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
+        vae.trainable = False
 
         model_name = os.path.split(model)[-1]
         print(model_name)
@@ -35,6 +36,7 @@ def main(args):
             ckpt2 = tf.train.Checkpoint(net=vae2)
             checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, second_stage, 1)
             checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
+            vae2.trainable = False
 
             for n in range(args.n_plots):
                 z = vae2.sample(args.sampling_size)
