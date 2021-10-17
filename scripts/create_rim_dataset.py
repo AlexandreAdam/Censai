@@ -116,7 +116,6 @@ if __name__ == '__main__':
     # Physical model params
     parser.add_argument("--lens_pixels",    default=512,        type=int,   help="Size of the lens postage stamp.")
     parser.add_argument("--src_pixels",     default=128,        type=int,   help="Size of Cosmos postage stamps")
-    parser.add_argument("--image_fov",      default=20,         type=float, help="Field of view of the image (lens plane) in arc seconds") # not used anymore
     parser.add_argument("--source_fov",     default=3,          type=float,
                         help="Field of view of the source plane in arc seconds")
     parser.add_argument("--noise_rms",      default=0.3e-3,     type=float,
