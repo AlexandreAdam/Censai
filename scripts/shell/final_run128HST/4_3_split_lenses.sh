@@ -14,4 +14,6 @@ python $CENSAI_PATH/scripts/split_lenses.py\
   --dataset=$CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated\
   --split=0.9\
   --example_per_shard=50000\
-  --compression_type=GZIP
+  --compression_type=GZIP\
+  --edge=5\
+  --edge_signal_tolerance=0.4

@@ -1,7 +1,8 @@
 import tensorflow as tf
 from censai.data.lenses_tng_v2 import decode_all, encode_examples
-import os, glob, time, json
+import os, glob, time
 from datetime import datetime
+from censai.definitions import DTYPE
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -23,17 +24,28 @@ def distributed_strategy(args):
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
                                block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-
+    for example in dataset:
+        lens_pixels = example["pixels"].numpy()
+        break
     dataset = dataset.map(decode_all).batch(1)
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     kept = 0
     current_dataset = dataset.skip((THIS_WORKER-1) * args.example_per_worker).take((THIS_WORKER-1 + 1) * args.example_per_worker)
+
+    # setup mask for edge detection
+    x = tf.range(lens_pixels, dtype=DTYPE) - lens_pixels//2 + 0.5 * lens_pixels % 2
+    x, y = tf.meshgrid(x, x)
+    edge = lens_pixels//2 - args.edge
+    mask = (x > edge) | (x < -edge) | (y > edge) | (y < -edge)
+    mask = tf.cast(mask[None, ..., None], DTYPE)
     with tf.io.TFRecordWriter(os.path.join(output_dir, f"data_{THIS_WORKER-1:02d}.tfrecords"), options) as writer:
         for example in current_dataset:
             im_area = tf.reduce_sum(tf.cast(example["lens"] > args.signal_threshold, tf.float32)) * (example["image fov"] / example["pixels"]) ** 2
             src_area = tf.reduce_sum(tf.cast(example["source"] > args.signal_threshold, tf.float32)) * (example["source fov"] / example["src pixels"]) ** 2
             magnification = im_area / src_area
             if magnification < args.min_magnification:
+                continue
+            if tf.reduce_max(example["lens"] * mask) > args.edge_signal_tolerance:
                 continue
             kept += 1
             record = encode_examples(
@@ -64,6 +76,9 @@ if __name__ == '__main__':
     parser.add_argument("--example_per_worker",     default=100000, type=int,       help="")
     parser.add_argument("--compression_type",       default="GZIP")
     parser.add_argument("--block_length",           default=1,      type=int)
+    parser.add_argument("--border_pixels",          default=5,      type=int,       help="Check that intensity fall off at border")
+    parser.add_argument("--edge",                   default=5,      type=int,       help="Number of pixels considered as egde pixels")
+    parser.add_argument("--edge_signal_tolerance",  default=0.2,    type=float,     help="If maximum along the edge is above this value, example is rejected.")
 
     args = parser.parse_args()
 
