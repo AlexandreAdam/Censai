@@ -12,24 +12,18 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --output_dir=$HOME/scratch/Censai/data/lenses512_shuffled_200k/\
-  --kappa_datasets $CENSAI_PATH/data/kappa512_TNG100_trainset $CENSAI_PATH/data/hkappa512_TNG100_trainset\
+  --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_trainset_fr/ $CENSAI_PATH/data/kappa128_VAE1_hkappa_HPARAMS2_2_018_B20_betaE0.3_betaDS10000_210917123841\
+  --kappa_datasets_weights 0.4 0.6\
+  --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun_train $CENSAI_PATH/data/cosmos_23.5_preprocessed_highSNR_verydiffuse_train/\
+  --cosmos_datasets_weights 0.4 0.6\
   --compression_type=GZIP\
-  --lens_pixels=512\
-  --src_pixels=128\
-  --image_fov=17.425909\
-  --source_fov=10\
+  --lens_pixels=128\
+  --image_fov=7.68\
+  --source_fov=3\
   --noise_rms=0.01\
   --psf_sigma=0.06\
-  --crop=15\
-  --max_shift=1\
-  --min_theta_e=1.5\
-  --rotate\
-  --rotate_by=90\
-  --shuffle_cosmos\
-  --buffer_size=1000\
+  --buffer_size=10000\
   --batch=20\
   --tukey_alpha=0\
-  --bins=10\
-  --rescaling_size=100\
   --z_source=2.379\
   --z_lens=0.4457

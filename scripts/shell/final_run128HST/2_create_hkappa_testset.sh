@@ -25,4 +25,4 @@ python $CENSAI_PATH/scripts/create_kappa_autoencoder_dataset.py\
   --max_theta_e=3\
   --z_source=2.379\
   --z_lens=0.4457\
-  --testset
+  --test_set
