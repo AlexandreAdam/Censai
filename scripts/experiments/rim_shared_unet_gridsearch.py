@@ -209,6 +209,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--n_models",               default=10,     type=int,       help="Models to train")
     parser.add_argument("--datasets",               required=True,  nargs="+",      help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
+    parser.add_argument("--val_datasets",           default=None,   nargs="+",      help="Validation dataset path")
     parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
     parser.add_argument("--strategy",               default="uniform",              help="Allowed startegies are 'uniform' and 'exhaustive'.")
 
