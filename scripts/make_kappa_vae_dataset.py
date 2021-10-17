@@ -16,7 +16,14 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 
 def main(args):
-    # Load first stage and freeze weights
+    if THIS_WORKER > 1:
+        time.sleep(5)
+    if not os.path.isdir(args.output_dir):
+        os.mkdir(args.output_dir)
+    if args.seed is not None:
+        tf.random.set_seed(args.seed)
+
+    # Load first stage
     with open(os.path.join(args.kappa_first_stage_vae, "model_hparams.json"), "r") as f:
         kappa_vae_hparams = json.load(f)
     kappa_vae = VAE(**kappa_vae_hparams)
@@ -73,11 +80,4 @@ if __name__ == '__main__':
     parser.add_argument("--seed",           default=None,       type=int,   help="Random seed for numpy and tensorflow")
 
     args = parser.parse_args()
-    if THIS_WORKER > 1:
-        time.sleep(5)
-    if not os.path.isdir(args.output_dir):
-        os.mkdir(args.output_dir)
-    if args.seed is not None:
-        tf.random.set_seed(args.seed)
-
     main(args)
