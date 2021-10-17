@@ -26,6 +26,7 @@ for i in range(len(files)//2):
     datasets.append(dataset.shuffle(1000, reshuffle_each_iteration=True))
 dataset = tf.data.experimental.sample_from_datasets(datasets, weights=None)
 
+
 def decode(record_bytes):
     example = tf.io.parse_single_example(
         # Data
@@ -50,3 +51,11 @@ for x in dataset.as_numpy_iterator():
 
 diff = [a - b for a, b in zip(recovered_data, recovered_data2)]
 print(diff) # should be different from zero most of the time since reshuffling occur at each calls
+
+recovered_data3 = []
+for i in range(100):
+    for x in dataset.as_numpy_iterator():
+        recovered_data3.append(x)
+        break
+print(recovered_data3)
+
