@@ -32,13 +32,6 @@ def distributed_strategy(args):
             gal = catalog.makeGalaxy(index, noise_pad_size=args.pixels * args.pixel_scale)
             psf = gal.original_psf
 
-            # Apply random rotation if requested
-            if hasattr(args, "rotation") and args.rotation:
-                rotation_angle = galsim.Angle(-np.random.rand() * 2 * np.pi,
-                                              galsim.radians)
-                gal = gal.rotate(rotation_angle)
-                psf = psf.rotate(rotation_angle)
-
             # We save the corresponding attributes for this galaxy
             if hasattr(args, 'attributes'):
                 params = cat_param[index]
@@ -132,7 +125,6 @@ if __name__ == '__main__':
     parser.add_argument("--signal_threshold",       default=0,          type=float, help="Value between 0 and 1, defines the pixel value below which there is no more signal")
     parser.add_argument("--cosmos_dir",             default=None,                   help="Directory to cosmos data")
     parser.add_argument("--store_attributes",       action="store_true",            help="Wether to store ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'z_phot] or not")
-    parser.add_argument("--rotation",               action="store_true",            help="Rotate randomly the postage stamp (and psf)")
     parser.add_argument("--output_dir",             required=True,                  help="Path to the directory where to store tf records")
     parser.add_argument("--compression_type",       default=None,                   help="Default is no compression. Use 'GZIP' to compress")
 
