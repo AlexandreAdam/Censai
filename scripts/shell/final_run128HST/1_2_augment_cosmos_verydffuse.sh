@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/augment_cosmos.py\
-    --output_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun128\
+    --output_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun128_verydiffuse\
     --batch_size=10\
     --cosmos_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun158_verydiffuse/\
     --crop=15\
