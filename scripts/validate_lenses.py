@@ -11,6 +11,7 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 # defaults to zero if not running under SLURM
 THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
+
 def distributed_strategy(args):
     if THIS_WORKER > 1:
         time.sleep(5)
@@ -27,7 +28,7 @@ def distributed_strategy(args):
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     kept = 0
     current_dataset = dataset.skip((THIS_WORKER-1) * args.example_per_worker).take((THIS_WORKER-1 + 1) * args.example_per_worker)
-    with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER-1:02d}.tfrecords"), options) as writer:
+    with tf.io.TFRecordWriter(os.path.join(output_dir, f"data_{THIS_WORKER-1:02d}.tfrecords"), options) as writer:
         for example in current_dataset:
             im_area = tf.reduce_sum(tf.cast(example["lens"] > args.signal_threshold, tf.float32)) * (example["image fov"] / example["pixels"]) ** 2
             src_area = tf.reduce_sum(tf.cast(example["source"] > args.signal_threshold, tf.float32)) * (example["source fov"] / example["src pixels"]) ** 2
@@ -48,6 +49,10 @@ def distributed_strategy(args):
                 psf_sigma=example["psf sigma"]
             )
             writer.write(record)
+    print(f"Finished worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}, kept {kept:d} examples")
+
+    with open(os.path.join(output_dir, "shard_size.txt"), "a") as f:
+        f.write(f"{kept:d}\n")
 
 
 if __name__ == '__main__':
