@@ -30,6 +30,7 @@ def main(args):
     ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=kappa_vae)
     checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.kappa_first_stage_vae, 1)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
+    kappa_vae.trainable = False
 
     # Setup sampling from second stage if provided
     if args.kappa_second_stage_vae is not None:
@@ -40,6 +41,7 @@ def main(args):
         checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.kappa_second_stage_vae, 1)
         checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
         kappa_sampling_function = lambda batch_size: 10 ** kappa_vae.decode(kappa_vae2.sample(batch_size))
+        kappa_vae2.trainable = False
     else:
         kappa_sampling_function = lambda batch_size: 10 ** kappa_vae.sample(batch_size)
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
