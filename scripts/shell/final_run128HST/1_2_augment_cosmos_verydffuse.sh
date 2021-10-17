@@ -6,12 +6,12 @@
 #SBATCH --mem=16G			     # memory per node
 #SBATCH --time=0-05:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=CosmosToTFRecords_Distributed
+#SBATCH --job-name=AugmentCosmos
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/augment_cosmos.py\
     --output_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun128\
     --batch_size=10\
     --cosmos_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun158_verydiffuse/\
-    --crops=15\
+    --crop=15\
     --max_shift=15

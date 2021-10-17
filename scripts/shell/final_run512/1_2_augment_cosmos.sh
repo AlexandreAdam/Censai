@@ -13,5 +13,5 @@ python $CENSAI_PATH/scripts/augment_cosmos.py\
     --output_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun128_augmented\
     --batch_size=10\
     --cosmos_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun158/\
-    --crops=15\
+    --crop=15\
     --max_shift=15
