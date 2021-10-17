@@ -12,7 +12,7 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --output_dir=$HOME/scratch/Censai/data/lenses128hst_TNG_VAE_2M/\
-  --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_trainset_fr/\
+  --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_fr_trainset/\
  $CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_018_BN1_LS84_betaE0.6_betaDS10000_211016160612/\
  $CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_000_BN0_LS84_betaE0.3_betaDS10000_211016160534/\
   --kappa_datasets_weights 0.4 0.4 0.2\
