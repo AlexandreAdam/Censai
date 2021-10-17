@@ -11,6 +11,7 @@ from datetime import datetime
 import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
 from censai.utils import nullcontext
+import time
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -375,7 +376,9 @@ if __name__ == '__main__':
     parser.add_argument("--smoke_test_id",      default=10, type=int,       help="Subhalo to do smoke test on")
     args = parser.parse_args()
 
-    if not os.path.isdir(args.output_dir) and THIS_WORKER <= 1:
+    if THIS_WORKER > 1:
+        time.sleep(5)
+    if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
 
     distributed_strategy(args)

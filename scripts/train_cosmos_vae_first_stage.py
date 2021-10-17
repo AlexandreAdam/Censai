@@ -168,7 +168,9 @@ def main(args):
         "train_reconstruction_loss": [],
         "val_reconstruction_loss": [],
         "train_kl_loss": [],
-        "val_kl_loss": []
+        "val_kl_loss": [],
+        "step": [],
+        "wall_time": []
     }
     best_loss = np.inf
     patience = args.patience
@@ -240,6 +242,8 @@ def main(args):
         history["val_kl_loss"].append(val_kl_cost)
         history["learning_rate"].append(optim.lr(step).numpy())
         history["time_per_step"].append(time_per_step.result().numpy())
+        history["step"].append(step)
+        history["wall_time"].append(time.time() - global_start)
 
         cost = train_cost if args.track_train else val_cost
         if np.isnan(cost):
