@@ -27,7 +27,7 @@ def distributed_strategy(args):
     for example in dataset:
         lens_pixels = example["pixels"].numpy()
         break
-    dataset = dataset.map(decode_all).batch(1)
+    dataset = dataset.map(decode_all)
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     kept = 0
     current_dataset = dataset.skip((THIS_WORKER-1) * args.example_per_worker).take((THIS_WORKER-1 + 1) * args.example_per_worker)
@@ -37,7 +37,7 @@ def distributed_strategy(args):
     x, y = tf.meshgrid(x, x)
     edge = lens_pixels//2 - args.edge
     mask = (x > edge) | (x < -edge) | (y > edge) | (y < -edge)
-    mask = tf.cast(mask[None, ..., None], DTYPE)
+    mask = tf.cast(mask[..., None], DTYPE)
     with tf.io.TFRecordWriter(os.path.join(output_dir, f"data_{THIS_WORKER-1:02d}.tfrecords"), options) as writer:
         for example in current_dataset:
             im_area = tf.reduce_sum(tf.cast(example["lens"] > args.signal_threshold, tf.float32)) * (example["image fov"] / example["pixels"]) ** 2
