@@ -1,5 +1,5 @@
 import tensorflow as tf
-from censai.data.lenses_tng_v2 import decode_all, encode_examples
+from censai.data.lenses_tng_v2 import decode_all, encode_examples, decode_physical_model_info
 import os, glob, time
 from datetime import datetime
 from censai.definitions import DTYPE
@@ -24,7 +24,7 @@ def distributed_strategy(args):
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
                                block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-    for example in dataset:
+    for example in dataset.map(decode_physical_model_info):
         lens_pixels = example["pixels"].numpy()
         break
     dataset = dataset.map(decode_all)
