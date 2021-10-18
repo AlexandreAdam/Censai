@@ -14,5 +14,5 @@ python $CENSAI_PATH/scripts/validate_lenses.py\
   --dataset=$CENSAI_PATH/data/lenses128hst_TNG_VAE_200k_control\
   --min_magnification=3\
   --signal_threshold=0.1\
-  --example_per_worker=100000\
+  --example_per_worker=10000\
   --compression_type=GZIP
