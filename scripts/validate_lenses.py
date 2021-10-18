@@ -52,13 +52,13 @@ def distributed_strategy(args):
                 kappa=example["kappa"],
                 galaxies=example["source"],
                 lensed_images=example["lens"],
-                z_source=example["z source"],
-                z_lens=example["z lens"],
-                image_fov=example["image fov"],
-                kappa_fov=example["kappa fov"],
-                source_fov=example["source fov"],
-                noise_rms=example["noise rms"],
-                psf_sigma=example["psf sigma"]
+                z_source=example["z source"].numpy(),
+                z_lens=example["z lens"].numpy(),
+                image_fov=example["image fov"].numpy(),
+                kappa_fov=example["kappa fov"].numpy(),
+                source_fov=example["source fov"].numpy(),
+                noise_rms=example["noise rms"].numpy(),
+                psf_sigma=example["psf sigma"].numpy()
             )
             writer.write(record)
     print(f"Finished worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}, kept {kept:d} examples")
