@@ -1,5 +1,6 @@
 import tensorflow as tf
-from censai.data.lenses_tng_v2 import decode_all, encode_examples, decode_physical_model_info
+from censai.data.lenses_tng_v2 import decode_all, decode_physical_model_info
+from censai.utils import _bytes_feature, _int64_feature, _float_feature
 import os, glob, time
 from datetime import datetime
 from censai.definitions import DTYPE
@@ -48,18 +49,23 @@ def distributed_strategy(args):
             if tf.reduce_max(example["lens"] * mask) > args.edge_signal_tolerance:
                 continue
             kept += 1
-            record = encode_examples(
-                kappa=example["kappa"],
-                galaxies=example["source"],
-                lensed_images=example["lens"],
-                z_source=example["z source"].numpy(),
-                z_lens=example["z lens"].numpy(),
-                image_fov=example["image fov"].numpy(),
-                kappa_fov=example["kappa fov"].numpy(),
-                source_fov=example["source fov"].numpy(),
-                noise_rms=example["noise rms"].numpy(),
-                psf_sigma=example["psf sigma"].numpy()
-            )
+            features = {
+                "kappa": _bytes_feature(example["kappa"].numpy().tobytes()),
+                "source": _bytes_feature(example["source"].numpy().tobytes()),
+                "lens": _bytes_feature(example["lens"].numpy().tobytes()),
+                "z source": _float_feature(example["z source"].numpy()),
+                "z lens": _float_feature(example["z lens"].numpy()),
+                "image fov": _float_feature(example["image fov"].numpy()),  # arc seconds
+                "kappa fov": _float_feature(example["kappa fov"].numpy()),  # arc seconds
+                "source fov": _float_feature(example["source fov"].numpy()),  # arc seconds
+                "src pixels": _int64_feature(example["source"].shape[0]),
+                "kappa pixels": _int64_feature(example["kappa"].shape[0]),
+                "pixels": _int64_feature(example["lens"].shape[0]),
+                "noise rms": _float_feature(example["noise rms"].numpy()),
+                "psf sigma": _float_feature(example["psf sigma"].numpy()),
+            }
+            serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
+            record = serialized_output.SerializeToString()
             writer.write(record)
     print(f"Finished worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}, kept {kept:d} examples")
 
