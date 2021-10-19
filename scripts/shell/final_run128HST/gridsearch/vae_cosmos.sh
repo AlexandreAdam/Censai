@@ -12,11 +12,11 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --datasets $CENSAI_PATH/data/cosmos_23.5_finalrun_train/\
   --strategy=uniform\
-  --epochs=1000\
+  --epochs=200\
   --n_models=32\
   --batch_size 20\
   --train_split=0.9\
-  --total_items 70000\
+  --total_items 47955\
   --optimizer Adam\
   --initial_learning_rate 1e-4\
   --decay_rate 0.5\
@@ -24,7 +24,7 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --beta_init 0.1\
   --beta_end_value 0.1 0.2 0.3 0.4 0.5 0.6 0.9 1.\
   --beta_decay_power 0.5\
-  --beta_decay_steps 50000 100000\
+  --beta_decay_steps 50000 100000 200000\
   --beta_cyclical 0\
   --skip_strength_init 0\
   --skip_strength_end_value=0.\
@@ -39,8 +39,8 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --patience=100\
   --tolerance=0.0\
   --block_length=1\
-  --layers 3 4\
-  --conv_layers 2 3\
+  --layers 3\
+  --conv_layers 2\
   --filter_scaling 2\
   --filters 16 32\
   --kernel_size 3\
@@ -48,10 +48,10 @@ python $CENSAI_PATH/scripts/experiments/vae_cosmos_gridsearch.py\
   --bias_reg_amp=0\
   --activation leaky_relu bipolar_relu\
   --batch_norm 0\
-  --latent_size 64 256\
+  --latent_size 16 32 64 84\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst\
-  --logname_prefixe=VAE1_COSMOS_O\
+  --logname_prefixe=VAE1_COSMOSFR\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=10\

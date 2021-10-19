@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/make_cosmos_vae_dataset.py\
-  --cosmos_first_stage_vae=$CENSAI_PATH/models/VAE1_COSMOS_O_009_L4_CL2_F32_NLbipolar_relu_LS256_betaE0.1_betaDS20000_211011103554\
+  --cosmos_first_stage_vae=$CENSAI_PATH/models/VAE1_COSMOS_O_022_L3_CL2_F16_NLleaky_relu_LS256_betaE0.1_betaDS20000_211011104224\
   --output_dir=$HOME/scratch/Censai/data/cosmosFR_VAE1_COSMOS_O_009_L4_CL2_F32_NLbipolar_relu_LS256_betaE0.1_betaDS20000_211011103554/\
   --len_dataset=900000\
   --compression_type=GZIP\
