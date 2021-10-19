@@ -127,16 +127,12 @@ if __name__ == '__main__':
     parser.add_argument("--z_lens",         default=0.4457,     type=float)
 
     # Reproducibility params
-    parser.add_argument("--seed",           default=None,       type=int,   help="Random seed for numpy and tensorflow")
     parser.add_argument("--json_override",  default=None, nargs="+",        help="A json filepath that will override every command line parameters. "
                                                                                  "Useful for reproducibility")
 
     args = parser.parse_args()
     if not os.path.isdir(args.output_dir) and THIS_WORKER <= 1:
         os.mkdir(args.output_dir)
-    if args.seed is not None:
-        tf.random.set_seed(args.seed)
-        np.random.seed(args.seed)
     if args.json_override is not None:
         if isinstance(args.json_override, list):
             files = args.json_override

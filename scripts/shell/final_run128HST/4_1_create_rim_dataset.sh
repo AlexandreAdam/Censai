@@ -24,11 +24,10 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --lens_pixels=128\
   --source_fov=3\
   --noise_rms=0.01\
-  --psf_sigma=0.08\
+  --psf_sigma=0.06\
   --buffer_size=10000\
   --batch_size=20\
   --tukey_alpha=0\
   --z_source=2.379\
   --z_lens=0.4457\
-  --block_length=1\
-  --seed=42
+  --block_length=1
