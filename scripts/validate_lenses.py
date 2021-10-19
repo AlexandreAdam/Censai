@@ -31,7 +31,7 @@ def distributed_strategy(args):
     dataset = dataset.map(decode_all)
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     kept = 0
-    current_dataset = dataset.skip((THIS_WORKER-1) * args.example_per_worker).take((THIS_WORKER-1 + 1) * args.example_per_worker)
+    current_dataset = dataset.skip((THIS_WORKER-1) * args.example_per_worker).take(args.example_per_worker)
 
     # setup mask for edge detection
     x = tf.range(lens_pixels, dtype=DTYPE) - lens_pixels//2 + 0.5 * lens_pixels % 2
