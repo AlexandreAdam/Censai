@@ -13,9 +13,8 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --output_dir=$HOME/scratch/Censai/data/lenses128hst_TNG_VAE_2M/\
   --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_fr_trainset/\
- $CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_018_BN1_LS84_betaE0.6_betaDS10000_211016160612/\
- $CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_000_BN0_LS84_betaE0.3_betaDS10000_211016160534/\
-  --kappa_datasets_weights 0.4 0.4 0.2\
+ $CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_019_BN1_LS84_betaE0.3_betaDS10000_211018013829/\
+  --kappa_datasets_weights 0.4 0.6\
   --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun128_train\
  $CENSAI_PATH/data/cosmosFR_VAE1_COSMOS_O_009_L4_CL2_F32_NLbipolar_relu_LS256_betaE0.1_betaDS20000_211011103554\
   --cosmos_datasets_weights 0.4 0.6\
@@ -24,11 +23,10 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --lens_pixels=128\
   --source_fov=3\
   --noise_rms=0.01\
-  --psf_sigma=0.08\
+  --psf_sigma=0.06\
   --buffer_size=10000\
   --batch_size=20\
   --tukey_alpha=0\
   --z_source=2.379\
   --z_lens=0.4457\
-  --block_length=1\
-  --seed=42
+  --block_length=1
