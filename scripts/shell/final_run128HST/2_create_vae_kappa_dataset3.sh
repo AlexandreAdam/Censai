@@ -6,12 +6,13 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=0-02:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Create-VAE-Kappa-Dataset-900k
+#SBATCH --job-name=Create-Kappa-VAEDataset-500k
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/make_cosmos_vae_dataset.py\
-  --cosmos_first_stage_vae=$CENSAI_PATH/models/VAE1_COSMOSFR_003_F32_NLleaky_relu_LS32_betaE0.1_betaDS100000_211018104400\
-  --output_dir=$HOME/scratch/Censai/data/cosmosFR_VAE1_COSMOSFR_003_F32_NLleaky_relu_LS32_betaE0.1_betaDS100000_211018104400\
+python $CENSAI_PATH/scripts/make_kappa_vae_dataset.py\
+  --kappa_first_stage_vae=$CENSAI_PATH/models/VAE1_128hstfr_019_BN1_LS84_betaE0.3_betaDS10000_211018013829\
+  --output_dir=$CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_019_BN1_LS84_betaE0.3_betaDS10000_211018013829\
   --len_dataset=500000\
   --compression_type=GZIP\
-  --batch=20\
+  --kappa_fov=7.688\
+  --seed=42
