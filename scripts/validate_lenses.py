@@ -1,5 +1,6 @@
 import tensorflow as tf
-from censai.data.lenses_tng_v2 import decode_all, encode_examples
+from censai.data.lenses_tng_v2 import decode_all, decode_physical_model_info
+from censai.utils import _bytes_feature, _int64_feature, _float_feature
 import os, glob, time
 from datetime import datetime
 from censai.definitions import DTYPE
@@ -24,10 +25,10 @@ def distributed_strategy(args):
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
                                block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-    for example in dataset:
+    for example in dataset.map(decode_physical_model_info):
         lens_pixels = example["pixels"].numpy()
         break
-    dataset = dataset.map(decode_all).batch(1)
+    dataset = dataset.map(decode_all)
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     kept = 0
     current_dataset = dataset.skip((THIS_WORKER-1) * args.example_per_worker).take((THIS_WORKER-1 + 1) * args.example_per_worker)
@@ -37,29 +38,34 @@ def distributed_strategy(args):
     x, y = tf.meshgrid(x, x)
     edge = lens_pixels//2 - args.edge
     mask = (x > edge) | (x < -edge) | (y > edge) | (y < -edge)
-    mask = tf.cast(mask[None, ..., None], DTYPE)
+    mask = tf.cast(mask[..., None], DTYPE)
     with tf.io.TFRecordWriter(os.path.join(output_dir, f"data_{THIS_WORKER-1:02d}.tfrecords"), options) as writer:
         for example in current_dataset:
-            im_area = tf.reduce_sum(tf.cast(example["lens"] > args.signal_threshold, tf.float32)) * (example["image fov"] / example["pixels"]) ** 2
-            src_area = tf.reduce_sum(tf.cast(example["source"] > args.signal_threshold, tf.float32)) * (example["source fov"] / example["src pixels"]) ** 2
+            im_area = tf.reduce_sum(tf.cast(example["lens"] > args.signal_threshold, tf.float32)) * (example["image fov"] / tf.cast(example["pixels"], DTYPE)) ** 2
+            src_area = tf.reduce_sum(tf.cast(example["source"] > args.signal_threshold, tf.float32)) * (example["source fov"] / tf.cast(example["src pixels"], DTYPE)) ** 2
             magnification = im_area / src_area
             if magnification < args.min_magnification:
                 continue
             if tf.reduce_max(example["lens"] * mask) > args.edge_signal_tolerance:
                 continue
             kept += 1
-            record = encode_examples(
-                kappa=example["kappa"],
-                galaxies=example["source"],
-                lensed_images=example["lens"],
-                z_source=example["z source"],
-                z_lens=example["z lens"],
-                image_fov=example["image fov"],
-                kappa_fov=example["kappa fov"],
-                source_fov=example["source fov"],
-                noise_rms=example["noise rms"],
-                psf_sigma=example["psf sigma"]
-            )
+            features = {
+                "kappa": _bytes_feature(example["kappa"].numpy().tobytes()),
+                "source": _bytes_feature(example["source"].numpy().tobytes()),
+                "lens": _bytes_feature(example["lens"].numpy().tobytes()),
+                "z source": _float_feature(example["z source"].numpy()),
+                "z lens": _float_feature(example["z lens"].numpy()),
+                "image fov": _float_feature(example["image fov"].numpy()),  # arc seconds
+                "kappa fov": _float_feature(example["kappa fov"].numpy()),  # arc seconds
+                "source fov": _float_feature(example["source fov"].numpy()),  # arc seconds
+                "src pixels": _int64_feature(example["source"].shape[0]),
+                "kappa pixels": _int64_feature(example["kappa"].shape[0]),
+                "pixels": _int64_feature(example["lens"].shape[0]),
+                "noise rms": _float_feature(example["noise rms"].numpy()),
+                "psf sigma": _float_feature(example["psf sigma"].numpy()),
+            }
+            serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
+            record = serialized_output.SerializeToString()
             writer.write(record)
     print(f"Finished worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}, kept {kept:d} examples")
 

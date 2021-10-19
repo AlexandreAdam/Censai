@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-20
+#SBATCH --array=1-40
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -16,8 +16,9 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
  $CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_018_BN1_LS84_betaE0.6_betaDS10000_211016160612/\
  $CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_000_BN0_LS84_betaE0.3_betaDS10000_211016160534/\
   --kappa_datasets_weights 0.4 0.4 0.2\
-  --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun128_train $CENSAI_PATH/data/cosmos_23.5_finalrun128_verydiffuse_train/\
-  --cosmos_datasets_weights 0.7 0.3\
+  --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun128_train\
+ $CENSAI_PATH/data/cosmosFR_VAE1_COSMOS_O_009_L4_CL2_F32_NLbipolar_relu_LS256_betaE0.1_betaDS20000_211011103554\
+  --cosmos_datasets_weights 0.4 0.6\
   --compression_type=GZIP\
   --len_dataset=2000000\
   --lens_pixels=128\
