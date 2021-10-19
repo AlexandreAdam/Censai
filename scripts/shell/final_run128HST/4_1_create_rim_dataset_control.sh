@@ -13,8 +13,7 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --output_dir=$HOME/scratch/Censai/data/lenses128hst_TNG_VAE_200k_control/\
   --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_fr_trainset/\
-  --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun128_train $CENSAI_PATH/data/cosmos_23.5_finalrun128_verydiffuse_train/\
-  --cosmos_datasets_weights 0.7 0.3\
+  --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun128_train\
   --compression_type=GZIP\
   --len_dataset=200000\
   --lens_pixels=128\
@@ -26,5 +25,4 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --tukey_alpha=0\
   --z_source=2.379\
   --z_lens=0.4457\
-  --block_length=1\
-  --seed=42
+  --block_length=1
