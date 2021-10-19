@@ -39,7 +39,7 @@ def distributed_strategy(args):
     edge = lens_pixels//2 - args.edge
     mask = (x > edge) | (x < -edge) | (y > edge) | (y < -edge)
     mask = tf.cast(mask[..., None], DTYPE)
-    with tf.io.TFRecordWriter(os.path.join(output_dir, f"data_{THIS_WORKER-1:02d}.tfrecords"), options) as writer:
+    with tf.io.TFRecordWriter(os.path.join(output_dir, f"data_{THIS_WORKER:02d}.tfrecords"), options) as writer:
         for example in current_dataset:
             im_area = tf.reduce_sum(tf.cast(example["lens"] > args.signal_threshold, tf.float32)) * (example["image fov"] / tf.cast(example["pixels"], DTYPE)) ** 2
             src_area = tf.reduce_sum(tf.cast(example["source"] > args.signal_threshold, tf.float32)) * (example["source fov"] / tf.cast(example["src pixels"], DTYPE)) ** 2
@@ -70,7 +70,7 @@ def distributed_strategy(args):
     print(f"Finished worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}, kept {kept:d} examples")
 
     with open(os.path.join(output_dir, "shard_size.txt"), "a") as f:
-        f.write(f"{kept:d}\n")
+        f.write(f"{THIS_WORKER} {kept:d}\n")
 
 
 if __name__ == '__main__':
