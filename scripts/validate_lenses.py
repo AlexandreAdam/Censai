@@ -18,6 +18,8 @@ def distributed_strategy(args):
     if THIS_WORKER > 1:
         time.sleep(5)
     output_dir = args.dataset + "_validated"
+    if THIS_WORKER == 1 and os.path.exists(os.path.join(output_dir, "shard_size.txt")):
+        os.remove(os.path.join(output_dir, "shard_size.txt"))
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
     files = glob.glob(os.path.join(args.dataset, "*.tfrecords"))
