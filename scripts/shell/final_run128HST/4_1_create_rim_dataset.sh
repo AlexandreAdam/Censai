@@ -27,6 +27,4 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --buffer_size=50000\
   --batch_size=20\
   --tukey_alpha=0\
-  --z_source=2.379\
-  --z_lens=0.4457\
   --block_length=1
