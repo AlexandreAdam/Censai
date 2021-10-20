@@ -24,8 +24,6 @@ def distributed_strategy(args):
     kappa_datasets = []
     for path in args.kappa_datasets:
         files = glob.glob(os.path.join(path, "*.tfrecords"))
-        np.random.shuffle(files)
-        # Read concurrently from multiple records
         files = tf.data.Dataset.from_tensor_slices(files).shuffle(len(files), reshuffle_each_iteration=True)
         dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type), block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
         kappa_datasets.append(dataset.shuffle(args.buffer_size, reshuffle_each_iteration=True))
@@ -40,8 +38,6 @@ def distributed_strategy(args):
     cosmos_datasets = []
     for path in args.cosmos_datasets:
         files = glob.glob(os.path.join(path, "*.tfrecords"))
-        np.random.shuffle(files)
-        # Read concurrently from multiple records
         files = tf.data.Dataset.from_tensor_slices(files).shuffle(len(files), reshuffle_each_iteration=True)
         dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type), block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
         cosmos_datasets.append(dataset.shuffle(args.buffer_size, reshuffle_each_iteration=True))
