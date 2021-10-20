@@ -85,7 +85,7 @@ def main(args):
         Thus we want to reshuffle at each epoch to get a different realisation of the dataset. 
         In case total_items == true dataset size, this means we only change ordering of items each epochs.
         
-        Also, validation is not a split of the training data, but a saved dataset on disk.
+        Also, validation is not a split of the training data, but a saved dataset on disk. 
         """
         files = tf.data.Dataset.from_tensor_slices(files)
         dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type).shuffle(len(files), reshuffle_each_iteration=True),
@@ -104,7 +104,7 @@ def main(args):
             val_files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
         val_files = tf.data.Dataset.from_tensor_slices(val_files)
         val_dataset = val_files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type), block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-        val_dataset = val_dataset.batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+        val_dataset = val_dataset.shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).take(math.ceil((1 - args.train_split) * args.total_items)).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     else:
         """
         Here, we split the dataset, so we assume total_items is the true dataset size. Any extra items will be discarded. 
@@ -497,7 +497,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model_id",               default="None",                 help="Start from this model id checkpoint. None means start from scratch")
     parser.add_argument("--datasets",               required=True,  nargs="+",      help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
-    parser.add_argument("--val_datasets",           default=None,  nargs="+",      help="Validation dataset path")
+    parser.add_argument("--val_datasets",           default=None,  nargs="+",       help="Validation dataset path")
     parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
 
     # RIM hyperparameters
