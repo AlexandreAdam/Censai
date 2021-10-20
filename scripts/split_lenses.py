@@ -16,7 +16,7 @@ def main(args):
 
     train_items = math.floor(args.train_split * total_items)
 
-    dataset = dataset.shuffle(args.buffer_size, reshuffle_each_iteration=False)
+    dataset = dataset.shuffle(args.buffer_size, reshuffle_each_iteration=False).map(decode_all)
     train_dataset = dataset.take(train_items).batch(1)
     val_dataset = dataset.skip(train_items).batch(1)
 
@@ -31,7 +31,7 @@ def main(args):
     for shard in range(train_shards):
         data = train_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
         with tf.io.TFRecordWriter(os.path.join(train_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
-            for example in data.map(decode_all):
+            for example in data:
                 record = encode_examples(
                     kappa=example["kappa"],
                     galaxies=example["source"],
@@ -48,7 +48,7 @@ def main(args):
     for shard in range(val_shards):
         data = val_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
         with tf.io.TFRecordWriter(os.path.join(val_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
-            for example in data.map(decode_all):
+            for example in data:
                 record = encode_examples(
                     kappa=example["kappa"],
                     galaxies=example["source"],
