@@ -11,7 +11,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/split_lenses.py\
-  --dataset=$CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated\
+  --dataset=$CENSAI_PATH/data/lenses128hst_TNG_VAE_200k_control_validated\
   --train_split=0.9\
-  --example_per_shard=50000\
+  --examples_per_shard=10000\
   --compression_type=GZIP
