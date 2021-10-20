@@ -30,7 +30,7 @@ def main(args):
     train_shards = train_items // args.examples_per_shard + 1 * (train_items % args.examples_per_shard > 0)
     for shard in range(train_shards):
         data = train_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
-        with tf.io.TFRecordWriter(os.path.join(train_dir, f"data_{shard:20d}.tfrecords"), options=options) as writer:
+        with tf.io.TFRecordWriter(os.path.join(train_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
             for example in data.map(decode_all):
                 record = encode_examples(
                     kappa=example["kappa"],
@@ -47,7 +47,7 @@ def main(args):
     val_shards = (total_items - train_items) // args.examples_per_shard + 1 * ((total_items - train_items) % args.examples_per_shard > 0)
     for shard in range(val_shards):
         data = val_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
-        with tf.io.TFRecordWriter(os.path.join(val_dir, f"data_{shard:20d}.tfrecords"), options=options) as writer:
+        with tf.io.TFRecordWriter(os.path.join(val_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
             for example in data.map(decode_all):
                 record = encode_examples(
                     kappa=example["kappa"],
