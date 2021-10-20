@@ -46,7 +46,7 @@ class AugmentedTNGKappaGenerator:
         pixels = fits.open(kappa_fits_files[0])["PRIMARY"].data.shape[0]  # pixels of the full cutout
         self.physical_pixel_scale = header["FOV"] / pixels * u.Mpc
         self.crop_pixels = pixels - 2 * crop  # pixels after crop
-        self.pixel_scale = header["CD1_1"]  # pixel scale in arc seconds
+        self.pixel_scale = self.physical_pixel_scale / COSMO.angular_diameter_distance(z_lens) * 180 / np.pi * 3600 * COSMO.h  # pixel scale in arc seconds
         self.kappa_fov = self.pixel_scale * self.crop_pixels
 
         self.min_theta_e = min_theta_e if min_theta_e is not None else 0.1 * self.kappa_fov
