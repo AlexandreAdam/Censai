@@ -15,7 +15,7 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_fr_trainset/\
  $CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_019_BN1_LS84_betaE0.3_betaDS10000_211018013829/\
   --kappa_datasets_weights 0.4 0.6\
-  --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun128_train\
+  --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun128_train/\
  $CENSAI_PATH/data/cosmosFR_VAE1_COSMOSFR_003_F32_NLleaky_relu_LS32_betaE0.1_betaDS100000_211018104400/\
   --cosmos_datasets_weights 0.4 0.6\
   --compression_type=GZIP\
@@ -24,7 +24,7 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --source_fov=3\
   --noise_rms=0.01\
   --psf_sigma=0.06\
-  --buffer_size=10000\
+  --buffer_size=50000\
   --batch_size=20\
   --tukey_alpha=0\
   --z_source=2.379\
