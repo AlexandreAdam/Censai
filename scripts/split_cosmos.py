@@ -44,7 +44,7 @@ def main(args):
     for shard in range(test_shards):
         data = test_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
         with tf.io.TFRecordWriter(os.path.join(test_dir, f"data_{shard:20d}.tfrecords"), options=options) as writer:
-            for example in data.map(decode_image):
+            for image in data.map(decode_image):
                 features = {
                     "image": _bytes_feature(image.numpy().tobytes()),
                     "height": _int64_feature(image.shape[0]),
