@@ -1,5 +1,6 @@
 import tensorflow as tf
-from censai.data.lenses_tng_v2 import encode_examples, decode_all
+from censai.data.lenses_tng_v2 import decode_all
+from censai.utils import _bytes_feature, _int64_feature, _float_feature
 import os, glob
 import math
 
@@ -17,8 +18,8 @@ def main(args):
     train_items = math.floor(args.train_split * total_items)
 
     dataset = dataset.shuffle(args.buffer_size, reshuffle_each_iteration=False).map(decode_all)
-    train_dataset = dataset.take(train_items).batch(1)
-    val_dataset = dataset.skip(train_items).batch(1)
+    train_dataset = dataset.take(train_items)
+    val_dataset = dataset.skip(train_items)
 
     train_dir = args.dataset + "_train"
     if not os.path.isdir(train_dir):
@@ -32,34 +33,46 @@ def main(args):
         data = train_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
         with tf.io.TFRecordWriter(os.path.join(train_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
             for example in data:
-                record = encode_examples(
-                    kappa=example["kappa"],
-                    galaxies=example["source"],
-                    lensed_images=example["lens"],
-                    z_source=example["z source"],
-                    z_lens=example["z lens"],
-                    image_fov=example["image fov"],
-                    kappa_fov=example["kappa fov"],
-                    source_fov=example["source fov"],
-                    noise_rms=example["noise rms"],
-                    psf_sigma=example["psf sigma"])[0]
+                features = {
+                    "kappa": _bytes_feature(example["kappa"].numpy().tobytes()),
+                    "source": _bytes_feature(example["source"].numpy().tobytes()),
+                    "lens": _bytes_feature(example["lens"].numpy().tobytes()),
+                    "z source": _float_feature(example["z source"].numpy()),
+                    "z lens": _float_feature(example["z lens"].numpy()),
+                    "image fov": _float_feature(example["image fov"].numpy()),  # arc seconds
+                    "kappa fov": _float_feature(example["kappa fov"].numpy()),  # arc seconds
+                    "source fov": _float_feature(example["source fov"].numpy()),  # arc seconds
+                    "src pixels": _int64_feature(example["source"].shape[0]),
+                    "kappa pixels": _int64_feature(example["kappa"].shape[0]),
+                    "pixels": _int64_feature(example["lens"].shape[0]),
+                    "noise rms": _float_feature(example["noise rms"].numpy()),
+                    "psf sigma": _float_feature(example["psf sigma"].numpy()),
+                }
+                serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
+                record = serialized_output.SerializeToString()
                 writer.write(record)
     val_shards = (total_items - train_items) // args.examples_per_shard + 1 * ((total_items - train_items) % args.examples_per_shard > 0)
     for shard in range(val_shards):
         data = val_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
         with tf.io.TFRecordWriter(os.path.join(val_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
             for example in data:
-                record = encode_examples(
-                    kappa=example["kappa"],
-                    galaxies=example["source"],
-                    lensed_images=example["lens"],
-                    z_source=example["z source"],
-                    z_lens=example["z lens"],
-                    image_fov=example["image fov"],
-                    kappa_fov=example["kappa fov"],
-                    source_fov=example["source fov"],
-                    noise_rms=example["noise rms"],
-                    psf_sigma=example["psf sigma"])[0]
+                features = {
+                    "kappa": _bytes_feature(example["kappa"].numpy().tobytes()),
+                    "source": _bytes_feature(example["source"].numpy().tobytes()),
+                    "lens": _bytes_feature(example["lens"].numpy().tobytes()),
+                    "z source": _float_feature(example["z source"].numpy()),
+                    "z lens": _float_feature(example["z lens"].numpy()),
+                    "image fov": _float_feature(example["image fov"].numpy()),  # arc seconds
+                    "kappa fov": _float_feature(example["kappa fov"].numpy()),  # arc seconds
+                    "source fov": _float_feature(example["source fov"].numpy()),  # arc seconds
+                    "src pixels": _int64_feature(example["source"].shape[0]),
+                    "kappa pixels": _int64_feature(example["kappa"].shape[0]),
+                    "pixels": _int64_feature(example["lens"].shape[0]),
+                    "noise rms": _float_feature(example["noise rms"].numpy()),
+                    "psf sigma": _float_feature(example["psf sigma"].numpy()),
+                }
+                serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
+                record = serialized_output.SerializeToString()
                 writer.write(record)
     with open(os.path.join(train_dir, "dataset_size.txt"), "w") as f:
         f.write(f"{train_items:d}")
