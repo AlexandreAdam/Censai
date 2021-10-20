@@ -30,7 +30,6 @@ def distributed_strategy(args):
     for example in dataset.map(decode_physical_model_info):
         lens_pixels = example["pixels"].numpy()
         break
-    dataset = dataset.map(decode_all)
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     kept = 0
     current_dataset = dataset.skip((THIS_WORKER-1) * args.example_per_worker).take(args.example_per_worker)
@@ -42,7 +41,7 @@ def distributed_strategy(args):
     mask = (x > edge) | (x < -edge) | (y > edge) | (y < -edge)
     mask = tf.cast(mask[..., None], DTYPE)
     with tf.io.TFRecordWriter(os.path.join(output_dir, f"data_{THIS_WORKER:02d}.tfrecords"), options) as writer:
-        for example in current_dataset:
+        for example in current_dataset.map(decode_all):
             im_area = tf.reduce_sum(tf.cast(example["lens"] > args.signal_threshold, tf.float32)) * (example["image fov"] / tf.cast(example["pixels"], DTYPE)) ** 2
             src_area = tf.reduce_sum(tf.cast(example["source"] > args.signal_threshold, tf.float32)) * (example["source fov"] / tf.cast(example["src pixels"], DTYPE)) ** 2
             magnification = im_area / src_area

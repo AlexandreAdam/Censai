@@ -32,7 +32,7 @@ def main(args):
     train_shards = train_items // args.examples_per_shard + 1 * (train_items % args.examples_per_shard > 0)
     for shard in range(train_shards):
         data = train_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
-        with tf.io.TFRecordWriter(os.path.join(train_dir, f"data_{shard:20d}.tfrecords"), options=options) as writer:
+        with tf.io.TFRecordWriter(os.path.join(train_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
             for image in data.map(decode_image):
                 features = {
                     "image": _bytes_feature(image.numpy().tobytes()),
@@ -43,7 +43,7 @@ def main(args):
     test_shards = (total_items - train_items) // args.examples_per_shard + 1 * ((total_items - train_items) % args.examples_per_shard > 0)
     for shard in range(test_shards):
         data = test_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
-        with tf.io.TFRecordWriter(os.path.join(test_dir, f"data_{shard:20d}.tfrecords"), options=options) as writer:
+        with tf.io.TFRecordWriter(os.path.join(test_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
             for image in data.map(decode_image):
                 features = {
                     "image": _bytes_feature(image.numpy().tobytes()),
