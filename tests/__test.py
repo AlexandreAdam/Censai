@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from censai.utils import _int64_feature
 import glob, os
@@ -58,4 +59,5 @@ for i in range(100):
         recovered_data3.append(x)
         break
 print(recovered_data3)
+print(len(np.unique(recovered_data3)))
 
