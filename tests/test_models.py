@@ -21,7 +21,7 @@ def test_rim_unet():
     phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32)
     m1 = UnetModel()
     m2 = UnetModel()
-    rim = RIMUnet(phys, m1, m2, steps=2)
+    rim = RIMUnet(phys, m1, m2, steps=5, delay=2)
     rim.call(lens)
 
 
@@ -240,12 +240,12 @@ if __name__ == '__main__':
     # test_shared_unet_model()
     # test_rim_shared_unet()
     # test_rim()
-    # test_rim_unet()
+    test_rim_unet()
     # test_resnet_vae()
     # test_resnet_encoder()
     # test_vae()
     # test_vae_second_stage()
     # test_convGRU()
-    test_rimsharedresunet()
+    # test_rimsharedresunet()
     # test_rimsharedresunetatrous()
     # test_rim_shared_memoryresunetatrous()

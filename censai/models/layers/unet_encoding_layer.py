@@ -55,12 +55,12 @@ class UnetEncodingLayer(tf.keras.layers.Layer):
         if downsampling_kernel_size is None:
             self.downsampling_kernel_size = self.kernel_size
         else:
-            self.downsampling_kernel_size = tuple([downsampling_kernel_size]*2)
+            self.downsampling_kernel_size = (downsampling_kernel_size,)*2 if isinstance(downsampling_kernel_size, int) else downsampling_kernel_size
         if downsampling_filters is None:
             downsampling_filters = filters
         self.num_conv_layers = conv_layers
         self.filters = filters
-        self.strides = tuple([strides]*2) if isinstance(strides, int) else strides
+        self.strides = (strides,)*2 if isinstance(strides, int) else strides
         self.activation = get_activation(activation)
 
         self.conv_layers = []
