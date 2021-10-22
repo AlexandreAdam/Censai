@@ -221,42 +221,42 @@ def rim_residual_plot(lens_true, source_true, kappa_true, lens_pred, source_pred
     fig, axs = plt.subplots(3, 3, figsize=(12, 12))
 
     ax = axs[0, 0]
-    im = ax.imshow(lens_true[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(lens_true[..., 0], cmap="hot", origin="lower", vmin=0, vmax=1)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[1, 0]
-    im = ax.imshow(source_true[..., 0], cmap="bone", origin="lower")
+    im = ax.imshow(source_true[..., 0], cmap="bone", origin="lower", vmin=0, vmax=1)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2, 0]
-    im = ax.imshow(kappa_true[..., 0], cmap="hot", norm=LogNorm(vmin=5e-2), origin="lower")
+    im = ax.imshow(kappa_true[..., 0], cmap="hot", norm=LogNorm(vmin=1e-1, vmax=100), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[0, 1]
-    im = ax.imshow(lens_pred[..., 0], cmap="hot", origin="lower")
+    im = ax.imshow(lens_pred[..., 0], cmap="hot", origin="lower", vmin=0, vmax=1)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[1, 1]
-    im = ax.imshow(source_pred[..., 0], cmap="bone", origin="lower")
+    im = ax.imshow(source_pred[..., 0], cmap="bone", origin="lower", vmin=0, vmax=1)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     ax.axis("off")
 
     ax = axs[2, 1]
-    im = ax.imshow(kappa_pred[..., 0], cmap="hot", norm=LogNorm(vmin=5e-2), origin="lower")
+    im = ax.imshow(kappa_pred[..., 0], cmap="hot", norm=LogNorm(vmin=1e-1, vmax=100), origin="lower")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)

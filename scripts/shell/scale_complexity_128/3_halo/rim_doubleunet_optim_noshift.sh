@@ -12,7 +12,7 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses128_hTNG100_10k_verydiffuse\
   --compression_type=GZIP\
-  --strategy=exhaustive\
+  --strategy=uniform\
   --n_models=32\
   --forward_method=fft\
   --epochs=100000\
@@ -32,15 +32,15 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --time_weights linear quadratic\
   --adam 1\
   --kappalog\
-  --delay 0\
+  --delay 0 5\
   --source_link relu\
-  --kappa_filters 16 32\
+  --kappa_filters 16\
   --kappa_filter_scaling 2\
   --kappa_kernel_size 3\
   --kappa_layers 4\
   --kappa_block_conv_layers 2\
   --kappa_activation leaky_relu\
-  --source_filters 16\
+  --source_filters 4\
   --source_filter_scaling 2\
   --source_kernel_size 3\
   --source_layers 3\

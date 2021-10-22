@@ -168,4 +168,3 @@ class SharedUnetModel(tf.keras.Model):
             constant * tf.ones(shape=[batch_size, pixels, pixels, 2 * self._bottleneck_filters], dtype=DTYPE)
         )
         return hidden_states
-
