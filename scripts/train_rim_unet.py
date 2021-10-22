@@ -26,7 +26,8 @@ RIM_HPARAMS = [
     "kappalog",
     "kappa_normalize",
     "kappa_init",
-    "source_init"
+    "source_init",
+    "delay"
 ]
 SOURCE_MODEL_HPARAMS = [
     "filters",
@@ -178,7 +179,8 @@ def main(args):
         source_link=args.source_link,
         kappa_normalize=args.kappa_normalize,
         kappa_init=args.kappa_init,
-        source_init=args.source_init
+        source_init=args.source_init,
+        delay=args.delay
     )
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.initial_learning_rate,
@@ -379,7 +381,7 @@ def main(args):
         with writer.as_default():
             for batch, (X, source, kappa) in enumerate(train_dataset):
                 start = time.time()
-                if epoch < args.delay:
+                if epoch < args.train_delay:
                     cost, chi_squared, source_cost, kappa_cost = kappa_train_step(X, source, kappa)
                 else:  # train both unet together
                     cost, chi_squared, source_cost, kappa_cost = train_step(X, source, kappa)
@@ -595,7 +597,8 @@ if __name__ == "__main__":
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
-    parser.add_argument("--delay",                  default=0,      type=int,       help="Number of epochs kappa model trains alone")
+    parser.add_argument("--train_delay",            default=0,      type=int,       help="Number of epochs kappa model trains alone")
+    parser.add_argument("--delay",                  default=0,      type=int,       help="During RIM optimisation, kappa model iterate a few times before calling source model.")
     parser.add_argument("--optimizer",              default="Adam",                 help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")

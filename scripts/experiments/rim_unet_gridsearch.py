@@ -23,6 +23,7 @@ RIM_HPARAMS = [
     "source_link",
     "kappa_init",
     "source_init",
+    "delay",
 ]
 SOURCE_MODEL_HPARAMS = [
     "kappa_filters",
@@ -76,11 +77,11 @@ EXTRA_PARAMS = [
     "optimizer",
     "seed",
     "batch_size",
-    "delay",
     "time_weights",
     "initial_learning_rate",
     "decay_rate",
     "decay_steps",
+    "train_delay"
 ]
 
 
@@ -89,11 +90,11 @@ PARAMS_NICKNAME = {
     "optimizer": "O",
     "seed": "",
     "batch_size": "B",
-    "delay": "D",
     "time_weights": "TW",
     "initial_learning_rate": "lr",
     "decay_rate": "dr",
     "decay_steps": "ds",
+    "train_delay": "TD",
 
     "kappa_filters": "KF",
     "kappa_filter_scaling": "KFS",
@@ -138,6 +139,7 @@ PARAMS_NICKNAME = {
     "source_link": "Sli",
     "source_init": "Sini",
     "kappa_init": "Kini",
+    "delay": "D",
 }
 
 
@@ -322,7 +324,8 @@ if __name__ == '__main__':
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
-    parser.add_argument("--delay",                  default=0,      nargs="+",  type=int,       help="Number of epochs kappa model trains alone")
+    parser.add_argument("--train_delay",            default=0,      nargs="+",  type=int,       help="Number of epochs kappa model trains alone")
+    parser.add_argument("--delay",                  default=0,      nargs="+",  type=int,       help="During RIM optimisation, kappa model iterate a few times before calling source model")
     parser.add_argument("--optimizer",              default="Adam",  nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",  default=1e-3,   nargs="+",  type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     nargs="+",  type=float,     help="Exponential decay rate of learning rate (1=no decay).")
