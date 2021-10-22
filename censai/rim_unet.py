@@ -21,7 +21,8 @@ class RIMUnet:
             beta_2=0.999,
             epsilon=1e-8,
             source_init=1e-3,
-            kappa_init=1e-1
+            kappa_init=1e-1,
+            delay=0
     ):
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.kappa_pixels
@@ -39,6 +40,7 @@ class RIMUnet:
         self.epsilon = epsilon
         self._kappa_init = kappa_init
         self._source_init = source_init
+        self.delay = delay
 
         if self.kappalog:
             if self.kappa_normalize:
@@ -73,8 +75,10 @@ class RIMUnet:
 
         if adam:
             self.grad_update = self.adam_grad_update
+            self.kappa_grad_update = self.adam_kappa_grad_update
         else:
             self.grad_update = tf.keras.layers.Lambda(lambda x, y, t: (x, y))
+            self.kappa_grad_update = tf.keras.layers.Lambda(lambda x, t: x)
 
     def initial_states(self, batch_size):
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
@@ -98,11 +102,20 @@ class RIMUnet:
         self._grad_mean2 = self.beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
         self._grad_var2 = self.beta_2 * self._grad_var2 + (1 - self.beta_2) * tf.square(grad2)
         # for grad update, unbias the moments
-        m_hat1 = self._grad_mean1 / (1 - self.beta_1 ** (time_step + 1))
-        v_hat1 = self._grad_var1 / (1 - self.beta_2 ** (time_step + 1))
+        m_hat1 = self._grad_mean1 / (1 - self.beta_1 ** ((time_step - self.delay) + 1))
+        v_hat1 = self._grad_var1 / (1 - self.beta_2 ** ((time_step - self.delay) + 1))
         m_hat2 = self._grad_mean2 / (1 - self.beta_1 ** (time_step + 1))
         v_hat2 = self._grad_var2 / (1 - self.beta_2 ** (time_step + 1))
         return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon), m_hat2 / (tf.sqrt(v_hat2) + self.epsilon)
+
+    def adam_kappa_grad_update(self, grad2, time_step):
+        time_step = tf.cast(time_step, DTYPE)
+        self._grad_mean2 = self.beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
+        self._grad_var2 = self.beta_2 * self._grad_var2 + (1 - self.beta_2) * tf.square(grad2)
+        # for grad update, unbias the moments
+        m_hat2 = self._grad_mean2 / (1 - self.beta_1 ** (time_step + 1))
+        v_hat2 = self._grad_var2 / (1 - self.beta_2 ** (time_step + 1))
+        return m_hat2 / (tf.sqrt(v_hat2) + self.epsilon)
 
     def time_step(self, sources, source_states, source_grad, kappa, kappa_states, kappa_grad, scope=None):
         new_source, new_source_states = self.source_model(sources, source_states, source_grad)
@@ -119,7 +132,20 @@ class RIMUnet:
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
-        for current_step in tf.range(self.steps):
+        for current_step in tf.range(self.delay):
+            with outer_tape.stop_recording():
+                with tf.GradientTape() as g:
+                    g.watch(kappa)
+                    log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+                    cost = tf.reduce_mean(log_likelihood)
+                kappa_grad = g.gradient(cost, kappa)
+                kappa_grad = self.kappa_grad_update(kappa_grad, current_step)
+            kappa, kappa_states = self.kappa_model(kappa, kappa_states, kappa_grad)
+            source_series = source_series.write(index=current_step, value=source)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
+            if current_step > 0:
+                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+        for current_step in tf.range(self.delay, self.steps):
             with outer_tape.stop_recording():
                 with tf.GradientTape() as g:
                     g.watch(source)
@@ -222,7 +248,7 @@ class RIMUnet:
                     log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=source_image, kappa=self.kappa_link(kappa))
                     cost = tf.reduce_mean(log_likelihood)
                 kappa_grad = g.gradient(cost, kappa)
-                _, kappa_grad = self.grad_update(kappa_grad, kappa_grad, current_step)  # a little hack (twice the computation but half the code)
+                kappa_grad = self.kappa_grad_update(kappa_grad, current_step)
             kappa, kappa_states = self.kappa_model(kappa, kappa_states, kappa_grad)
             kappa_series = kappa_series.write(index=current_step, value=kappa)
             if current_step > 0:
