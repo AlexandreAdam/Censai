@@ -18,9 +18,9 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --epochs=100000\
   --max_time=46\
   --optimizer ADAMAX\
-  --initial_learning_rate 5e-4 1e-4\
+  --initial_learning_rate 1e-4\
   --decay_rate 0.5\
-  --decay_steps 5000 10000\
+  --decay_steps 50000\
   --clipping\
   --patience=40\
   --tolerance=0.01\
@@ -32,18 +32,18 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_gridsearch.py\
   --time_weights linear quadratic\
   --adam 1\
   --kappalog\
-  --delay 0 5\
-  --source_link relu\
+  --delay 0\
+  --source_link lrelu4p\
   --kappa_filters 16\
   --kappa_filter_scaling 2\
   --kappa_kernel_size 3\
   --kappa_layers 4\
   --kappa_block_conv_layers 2\
   --kappa_activation leaky_relu\
-  --source_filters 4\
+  --source_filters 16\
   --source_filter_scaling 2\
   --source_kernel_size 3\
-  --source_layers 3\
+  --source_layers 4\
   --source_block_conv_layers 2\
   --source_activation leaky_relu\
   --cache_file=$SLURM_TMPDIR/cache\
