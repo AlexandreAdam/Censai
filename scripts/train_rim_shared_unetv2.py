@@ -385,7 +385,6 @@ def main(args):
             if args.n_residuals > 0:
                 source_pred, kappa_pred, chi_squared = rim.predict(X)
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
-                lam = phys.lagrange_multiplier(y_true=X, y_pred=lens_pred)
             for res_idx in range(min(args.n_residuals, args.batch_size)):
                 try:
                     tf.summary.image(f"Residuals {res_idx}",
@@ -394,7 +393,7 @@ def main(args):
                                              X[res_idx],
                                              source[res_idx],
                                              kappa[res_idx],
-                                             lam[res_idx]*lens_pred[res_idx],
+                                             lens_pred[res_idx],
                                              source_pred[-1][res_idx],
                                              kappa_pred[-1][res_idx],
                                              chi_squared[-1][res_idx]
@@ -417,7 +416,6 @@ def main(args):
             if args.n_residuals > 0 and math.ceil((1 - args.train_split) * args.total_items) > 0:  # validation set not empty set not empty
                 source_pred, kappa_pred, chi_squared = rim.predict(X)
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
-                lam = phys.lagrange_multiplier(y_true=X, y_pred=lens_pred)
             for res_idx in range(min(args.n_residuals, args.batch_size, math.ceil((1 - args.train_split) * args.total_items))):
                 try:
                     tf.summary.image(f"Val Residuals {res_idx}",
@@ -426,7 +424,7 @@ def main(args):
                                              X[res_idx],  # rescale intensity like it is done in the likelihood
                                              source[res_idx],
                                              kappa[res_idx],
-                                             lam[res_idx]*lens_pred[res_idx],
+                                             lens_pred[res_idx],
                                              source_pred[-1][res_idx],
                                              kappa_pred[-1][res_idx],
                                              chi_squared[-1][res_idx]
