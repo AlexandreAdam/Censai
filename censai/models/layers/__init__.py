@@ -11,3 +11,4 @@ from .resunet_encoding_layer import ResUnetEncodingLayer
 from .resunet_atrous_decoding_layer import ResUnetAtrousDecodingLayer
 from .resunet_atrous_encoding_layer import ResUnetAtrousEncodingLayer
 from .pyramid_pooling_module import PSP
+from .gated_conv import GatedConv, ConcatELU

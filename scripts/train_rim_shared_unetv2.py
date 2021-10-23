@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import math
 from censai import PhysicalModel, RIMSharedUnet
-from censai.models import SharedUnetModel, RayTracer
+from censai.models import SharedUnetModelv2, RayTracer
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 from censai.definitions import DTYPE
 import os, glob, time, json
@@ -37,7 +37,6 @@ UNET_MODEL_HPARAMS = [
     "block_conv_layers",
     "strides",
     "bottleneck_kernel_size",
-    "bottleneck_filters",
     "resampling_kernel_size",
     "input_kernel_size",
     "gru_kernel_size",
@@ -152,7 +151,7 @@ def main(args):
             psf_sigma=physical_params["psf sigma"].numpy()
         )
 
-        unet = SharedUnetModel(
+        unet = SharedUnetModelv2(
             filters=args.filters,
             filter_scaling=args.filter_scaling,
             kernel_size=args.kernel_size,
@@ -160,7 +159,6 @@ def main(args):
             block_conv_layers=args.block_conv_layers,
             strides=args.strides,
             bottleneck_kernel_size=args.bottleneck_kernel_size,
-            bottleneck_filters=args.bottleneck_filters,
             resampling_kernel_size=args.resampling_kernel_size,
             input_kernel_size=args.input_kernel_size,
             gru_kernel_size=args.gru_kernel_size,
@@ -527,7 +525,6 @@ if __name__ == "__main__":
     parser.add_argument("--block_conv_layers",                          default=2,      type=int)
     parser.add_argument("--strides",                                    default=2,      type=int)
     parser.add_argument("--bottleneck_kernel_size",                     default=None,   type=int)
-    parser.add_argument("--bottleneck_filters",                         default=None,   type=int)
     parser.add_argument("--resampling_kernel_size",                     default=None,   type=int)
     parser.add_argument("--input_kernel_size",                          default=11,     type=int)
     parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
@@ -572,8 +569,6 @@ if __name__ == "__main__":
     parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
     parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
     parser.add_argument("--reset_optimizer_states",  action="store_true",           help="When training from pre-trained weights, reset states of optimizer.")
-    # parser.add_argument("--residual_weigths",       default="uniform",              help="'Uniform' consider each pixel to be equivalent. 'Linear' weight pixel according to their intensity.")
-    # parser.add_argument("--source_lambda",          default=1,      type=float,     help="Reweight the source term with this multiplier. Helpful in case source error bocems much smaller than kappa.")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
