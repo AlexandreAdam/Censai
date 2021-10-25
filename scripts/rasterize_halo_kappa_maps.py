@@ -120,22 +120,8 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     print("Fitting Nearest Neighbors...")
     nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='kd_tree').fit(coords)
     distances, _ = nbrs.kneighbors(coords)
-    distances = distances[:, 1:]  # the first column is 0 since the nearest neighbor of each point is  the point itself, at a distance of zero.
-    D = distances.mean(axis=1)  # characteristic distance used in kernel, correspond to FWHM of the kernel
-    ell_hat = D / 2 / np.sqrt(2 * np.log(fw_param))  # ell_hat is now the standard deviation
-
-    # ell_hat = D * np.sqrt(103 / 1120)  is used by Rau, S., Vegetti, S., & White, S. D. M. (2013). MNRAS, 430(3), 2232–2248. https://doi.org/10.1093/mnras/stt043
-    # this corresponds D=(FW at 1/3 maximum), so the kernel is very sharp. We use FWHM so the kernel are more large but this drowns better the particle noise
-    # we note that they use 64 neighbors for their calculation, instead of 20 like us.
-
-    # pixel grid encompass the full scene, but variable pixel size depending on the scene
-    #     xmin = coord[:, dims[0]].min()
-    #     xmax = coord[:, dims[0]].max()
-    #     ymin = coord[:, dims[1]].min()
-    #     ymax = coord[:, dims[1]].max()
-    #     x = np.linspace(xmin, xmax, pixels)
-    #     y = np.linspace(ymin, ymax, pixels)
-    #     x, y = np.meshgrid(x, y)
+    D = distances[:, -1]
+    ell_hat = np.sqrt(103/1120) * D # Rau, S., Vegetti, S., & White, S. D. M. (2013). MNRAS, 430(3), 2232–2248. https://doi.org/10.1093/mnras/stt043
 
     # fixed fov scene
     xmin = center[0] - fov / 2
