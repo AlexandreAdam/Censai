@@ -131,7 +131,7 @@ class RIMSharedUnet:
                 with tf.GradientTape() as g:
                     g.watch(source)
                     g.watch(kappa)
-                    log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+                    log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
                     cost = tf.reduce_mean(log_likelihood)
                 source_grad, kappa_grad = g.gradient(cost, [source, kappa])
                 source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
@@ -141,7 +141,7 @@ class RIMSharedUnet:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
         chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
@@ -161,7 +161,7 @@ class RIMSharedUnet:
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in tf.range(self.steps):
-            log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+            log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
             cost = tf.reduce_mean(log_likelihood)
             source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
@@ -171,7 +171,7 @@ class RIMSharedUnet:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
         chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
@@ -189,7 +189,7 @@ class RIMSharedUnet:
             with tf.GradientTape() as g:
                 g.watch(source)
                 g.watch(kappa)
-                log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+                log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
                 cost = tf.reduce_mean(log_likelihood)
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
@@ -199,7 +199,7 @@ class RIMSharedUnet:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source),
+        log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source),
                                                             kappa=self.kappa_link(kappa))
         chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()  # stack along 0-th dimension
