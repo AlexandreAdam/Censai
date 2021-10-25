@@ -219,13 +219,13 @@ def main(args):
             logname = args.model_id + "_" + args.logname
             model_id = args.model_id
         else:
-            logname = args.model_id + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+            logname = args.model_id + "_" + datetime.now().strftime("%y%m%d%H%M%S")
             model_id = args.model_id
     elif args.logname is not None:
         logname = args.logname
         model_id = logname
     else:
-        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y%m%d%H%M%S")
         model_id = logname
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
