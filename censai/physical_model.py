@@ -103,6 +103,13 @@ class PhysicalModel:
         y_pred = self.forward(source, kappa)
         return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
 
+    def log_likelihoodv2(self, source, kappa, y_true):
+        mask = tf.cast(y_true > self.noise_rms, DTYPE)
+        y_pred = self.forward(source, kappa)
+        loss = 0.5 * tf.reduce_sum(mask * (y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
+        loss /= tf.reduce_sum(mask)
+        return loss
+
     @staticmethod
     def lagrange_multiplier(y_true, y_pred):
         return tf.reduce_sum(y_true * y_pred, axis=(1, 2, 3), keepdims=True) / tf.reduce_sum(y_pred**2, axis=(1, 2, 3), keepdims=True)
