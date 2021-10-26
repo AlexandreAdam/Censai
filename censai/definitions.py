@@ -144,7 +144,7 @@ def logit(x):
     """
     x = tf.math.minimum(x, SIGMOIN_MAX)
     x = tf.math.maximum(x, SIGMOID_MIN)
-    return - tf.math.log(1. / x - 1.)
+    return -tf.math.log(1. / x - 1.)
 
 
 def to_float(x):

@@ -50,7 +50,7 @@ def test_alpha_method_fft():
 def test_noisy_forward_conv2():
     phys = PhysicalModel(pixels=64, src_pixels=64)
     source = tf.random.normal([2, 64, 64, 1])
-    kappa = tf.math.log(tf.random.uniform([2 , 64, 64, 1], minval=0.01)) / tf.math.log(10.)
+    kappa = tf.math.exp(tf.random.uniform([2 , 64, 64, 1]))
     noise_rms = 0.1
     phys.noisy_forward(source, kappa, noise_rms)
 

@@ -35,6 +35,7 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
             self,
             kernel_size=3,
             downsampling_kernel_size=None,
+            downsampling_filters=None,
             filters=32,
             conv_layers=2,
             activation="linear",
@@ -48,6 +49,10 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
             self.downsampling_kernel_size = kernel_size
         else:
             self.downsampling_kernel_size = tuple([downsampling_kernel_size]*2)
+        if downsampling_filters is None:
+            self.downsampling_filters = filters
+        else:
+            self.downsampling_filters = downsampling_filters
         self.kernel_size = (kernel_size,)*2 if isinstance(kernel_size, int) else kernel_size
         self.num_conv_layers = conv_layers
         self.filters = filters
@@ -74,7 +79,7 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
                     tf.identity
                 )
         self.downsampling_layer = DownsamplingLayer(
-            filters=self.filters,
+            filters=self.downsampling_filters,
             kernel_size=self.downsampling_kernel_size,
             activation=self.activation,
             strides=self.strides,
