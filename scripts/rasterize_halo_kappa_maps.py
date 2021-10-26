@@ -120,22 +120,8 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
     print("Fitting Nearest Neighbors...")
     nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='kd_tree').fit(coords)
     distances, _ = nbrs.kneighbors(coords)
-    distances = distances[:, 1:]  # the first column is 0 since the nearest neighbor of each point is  the point itself, at a distance of zero.
-    D = distances.mean(axis=1)  # characteristic distance used in kernel, correspond to FWHM of the kernel
-    ell_hat = D / 2 / np.sqrt(2 * np.log(fw_param))  # ell_hat is now the standard deviation
-
-    # ell_hat = D * np.sqrt(103 / 1120)  is used by Rau, S., Vegetti, S., & White, S. D. M. (2013). MNRAS, 430(3), 2232–2248. https://doi.org/10.1093/mnras/stt043
-    # this corresponds D=(FW at 1/3 maximum), so the kernel is very sharp. We use FWHM so the kernel are more large but this drowns better the particle noise
-    # we note that they use 64 neighbors for their calculation, instead of 20 like us.
-
-    # pixel grid encompass the full scene, but variable pixel size depending on the scene
-    #     xmin = coord[:, dims[0]].min()
-    #     xmax = coord[:, dims[0]].max()
-    #     ymin = coord[:, dims[1]].min()
-    #     ymax = coord[:, dims[1]].max()
-    #     x = np.linspace(xmin, xmax, pixels)
-    #     y = np.linspace(ymin, ymax, pixels)
-    #     x, y = np.meshgrid(x, y)
+    D = distances.max(axis=1)
+    ell_hat = np.sqrt(103/1120) * D # Rau, S., Vegetti, S., & White, S. D. M. (2013). MNRAS, 430(3), 2232–2248. https://doi.org/10.1093/mnras/stt043
 
     # fixed fov scene
     xmin = center[0] - fov / 2
@@ -166,11 +152,18 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         pixel_grid = _np.stack([x, y], axis=-1)
 
         Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
+        variance = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
+        alpha_variance = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)
         for _coords, _mass, _ell_hat in dataset:
             xi = _coords - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
             r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
             Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)  # gaussian kernel
-    return Sigma
+            # Poisson shot noise of convergence field
+            variance += _np.sum((_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2))**2)
+            # Propagated uncertainty to deflection angles
+            A = _np.exp(-0.5 * r_squared / _ell_hat ** 2)**2 - 2 * _np.exp(-0.5 * r_squared / _ell_hat ** 2)
+            alpha_variance += _np.sum((_mass / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi[None, ...]**2)
+    return Sigma, variance, alpha_variance
 
 
 def load_halo(halo_id, particle_type, offsets, halo_offsets, snapshot_dir, snapshot_id):
@@ -317,10 +310,14 @@ def distributed_strategy(args):
         ymin = cm_y - args.fov/2
         margin = args.fov / args.pixels # allow for particle near the margin to be counted in
         select = (x < xmax + margin) & (x > xmin - margin) & (y < ymax + margin) & (y > ymin - margin)
-        kappa = gaussian_kernel_rasterize(coords[select], mass[select], center, args.fov, dims=dims, pixels=args.pixels,
-                                          n_neighbors=args.n_neighbors, fw_param=args.fw_param, use_gpu=args.use_gpu,
-                                          batch_size=args.batch_size)
+        kappa, variance, alpha_variance = gaussian_kernel_rasterize(
+                                            coords[select], mass[select], center, args.fov, dims=dims, pixels=args.pixels,
+                                            n_neighbors=args.n_neighbors, fw_param=args.fw_param, use_gpu=args.use_gpu,
+                                            batch_size=args.batch_size
+        )
         kappa /= sigma_crit
+        variance /= sigma_crit**2
+        alpha_variance /= sigma_crit**2
 
         # create fits file and its header, than save result
         date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
@@ -354,11 +351,13 @@ def distributed_strategy(args):
         header["ZSOURCE"] = args.z_source
         header["ZLENS"] = args.z_lens
         header["NNEIGH"] = args.n_neighbors
-        header["FWPARAM"] = (args.fw_param, "FW at (1/x) maximum for smoothing")
+        # header["FWPARAM"] = (args.fw_param, "FW at (1/x) maximum for smoothing")
         header["SIGCRIT"] = sigma_crit
         header["COSMO"] = "Planck18"
         hdu = fits.PrimaryHDU(kappa, header=header)
-        hdul = fits.HDUList([hdu])
+        hdu2 = fits.ImageHDU(variance, name="Variance")
+        hdu2 = fits.ImageHDU(alpha_variance, name="Deflection Angles Variance")
+        hdul = fits.HDUList([hdu, hdu2])
         hdul.writeto(os.path.join(args.output_dir,
                                   args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
 
@@ -383,7 +382,7 @@ if __name__ == '__main__':
     parser.add_argument("--use_gpu",            action="store_true",        help="Will rasterize with tensorflow.experimental.numpy")
     parser.add_argument("--batch_size",         default=1, type=int,        help="Number of particles to rasterize at the same time")
     parser.add_argument("--smoke_test",         action="store_true")
-    parser.add_argument("--smoke_test_id",      default=10, type=int,       help="Subhalo to do smoke test on")
+    parser.add_argument("--smoke_test_id",      default=100, type=int,       help="Subhalo to do smoke test on")
     args = parser.parse_args()
 
     if THIS_WORKER > 1:

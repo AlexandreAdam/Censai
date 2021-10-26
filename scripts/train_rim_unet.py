@@ -26,7 +26,8 @@ RIM_HPARAMS = [
     "kappalog",
     "kappa_normalize",
     "kappa_init",
-    "source_init"
+    "source_init",
+    "delay"
 ]
 SOURCE_MODEL_HPARAMS = [
     "filters",
@@ -82,20 +83,62 @@ def main(args):
     for dataset in args.datasets:
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
     np.random.shuffle(files)
-    # Read concurrently from multiple records
-    files = tf.data.Dataset.from_tensor_slices(files)
-    dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
-                               block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-    # Read off global parameters from first example in dataset
-    for physical_params in dataset.map(decode_physical_model_info):
-        break
-    dataset = dataset.map(decode_train).map(preprocess)
-    if args.cache_file is not None:
-        dataset = dataset.cache(args.cache_file)
-    train_dataset = dataset.take(math.floor(args.train_split * args.total_items))\
-        .shuffle(buffer_size=args.buffer_size).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
-    val_dataset = dataset.skip(math.floor(args.train_split * args.total_items))\
-        .take(math.ceil((1 - args.train_split) * args.total_items)).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+
+    if args.val_datasets is not None:
+        """    
+        In this conditional, we assume total items might be a subset of the dataset size.
+        Thus we want to reshuffle at each epoch to get a different realisation of the dataset. 
+        In case total_items == true dataset size, this means we only change ordering of items each epochs.
+
+        Also, validation is not a split of the training data, but a saved dataset on disk. 
+        """
+        files = tf.data.Dataset.from_tensor_slices(files)
+        dataset = files.interleave(
+            lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type).shuffle(len(files),
+                                                                                                 reshuffle_each_iteration=True),
+            block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
+        # Read off global parameters from first example in dataset
+        for physical_params in dataset.map(decode_physical_model_info):
+            break
+        # preprocessing
+        dataset = dataset.map(decode_train).map(preprocess)
+        if args.cache_file is not None:
+            dataset = dataset.cache(args.cache_file)
+        train_dataset = dataset.shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).take(
+            args.total_items).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+
+        val_files = []
+        for dataset in args.val_datasets:
+            val_files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
+        val_files = tf.data.Dataset.from_tensor_slices(val_files)
+        val_dataset = val_files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
+                                           block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
+        val_dataset = val_dataset.map(decode_train).map(preprocess). \
+            shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True). \
+            take(math.ceil((1 - args.train_split) * args.total_items)). \
+            batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+    else:
+        """
+        Here, we split the dataset, so we assume total_items is the true dataset size. Any extra items will be discarded. 
+        This is to make sure validation set is never seen by the model, so shuffling occurs after the split.
+        """
+        files = tf.data.Dataset.from_tensor_slices(files)
+        dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
+                                   block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
+        # Read off global parameters from first example in dataset
+        for physical_params in dataset.map(decode_physical_model_info):
+            break
+        # preprocessing
+        dataset = dataset.map(decode_train).map(preprocess)
+        if args.cache_file is not None:
+            dataset = dataset.cache(args.cache_file)
+        train_dataset = dataset.take(math.floor(args.train_split * args.total_items)).shuffle(
+            buffer_size=args.buffer_size, reshuffle_each_iteration=True).batch(args.batch_size).prefetch(
+            tf.data.experimental.AUTOTUNE)
+        val_dataset = dataset.skip(math.floor(args.train_split * args.total_items)).take(
+            math.ceil((1 - args.train_split) * args.total_items)).batch(args.batch_size).prefetch(
+            tf.data.experimental.AUTOTUNE)
+
     # train_dataset = STRATEGY.experimental_distribute_dataset(train_dataset)
     # val_dataset = STRATEGY.experimental_distribute_dataset(val_dataset)
     if args.raytracer is not None:
@@ -178,7 +221,8 @@ def main(args):
         source_link=args.source_link,
         kappa_normalize=args.kappa_normalize,
         kappa_init=args.kappa_init,
-        source_init=args.source_init
+        source_init=args.source_init,
+        delay=args.delay
     )
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.initial_learning_rate,
@@ -209,13 +253,13 @@ def main(args):
             logname = args.model_id + "_" + args.logname
             model_id = args.model_id
         else:
-            logname = args.model_id + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+            logname = args.model_id + "_" + datetime.now().strftime("%y%m%d%H%M%S")
             model_id = args.model_id
     elif args.logname is not None:
         logname = args.logname
         model_id = logname
     else:
-        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y%m%d%H%M%S")
         model_id = logname
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
@@ -379,7 +423,7 @@ def main(args):
         with writer.as_default():
             for batch, (X, source, kappa) in enumerate(train_dataset):
                 start = time.time()
-                if epoch < args.delay:
+                if epoch < args.train_delay:
                     cost, chi_squared, source_cost, kappa_cost = kappa_train_step(X, source, kappa)
                 else:  # train both unet together
                     cost, chi_squared, source_cost, kappa_cost = train_step(X, source, kappa)
@@ -522,6 +566,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model_id",               default="None",                 help="Start from this model id checkpoint. None means start from scratch")
     parser.add_argument("--datasets",               required=True,  nargs="+",      help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
+    parser.add_argument("--val_datasets",           default=None,  nargs="+",       help="Validation dataset path")
     parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
 
     # RIM hyperparameters
@@ -531,7 +576,7 @@ if __name__ == "__main__":
     parser.add_argument("--kappa_normalize",        action="store_true")
     parser.add_argument("--source_link",            default="identity",             help="One of 'exp', 'source', 'relu' or 'identity' (default).")
     parser.add_argument("--kappa_init",             default=1e-1,   type=float,     help="Initial value of kappa for RIM")
-    parser.add_argument("--source_init",            default=1e-3,   type=float,     help="Initial value of source for RIM")
+    parser.add_argument("--source_init",            default=1,      type=float,     help="Initial value of source for RIM")
     
     # Kappa model hyperparameters
     parser.add_argument("--kappa_filters",                  default=32,     type=int)
@@ -595,7 +640,8 @@ if __name__ == "__main__":
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
-    parser.add_argument("--delay",                  default=0,      type=int,       help="Number of epochs kappa model trains alone")
+    parser.add_argument("--train_delay",            default=0,      type=int,       help="Number of epochs kappa model trains alone")
+    parser.add_argument("--delay",                  default=0,      type=int,       help="During RIM optimisation, kappa model iterate a few times before calling source model.")
     parser.add_argument("--optimizer",              default="Adam",                 help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",  default=1e-3,   type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")

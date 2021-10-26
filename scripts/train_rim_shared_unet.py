@@ -208,19 +208,26 @@ def main(args):
         else:
             raise ValueError("time_weights must be in ['uniform', 'linear', 'quadratic']")
         wt = wt[..., tf.newaxis]  # [steps, batch]
+
+        # if args.residual_weigths == "uniform":
+        #     wk = tf.keras.layers.Lambda(lambda k: tf.ones(shape=(1,)))
+        #     ws = tf.keras.layers.Lambda(lambda s: tf.ones(shape=(1,)))
+        # elif args.residual_weigths == "linear":
+        #     wk = tf.keras.layers.Lambda(lambda k: k / tf.reduce_sum(k, axis=(1, 2, 3), keepdim=True))
+        #     ws = tf.keras.layers.Lambda(lambda s: s / tf.reduce_sum(s, axis=(1, 2, 3), keepdims=True))
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         if args.logname is not None:
             logname = args.model_id + "_" + args.logname
             model_id = args.model_id
         else:
-            logname = args.model_id + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+            logname = args.model_id + "_" + datetime.now().strftime("%y%m%d%H%M%S")
             model_id = args.model_id
     elif args.logname is not None:
         logname = args.logname
         model_id = logname
     else:
-        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+        logname = args.logname_prefixe + "_" + datetime.now().strftime("%y%m%d%H%M%S")
         model_id = logname
     if args.logdir.lower() != "none":
         logdir = os.path.join(args.logdir, logname)
@@ -380,7 +387,6 @@ def main(args):
             if args.n_residuals > 0:
                 source_pred, kappa_pred, chi_squared = rim.predict(X)
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
-                lam = phys.lagrange_multiplier(y_true=X, y_pred=lens_pred)
             for res_idx in range(min(args.n_residuals, args.batch_size)):
                 try:
                     tf.summary.image(f"Residuals {res_idx}",
@@ -389,7 +395,7 @@ def main(args):
                                              X[res_idx],
                                              source[res_idx],
                                              kappa[res_idx],
-                                             lam[res_idx]*lens_pred[res_idx],
+                                             lens_pred[res_idx],
                                              source_pred[-1][res_idx],
                                              kappa_pred[-1][res_idx],
                                              chi_squared[-1][res_idx]
@@ -412,7 +418,6 @@ def main(args):
             if args.n_residuals > 0 and math.ceil((1 - args.train_split) * args.total_items) > 0:  # validation set not empty set not empty
                 source_pred, kappa_pred, chi_squared = rim.predict(X)
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
-                lam = phys.lagrange_multiplier(y_true=X, y_pred=lens_pred)
             for res_idx in range(min(args.n_residuals, args.batch_size, math.ceil((1 - args.train_split) * args.total_items))):
                 try:
                     tf.summary.image(f"Val Residuals {res_idx}",
@@ -421,7 +426,7 @@ def main(args):
                                              X[res_idx],  # rescale intensity like it is done in the likelihood
                                              source[res_idx],
                                              kappa[res_idx],
-                                             lam[res_idx]*lens_pred[res_idx],
+                                             lens_pred[res_idx],
                                              source_pred[-1][res_idx],
                                              kappa_pred[-1][res_idx],
                                              chi_squared[-1][res_idx]
@@ -564,7 +569,9 @@ if __name__ == "__main__":
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
     parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
     parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
-    parser.add_argument("--reset_optimizer_states",  action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
+    parser.add_argument("--reset_optimizer_states",  action="store_true",           help="When training from pre-trained weights, reset states of optimizer.")
+    # parser.add_argument("--residual_weigths",       default="uniform",              help="'Uniform' consider each pixel to be equivalent. 'Linear' weight pixel according to their intensity.")
+    # parser.add_argument("--source_lambda",          default=1,      type=float,     help="Reweight the source term with this multiplier. Helpful in case source error bocems much smaller than kappa.")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

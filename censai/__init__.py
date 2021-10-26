@@ -8,4 +8,5 @@ from .power_spectrum import PowerSpectrum
 from .rim_shared_resunet_atrous import RIMSharedResAtrous
 from .rim_shared_memory_resunet_atrous import RIMSharedMemoryResAtrous
 from .rim_shared_resunet import RIMSharedResUnet
+from .rim_shared_unetv2 import RIMSharedUnetv2
 # from .rim import RIM -> not debugged yet
