@@ -162,7 +162,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
             variance += _np.sum((_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2))**2)
             # Propagated uncertainty to deflection angles
             A = _np.exp(-0.5 * r_squared / _ell_hat ** 2)**2 - 2 * _np.exp(-0.5 * r_squared / _ell_hat ** 2)
-            alpha_variance += _np.sum((_mass / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi[None, ...]**2)
+            alpha_variance += _np.sum((_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi[None, ...]**2)
     return Sigma, variance, alpha_variance
 
 
@@ -356,8 +356,8 @@ def distributed_strategy(args):
         header["COSMO"] = "Planck18"
         hdu = fits.PrimaryHDU(kappa, header=header)
         hdu2 = fits.ImageHDU(variance, name="Variance")
-        hdu2 = fits.ImageHDU(alpha_variance, name="Deflection Angles Variance")
-        hdul = fits.HDUList([hdu, hdu2])
+        hdu3 = fits.ImageHDU(alpha_variance, name="Deflection Angles Variance")
+        hdul = fits.HDUList([hdu, hdu2, hdu3])
         hdul.writeto(os.path.join(args.output_dir,
                                   args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
 
