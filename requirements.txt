@@ -9,3 +9,5 @@ scipy
 astropy
 scikit-learn
 scikit-image
+tqdm
+pandas
