@@ -131,7 +131,7 @@ class RIMSharedUnetv2:
                 with tf.GradientTape() as g:
                     g.watch(source)
                     g.watch(kappa)
-                    log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+                    log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), outer_tape=g)
                     cost = tf.reduce_mean(log_likelihood)
                 source_grad, kappa_grad = g.gradient(cost, [source, kappa])
                 source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
