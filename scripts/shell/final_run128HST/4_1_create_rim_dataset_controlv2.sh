@@ -11,8 +11,8 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
-  --output_dir=$HOME/scratch/Censai/data/lenses128hst_TNG_VAE_200k_control/\
-  --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_fr_trainset/\
+  --output_dir=$HOME/scratch/Censai/data/lenses128hst_TNG_rau_200k_control/\
+  --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_rau_trainset/\
   --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun128_train\
   --compression_type=GZIP\
   --len_dataset=200000\
