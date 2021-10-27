@@ -113,8 +113,8 @@ class RIMSharedUnet:
         self._grad_var2 = tf.zeros_like(kappa_init, dtype=DTYPE)
         return source_init, kappa_init, states
 
-    def time_step(self, source, kappa, source_grad, kappa_grad, states, scope=None):
-        source, kappa, states = self.unet(source, kappa, source_grad, kappa_grad, states)
+    def time_step(self, source, kappa, source_grad, kappa_grad, states, training=True):
+        source, kappa, states = self.unet(source, kappa, source_grad, kappa_grad, states, training=training)
         return source, kappa, states
 
     def __call__(self, lensed_image, outer_tape=nulltape):
@@ -197,7 +197,7 @@ class RIMSharedUnet:
                 cost = tf.reduce_mean(log_likelihood)
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
-            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
+            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states, training=False)
             source_series = source_series.write(index=current_step, value=self.source_link(source))
             kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
             if current_step > 0:

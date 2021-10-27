@@ -57,13 +57,13 @@ class Decoder(tf.keras.Model):
     def __call__(self, z):
         return self.call(z)
 
-    def call(self, z):
-        z = self.mlp_bottleneck(z)
+    def call(self, z, training=True):
+        z = self.mlp_bottleneck(z, training=training)
         batch_size = z.shape[0]
         x = tf.reshape(z, [batch_size, self._z_pix, self._z_pix, self._z_filters])
         for layer in self.conv_blocks:
-            x = layer(x)
-        x = self.output_layer(x)
+            x = layer(x, training=training)
+        x = self.output_layer(x, training=training)
         return x
 
     def call_with_skip_connections(self, z, skips: list, skip_strength, l2):
