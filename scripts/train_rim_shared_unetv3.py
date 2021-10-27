@@ -364,9 +364,9 @@ def main(args):
         epoch_kappa_loss.reset_states()
         time_per_step.reset_states()
         with writer.as_default():
-            for batch, (X, source, kappa) in enumerate(train_dataset):
+            for batch, (X, source, kappa, noise_rms, psf) in enumerate(train_dataset):
                 start = time.time()
-                cost, chi_squared, source_cost, kappa_cost = distributed_train_step(X, source, kappa)
+                cost, chi_squared, source_cost, kappa_cost = distributed_train_step(X, source, kappa, noise_rms, psf)
         # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
                 time_per_step.update_state([_time])
@@ -377,8 +377,8 @@ def main(args):
                 step += 1
             # last batch we make a summary of residuals
             if args.n_residuals > 0:
-                source_pred, kappa_pred, chi_squared = rim.predict(X)
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
+                source_pred, kappa_pred, chi_squared = rim.predict(X, noise_rms, psf)
+                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1], psf)
             for res_idx in range(min(args.n_residuals, args.batch_size)):
                 try:
                     tf.summary.image(f"Residuals {res_idx}",
@@ -400,16 +400,16 @@ def main(args):
             val_chi_squared.reset_states()
             val_source_loss.reset_states()
             val_kappa_loss.reset_states()
-            for X, source, kappa in val_dataset:
-                cost, chi_squared, source_cost, kappa_cost = distributed_test_step(X, source, kappa)
+            for X, source, kappa, noise_rms, psf in val_dataset:
+                cost, chi_squared, source_cost, kappa_cost = distributed_test_step(X, source, kappa, noise_rms, psf)
                 val_loss.update_state([cost])
                 val_chi_squared.update_state([chi_squared])
                 val_source_loss.update_state([source_cost])
                 val_kappa_loss.update_state([kappa_cost])
 
             if args.n_residuals > 0 and math.ceil((1 - args.train_split) * args.total_items) > 0:  # validation set not empty set not empty
-                source_pred, kappa_pred, chi_squared = rim.predict(X)
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1])
+                source_pred, kappa_pred, chi_squared = rim.predict(X, noise_rms, psf)
+                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1], psf)
             for res_idx in range(min(args.n_residuals, args.batch_size, math.ceil((1 - args.train_split) * args.total_items))):
                 try:
                     tf.summary.image(f"Val Residuals {res_idx}",

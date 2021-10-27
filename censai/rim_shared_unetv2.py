@@ -115,8 +115,8 @@ class RIMSharedUnetv2:
         self._grad_var2 = tf.zeros_like(kappa_init, dtype=DTYPE)
         return source_init, kappa_init, states
 
-    def time_step(self, source, kappa, source_grad, kappa_grad, states, scope=None):
-        source, kappa, states = self.unet(source, kappa, source_grad, kappa_grad, states)
+    def time_step(self, source, kappa, source_grad, kappa_grad, states, training=True):
+        source, kappa, states = self.unet(source, kappa, source_grad, kappa_grad, states, training=training)
         return source, kappa, states
 
     def __call__(self, lensed_image, noise_rms, psf, outer_tape=nulltape):
@@ -172,7 +172,7 @@ class RIMSharedUnetv2:
             y_pred = self.physical_model.forward(source, kappa, psf)
             flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
             log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2)
-            cost = tf.reduce_mean(log_likelihood + self.flux_prior_amp * flux_term)
+            cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
             source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
@@ -202,10 +202,10 @@ class RIMSharedUnetv2:
                 y_pred = self.physical_model.forward(source, kappa, psf)
                 flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
                 log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2)
-                cost = tf.reduce_mean(log_likelihood + self.flux_prior_amp * flux_term)
+                cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
-            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
+            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states, training=False)
             source_series = source_series.write(index=current_step, value=self.source_link(source))
             kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
             if current_step > 0:
