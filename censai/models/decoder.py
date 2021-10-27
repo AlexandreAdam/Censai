@@ -18,7 +18,8 @@ class Decoder(tf.keras.Model):
             dropout_rate=None,
             batch_norm=False,
             bilinear=False,
-            strides=2
+            strides=2,
+            output_activation=tf.nn.softplus
     ):
         super(Decoder, self).__init__()
         self._z_pix = z_reshape_pix
@@ -48,7 +49,7 @@ class Decoder(tf.keras.Model):
             filters=1,
             kernel_size=3,
             padding="SAME",
-            activation="linear",
+            activation=output_activation,
             kernel_regularizer=tf.keras.regularizers.l2(kernel_reg_amp),
             bias_regularizer=tf.keras.regularizers.l2(bias_reg_amp)
         )

@@ -31,7 +31,7 @@ class RIMSharedUnetv2:
             epsilon=1e-8,
             kappa_init=1e-1,
             source_init=1e-3,
-            flux_prior_amp:float=1.
+            flux_lagrange_multiplier:float=1.
     ):
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.kappa_pixels
@@ -47,7 +47,7 @@ class RIMSharedUnetv2:
         self.epsilon = epsilon
         self._kappa_init = kappa_init
         self._source_init = source_init
-        self.flux_prior_amp = flux_prior_amp
+        self.flux_lagrange_multiplier = flux_lagrange_multiplier
 
         if self.kappalog:
             if self.kappa_normalize:
@@ -119,8 +119,8 @@ class RIMSharedUnetv2:
         source, kappa, states = self.unet(source, kappa, source_grad, kappa_grad, states)
         return source, kappa, states
 
-    def __call__(self, lensed_image, outer_tape=nulltape):
-        return self.call(lensed_image, outer_tape)
+    def __call__(self, lensed_image, noise_rms, psf, outer_tape=nulltape):
+        return self.call(lensed_image, noise_rms, psf, outer_tape)
 
     def call(self, lensed_image, noise_rms, psf, outer_tape=nulltape):
         """
@@ -140,7 +140,7 @@ class RIMSharedUnetv2:
                     y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
                     flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
                     log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None]**2)
-                    cost = tf.reduce_mean(log_likelihood + self.flux_prior_amp * flux_term)
+                    cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
                 source_grad, kappa_grad = g.gradient(cost, [source, kappa])
                 source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
@@ -149,7 +149,7 @@ class RIMSharedUnetv2:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
         chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
@@ -181,7 +181,7 @@ class RIMSharedUnetv2:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
         chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
@@ -211,11 +211,11 @@ class RIMSharedUnetv2:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
         chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()  # stack along 0-th dimension
 
-    def cost_function(self, lensed_image, source, kappa, outer_tape=nulltape, reduction=True):
+    def cost_function(self, lensed_image, source, kappa, noise_rms, psf, outer_tape=nulltape, reduction=True):
         """
 
         Args:
@@ -227,7 +227,7 @@ class RIMSharedUnetv2:
         Returns: The average loss over pixels, time steps and (if reduction=True) batch size.
 
         """
-        source_series, kappa_series, chi_squared = self.call(lensed_image, outer_tape=outer_tape)
+        source_series, kappa_series, chi_squared = self.call(lensed_image, psf=psf, noise_rms=noise_rms, outer_tape=outer_tape)
         source_cost = tf.reduce_sum(tf.square(source_series - self.source_inverse_link(source)), axis=0) / self.steps
         kappa_cost = tf.reduce_sum(tf.square(kappa_series - self.kappa_inverse_link(kappa)), axis=0) / self.steps
         chi = tf.reduce_sum(chi_squared, axis=0) / self.steps

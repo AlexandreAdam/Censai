@@ -96,7 +96,7 @@ class PhysicalModelv2:
 
     def log_likelihood(self, source, kappa, y_true, noise_rms, psf):
         y_pred = self.forward(source, kappa, psf)
-        return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / noise_rms ** 2, axis=(1, 2, 3))
+        return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
 
     @staticmethod
     def lagrange_multiplier(y_true, y_pred):
@@ -132,7 +132,7 @@ class PhysicalModelv2:
         rho_sq = (beta1 - xs) ** 2 / (1 - es) + (beta2 - ys) ** 2 * (1 - es)
         lens = tf.math.exp(-0.5 * rho_sq / w ** 2)  # / 2 / np.pi / w**2
         psf_sigma = psf_sigma if psf_sigma is not None else self.image_fov / self.pixels
-        psf = self.psf_model(psf_sigma)
+        psf = self.psf_models(psf_sigma)
         lens = self.convolve_with_psf(lens, psf)
         return lens
 
@@ -145,7 +145,7 @@ class PhysicalModelv2:
         rho_sq = (beta1 - xs) ** 2 / (1 - es) + (beta2 - ys) ** 2 * (1 - es)
         lens = tf.math.exp(-0.5 * rho_sq / w ** 2)  # / 2 / np.pi / w**2
         psf_sigma = psf_sigma if psf_sigma is not None else self.image_fov / self.pixels
-        psf = self.psf_model(psf_sigma)
+        psf = self.psf_models(psf_sigma)
         lens = self.convolve_with_psf(lens, psf)
         return lens
 
@@ -261,8 +261,8 @@ class PhysicalModelv2:
         out[denominator != 0] = num[denominator != 0] / denominator[denominator != 0]
         return out
 
-    def psf_models(self, psf_sigma, cutout_size=16):
-        psf_sigma = np.atleast_1d(psf_sigma)[:, None, None, None]
+    def psf_models(self, psf_fwhm, cutout_size=16):
+        psf_sigma = np.atleast_1d(psf_fwhm[:, None, None, None]) / (2 * np.sqrt(2 * np.log(2)))
         r_squared = self.ximage**2 + self.yimage**2
         psf = tf.math.exp(-0.5 * r_squared / psf_sigma**2)
         psf = tf.image.crop_to_bounding_box(psf,

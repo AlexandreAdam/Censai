@@ -65,8 +65,8 @@ def distributed_strategy(args):
 
     noise_a = (args.noise_rms_min - args.noise_rms_mean) / args.noise_rms_std
     noise_b = (args.noise_rms_max - args.noise_rms_mean) / args.noise_rms_std
-    psf_a = (args.psf_sigma_min - args.psf_sigma_mean) / args.psf_sigma_std
-    psf_b = (args.psf_sigma_max - args.psf_sigma_mean) / args.psf_sigma_std
+    psf_a = (args.psf_fwhm_min - args.psf_fwhm_mean) / args.psf_fwhm_std
+    psf_b = (args.psf_fwhm_max - args.psf_fwhm_mean) / args.psf_fwhm_std
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
@@ -78,7 +78,7 @@ def distributed_strategy(args):
                 break
             galaxies = window * galaxies
             noise_rms = truncnorm.rvs(noise_a, noise_b, loc=args.noise_rms_mean, scale=args.noise_rms_std, size=args.batch_size)
-            sigma = truncnorm.rvs(psf_a, psf_b, loc=args.psf_sigma_mean, scale=args.psf_sigma_std, size=args.batch_size)
+            sigma = truncnorm.rvs(psf_a, psf_b, loc=args.psf_fwhm_mean, scale=args.psf_fwhm_std, size=args.batch_size)
             psf = phys.psf_models(sigma, cutout_size=args.psf_cutout_size)
             lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=noise_rms, psf=psf)
 
@@ -120,10 +120,10 @@ if __name__ == '__main__':
     parser.add_argument("--noise_rms_mean",  default=0.01,      type=float,     help="Maximum white noise RMS added to lensed image")
     parser.add_argument("--noise_rms_std",   default=0.05,      type=float,     help="Maximum white noise RMS added to lensed image")
     parser.add_argument("--psf_cutout_size", required=True,     type=int,       help="Size of the cutout for the PSF (arceconds)")
-    parser.add_argument("--psf_sigma_min",   required=True,     type=float,     help="Minimum std of gaussian psf (arceconds)")
-    parser.add_argument("--psf_sigma_max",   required=True,     type=float,     help="Minimum std of gaussian psf (arceconds)")
-    parser.add_argument("--psf_sigma_mean",  required=True,     type=float,     help="Mean for the distribution of std of the gaussian psf (arceconds)")
-    parser.add_argument("--psf_sigma_std",   required=True,     type=float,     help="Std for distribution of stf of the gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_min",    required=True,     type=float,     help="Minimum std of gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_max",    required=True,     type=float,     help="Minimum std of gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_mean",   required=True,     type=float,     help="Mean for the distribution of std of the gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_std",    required=True,     type=float,     help="Std for distribution of stf of the gaussian psf (arceconds)")
 
     # Data generation params
     parser.add_argument("--buffer_size",    default=10000,       type=int,    help="buffer of shuffle, should be similar to number of examples per shard (at least greater than the largest shard)")

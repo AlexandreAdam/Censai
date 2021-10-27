@@ -162,7 +162,12 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
             variance += _np.sum((_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2))**2, axis=0)
             # Propagated uncertainty to deflection angles
             A = _np.exp(-0.5 * r_squared / _ell_hat ** 2)**2 - 2 * _np.exp(-0.5 * r_squared / _ell_hat ** 2)
-            alpha_variance += _np.sum((_mass[..., None] / _np.pi)**2 / (tf.maximum(r_squared[..., None]**2, 1e-16)) * (A[..., None] + 1) * xi[None, ...]**2)
+            _alpha_variance = tf.where(
+                condition=r_squared[..., None]**2 > 0,
+                x=(_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi[None, ...]**2,
+                y=0.
+            )
+            alpha_variance += _np.sum(_alpha_variance)
     return Sigma, variance, alpha_variance
 
 
