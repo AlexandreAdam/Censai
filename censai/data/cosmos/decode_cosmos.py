@@ -51,14 +51,14 @@ def decode(record_bytes):
 
 
 def preprocess(image, psf, ps):
-    image = tf.nn.relu(image)  # set negative pixels to 0.
-    image = image / tf.reduce_max(image)  # set peak value to 1
+    image = tf.nn.relu(image)
+    image = (image - tf.reduce_min(image)) / (tf.reduce_max(image) - tf.reduce_min(image))
     return image, psf, ps
 
 
 def preprocess_image(image):
-    image = tf.nn.relu(image)  # set negative pixels to 0.
-    image = image / tf.reduce_max(image)  # set peak value to 1
+    image = tf.nn.relu(image)
+    image = (image - tf.reduce_min(image)) / (tf.reduce_max(image) - tf.reduce_min(image))
     return image
 
 

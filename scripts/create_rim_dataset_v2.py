@@ -1,14 +1,15 @@
 import tensorflow as tf
 import os, glob
 import numpy as np
-from censai import PhysicalModel
+from censai import PhysicalModelv2
 from censai.data.cosmos import preprocess_image as preprocess_cosmos, decode_image as decode_cosmos, decode_shape as decode_cosmos_info
-from censai.data.lenses_tng_v2 import encode_examples
+from censai.data.lenses_tng_v3 import encode_examples
 from censai.data.kappa_tng import decode_train as decode_kappa, decode_all as decode_kappa_info
 from scipy.signal.windows import tukey
 from censai.definitions import DTYPE
 from datetime import datetime
 import json
+from scipy.stats import truncnorm
 
 
 # total number of slurm workers detected
@@ -52,8 +53,7 @@ def distributed_strategy(args):
     window = np.outer(window, window)[np.newaxis, ..., np.newaxis]
     window = tf.constant(window, dtype=DTYPE)
 
-    phys = PhysicalModel(
-        psf_sigma=args.psf_sigma,
+    phys = PhysicalModelv2(
         image_fov=kappa_fov,
         src_fov=args.source_fov,
         pixels=args.lens_pixels,
@@ -62,6 +62,11 @@ def distributed_strategy(args):
         kappa_fov=kappa_fov,
         method="conv2d"
     )
+
+    noise_a = (args.noise_rms_min - args.noise_rms_mean) / args.noise_rms_std
+    noise_b = (args.noise_rms_max - args.noise_rms_mean) / args.noise_rms_std
+    psf_a = (args.psf_sigma_min - args.psf_sigma_mean) / args.psf_sigma_std
+    psf_b = (args.psf_sigma_max - args.psf_sigma_mean) / args.psf_sigma_std
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
@@ -72,7 +77,10 @@ def distributed_strategy(args):
             for kappa in kappa_dataset:
                 break
             galaxies = window * galaxies
-            lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=args.noise_rms)
+            noise_rms = truncnorm.rvs(noise_a, noise_b, loc=args.noise_rms_mean, scale=args.noise_rms_std, size=args.batch_size)
+            sigma = truncnorm.rvs(psf_a, psf_b, loc=args.psf_sigma_mean, scale=args.psf_sigma_std, size=args.batch_size)
+            psf = phys.psf_models(sigma, cutout_size=args.psf_cutout_size)
+            lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=noise_rms, psf=psf)
 
             records = encode_examples(
                 kappa=kappa,
@@ -83,8 +91,8 @@ def distributed_strategy(args):
                 image_fov=phys.image_fov,
                 kappa_fov=phys.kappa_fov,
                 source_fov=args.source_fov,
-                noise_rms=args.noise_rms,
-                psf_sigma=args.psf_sigma
+                noise_rms=noise_rms,
+                psf=psf
             )
             for record in records:
                 writer.write(record)
@@ -105,14 +113,21 @@ if __name__ == '__main__':
     parser.add_argument("--block_length",               default=1,           type=int,              help="Number of example to read concurrently from a file")
 
     # Physical model params
-    parser.add_argument("--lens_pixels",    default=512,        type=int,   help="Size of the lens postage stamp.")
-    parser.add_argument("--source_fov",     default=6,          type=float, help="Field of view of the source plane in arc seconds")
-    parser.add_argument("--noise_rms",      default=0.05,       type=float, help="White noise RMS added to lensed image")
-    parser.add_argument("--psf_sigma",      default=0.06,       type=float, help="Sigma of psf in arcseconds")
+    parser.add_argument("--lens_pixels",     default=512,       type=int,       help="Size of the lens postage stamp.")
+    parser.add_argument("--source_fov",      default=6,         type=float,     help="Field of view of the source plane in arc seconds")
+    parser.add_argument("--noise_rms_min",   default=0.005,     type=float,     help="Minimum white noise RMS added to lensed image")
+    parser.add_argument("--noise_rms_max",   default=0.1,       type=float,     help="Maximum white noise RMS added to lensed image")
+    parser.add_argument("--noise_rms_mean",  default=0.01,      type=float,     help="Maximum white noise RMS added to lensed image")
+    parser.add_argument("--noise_rms_std",   default=0.05,      type=float,     help="Maximum white noise RMS added to lensed image")
+    parser.add_argument("--psf_cutout_size", required=True,     type=int,       help="Size of the cutout for the PSF (arceconds)")
+    parser.add_argument("--psf_sigma_min",   required=True,     type=float,     help="Minimum std of gaussian psf (arceconds)")
+    parser.add_argument("--psf_sigma_max",   required=True,     type=float,     help="Minimum std of gaussian psf (arceconds)")
+    parser.add_argument("--psf_sigma_mean",  required=True,     type=float,     help="Mean for the distribution of std of the gaussian psf (arceconds)")
+    parser.add_argument("--psf_sigma_std",   required=True,     type=float,     help="Std for distribution of stf of the gaussian psf (arceconds)")
 
     # Data generation params
     parser.add_argument("--buffer_size",    default=10000,       type=int,    help="buffer of shuffle, should be similar to number of examples per shard (at least greater than the largest shard)")
-    parser.add_argument("--tukey_alpha",    default=0.,          type=float, help="Shape parameter of the Tukey window, representing the fraction of the "
+    parser.add_argument("--tukey_alpha",    default=0.,          type=float,  help="Shape parameter of the Tukey window, representing the fraction of the "
                                                                                  "window inside the cosine tapered region. "
                                                                                  "If 0, the Tukey window is equivalent to a rectangular window. "
                                                                                  "If 1, the Tukey window is equivalent to a Hann window. "

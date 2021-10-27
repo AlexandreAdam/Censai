@@ -1,9 +1,10 @@
 import tensorflow as tf
 import numpy as np
 import math
-from censai import PhysicalModel, RIMSharedUnetv2
+from censai import PhysicalModelv2, RIMSharedUnetv2
 from censai.models import SharedUnetModelv2, RayTracer
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
+from censai.data.lenses_tng_v3 import decode_train, decode_physical_model_info
 from censai.definitions import DTYPE
 import os, glob, time, json
 from datetime import datetime
@@ -68,10 +69,7 @@ def main(args):
                 json_override = json.load(f)
             args_dict = vars(args)
             args_dict.update(json_override)
-    if args.v2: # overwrite decoding procedure with version 2
-        from censai.data.lenses_tng_v2 import decode_train, decode_physical_model_info, preprocess
-    else:
-        from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
+
 
     files = []
     for dataset in args.datasets:
@@ -93,7 +91,7 @@ def main(args):
         for physical_params in dataset.map(decode_physical_model_info):
             break
         # preprocessing
-        dataset = dataset.map(decode_train).map(preprocess)
+        dataset = dataset.map(decode_train)
         if args.cache_file is not None:
             dataset = dataset.cache(args.cache_file)
         train_dataset = dataset.shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).take(args.total_items).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
@@ -103,8 +101,7 @@ def main(args):
             val_files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
         val_files = tf.data.Dataset.from_tensor_slices(val_files)
         val_dataset = val_files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type), block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-        val_dataset = val_dataset.map(decode_train).map(preprocess).\
-            shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).\
+        val_dataset = val_dataset.map(decode_train).shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).\
             take(math.ceil((1 - args.train_split) * args.total_items)).\
             batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     else:
@@ -119,7 +116,7 @@ def main(args):
         for physical_params in dataset.map(decode_physical_model_info):
             break
         # preprocessing
-        dataset = dataset.map(decode_train).map(preprocess)
+        dataset = dataset.map(decode_train)
         if args.cache_file is not None:
             dataset = dataset.cache(args.cache_file)
         train_dataset = dataset.take(math.floor(args.train_split * args.total_items)).shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
@@ -138,7 +135,7 @@ def main(args):
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
         else:
             raytracer = None
-        phys = PhysicalModel(
+        phys = PhysicalModelv2(
             pixels=physical_params["pixels"].numpy(),
             kappa_pixels=physical_params["kappa pixels"].numpy(),
             src_pixels=physical_params["src pixels"].numpy(),
@@ -146,9 +143,7 @@ def main(args):
             kappa_fov=physical_params["kappa fov"].numpy(),
             src_fov=physical_params["source fov"].numpy(),
             method=args.forward_method,
-            noise_rms=physical_params["noise rms"].numpy(),
             raytracer=raytracer,
-            psf_sigma=physical_params["psf sigma"].numpy()
         )
 
         unet = SharedUnetModelv2(
@@ -269,13 +264,13 @@ def main(args):
         save_checkpoint = False
     # =================================================================================================================
 
-    def train_step(X, source, kappa):
+    def train_step(X, source, kappa, noise_rms, psf):
         with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
             if args.unroll_time_steps:
-                source_series, kappa_series, chi_squared = rim.call_function(X)
+                source_series, kappa_series, chi_squared = rim.call_function(X, noise_rms, psf)
             else:
-                source_series, kappa_series, chi_squared = rim.call(X, outer_tape=tape)
+                source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf, outer_tape=tape)
             # mean over image residuals
             source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
             kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
@@ -295,8 +290,8 @@ def main(args):
         return cost, chi_squared, source_cost, kappa_cost
 
     @tf.function
-    def distributed_train_step(X, source, kappa):
-        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(train_step, args=(X, source, kappa))
+    def distributed_train_step(X, source, kappa, noise_rms, psf):
+        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(train_step, args=(X, source, kappa, noise_rms, psf))
         # Replica losses are aggregated by summing them
         global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
         global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
@@ -304,8 +299,8 @@ def main(args):
         global_kappa_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_kappa_cost, axis=None)
         return global_loss, global_chi_squared, global_source_cost, global_kappa_cost
 
-    def test_step(X, source, kappa):
-        source_series, kappa_series, chi_squared = rim.call(X)
+    def test_step(X, source, kappa, noise_rms, psf):
+        source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf)
         # mean over image residuals
         source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
         kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
@@ -320,8 +315,8 @@ def main(args):
         return cost, chi_squared, source_cost, kappa_cost
 
     @tf.function
-    def distributed_test_step(X, source, kappa):
-        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(test_step, args=(X, source, kappa))
+    def distributed_test_step(X, source, kappa, noise_rms, psf):
+        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(test_step, args=(X, source, kappa, noise_rms, psf))
         # Replica losses are aggregated by summing them
         global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
         global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
@@ -571,7 +566,7 @@ if __name__ == "__main__":
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
     parser.add_argument("--logname",                 default=None,                  help="Overwrite name of the log with this argument")
-    parser.add_argument("--logname_prefixe",         default="RIMUnet512",          help="If name of the log is not provided, this prefix is prepended to the date")
+    parser.add_argument("--logname_prefixe",         default="RIMSUv3",             help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
@@ -580,9 +575,7 @@ if __name__ == "__main__":
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")
     parser.add_argument("--json_override",          default=None,    nargs="+",     help="A json filepath that will override every command line parameters. Useful for reproducibility")
-    parser.add_argument("--v2",                     action="store_true",            help="Use v2 decoding of tfrecords")
 
     args = parser.parse_args()
-
 
     main(args)

@@ -70,11 +70,15 @@ class RIMSharedUnet:
         elif self._source_link_func == "sigmoid":
             self.source_inverse_link = logit
             self.source_link = tf.nn.sigmoid
+        elif self._source_link_func == "leaky_relu":
+            self.source_inverse_link = tf.identity
+            self.source_link = tf.nn.leaky_relu
         elif self._source_link_func == "lrelu4p":
             self.source_inverse_link = tf.identity
             self.source_link = lrelu4p
         else:
-            raise NotImplementedError(f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'lrelu4p', 'sigmoid']")
+            raise NotImplementedError(
+                f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'lrelu4p', 'sigmoid']")
 
         if adam:
             self.grad_update = self.adam_grad_update
