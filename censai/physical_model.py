@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
 from censai.definitions import DTYPE
+from .utils import nulltape
 
 
 class PhysicalModel:
@@ -99,20 +100,32 @@ class PhysicalModel:
             raise ValueError(f"{self.method} is not in [conv2d, unet, fft]")
         return alpha_x, alpha_y
 
-    def log_likelihood(self, source, kappa, y_true):
+    # def log_likelihood(self, source, kappa, y_true, outer_tape=nulltape):
+    #     y_pred = self.forward(source, kappa)
+    #     with outer_tape.stop_recording():
+    #         lam = self.lagrange_multiplier(y_true, y_pred)
+    #     return 0.5 * tf.reduce_mean((lam * y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
+    #
+    def log_likelihoodv2(self, source, kappa, y_true, outer_tape=nulltape):
         y_pred = self.forward(source, kappa)
-        return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
+        with outer_tape.stop_recording():
+            lam = self.lagrange_multiplier(y_true, y_pred)
+        return 0.5 * tf.reduce_mean((lam * y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
 
-    def log_likelihoodv2(self, source, kappa, y_true):
-        mask = tf.cast(y_true > self.noise_rms, DTYPE)
+    def log_likelihood(self, source, kappa, y_true, outer_tape=nulltape):
         y_pred = self.forward(source, kappa)
-        loss = 0.5 * tf.reduce_sum(mask * (y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
-        loss /= tf.reduce_sum(mask)
-        return loss
+        # with outer_tape.stop_recording():
+        #     lam = self.lagrange_multiplier(y_true, y_pred)
+        return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
 
     @staticmethod
     def lagrange_multiplier(y_true, y_pred):
         return tf.reduce_sum(y_true * y_pred, axis=(1, 2, 3), keepdims=True) / tf.reduce_sum(y_pred**2, axis=(1, 2, 3), keepdims=True)
+
+    @staticmethod
+    def masked_lagrange_multiplier(y_true, y_pred):
+        mask = tf.cast(y_true > 0.1, DTYPE)
+        return tf.reduce_sum(mask * y_true * y_pred, axis=(1, 2, 3), keepdims=True) / tf.reduce_sum(mask * y_pred**2, axis=(1, 2, 3), keepdims=True)
 
     def forward(self, source, kappa):
         im = self.lens_source(source, kappa)
