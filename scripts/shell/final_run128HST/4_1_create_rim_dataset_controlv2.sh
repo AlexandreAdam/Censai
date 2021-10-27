@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-20
+#SBATCH --array=1-40%5
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
