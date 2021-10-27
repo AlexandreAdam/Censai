@@ -10,9 +10,9 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_kappa_autoencoder_dataset.py\
-  --output_dir=$HOME/scratch/Censai/data/hkappa128hst_TNG100_fr_testset/\
+  --output_dir=$HOME/scratch/Censai/data/hkappa128hst_TNG100_rau_testset/\
   --len_dataset=5000\
-  --kappa_dir=$HOME/scratch/Censai/data/hkappa188hst_TNG100\
+  --kappa_dir=$HOME/scratch/Censai/data/hkappa188hst_TNG100_rau\
   --compression_type=GZIP\
   --crop=30\
   --max_shift=0.8\

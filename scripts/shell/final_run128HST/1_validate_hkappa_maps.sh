@@ -9,6 +9,6 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/validate_kappa_maps.py\
-  --kappa_dir=$HOME/scratch/Censai/data/hkappa188hst_TNG100\
+  --kappa_dir=$HOME/scratch/Censai/data/hkappa188hst_TNG100_rau\
   --good_kappa_cutoff=1\
   --train_split=0.9
