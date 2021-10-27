@@ -70,7 +70,6 @@ def main(args):
             args_dict = vars(args)
             args_dict.update(json_override)
 
-
     files = []
     for dataset in args.datasets:
         files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
