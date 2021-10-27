@@ -26,7 +26,8 @@ VAE_HPARAMS = [
     "activation",
     "dropout_rate",
     "batch_norm",
-    "latent_size"
+    "latent_size",
+    "output_activation"
 ]
 
 EXTRA_PARAMS = [
@@ -56,6 +57,7 @@ PARAMS_NICKNAME = {
     "dropout_rate": "DR",
     "batch_norm": "BN",
     "latent_size": "LS",
+    "output_activation": "OA",
     "total_items": "TI",
     "optimizer": "O",
     "seed": "",
@@ -191,6 +193,7 @@ if __name__ == '__main__':
     parser.add_argument("--dropout_rate",           default=None,       nargs="+",      type=float,     help="2D spatial dropout rate (drop entire feature map to help them become independent)")
     parser.add_argument("--batch_norm",             default=0,          nargs="+",      type=int,       help="0: False, do no use batch norm. 1: True, use batch norm beforce activation")
     parser.add_argument("--latent_size",            default=16,         nargs="+",      type=int,       help="Twice the size of the latent code vector z")
+    parser.add_argument("--output_activation",      default="sigmoid",                                  help="Output of decoded activation function")
 
     # Training set params
     parser.add_argument("--batch_size",             default=10,     nargs="+",  type=int,   help="Number of images in a batch. ")

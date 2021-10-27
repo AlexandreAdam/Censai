@@ -2,6 +2,7 @@ import tensorflow as tf
 from .decoder import Decoder
 from .vaeencoder import VAEEncoder
 from censai.definitions import DTYPE
+from .utils import get_activation
 
 
 class VAE(tf.keras.Model):
@@ -20,9 +21,10 @@ class VAE(tf.keras.Model):
             batch_norm=False,
             latent_size=16,
             strides=2,
-            output_activation=tf.nn.softplus
+            output_activation="softplus"
     ):
         super(VAE, self).__init__(dtype=DTYPE)
+        output_activation = get_activation(output_activation)
         self.latent_size = latent_size
         self.encoder = VAEEncoder(
             layers=layers,

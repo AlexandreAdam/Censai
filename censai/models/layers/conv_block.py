@@ -48,11 +48,11 @@ class ConvBlock(tf.keras.layers.Layer):
         else:
             self.dropout = tf.keras.layers.SpatialDropout2D(rate=dropout_rate, data_format="channels_last")
 
-    def call(self, x):
+    def call(self, x, training=True):
         for i, layer in enumerate(self.conv_layers):
-            x = layer(x)
-            x = self.batch_norms[i](x)
+            x = layer(x, training=training)
+            x = self.batch_norms[i](x, training=training)
             x = self.activation(x)
-            x = self.dropout(x)
+            x = self.dropout(x, training=training)
         return x
 

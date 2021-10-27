@@ -262,7 +262,7 @@ class PhysicalModelv2:
         return out
 
     def psf_models(self, psf_fwhm, cutout_size=16):
-        psf_sigma = np.atleast_1d(psf_fwhm[:, None, None, None]) / (2 * np.sqrt(2 * np.log(2)))
+        psf_sigma = np.atleast_1d(psf_fwhm)[:, None, None, None] / (2 * np.sqrt(2 * np.log(2)))
         r_squared = self.ximage**2 + self.yimage**2
         psf = tf.math.exp(-0.5 * r_squared / psf_sigma**2)
         psf = tf.image.crop_to_bounding_box(psf,
