@@ -22,9 +22,17 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --len_dataset=2000000\
   --lens_pixels=128\
   --source_fov=3\
-  --noise_rms=0.01\
-  --psf_sigma=0.06\
   --buffer_size=25000\
   --batch_size=20\
   --tukey_alpha=0\
-  --block_length=1
+  --block_length=1\
+  --noise_rms_min=0.005\
+  --noise_rms_max=0.1\
+  --noise_rms_mean=0.01\
+  --noise_rms_std=0.05\
+  --psf_cutout_size=24\
+  --psf_sigma_min=0.06\
+  --psf_sigma_max=0.1\
+  --psf_sigma_mean=0.08\
+  --psf_sigma_std=0.01\
+
