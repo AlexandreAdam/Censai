@@ -19,7 +19,8 @@ class VAE(tf.keras.Model):
             dropout_rate=None,
             batch_norm=False,
             latent_size=16,
-            strides=2
+            strides=2,
+            output_activation=tf.nn.softplus
     ):
         super(VAE, self).__init__(dtype=DTYPE)
         self.latent_size = latent_size
@@ -54,7 +55,8 @@ class VAE(tf.keras.Model):
             dropout_rate=dropout_rate,
             batch_norm=batch_norm,
             activation=activation,
-            strides=strides
+            strides=strides,
+            output_activation=output_activation
         )
 
     def encode(self, x):
