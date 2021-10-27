@@ -49,6 +49,8 @@ def distributed_strategy(args):
                 continue
             if tf.reduce_max(example["lens"] * mask) > args.edge_signal_tolerance:
                 continue
+            if tf.reduce_sum(tf.cast(example["source"] > args.source_signal_threshold, tf.float32)) < args.min_source_signal_pixels:
+                continue
             kept += 1
             features = {
                 "kappa": _bytes_feature(example["kappa"].numpy().tobytes()),
@@ -77,15 +79,17 @@ def distributed_strategy(args):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument("--dataset",                required=True,                  help="Path to dataset")
-    parser.add_argument("--min_magnification",      default=3,      type=float,     help="Minimum magnification for the lens")
-    parser.add_argument("--signal_threshold",       default=0.1,    type=float,     help="Threshold for signal to be considered as such")
-    parser.add_argument("--example_per_worker",     default=100000, type=int,       help="")
-    parser.add_argument("--compression_type",       default="GZIP")
-    parser.add_argument("--block_length",           default=1,      type=int)
-    parser.add_argument("--border_pixels",          default=5,      type=int,       help="Check that intensity fall off at border")
-    parser.add_argument("--edge",                   default=5,      type=int,       help="Number of pixels considered as egde pixels")
-    parser.add_argument("--edge_signal_tolerance",  default=0.2,    type=float,     help="If maximum along the edge is above this value, example is rejected.")
+    parser.add_argument("--dataset",                    required=True,                  help="Path to dataset")
+    parser.add_argument("--min_magnification",          default=3,      type=float,     help="Minimum magnification for the lens")
+    parser.add_argument("--signal_threshold",           default=0.1,    type=float,     help="Threshold for signal to be considered as such")
+    parser.add_argument("--example_per_worker",         default=100000, type=int,       help="")
+    parser.add_argument("--compression_type",           default="GZIP")
+    parser.add_argument("--min_source_signal_pixels",   default=20,     type=int,       help="Minimum number of pixel with pixel value above threshold. This is to avoid very small sources")
+    parser.add_argument("--source_signal_threshold",    default=0.1,    type=float,     help="Pixel value threshold")
+    parser.add_argument("--block_length",               default=1,      type=int)
+    parser.add_argument("--border_pixels",              default=5,      type=int,       help="Check that intensity fall off at border")
+    parser.add_argument("--edge",                       default=5,      type=int,       help="Number of pixels considered as egde pixels")
+    parser.add_argument("--edge_signal_tolerance",      default=0.2,    type=float,     help="If maximum along the edge is above this value, example is rejected.")
 
     args = parser.parse_args()
 

@@ -162,7 +162,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
             variance += _np.sum((_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2))**2)
             # Propagated uncertainty to deflection angles
             A = _np.exp(-0.5 * r_squared / _ell_hat ** 2)**2 - 2 * _np.exp(-0.5 * r_squared / _ell_hat ** 2)
-            alpha_variance += _np.sum((_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi[None, ...]**2)
+            alpha_variance += _np.sum((_mass[..., None] / _np.pi)**2 / (tf.maximum(r_squared[..., None]**2, 1e-16)) * (A[..., None] + 1) * xi[None, ...]**2)
     return Sigma, variance, alpha_variance
 
 
@@ -308,7 +308,7 @@ def distributed_strategy(args):
         xmin = cm_x - args.fov/2
         ymax = cm_y + args.fov/2
         ymin = cm_y - args.fov/2
-        margin = args.fov / args.pixels # allow for particle near the margin to be counted in
+        margin = 0.05 * args.fov   # allow for particle near the margin to be counted in
         select = (x < xmax + margin) & (x > xmin - margin) & (y < ymax + margin) & (y > ymin - margin)
         kappa, variance, alpha_variance = gaussian_kernel_rasterize(
                                             coords[select], mass[select], center, args.fov, dims=dims, pixels=args.pixels,

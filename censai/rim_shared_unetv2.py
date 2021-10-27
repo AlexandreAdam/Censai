@@ -1,7 +1,7 @@
 import tensorflow as tf
-from censai.models import SharedUnetModel
+from censai.models import SharedUnetModelv2
 from censai.definitions import logkappa_normalization, log_10, DTYPE, logit, lrelu4p
-from censai import PhysicalModel
+from censai import PhysicalModelv2
 from censai.utils import nulltape
 
 
@@ -19,8 +19,8 @@ class RIMSharedUnetv2:
     """
     def __init__(
             self,
-            physical_model: PhysicalModel,
-            unet: SharedUnetModel,
+            physical_model: PhysicalModelv2,
+            unet: SharedUnetModelv2,
             steps: int,
             adam=True,
             kappalog=True,
@@ -30,7 +30,8 @@ class RIMSharedUnetv2:
             beta_2=0.999,
             epsilon=1e-8,
             kappa_init=1e-1,
-            source_init=1e-3
+            source_init=1e-3,
+            flux_prior_amp:float=1.
     ):
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.kappa_pixels
@@ -46,6 +47,7 @@ class RIMSharedUnetv2:
         self.epsilon = epsilon
         self._kappa_init = kappa_init
         self._source_init = source_init
+        self.flux_prior_amp = flux_prior_amp
 
         if self.kappalog:
             if self.kappa_normalize:
@@ -70,11 +72,15 @@ class RIMSharedUnetv2:
         elif self._source_link_func == "sigmoid":
             self.source_inverse_link = logit
             self.source_link = tf.nn.sigmoid
+        elif self._source_link_func == "leaky_relu":
+            self.source_inverse_link = tf.identity
+            self.source_link = tf.nn.leaky_relu
         elif self._source_link_func == "lrelu4p":
             self.source_inverse_link = tf.identity
             self.source_link = lrelu4p
         else:
-            raise NotImplementedError(f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'lrelu4p', 'sigmoid']")
+            raise NotImplementedError(
+                f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'lrelu4p', 'sigmoid']")
 
         if adam:
             self.grad_update = self.adam_grad_update
@@ -116,7 +122,7 @@ class RIMSharedUnetv2:
     def __call__(self, lensed_image, outer_tape=nulltape):
         return self.call(lensed_image, outer_tape)
 
-    def call(self, lensed_image, outer_tape=nulltape):
+    def call(self, lensed_image, noise_rms, psf, outer_tape=nulltape):
         """
         Used in training. Return linked kappa and source maps.
         """
@@ -131,8 +137,10 @@ class RIMSharedUnetv2:
                 with tf.GradientTape() as g:
                     g.watch(source)
                     g.watch(kappa)
-                    log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
-                    cost = tf.reduce_mean(log_likelihood)
+                    y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
+                    flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
+                    log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None]**2)
+                    cost = tf.reduce_mean(log_likelihood + self.flux_prior_amp * flux_term)
                 source_grad, kappa_grad = g.gradient(cost, [source, kappa])
                 source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
@@ -141,12 +149,12 @@ class RIMSharedUnetv2:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
         chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     @tf.function
-    def call_function(self, lensed_image):
+    def call_function(self, lensed_image, noise_rms, psf):
         """
         Used in training. Return linked kappa and source maps.
 
@@ -161,8 +169,10 @@ class RIMSharedUnetv2:
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in tf.range(self.steps):
-            log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
-            cost = tf.reduce_mean(log_likelihood)
+            y_pred = self.physical_model.forward(source, kappa, psf)
+            flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
+            log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2)
+            cost = tf.reduce_mean(log_likelihood + self.flux_prior_amp * flux_term)
             source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
@@ -171,11 +181,11 @@ class RIMSharedUnetv2:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
         chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
-    def predict(self, lensed_image):
+    def predict(self, lensed_image, noise_rms, psf):
         """
         Used in inference. Return physical kappa and source maps.
         """
@@ -189,8 +199,10 @@ class RIMSharedUnetv2:
             with tf.GradientTape() as g:
                 g.watch(source)
                 g.watch(kappa)
-                log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
-                cost = tf.reduce_mean(log_likelihood)
+                y_pred = self.physical_model.forward(source, kappa, psf)
+                flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
+                log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2)
+                cost = tf.reduce_mean(log_likelihood + self.flux_prior_amp * flux_term)
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
@@ -199,8 +211,7 @@ class RIMSharedUnetv2:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
         # last step score
-        log_likelihood = self.physical_model.log_likelihoodv2(y_true=lensed_image, source=self.source_link(source),
-                                                            kappa=self.kappa_link(kappa))
+        log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa))
         chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()  # stack along 0-th dimension
 

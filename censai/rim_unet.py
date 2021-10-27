@@ -68,10 +68,12 @@ class RIMUnet:
             self.source_link = tf.nn.sigmoid
         elif self._source_link_func == "leaky_relu":
             self.source_inverse_link = tf.identity
+            self.source_link = tf.nn.leaky_relu
+        elif self._source_link_func == "lrelu4p":
+            self.source_inverse_link = tf.identity
             self.source_link = lrelu4p
-
         else:
-            raise NotImplementedError(f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'sigmoid']")
+            raise NotImplementedError(f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'lrelu4p', 'sigmoid']")
 
         if adam:
             self.grad_update = self.adam_grad_update
@@ -125,7 +127,7 @@ class RIMUnet:
     def __call__(self, lensed_image, outer_tape=nulltape):
         return self.call(lensed_image, outer_tape)
 
-    def call(self, lensed_image, outer_tape=nulltape):
+    def call(self, lensed_image, noise_rms=None, psf_sigma=None, outer_tape=nulltape):
         batch_size = lensed_image.shape[0]
         source, source_states, kappa, kappa_states = self.initial_states(batch_size)
 

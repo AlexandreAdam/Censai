@@ -1,5 +1,5 @@
 import numpy as np
-from censai.physical_model import PhysicalModel, AnalyticalPhysicalModel
+from censai import PhysicalModel, AnalyticalPhysicalModel
 import tensorflow as tf
 from censai.utils import raytracer_residual_plot
 
@@ -158,59 +158,65 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib.colors import LogNorm, SymLogNorm, CenteredNorm
-    test_lens_func_given_alpha()
-    im = test_analytical_lensing()
-    # im = test_lens_source_conv2()[0, ..., 0]
-    im1, im2, i1, i2 = test_alpha_method_fft()
-    plt.imshow(im)
-    plt.colorbar()
-
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
-
-    im = ax1.imshow(im1[0, ..., 0])
-    ax1.set_title("FFT")
-    ax1.axis("off")
-    divider = make_axes_locatable(ax1)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-
-    im = ax2.imshow(im2[0, ..., 0])
-    ax2.set_title("Conv")
-    ax2.axis("off")
-    divider = make_axes_locatable(ax2)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-
-    im = ax3.imshow(im2[0, ..., 0] - im1[0, ..., 0])
-    ax3.set_title("Residual")
-    ax3.axis("off")
-    divider = make_axes_locatable(ax3)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-
-
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
-
-    im = ax1.imshow(i1[0, ..., 0])
-    ax1.set_title("FFT")
-    ax1.axis("off")
-    divider = make_axes_locatable(ax1)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-
-    im = ax2.imshow(i2[0, ..., 0])
-    ax2.set_title("Conv")
-    ax2.axis("off")
-    divider = make_axes_locatable(ax2)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-
-    im = ax3.imshow(i2[0, ..., 0] - i1[0, ..., 0])
-    ax3.set_title("Residual")
-    ax3.axis("off")
-    divider = make_axes_locatable(ax3)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
+    im = np.random.normal(0, 1, size=(2, 64, 64, 1))
+    phys = PhysicalModel(pixels=64)
+    psf1 = phys.psf_model(0.15)
+    psf2 = phys.psf_model(0.5)
+    psf = np.stack([psf1, psf2], axis=0)
+    c1 = phys.convolve_with_psf(im, )
+    # test_lens_func_given_alpha()
+    # im = test_analytical_lensing()
+    # # im = test_lens_source_conv2()[0, ..., 0]
+    # im1, im2, i1, i2 = test_alpha_method_fft()
+    # plt.imshow(im)
+    # plt.colorbar()
+    #
+    # fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
+    #
+    # im = ax1.imshow(im1[0, ..., 0])
+    # ax1.set_title("FFT")
+    # ax1.axis("off")
+    # divider = make_axes_locatable(ax1)
+    # cax = divider.append_axes('right', size='5%', pad=0.05)
+    # fig.colorbar(im, cax=cax, orientation='vertical')
+    #
+    # im = ax2.imshow(im2[0, ..., 0])
+    # ax2.set_title("Conv")
+    # ax2.axis("off")
+    # divider = make_axes_locatable(ax2)
+    # cax = divider.append_axes('right', size='5%', pad=0.05)
+    # fig.colorbar(im, cax=cax, orientation='vertical')
+    #
+    # im = ax3.imshow(im2[0, ..., 0] - im1[0, ..., 0])
+    # ax3.set_title("Residual")
+    # ax3.axis("off")
+    # divider = make_axes_locatable(ax3)
+    # cax = divider.append_axes('right', size='5%', pad=0.05)
+    # fig.colorbar(im, cax=cax, orientation='vertical')
+    #
+    #
+    # fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
+    #
+    # im = ax1.imshow(i1[0, ..., 0])
+    # ax1.set_title("FFT")
+    # ax1.axis("off")
+    # divider = make_axes_locatable(ax1)
+    # cax = divider.append_axes('right', size='5%', pad=0.05)
+    # fig.colorbar(im, cax=cax, orientation='vertical')
+    #
+    # im = ax2.imshow(i2[0, ..., 0])
+    # ax2.set_title("Conv")
+    # ax2.axis("off")
+    # divider = make_axes_locatable(ax2)
+    # cax = divider.append_axes('right', size='5%', pad=0.05)
+    # fig.colorbar(im, cax=cax, orientation='vertical')
+    #
+    # im = ax3.imshow(i2[0, ..., 0] - i1[0, ..., 0])
+    # ax3.set_title("Residual")
+    # ax3.axis("off")
+    # divider = make_axes_locatable(ax3)
+    # cax = divider.append_axes('right', size='5%', pad=0.05)
+    # fig.colorbar(im, cax=cax, orientation='vertical')
 
     # true_lens, test_lens1, test_lens2 = test_interpolated_kappa()
     # fig, axs = plt.subplots(2, 3, figsize=(12, 8))
