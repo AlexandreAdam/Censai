@@ -21,7 +21,8 @@ VAE_HPARAMS = [
     "activation",
     "dropout_rate",
     "batch_norm",
-    "latent_size"
+    "latent_size",
+    "output_activation"
 ]
 
 
@@ -73,7 +74,8 @@ def main(args):
         activation=args.activation,
         dropout_rate=args.dropout_rate,
         batch_norm=args.batch_norm,
-        latent_size=args.latent_size
+        latent_size=args.latent_size,
+        output_activation=args.output_activation
     )
     learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=args.initial_learning_rate,
@@ -295,6 +297,7 @@ if __name__ == '__main__':
     parser.add_argument("--dropout_rate",           default=None,           type=float,     help="2D spatial dropout rate (drop entire feature map to help them become independent)")
     parser.add_argument("--batch_norm",             default=0,              type=int,       help="0: False, do no use batch norm. 1: True, use batch norm beforce activation")
     parser.add_argument("--latent_size",            default=16,             type=int,       help="Twice the size of the latent code vector z")
+    parser.add_argument("--output_activation",      default="sigmoid",                      help="Output of decoded activation function")
 
     # Training set params
     parser.add_argument("-b", "--batch_size",       default=1,      type=int,       help="Number of images in a batch. ")

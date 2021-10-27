@@ -1,13 +1,14 @@
 import tensorflow as tf
 import os, glob
 import numpy as np
-from censai import PhysicalModel
+from censai import PhysicalModelv2
 from censai.data.cosmos import preprocess, decode
 from censai.data import NISGenerator
-from censai.data.lenses_tng import encode_examples
+from censai.data.lenses_tng_v3 import encode_examples
 from scipy.signal.windows import tukey
+from scipy.stats import truncnorm
 from datetime import datetime
-import json
+import json, time
 
 
 # total number of slurm workers detected
@@ -38,13 +39,12 @@ def distributed_strategy(args):
         n_galaxies += 1
     cosmos = cosmos.map(decode).map(preprocess)
     if args.shuffle_cosmos:
-        cosmos = cosmos.shuffle(buffer_size=args.buffer_size)
+        cosmos = cosmos.shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True)
     cosmos = cosmos.batch(args.batch)
 
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
-    phys = PhysicalModel(
-        psf_sigma=args.psf_sigma,
+    phys = PhysicalModelv2(
         image_fov=args.image_fov,
         kappa_fov=args.kappa_fov,
         src_fov=args.source_fov,
@@ -53,6 +53,10 @@ def distributed_strategy(args):
         src_pixels=args.src_pixels,
         method="conv2d"
     )
+    noise_a = (args.noise_rms_min - args.noise_rms_mean) / args.noise_rms_std
+    noise_b = (args.noise_rms_max - args.noise_rms_mean) / args.noise_rms_std
+    psf_a = (args.psf_fwhm_min - args.psf_fwhm_mean) / args.psf_fwhm_std
+    psf_b = (args.psf_fwhm_max - args.psf_fwhm_mean) / args.psf_fwhm_std
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
@@ -62,6 +66,10 @@ def distributed_strategy(args):
             for galaxies, psf, ps in cosmos.skip(batch_index):  # only way to take the first batch is to fake a for loop
                 break
             galaxies = window[np.newaxis, ..., np.newaxis] * galaxies
+
+            noise_rms = truncnorm.rvs(noise_a, noise_b, loc=args.noise_rms_mean, scale=args.noise_rms_std, size=args.batch_size)
+            sigma = truncnorm.rvs(psf_a, psf_b, loc=args.psf_fwhm_mean, scale=args.psf_fwhm_std, size=args.batch_size)
+            psf = phys.psf_models(sigma, cutout_size=args.psf_cutout_size)
 
             batch_size = galaxies.shape[0]
             _r = tf.random.uniform(shape=[batch_size, 1, 1], minval=0, maxval=args.max_shift)
@@ -74,25 +82,19 @@ def distributed_strategy(args):
 
             kappa = kappa_gen.kappa_field(x0, y0, ellipticity, phi, einstein_radius)
 
-            lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=args.noise_rms)
+            lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=noise_rms, psf=psf)
 
             records = encode_examples(
                 kappa=kappa,
                 galaxies=galaxies,
                 lensed_images=lensed_images,
-                power_spectrum_cosmos=ps,
-                einstein_radius_init=einstein_radius.numpy().squeeze(),
-                einstein_radius=einstein_radius.numpy().squeeze(),
-                rescalings=[1] * args.batch,
                 z_source=args.z_source,
                 z_lens=args.z_lens,
                 image_fov=phys.image_fov,
                 kappa_fov=phys.kappa_fov,
                 source_fov=args.source_fov,
-                sigma_crit=kappa_gen.sigma_crit,  # 10^{10} M_sun / Mpc^2
-                noise_rms=args.noise_rms,
-                psf_sigma=args.psf_sigma,
-                kappa_ids=[-1] * args.batch
+                noise_rms=noise_rms,
+                psf=psf
             )
             for record in records:
                 writer.write(record)
@@ -110,16 +112,21 @@ if __name__ == '__main__':
     parser.add_argument("--compression_type",   default=None,                   help="Default is no compression. Use 'GZIP' to compress data")
 
     # Physical model params
-    parser.add_argument("--lens_pixels",        default=512,        type=int,   help="Number of pixels on a side of the kappa map.")
-    parser.add_argument("--kappa_pixels",       default=128,        type=int,   help="Size of the lens postage stamp.")
-    parser.add_argument("--src_pixels",         default=128,        type=int,   help="Size of Cosmos postage stamps")
-    parser.add_argument("--kappa_fov",          default=22.2,       type=float, help="Field of view of kappa map in arcseconds")
-    parser.add_argument("--image_fov",          default=20,         type=float, help="Field of view of the image (lens plane) in arc seconds")
-    parser.add_argument("--source_fov",         default=3,          type=float,
-                        help="Field of view of the source plane in arc seconds")
-    parser.add_argument("--noise_rms",          default=0.3e-3,     type=float,
-                        help="White noise RMS added to lensed image")
-    parser.add_argument("--psf_sigma",          default=0.06,       type=float, help="Sigma of psf in arcseconds")
+    parser.add_argument("--lens_pixels",        default=512,    type=int,       help="Number of pixels on a side of the kappa map.")
+    parser.add_argument("--kappa_pixels",       default=128,    type=int,       help="Size of the lens postage stamp.")
+    parser.add_argument("--src_pixels",         default=128,    type=int,       help="Size of Cosmos postage stamps")
+    parser.add_argument("--kappa_fov",          default=17.42,  type=float,     help="Field of view of kappa map in arcseconds")
+    parser.add_argument("--image_fov",          default=17.42,  type=float,     help="Field of view of the image (lens plane) in arc seconds")
+    parser.add_argument("--source_fov",         default=6,      type=float,     help="Field of view of the source plane in arc seconds")
+    parser.add_argument("--noise_rms_min",      default=0.001,  type=float,     help="Minimum white noise RMS added to lensed image")
+    parser.add_argument("--noise_rms_max",      default=0.1,    type=float,     help="Maximum white noise RMS added to lensed image")
+    parser.add_argument("--noise_rms_mean",     default=0.01,   type=float,     help="Maximum white noise RMS added to lensed image")
+    parser.add_argument("--noise_rms_std",      default=0.03,   type=float,     help="Maximum white noise RMS added to lensed image")
+    parser.add_argument("--psf_cutout_size",    default=32,     type=int,       help="Size of the cutout for the PSF (arceconds)")
+    parser.add_argument("--psf_fwhm_min",       default=0.04,   type=float,     help="Minimum std of gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_max",       default=0.3,    type=float,     help="Minimum std of gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_mean",      default=0.08,   type=float,     help="Mean for the distribution of std of the gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_std",       default=0.08,   type=float,     help="Std for distribution of stf of the gaussian psf (arceconds)")
 
     # Data generation params
     parser.add_argument("--max_shift",          default=1.,         type=float, help="Maximum allowed shift of kappa map center in arcseconds")
@@ -136,8 +143,8 @@ if __name__ == '__main__':
                                                                                      "This window is used on cosmos postage stamps.")
 
     # Physics params
-    parser.add_argument("--z_source",           default=2.379,      type=float)
-    parser.add_argument("--z_lens",             default=0.4457,     type=float)
+    parser.add_argument("--z_source",           default=1.5,       type=float)
+    parser.add_argument("--z_lens",             default=0.5,       type=float)
 
     # Reproducibility params
     parser.add_argument("--seed",               default=None,       type=int,   help="Random seed for numpy and tensorflow")
@@ -145,7 +152,9 @@ if __name__ == '__main__':
                                                                                      "Useful for reproducibility")
 
     args = parser.parse_args()
-    if not os.path.isdir(args.output_dir) and THIS_WORKER <= 1:
+    if THIS_WORKER > 1:
+        time.sleep(5)
+    if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
     if args.seed is not None:
         tf.random.set_seed(args.seed)

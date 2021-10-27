@@ -26,7 +26,8 @@ VAE_HPARAMS = [
     "activation",
     "dropout_rate",
     "batch_norm",
-    "latent_size"
+    "latent_size",
+    "output_activation"
 ]
 
 EXTRA_PARAMS = [
@@ -57,6 +58,7 @@ PARAMS_NICKNAME = {
     "dropout_rate": "DR",
     "batch_norm": "BN",
     "latent_size": "LS",
+    "output_activation": "OA",
     "total_items": "TI",
     "optimizer": "O",
     "seed": "",
@@ -228,6 +230,7 @@ if __name__ == '__main__':
     parser.add_argument("--tolerance",                      default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",                    action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",                       default=np.inf, type=float,     help="Time allowed for the training, in hours.")
+    parser.add_argument("--output_activation",              default="linear",               help="Output of decoded activation function")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

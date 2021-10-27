@@ -23,9 +23,9 @@ class UpsamplingLayer(tf.keras.layers.Layer):
         self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
         self.activation = activation
 
-    def call(self, x):
-        x = self.conv(x)
-        x = self.batch_norm(x)
+    def call(self, x, training=True):
+        x = self.conv(x, training=training)
+        x = self.batch_norm(x, training=training)
         x = self.activation(x)
         return x
 
@@ -95,12 +95,12 @@ class UnetDecodingLayer(tf.keras.layers.Layer):
         else:
             self.dropout = tf.keras.layers.SpatialDropout2D(rate=dropout_rate, data_format="channels_last")
 
-    def call(self, x, c_i):  # c_i is the skip connection
-        x = self.upsampling_layer(x)
+    def call(self, x, c_i, training=True):  # c_i is the skip connection
+        x = self.upsampling_layer(x, training=training)
         x = tf.concat([x, c_i], axis=-1)
         for i, layer in enumerate(self.conv_layers):
-            x = layer(x)
-            x = self.batch_norms[i](x)
+            x = layer(x, training=training)
+            x = self.batch_norms[i](x, training=training)
             x = self.activation(x)
-            x = self.dropout(x)
+            x = self.dropout(x, training=training)
         return x

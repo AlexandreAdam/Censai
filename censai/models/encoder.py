@@ -55,12 +55,12 @@ class Encoder(tf.keras.Model):
     def __call__(self, x):
         return self.call(x)
 
-    def call(self, x):
-        x = self.input_layer(x)
+    def call(self, x, training=True):
+        x = self.input_layer(x, training=training)
         for i, layer in enumerate(self.conv_layers):
-            _, x = layer(x)
+            _, x = layer(x, training=training)
         x = self.flatten(x)
-        x = self.bottleneck_layer(x)
+        x = self.bottleneck_layer(x, training=training)
         return x
 
     def call_with_skip_connections(self, x):

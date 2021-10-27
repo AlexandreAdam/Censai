@@ -41,14 +41,14 @@ class ConvBlock(tf.keras.layers.Layer):
             bias_regularizer=tf.keras.regularizers.l2(l=bias_reg_amp)
         )
 
-    def call(self, X):
-        X = self.batch_norm1(X)
-        X = self.non_linearity(X)
-        X = self.conv_rescale1(X)
-        X = self.batch_norm2(X)
-        X = self.non_linearity(X)
-        X = self.conv(X)
-        X = self.batch_norm3(X)
-        X = self.non_linearity(X)
-        X = self.conv_rescale2(X)
-        return X
+    def call(self, x, training=True):
+        x = self.batch_norm1(x, training=training)
+        x = self.non_linearity(x)
+        x = self.conv_rescale1(x, training=training)
+        x = self.batch_norm2(x, training=training)
+        x = self.non_linearity(x)
+        x = self.conv(x, training=training)
+        x = self.batch_norm3(x, training=training)
+        x = self.non_linearity(x)
+        x = self.conv_rescale2(x, training=training)
+        return x
