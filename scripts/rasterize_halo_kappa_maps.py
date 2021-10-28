@@ -167,7 +167,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
                 x=(_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi[None, ...]**2,
                 y=0.
             )
-            alpha_variance += _np.sum(_alpha_variance)
+            alpha_variance += _np.sum(_alpha_variance, axis=0)
     return Sigma, variance, alpha_variance
 
 
