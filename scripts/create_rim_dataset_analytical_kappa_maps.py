@@ -33,7 +33,7 @@ def distributed_strategy(args):
     max_theta_e = 0.45 * args.image_fov if args.max_theta_e is None else args.max_theta_e
 
     cosmos_files = glob.glob(os.path.join(args.cosmos_dir, "*.tfrecords"))
-    cosmos = tf.data.TFRecordDataset(cosmos_files)
+    cosmos = tf.data.TFRecordDataset(cosmos_files, compression_type=args.compression_type)
     n_galaxies = 0
     for _ in cosmos:  # count the number of samples in the dataset
         n_galaxies += 1
