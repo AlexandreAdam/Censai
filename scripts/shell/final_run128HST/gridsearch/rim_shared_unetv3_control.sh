@@ -31,12 +31,12 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
-  --steps 4 8 10 15\
+  --steps 4 8 10 12\
   --time_weights quadratic\
   --adam 1\
   --upsampling_interpolation 0\
   --kappalog\
-  --source_link lrelu4p\
+  --source_link relu\
   --filters 16 32\
   --filter_scaling 2\
   --kernel_size 3\
@@ -47,7 +47,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
   --input_kernel_size 11\
   --gru_kernel_size 3\
   --activation leaky_relu\
-  --batch_norm 0\
+  --batch_norm 1\
   --gru_architecture plus\
   --alpha 0.1\
   --source_init=1\
