@@ -2,7 +2,7 @@ import tensorflow as tf
 import os, glob
 import numpy as np
 from censai import PhysicalModelv2
-from censai.data.cosmos import preprocess, decode
+from censai.data.cosmos import decode_image, preprocess_image
 from censai.data import NISGenerator
 from censai.data.lenses_tng_v3 import encode_examples
 from scipy.signal.windows import tukey
@@ -34,10 +34,7 @@ def distributed_strategy(args):
 
     cosmos_files = glob.glob(os.path.join(args.cosmos_dir, "*.tfrecords"))
     cosmos = tf.data.TFRecordDataset(cosmos_files, compression_type=args.compression_type)
-    n_galaxies = 0
-    for _ in cosmos:  # count the number of samples in the dataset
-        n_galaxies += 1
-    cosmos = cosmos.map(decode).map(preprocess)
+    cosmos = cosmos.map(decode_image).map(preprocess_image)
     if args.shuffle_cosmos:
         cosmos = cosmos.shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True)
     cosmos = cosmos.batch(args.batch_size)
@@ -62,8 +59,7 @@ def distributed_strategy(args):
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
         print(f"Started worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
         for i in range((THIS_WORKER - 1) * args.batch_size, args.len_dataset, N_WORKERS * args.batch_size):
-            batch_index = np.random.randint(0, n_galaxies//args.batch_size)
-            for galaxies, psf, ps in cosmos.skip(batch_index):  # only way to take the first batch is to fake a for loop
+            for galaxies in cosmos:
                 break
             galaxies = window[np.newaxis, ..., np.newaxis] * galaxies
 
