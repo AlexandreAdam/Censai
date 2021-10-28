@@ -287,20 +287,13 @@ class PhysicalModelv2:
 if __name__ == '__main__':
     phys = PhysicalModelv2(64)
     psf = phys.psf_models(np.array([0.4, 0.12]))
-    import matplotlib.pyplot as plt
+    # import matplotlib.pyplot as plt
     x = tf.random.normal(shape=(2, 64, 64, 1))
-    # out = phys.convolve_with_psf(x, psf)
-    # fig, (ax1, ax2) = plt.subplots(1, 2)
-    # ax1.imshow(out[0, ..., 0])
-    # ax1.set_title("0.4")
-    # ax2.imshow(out[1, ..., 0])
-    # ax2.set_title("0.12")
-    # print(out.shape)
-    # plt.show()
-
-    from scipy .stats import truncnorm
-    sigma = truncnorm.rvs(0, 1, size=2)
-    noise_rms = truncnorm.rvs(0, 1, size=2)
-    psf = phys.psf_models(sigma, cutout_size=24)
-    lensed_images = phys.noisy_forward(x, x, noise_rms=noise_rms, psf=psf)
-    print(lensed_images.shape)
+    out = phys.convolve_with_psf(x, psf)
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    ax1.imshow(out[0, ..., 0])
+    ax1.set_title("0.4")
+    ax2.imshow(out[1, ..., 0])
+    ax2.set_title("0.12")
+    print(out.shape)
+    plt.show()

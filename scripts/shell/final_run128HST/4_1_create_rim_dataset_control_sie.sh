@@ -24,7 +24,6 @@ python $CENSAI_PATH/scripts/create_rim_analytical_kappa_maps.py\
   --buffer_size=50000\
   --batch_size=20\
   --tukey_alpha=0.1\
-  --block_length=1\
   --max_shift=1.\
   --min_theta_e=1.\
   --max_theta_e=3.\
