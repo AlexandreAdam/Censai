@@ -109,7 +109,7 @@ class PhysicalModelv2:
 
     def noisy_forward(self, source, kappa, noise_rms, psf):
         im = self.lens_source(source, kappa)
-        noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
+        noise = tf.random.normal(im.shape, mean=0, stddev=np.atleast_1d(noise_rms)[:, None, None, None])
         out = self.convolve_with_psf(im, psf)  # convolve before adding noise, otherwise it correlates the noise
         out = out + noise
         return out
@@ -289,11 +289,18 @@ if __name__ == '__main__':
     psf = phys.psf_models(np.array([0.4, 0.12]))
     import matplotlib.pyplot as plt
     x = tf.random.normal(shape=(2, 64, 64, 1))
-    out = phys.convolve_with_psf(x, psf)
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    ax1.imshow(out[0, ..., 0])
-    ax1.set_title("0.4")
-    ax2.imshow(out[1, ..., 0])
-    ax2.set_title("0.12")
-    print(out.shape)
-    plt.show()
+    # out = phys.convolve_with_psf(x, psf)
+    # fig, (ax1, ax2) = plt.subplots(1, 2)
+    # ax1.imshow(out[0, ..., 0])
+    # ax1.set_title("0.4")
+    # ax2.imshow(out[1, ..., 0])
+    # ax2.set_title("0.12")
+    # print(out.shape)
+    # plt.show()
+
+    from scipy .stats import truncnorm
+    sigma = truncnorm.rvs(0, 1, size=2)
+    noise_rms = truncnorm.rvs(0, 1, size=2)
+    psf = phys.psf_models(sigma, cutout_size=24)
+    lensed_images = phys.noisy_forward(x, x, noise_rms=noise_rms, psf=psf)
+    print(lensed_images.shape)
