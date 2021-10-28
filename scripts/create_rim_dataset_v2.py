@@ -81,7 +81,9 @@ def distributed_strategy(args):
             sigma = truncnorm.rvs(psf_a, psf_b, loc=args.psf_fwhm_mean, scale=args.psf_fwhm_std, size=args.batch_size)
             psf = phys.psf_models(sigma, cutout_size=args.psf_cutout_size)
             lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=noise_rms, psf=psf)
-
+            lensed_images = tf.nn.relu(lensed_images)
+            lensed_images /= tf.reduce_max(lensed_images, axis=(1, 2, 3), keepdims=True)
+            
             records = encode_examples(
                 kappa=kappa,
                 galaxies=galaxies,

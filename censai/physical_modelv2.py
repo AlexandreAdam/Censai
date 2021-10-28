@@ -286,14 +286,17 @@ class PhysicalModelv2:
 
 if __name__ == '__main__':
     phys = PhysicalModelv2(64)
+    from censai import AnalyticalPhysicalModel
+    kappa = AnalyticalPhysicalModel(64).kappa_field(r_ein=np.array([1., 2.])[:, None, None, None])
     psf = phys.psf_models(np.array([0.4, 0.12]))
-    # import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
     x = tf.random.normal(shape=(2, 64, 64, 1))
-    out = phys.convolve_with_psf(x, psf)
+    y = phys.noisy_forward(x, kappa, np.array([0.01, 0.04]), psf)
+    # out = phys.convolve_with_psf(x, psf)
     fig, (ax1, ax2) = plt.subplots(1, 2)
-    ax1.imshow(out[0, ..., 0])
+    ax1.imshow(y[0, ..., 0])
     ax1.set_title("0.4")
-    ax2.imshow(out[1, ..., 0])
+    ax2.imshow(y[1, ..., 0])
     ax2.set_title("0.12")
-    print(out.shape)
+    # print(out.shape)
     plt.show()
