@@ -48,3 +48,9 @@ def decode_train(record_bytes):
     params_keys = ['lens', 'source', 'kappa', 'noise rms', 'psf']
     example = decode_all(record_bytes)
     return [example[key] for key in params_keys]
+
+
+def preprocess(lens, source, kappa, noise_rms, psf):
+    lens = tf.nn.relu(lens)
+    lens /= tf.reduce_max(lens, keepdims=True)
+    return lens, source, kappa, noise_rms, psf
