@@ -40,7 +40,7 @@ def distributed_strategy(args):
     cosmos = cosmos.map(decode).map(preprocess)
     if args.shuffle_cosmos:
         cosmos = cosmos.shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True)
-    cosmos = cosmos.batch(args.batch)
+    cosmos = cosmos.batch_size(args.batch_size)
 
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
@@ -61,8 +61,8 @@ def distributed_strategy(args):
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
         print(f"Started worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
-        for i in range((THIS_WORKER - 1) * args.batch, args.len_dataset, N_WORKERS * args.batch):
-            batch_index = np.random.randint(0, n_galaxies//args.batch)
+        for i in range((THIS_WORKER - 1) * args.batch_size, args.len_dataset, N_WORKERS * args.batch_size):
+            batch_index = np.random.randint(0, n_galaxies//args.batch_size)
             for galaxies, psf, ps in cosmos.skip(batch_index):  # only way to take the first batch is to fake a for loop
                 break
             galaxies = window[np.newaxis, ..., np.newaxis] * galaxies
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--output_dir",         required=True,      type=str,   help="Path to output directory")
     parser.add_argument("--len_dataset",        required=True,      type=int,   help="Size of the dataset")
-    parser.add_argument("--batch",              default=1,          type=int,   help="Number of examples worked out in a single pass by a worker")
+    parser.add_argument("--batch_size",         default=1,          type=int,   help="Number of examples worked out in a single pass by a worker")
     parser.add_argument("--cosmos_dir",         required=True,      type=str,   help="Path to directory of galaxy brightness distribution tfrecords "
                                                                                      "(output of cosmos_to_tfrecors.py)")
     parser.add_argument("--compression_type",   default=None,                   help="Default is no compression. Use 'GZIP' to compress data")
