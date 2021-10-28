@@ -28,7 +28,7 @@ def decode_all(record_bytes):
     kappa_pixels = example['kappa pixels']
     source_pixels = example['src pixels']
     pixels = example['pixels']
-    psf = example['psf']
+    psf = tf.io.decode_raw(example['psf'], tf.float32)
     psf_pixels = example['psf pixels']
 
     example['kappa'] = tf.reshape(kappa, [kappa_pixels, kappa_pixels, 1])
