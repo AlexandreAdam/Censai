@@ -40,7 +40,7 @@ def distributed_strategy(args):
     cosmos = cosmos.map(decode).map(preprocess)
     if args.shuffle_cosmos:
         cosmos = cosmos.shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True)
-    cosmos = cosmos.batch_size(args.batch_size)
+    cosmos = cosmos.batch(args.batch_size)
 
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
