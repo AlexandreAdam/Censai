@@ -83,7 +83,7 @@ def distributed_strategy(args):
             lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=noise_rms, psf=psf)
             lensed_images = tf.nn.relu(lensed_images)
             lensed_images /= tf.reduce_max(lensed_images, axis=(1, 2, 3), keepdims=True)
-            
+
             records = encode_examples(
                 kappa=kappa,
                 galaxies=galaxies,
