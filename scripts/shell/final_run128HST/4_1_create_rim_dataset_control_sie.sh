@@ -29,10 +29,10 @@ python $CENSAI_PATH/scripts/create_rim_analytical_kappa_maps.py\
   --max_theta_e=2.5\
   --shuffle_cosmos\
   --buffer_size=50000\
-  --noise_rms_min=0.005\
-  --noise_rms_max=0.02\
-  --noise_rms_mean=0.008\
-  --noise_rms_std=0.005\
+  --noise_rms_min=0.01\
+  --noise_rms_max=0.06\
+  --noise_rms_mean=0.02\
+  --noise_rms_std=0.015\
   --psf_cutout_size=20\
   --psf_fwhm_min=0.06\
   --psf_fwhm_max=0.3\

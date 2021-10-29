@@ -22,10 +22,10 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --batch_size=20\
   --tukey_alpha=0.1\
   --block_length=1\
-  --noise_rms_min=0.005\
-  --noise_rms_max=0.02\
-  --noise_rms_mean=0.008\
-  --noise_rms_std=0.005\
+  --noise_rms_min=0.01\
+  --noise_rms_max=0.06\
+  --noise_rms_mean=0.02\
+  --noise_rms_std=0.015\
   --psf_cutout_size=20\
   --psf_fwhm_min=0.06\
   --psf_fwhm_max=0.3\
