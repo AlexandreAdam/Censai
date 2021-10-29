@@ -27,7 +27,7 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --noise_rms_mean=0.02\
   --noise_rms_std=0.015\
   --psf_cutout_size=20\
-  --psf_fwhm_min=0.06\
+  --psf_fwhm_min=0.08\
   --psf_fwhm_max=0.3\
-  --psf_fwhm_mean=0.07\
+  --psf_fwhm_mean=0.1\
   --psf_fwhm_std=0.05
