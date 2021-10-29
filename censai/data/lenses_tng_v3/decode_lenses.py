@@ -20,7 +20,8 @@ def decode_all(record_bytes):
               'pixels': tf.io.FixedLenFeature([], tf.int64),
               'noise rms': tf.io.FixedLenFeature([], tf.float32),
               "psf": tf.io.FixedLenFeature([], tf.string),
-              "psf pixels":  tf.io.FixedLenFeature([], tf.int64)
+              "psf pixels":  tf.io.FixedLenFeature([], tf.int64),
+              "fwhm": tf.io.FixedLenFeature([], tf.float32)
           })
     kappa = tf.io.decode_raw(example['kappa'], tf.float32)
     source = tf.io.decode_raw(example['source'], tf.float32)

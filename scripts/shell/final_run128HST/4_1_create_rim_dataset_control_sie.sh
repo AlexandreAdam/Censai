@@ -26,15 +26,15 @@ python $CENSAI_PATH/scripts/create_rim_dataset_analytical_kappa_maps.py\
   --tukey_alpha=0.1\
   --max_shift=1.\
   --min_theta_e=1.\
-  --max_theta_e=3.\
+  --max_theta_e=2.5\
   --shuffle_cosmos\
   --buffer_size=50000\
-  --noise_rms_min=0.001\
-  --noise_rms_max=0.1\
-  --noise_rms_mean=0.01\
-  --noise_rms_std=0.05\
+  --noise_rms_min=0.005\
+  --noise_rms_max=0.02\
+  --noise_rms_mean=0.008\
+  --noise_rms_std=0.005\
   --psf_cutout_size=20\
   --psf_fwhm_min=0.06\
   --psf_fwhm_max=0.2\
-  --psf_fwhm_mean=0.1\
-  --psf_fwhm_std=0.05\
+  --psf_fwhm_mean=0.07\
+  --psf_fwhm_std=0.03\

@@ -286,7 +286,7 @@ def main(args):
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
         if args.clipping:
-            gradient = [tf.clip_by_value(grad, -10, 10) for grad in gradient]
+            gradient = [tf.clip_by_norm(grad, 10.) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
         # Update metrics with "converged" score
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
