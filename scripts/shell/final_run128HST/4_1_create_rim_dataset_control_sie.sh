@@ -37,4 +37,4 @@ python $CENSAI_PATH/scripts/create_rim_analytical_kappa_maps.py\
   --psf_fwhm_min=0.06\
   --psf_fwhm_max=0.3\
   --psf_fwhm_mean=0.07\
-  --psf_fwhm_std=0.08
+  --psf_fwhm_std=0.05
