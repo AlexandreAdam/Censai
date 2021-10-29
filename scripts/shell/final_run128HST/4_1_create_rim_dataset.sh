@@ -27,9 +27,9 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --tukey_alpha=0\
   --block_length=1\
   --noise_rms_min=0.005\
-  --noise_rms_max=0.1\
+  --noise_rms_max=0.04\
   --noise_rms_mean=0.01\
-  --noise_rms_std=0.05\
+  --noise_rms_std=0.009\
   --psf_cutout_size=20\
   --psf_fwhm_min=0.06\
   --psf_fwhm_max=0.2\
