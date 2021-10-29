@@ -270,7 +270,7 @@ class PhysicalModelv2:
                                             offset_width=self.pixels//2 - cutout_size//2,
                                             target_width=cutout_size,
                                             target_height=cutout_size)
-        psf /= tf.reduce_sum(psf)
+        psf /= tf.reduce_sum(psf, axis=(1, 2, 3), keepdims=True)
         return psf
 
     def convolve_with_psf(self, images, psf):

@@ -285,8 +285,8 @@ def main(args):
         gradient1 = tape.gradient(cost, rim.source_model.trainable_variables)
         gradient2 = tape.gradient(cost, rim.kappa_model.trainable_variables)
         if args.clipping:
-            gradient1 = [tf.clip_by_value(grad, -10, 10) for grad in gradient1]
-            gradient2 = [tf.clip_by_value(grad, -10, 10) for grad in gradient2]
+            gradient1 = [tf.clip_by_norm(grad, 5.) for grad in gradient1]
+            gradient2 = [tf.clip_by_norm(grad, 5.) for grad in gradient2]
         optim.apply_gradients(zip(gradient1, rim.source_model.trainable_variables))
         optim.apply_gradients(zip(gradient2, rim.kappa_model.trainable_variables))
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size

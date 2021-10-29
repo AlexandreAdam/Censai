@@ -14,6 +14,7 @@ def encode_examples(
         source_fov: float,
         noise_rms: np.array,
         psf: tf.Tensor,
+        fwhm: np.array
 ):
     batch_size = galaxies.shape[0]
     source_pixels = galaxies.shape[1]
@@ -36,7 +37,8 @@ def encode_examples(
             "pixels": _int64_feature(pixels),
             "noise rms": _float_feature(noise_rms[j]),
             "psf": _bytes_feature(psf[j].numpy().tobytes()),
-            "psf pixels": _int64_feature(psf_pixels)
+            "psf pixels": _int64_feature(psf_pixels),
+            "fwhm": _float_feature(fwhm[j])
         }
         serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
         record = serialized_output.SerializeToString()
