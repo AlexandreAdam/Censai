@@ -35,6 +35,6 @@ python $CENSAI_PATH/scripts/create_rim_analytical_kappa_maps.py\
   --noise_rms_std=0.005\
   --psf_cutout_size=20\
   --psf_fwhm_min=0.06\
-  --psf_fwhm_max=0.2\
+  --psf_fwhm_max=0.3\
   --psf_fwhm_mean=0.07\
-  --psf_fwhm_std=0.03\
+  --psf_fwhm_std=0.08
