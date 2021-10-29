@@ -64,8 +64,8 @@ def distributed_strategy(args):
             galaxies = window[np.newaxis, ..., np.newaxis] * galaxies
 
             noise_rms = truncnorm.rvs(noise_a, noise_b, loc=args.noise_rms_mean, scale=args.noise_rms_std, size=args.batch_size)
-            sigma = truncnorm.rvs(psf_a, psf_b, loc=args.psf_fwhm_mean, scale=args.psf_fwhm_std, size=args.batch_size)
-            psf = phys.psf_models(sigma, cutout_size=args.psf_cutout_size)
+            fwhm = truncnorm.rvs(psf_a, psf_b, loc=args.psf_fwhm_mean, scale=args.psf_fwhm_std, size=args.batch_size)
+            psf = phys.psf_models(fwhm, cutout_size=args.psf_cutout_size)
 
             batch_size = galaxies.shape[0]
             _r = tf.random.uniform(shape=[batch_size, 1, 1], minval=0, maxval=args.max_shift)
@@ -90,7 +90,8 @@ def distributed_strategy(args):
                 kappa_fov=phys.kappa_fov,
                 source_fov=args.source_fov,
                 noise_rms=noise_rms,
-                psf=psf
+                psf=psf,
+                fwhm=fwhm
             )
             for record in records:
                 writer.write(record)
