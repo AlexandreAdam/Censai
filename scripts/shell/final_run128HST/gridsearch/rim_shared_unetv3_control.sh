@@ -10,8 +10,8 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
-  --datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_200k_control_validated_train\
-  --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_200k_control_validated_val\
+  --datasets $CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_validated_train\
+  --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_validated_val\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=8\
