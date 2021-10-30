@@ -20,7 +20,7 @@ class DownsamplingLayer(tf.keras.layers.Layer):
             padding="SAME",
             data_format="channels_last"
         )
-        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x, training=True: x)
         self.activation = activation
 
     def call(self, x, training=True):
@@ -76,7 +76,7 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
                 )
             else:
                 self.batch_norms.append(
-                    tf.identity
+                    tf.keras.layers.Lambda(lambda x, training=True: x)
                 )
         self.downsampling_layer = DownsamplingLayer(
             filters=self.downsampling_filters,
@@ -87,7 +87,7 @@ class ConvEncodingLayer(tf.keras.layers.Layer):
         )
 
         if dropout_rate is None:
-            self.dropout = tf.identity
+            self.dropout = tf.keras.layers.Lambda(lambda x, training=True: x)
         else:
             self.dropout = tf.keras.layers.SpatialDropout2D(rate=dropout_rate, data_format="channels_last")
 
