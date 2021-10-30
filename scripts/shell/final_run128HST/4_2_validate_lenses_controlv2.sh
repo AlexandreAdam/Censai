@@ -10,11 +10,13 @@
 # 00k-512_k128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/validate_lenses.py\
+python $CENSAI_PATH/scripts/validate_lensesv3.py\
   --dataset=$CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control\
   --min_magnification=4\
   --signal_threshold=0.2\
   --example_per_worker=10000\
   --compression_type=GZIP\
   --min_source_signal_pixels=10\
-  --source_signal_threshold=0.1
+  --source_signal_threshold=0.1\
+  --edge=5\
+  --edge_signal_tolerance=0.4
