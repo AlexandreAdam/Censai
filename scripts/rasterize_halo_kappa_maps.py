@@ -164,7 +164,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
             A = _np.exp(-0.5 * r_squared / _ell_hat ** 2)**2 - 2 * _np.exp(-0.5 * r_squared / _ell_hat ** 2)
             _alpha_variance = tf.where(
                 condition=r_squared[..., None]**2 > 0,
-                x=(_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi[None, ...]**2,
+                x=(_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi**2,
                 y=0.
             )
             alpha_variance += _np.sum(_alpha_variance, axis=0)
