@@ -12,7 +12,9 @@
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/validate_lenses.py\
   --dataset=$CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control\
-  --min_magnification=3\
+  --min_magnification=4\
   --signal_threshold=0.2\
   --example_per_worker=10000\
-  --compression_type=GZIP
+  --compression_type=GZIP\
+  --min_source_signal_pixels=10\
+  --source_signal_threshold=0.1
