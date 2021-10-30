@@ -15,4 +15,8 @@ python $CENSAI_PATH/scripts/validate_lenses.py\
   --min_magnification=3\
   --signal_threshold=0.1\
   --example_per_worker=10000\
-  --compression_type=GZIP
+  --compression_type=GZIP\
+  --min_source_signal_pixels=10\
+  --source_signal_threshold=0.1\
+  --edge=5\
+  --edge_signal_tolerance=0.4
