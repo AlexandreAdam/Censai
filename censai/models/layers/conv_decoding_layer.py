@@ -25,7 +25,7 @@ class UpsamplingLayer(tf.keras.layers.Layer):
             kernel_regularizer=tf.keras.regularizers.l2(kernel_reg_amp),
             bias_regularizer=tf.keras.regularizers.l2(bias_reg_amp)
         )
-        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x: tf.identity(x))
+        self.batch_norm = tf.keras.layers.BatchNormalization() if batch_norm else tf.keras.layers.Lambda(lambda x, training=True: x)
         self.activation = activation
 
     def call(self, x, training=True):
@@ -81,7 +81,7 @@ class ConvDecodingLayer(tf.keras.layers.Layer):
                 )
             else:
                 self.batch_norms.append(
-                    tf.identity
+                    tf.keras.layers.Lambda(lambda x, training=True: x)
                 )
         if bilinear:
             self.upsampling_layer = tf.keras.layers.UpSampling2D(size=self.strides, interpolation="bilinear")
@@ -99,7 +99,7 @@ class ConvDecodingLayer(tf.keras.layers.Layer):
             )
 
         if dropout_rate is None:
-            self.dropout = tf.identity
+            self.dropout = tf.keras.layers.Lambda(lambda x, training=True: x)
         else:
             self.dropout = tf.keras.layers.SpatialDropout2D(rate=dropout_rate, data_format="channels_last")
 

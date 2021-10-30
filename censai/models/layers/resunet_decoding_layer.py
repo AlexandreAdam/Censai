@@ -79,7 +79,7 @@ class ResUnetDecodingLayer(tf.keras.layers.Layer):
                 )
             else:
                 self.group_norms.append(
-                    tf.identity
+                    tf.keras.layers.Lambda(lambda x, training=True: x)
                 )
         if bilinear:
             self.upsampling_layer = tf.keras.layers.UpSampling2D(size=self.strides, interpolation="bilinear")
@@ -94,7 +94,7 @@ class ResUnetDecodingLayer(tf.keras.layers.Layer):
 
             )
         if dropout_rate is None:
-            self.dropout = tf.identity
+            self.dropout = tf.keras.layers.Lambda(lambda x, training=True: x)
         else:
             self.dropout = tf.keras.layers.SpatialDropout2D(rate=dropout_rate, data_format="channels_last")
 
