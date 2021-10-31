@@ -38,7 +38,7 @@ class ResidualBlock(tf.keras.layers.Layer):
             assert dropout_rate >= 0
             self.dropout = tf.keras.layers.SpatialDropout2D(dropout_rate, data_format="channels_last")
         else:
-            self.dropout = tf.identity
+            self.dropout = tf.keras.layers.Lambda(lambda x, training=True: x)
         if architecture != "bare":
             self.batch_norms = []
             if architecture != "full_pre_activation_rescale":
