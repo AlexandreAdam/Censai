@@ -300,3 +300,4 @@ if __name__ == '__main__':
     ax2.set_title("0.12")
     # print(out.shape)
     plt.show()
+    print(psf.numpy().sum(axis=(1, 2, 3)))
