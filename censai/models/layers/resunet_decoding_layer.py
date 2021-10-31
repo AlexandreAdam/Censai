@@ -57,7 +57,7 @@ class ResUnetDecodingLayer(tf.keras.layers.Layer):
         if upsampling_kernel_size is None:
             self.upsampling_kernel_size = self.kernel_size
         else:
-            self.upsampling_kernel_size = tuple([upsampling_kernel_size]*2)
+            self.upsampling_kernel_size = (upsampling_kernel_size,)*2 if isinstance(upsampling_kernel_size, int) else upsampling_kernel_size
         self.num_conv_layers = conv_layers
         self.filters = filters
         self.strides = tuple([strides]*2) if isinstance(strides, int) else strides

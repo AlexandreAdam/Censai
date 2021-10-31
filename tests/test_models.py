@@ -114,13 +114,13 @@ def test_rim_shared_unet():
     source_series, kappa_series, chi_squared_series = rim.call(lens)
 
 
-def test_rim():
-    phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
-    lens = tf.random.normal(shape=[1, 64, 64, 1])
-    m1 = Model(filters=2)
-    m2 = Model(filters=2)
-    rim = RIM(phys, m1, m2, steps=2)
-    rim.call(lens)
+# def test_rim():
+#     phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
+#     lens = tf.random.normal(shape=[1, 64, 64, 1])
+#     m1 = Model(filters=2)
+#     m2 = Model(filters=2)
+#     rim = RIM(phys, m1, m2, steps=2)
+#     rim.call(lens)
 
 
 def test_resnet_vae():
@@ -234,18 +234,18 @@ def test_rim_shared_memoryresunetatrous():
 
 if __name__ == '__main__':
     # test_ray_tracer_512()
-    # test_raytracer()
-    # test_resnet_autoencoder()
-    # test_unet_model()
-    # test_shared_unet_model()
-    # test_rim_shared_unet()
+    test_raytracer()
+    test_resnet_autoencoder()
+    test_unet_model()
+    test_shared_unet_model()
+    test_rim_shared_unet()
     # test_rim()
     test_rim_unet()
-    # test_resnet_vae()
-    # test_resnet_encoder()
-    # test_vae()
-    # test_vae_second_stage()
-    # test_convGRU()
-    # test_rimsharedresunet()
-    # test_rimsharedresunetatrous()
-    # test_rim_shared_memoryresunetatrous()
+    test_resnet_vae()
+    test_resnet_encoder()
+    test_vae()
+    test_vae_second_stage()
+    test_convGRU()
+    test_rimsharedresunet()
+    test_rimsharedresunetatrous()
+    test_rim_shared_memoryresunetatrous()
