@@ -176,7 +176,8 @@ def main(args):
             source_link=args.source_link,
             kappa_normalize=args.kappa_normalize,
             kappa_init=args.kappa_init,
-            source_init=args.source_init
+            source_init=args.source_init,
+            flux_lagrange_multiplier=args.flux_lagrange_multiplier
         )
         learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=args.initial_learning_rate,
@@ -201,12 +202,29 @@ def main(args):
             raise ValueError("time_weights must be in ['uniform', 'linear', 'quadratic']")
         wt = wt[..., tf.newaxis]  # [steps, batch]
 
-        # if args.residual_weigths == "uniform":
-        #     wk = tf.keras.layers.Lambda(lambda k: tf.ones(shape=(1,)))
-        #     ws = tf.keras.layers.Lambda(lambda s: tf.ones(shape=(1,)))
-        # elif args.residual_weigths == "linear":
-        #     wk = tf.keras.layers.Lambda(lambda k: k / tf.reduce_sum(k, axis=(1, 2, 3), keepdim=True))
-        #     ws = tf.keras.layers.Lambda(lambda s: s / tf.reduce_sum(s, axis=(1, 2, 3), keepdims=True))
+        if args.kappa_residual_weights == "uniform":
+            wk = tf.keras.layers.Lambda(
+                lambda k: tf.ones_like(k, dtype=DTYPE) / tf.cast(tf.math.reduce_prod(k.shape[1:]), DTYPE))
+        elif args.kappa_residual_weights == "linear":
+            wk = tf.keras.layers.Lambda(lambda k: k / tf.reduce_sum(k, axis=(1, 2, 3), keepdims=True))
+        elif args.kappa_residual_weights == "sqrt":
+            wk = tf.keras.layers.Lambda(lambda k: tf.sqrt(k) / tf.reduce_sum(tf.sqrt(k), axis=(1, 2, 3), keepdims=True))
+        elif args.kappa_residual_weights == "quadratic":
+            wk = tf.keras.layers.Lambda(
+                lambda k: tf.square(k) / tf.reduce_sum(tf.square(k), axis=(1, 2, 3), keepdims=True))
+        else:
+            raise ValueError("kappa_residual_weights must be in ['uniform', 'linear', 'quadratic', 'sqrt']")
+
+        if args.source_residual_weights == "uniform":
+            ws = tf.keras.layers.Lambda(
+                lambda k: tf.ones_like(k, dtype=DTYPE) / tf.cast(tf.math.reduce_prod(k.shape[1:]), DTYPE))
+        elif args.source_residual_weights == "linear":
+            ws = tf.keras.layers.Lambda(lambda k: k / tf.reduce_sum(k, axis=(1, 2, 3), keepdims=True))
+        elif args.source_residual_weights == "quadratic":
+            ws = tf.keras.layers.Lambda(
+                lambda k: tf.square(k) / tf.reduce_sum(tf.square(k), axis=(1, 2, 3), keepdims=True))
+        else:
+            raise ValueError("kappa_residual_weights must be in ['uniform', 'linear', 'quadratic', 'sqrt']")
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         if args.logname is not None:
@@ -271,8 +289,8 @@ def main(args):
             else:
                 source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf, outer_tape=tape)
             # mean over image residuals
-            source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
-            kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+            source_cost1 = tf.reduce_sum(ws(source) * tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+            kappa_cost1 = tf.reduce_sum(wk(kappa) * tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
             # weighted mean over time steps
             source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
             kappa_cost = tf.reduce_sum(wt * kappa_cost1, axis=0)
@@ -508,6 +526,7 @@ if __name__ == "__main__":
     parser.add_argument("--source_link",        default="identity",             help="One of 'exp', 'source', 'relu' or 'identity' (default).")
     parser.add_argument("--kappa_init",         default=1e-1,   type=float,     help="Initial value of kappa for RIM")
     parser.add_argument("--source_init",        default=1e-3,   type=float,     help="Initial value of source for RIM")
+    parser.add_argument("--flux_lagrange_multiplier",       default=1e-3,   type=float,     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32,     type=int)
@@ -561,6 +580,8 @@ if __name__ == "__main__":
     parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
     parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
     parser.add_argument("--reset_optimizer_states",  action="store_true",           help="When training from pre-trained weights, reset states of optimizer.")
+    parser.add_argument("--kappa_residual_weights",         default="uniform",              help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
+    parser.add_argument("--source_residual_weights",        default="uniform",              help="Options are ['uniform', 'linear', 'quadratic']")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
