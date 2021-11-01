@@ -31,7 +31,7 @@ class RIMSharedUnetv2:
             epsilon=1e-8,
             kappa_init=1e-1,
             source_init=1e-3,
-            flux_lagrange_multiplier:float=1.
+            flux_lagrange_multiplier: float=1.
     ):
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.kappa_pixels
@@ -169,7 +169,7 @@ class RIMSharedUnetv2:
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in tf.range(self.steps):
-            y_pred = self.physical_model.forward(source, kappa, psf)
+            y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
             flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
             log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
             cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
@@ -199,7 +199,7 @@ class RIMSharedUnetv2:
             with tf.GradientTape() as g:
                 g.watch(source)
                 g.watch(kappa)
-                y_pred = self.physical_model.forward(source, kappa, psf)
+                y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
                 flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
                 log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
                 cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)

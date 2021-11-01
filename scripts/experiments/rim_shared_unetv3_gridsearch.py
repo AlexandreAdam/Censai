@@ -46,7 +46,8 @@ UNET_MODEL_HPARAMS = [
     "activation",
     "alpha",
     "initializer",
-    "gru_architecture"
+    "gru_architecture",
+    "flux_lagrange_multiplier"
 ]
 
 EXTRA_PARAMS = [
@@ -57,7 +58,9 @@ EXTRA_PARAMS = [
     "initial_learning_rate",
     "decay_rate",
     "decay_steps",
-    "time_weights"
+    "time_weights",
+    "kappa_residual_weights",
+    "source_residual_weights"
 ]
 
 
@@ -70,6 +73,8 @@ PARAMS_NICKNAME = {
     "decay_rate": "dr",
     "decay_steps": "ds",
     "time_weights": "TW",
+    "kappa_residual_weights": "KRW",
+    "source_residual_weights": "SRW",
 
     "filters": "F",
     "filter_scaling": "FS",
@@ -98,6 +103,7 @@ PARAMS_NICKNAME = {
     "source_link": "Sli",
     "source_init": "Sini",
     "kappa_init": "Kini",
+    "flux_lagrange_multiplier": "FLM"
 }
 
 
@@ -225,6 +231,7 @@ if __name__ == '__main__':
     parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
     parser.add_argument("--kappa_init",         default=1e-1, nargs="+",  type=float,     help="Initial value of kappa for RIM")
     parser.add_argument("--source_init",        default=1e-3, nargs="+",  type=float,     help="Initial value of source for RIM")
+    parser.add_argument("--flux_lagrange_multiplier",       default=1e-3, type=float, nargs="+",     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
@@ -276,6 +283,8 @@ if __name__ == '__main__':
     parser.add_argument("--time_weights",           default="uniform", nargs="+",   help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
     parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
     parser.add_argument("--reset_optimizer_states",  action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
+    parser.add_argument("--kappa_residual_weights",         default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
+    parser.add_argument("--source_residual_weights",        default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic']")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

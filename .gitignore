@@ -14,3 +14,4 @@ logs
 *.out
 slides*
 *.h5
+core*
