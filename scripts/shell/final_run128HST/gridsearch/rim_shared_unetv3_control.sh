@@ -57,7 +57,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
   --kappa_init=0.1\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst\
-  --logname_prefixe=RIMSU128hst_control\
+  --logname_prefixe=RIMSU128hstv3_control\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
