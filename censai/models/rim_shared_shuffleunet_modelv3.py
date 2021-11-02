@@ -12,7 +12,6 @@ class SharedShuffleUnetModelv2(tf.keras.Model):
             kernel_size=1,
             layers=2,                        # before bottleneck
             block_conv_layers=2,
-            strides=2,
             input_kernel_size=11,
             gru_kernel_size=None,
             batch_norm=False,
@@ -44,7 +43,6 @@ class SharedShuffleUnetModelv2(tf.keras.Model):
         GRU = ConvGRUBlock if gru_architecture == "concat" else ConvGRUPlusBlock
 
         self._num_layers = layers
-        self._strides = strides
         self._init_filters = filters
         self._filter_scaling = filter_scaling
 
@@ -135,12 +133,12 @@ class SharedShuffleUnetModelv2(tf.keras.Model):
     def init_hidden_states(self, input_pixels, batch_size, constant=0.):
         hidden_states = []
         for i in range(self._num_layers):
-            pixels = input_pixels // self._strides**(i)
+            pixels = input_pixels // 2**(i)
             filters = int(self._filter_scaling**(i) * self._init_filters)
             hidden_states.append(
                 constant * tf.ones(shape=[batch_size, pixels, pixels, 2 * filters], dtype=DTYPE)
             )
-        pixels = input_pixels // self._strides ** (self._num_layers)
+        pixels = input_pixels // 2** (self._num_layers)
         hidden_states.append(
             constant * tf.ones(shape=[batch_size, pixels, pixels, 2 * int(self._init_filters * self._filter_scaling**(self._num_layers))], dtype=DTYPE)
         )

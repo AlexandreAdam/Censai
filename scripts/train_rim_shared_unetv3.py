@@ -287,7 +287,7 @@ def main(args):
             else:
                 source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf, outer_tape=tape)
             # mean over image residuals
-            source_cost1 = tf.reduce_sum(ws(source) * tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+            source_cost1 = tf.reduce_sum(ws(source) * tf.square(rim.source_link(source_series) - source), axis=(2, 3, 4))
             kappa_cost1 = tf.reduce_sum(wk(kappa) * tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
             # weighted mean over time steps
             source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
@@ -317,7 +317,7 @@ def main(args):
     def test_step(X, source, kappa, noise_rms, psf):
         source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf)
         # mean over image residuals
-        source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+        source_cost1 = tf.reduce_sum(tf.square(rim.source_link(source_series) - source), axis=(2, 3, 4))
         kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
         # weighted mean over time steps
         source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
@@ -521,7 +521,7 @@ if __name__ == "__main__":
     parser.add_argument("--adam",               action="store_true",            help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--source_link",        default="identity",             help="One of 'exp', 'source', 'relu' or 'identity' (default).")
+    parser.add_argument("--source_link",        default="sigmoid",              help="One of 'exp', 'source', 'relu' or 'identity' (default).")
     parser.add_argument("--kappa_init",         default=1e-1,   type=float,     help="Initial value of kappa for RIM")
     parser.add_argument("--source_init",        default=1e-3,   type=float,     help="Initial value of source for RIM")
     parser.add_argument("--flux_lagrange_multiplier",       default=1e-3,   type=float,     help="Value of Lagrange multiplier for the flux constraint")
