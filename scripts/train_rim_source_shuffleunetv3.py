@@ -546,7 +546,6 @@ if __name__ == "__main__":
     parser.add_argument("--encoding_blurpool",                          action="store_true")
     parser.add_argument("--decoding_blurpool",                          action="store_true")
 
-
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "
                                                                                          "'--raytracer' must be provided and point to model checkpoint directory.")

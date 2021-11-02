@@ -47,7 +47,7 @@ class ShuffleUnetDecodingLayer(tf.keras.layers.Layer):
                     tf.keras.layers.Lambda(lambda x, training=True: x)
                 )
         self.upsampling_layer = tf.keras.layers.Lambda(lambda x: tf.nn.depth_to_space(x, bloc_size=2, data_format="NHWC"))
-        if self.blur:
+        if blur:
             self.blur_layer = BlurPool2D(kernel_size=blur_kernel_size)
         else:
             self.blur_layer = tf.identity
