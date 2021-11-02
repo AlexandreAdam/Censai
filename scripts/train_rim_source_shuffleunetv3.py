@@ -32,11 +32,9 @@ RIM_HPARAMS = [
 ]
 UNET_MODEL_HPARAMS = [
     "filters",
-    "filter_scaling",
     "kernel_size",
     "layers",
     "block_conv_layers",
-    "strides",
     "input_kernel_size",
     "gru_kernel_size",
     "batch_norm",
@@ -50,7 +48,6 @@ UNET_MODEL_HPARAMS = [
     "gru_architecture",
     "blurpool_kernel_size",
     "decoding_blurpool",
-    "encoding_blurpool"
 ]
 
 
@@ -143,14 +140,11 @@ def main(args):
             method=args.forward_method,
             raytracer=raytracer,
         )
-
         unet = SharedShuffleUnetModelv2(
             filters=args.filters,
-            filter_scaling=args.filter_scaling,
             kernel_size=args.kernel_size,
             layers=args.layers,
             block_conv_layers=args.block_conv_layers,
-            strides=args.strides,
             input_kernel_size=args.input_kernel_size,
             gru_kernel_size=args.gru_kernel_size,
             kernel_l2_amp=args.kernel_l2_amp,
@@ -163,7 +157,6 @@ def main(args):
             dropout_rate=args.dropout_rate,
             blurpool_kernel_size=args.blurpool_kernel_size,
             decoding_blurpool=args.decoding_blurpool,
-            encoding_blurpool=args.encoding_blurpool
         )
         rim = RIMSharedUnetv2(
             physical_model=phys,
@@ -285,7 +278,7 @@ def main(args):
             else:
                 source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf, outer_tape=tape)
             # mean over image residuals
-            source_cost1 = tf.reduce_sum(ws(source) * tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+            source_cost1 = tf.reduce_sum(ws(source) * tf.square(rim.source_link(source_series) - source), axis=(2, 3, 4))
             kappa_cost1 = tf.reduce_sum(wk(kappa) * tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
             # weighted mean over time steps
             source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
@@ -315,7 +308,7 @@ def main(args):
     def test_step(X, source, kappa, noise_rms, psf):
         source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf)
         # mean over image residuals
-        source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+        source_cost1 = tf.reduce_mean(tf.square(rim.source_link(source_series) - source), axis=(2, 3, 4))
         kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
         # weighted mean over time steps
         source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
@@ -526,11 +519,9 @@ if __name__ == "__main__":
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32,     type=int)
-    parser.add_argument("--filter_scaling",                             default=1,      type=float)
     parser.add_argument("--kernel_size",                                default=3,      type=int)
     parser.add_argument("--layers",                                     default=2,      type=int)
     parser.add_argument("--block_conv_layers",                          default=2,      type=int)
-    parser.add_argument("--strides",                                    default=2,      type=int)
     parser.add_argument("--input_kernel_size",                          default=11,     type=int)
     parser.add_argument("--gru_kernel_size",                            default=None,   type=int)
     parser.add_argument("--batch_norm",                                 action="store_true")
@@ -543,7 +534,6 @@ if __name__ == "__main__":
     parser.add_argument("--initializer",                                default="glorot_normal")
     parser.add_argument("--gru_architecture",                           default="concat",   help="'concat': architecture of Laurence. 'plus': original RNN architecture")
     parser.add_argument("--blurpool_kernel_size",                       default=5,      type=int)
-    parser.add_argument("--encoding_blurpool",                          action="store_true")
     parser.add_argument("--decoding_blurpool",                          action="store_true")
 
     # Physical model hyperparameter

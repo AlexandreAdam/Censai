@@ -60,27 +60,19 @@ class RIMSharedUnetv2:
             self.kappa_link = tf.identity
             self.kappa_inverse_link = tf.identity
 
-        if self._source_link_func == "exp":
-            self.source_inverse_link = tf.keras.layers.Lambda(lambda x: tf.math.log(x + 1e-6))
-            self.source_link = tf.keras.layers.Lambda(lambda x: tf.math.exp(x))
-        elif self._source_link_func == "identity":
-            self.source_inverse_link = tf.identity
+        if self._source_link_func == "identity":
             self.source_link = tf.identity
         elif self._source_link_func == "relu":
-            self.source_inverse_link = tf.identity
             self.source_link = tf.nn.relu
         elif self._source_link_func == "sigmoid":
-            self.source_inverse_link = logit
             self.source_link = tf.nn.sigmoid
         elif self._source_link_func == "leaky_relu":
-            self.source_inverse_link = tf.identity
             self.source_link = tf.nn.leaky_relu
         elif self._source_link_func == "lrelu4p":
-            self.source_inverse_link = tf.identity
             self.source_link = lrelu4p
         else:
             raise NotImplementedError(
-                f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'lrelu4p', 'sigmoid']")
+                f"{source_link} not in ['identity', 'relu', 'leaky_relu', 'lrelu4p', 'sigmoid']")
 
         if adam:
             self.grad_update = self.adam_grad_update
@@ -102,10 +94,8 @@ class RIMSharedUnetv2:
 
     def initial_states(self, batch_size):
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
-        source_init = self.source_inverse_link(
-            tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
-        kappa_init = self.kappa_inverse_link(
-            tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
+        source_init = tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init
+        kappa_init = self.kappa_inverse_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
         states = self.unet.init_hidden_states(self.source_pixels, batch_size)
 
         # reset adam gradients
@@ -228,7 +218,7 @@ class RIMSharedUnetv2:
 
         """
         source_series, kappa_series, chi_squared = self.call(lensed_image, psf=psf, noise_rms=noise_rms, outer_tape=outer_tape)
-        source_cost = tf.reduce_sum(tf.square(source_series - self.source_inverse_link(source)), axis=0) / self.steps
+        source_cost = tf.reduce_sum(tf.square(self.source_link(source_series) - source), axis=0) / self.steps
         kappa_cost = tf.reduce_sum(tf.square(kappa_series - self.kappa_inverse_link(kappa)), axis=0) / self.steps
         chi = tf.reduce_sum(chi_squared, axis=0) / self.steps
 
