@@ -1,6 +1,6 @@
 tensorflow==2.4.1
 tensorflow-addons
-tensorflow_probability==0.12.2
+tensorflow_probability==0.12.1
 numpy
 matplotlib>=3.4.2
 jupyter
