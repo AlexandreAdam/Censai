@@ -34,7 +34,7 @@ class SharedShuffleUnetModelv2(tf.keras.Model):
         super(SharedShuffleUnetModelv2, self).__init__(name=name)
         self.trainable = trainable
 
-        common_params = {"padding": "same", "kernel_initializer": initializer,
+        common_params = {"padding": "SAME", "kernel_initializer": initializer,
                          "data_format": "channels_last", "use_bias": use_bias,
                          "kernel_regularizer": tf.keras.regularizers.L1L2(l1=kernel_l1_amp, l2=kernel_l2_amp)}
         if use_bias:
