@@ -1,5 +1,5 @@
 from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE, VAESecondStage
-from censai.models import SharedResUnetModel, SharedResUnetAtrousModel, SharedMemoryResUnetAtrousModel, SharedUnetModel
+from censai.models import SharedResUnetModel, SharedResUnetAtrousModel, SharedMemoryResUnetAtrousModel, SharedUnetModel, SharedShuffleUnetModelv2
 from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM, RIMSharedResAtrous, RIMSharedMemoryResAtrous, RIMSharedResUnet
 from censai.models.layers import ConvGRU, ConvGRUBlock, ConvGRUPlusBlock
 import tensorflow as tf
@@ -113,6 +113,17 @@ def test_rim_shared_unet():
     lens = tf.random.normal(shape=[1, 64, 64, 1])
     source_series, kappa_series, chi_squared_series = rim.call(lens)
 
+
+def test_rim_shared_unetv2():
+    phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
+    unet = SharedShuffleUnetModelv2()
+    rim = RIMSharedUnet(phys, unet, 4)
+    lens = tf.random.normal(shape=[1, 64, 64, 1])
+    source_series, kappa_series, chi_squared_series = rim.call(lens)
+
+    rim = RIMSharedUnet(phys, unet, 4, kappa_normalize=True, source_link="relu")
+    lens = tf.random.normal(shape=[1, 64, 64, 1])
+    source_series, kappa_series, chi_squared_series = rim.call(lens)
 
 # def test_rim():
 #     phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
@@ -234,18 +245,19 @@ def test_rim_shared_memoryresunetatrous():
 
 if __name__ == '__main__':
     # test_ray_tracer_512()
-    test_raytracer()
-    test_resnet_autoencoder()
-    test_unet_model()
-    test_shared_unet_model()
-    test_rim_shared_unet()
-    # test_rim()
-    test_rim_unet()
-    test_resnet_vae()
-    test_resnet_encoder()
-    test_vae()
-    test_vae_second_stage()
-    test_convGRU()
-    test_rimsharedresunet()
-    test_rimsharedresunetatrous()
-    test_rim_shared_memoryresunetatrous()
+    # test_raytracer()
+    # test_resnet_autoencoder()
+    # test_unet_model()
+    # test_shared_unet_model()
+    # test_rim_shared_unet()
+    # # test_rim()
+    # test_rim_unet()
+    # test_resnet_vae()
+    # test_resnet_encoder()
+    # test_vae()
+    # test_vae_second_stage()
+    # test_convGRU()
+    # test_rimsharedresunet()
+    # test_rimsharedresunetatrous()
+    # test_rim_shared_memoryresunetatrous()
+    test_rim_shared_unetv2()

@@ -43,7 +43,7 @@ class BlurPool2D(tf.keras.layers.Layer):
         super(BlurPool2D, self).build(input_shape)
 
     def call(self, x):
-        x = tf.nn.depthwise_conv2d(x, self.blur_kernel, padding='same', strides=(self.pool_size, self.pool_size))
+        x = tf.nn.depthwise_conv2d(x, self.blur_kernel, padding='SAME', strides=(1, self.pool_size, self.pool_size, 1))
         return x
 
     def compute_output_shape(self, input_shape):
