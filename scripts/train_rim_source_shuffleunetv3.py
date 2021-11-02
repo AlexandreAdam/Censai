@@ -5,7 +5,7 @@ from censai import PhysicalModelv2, RIMSharedUnetv2
 from censai.models import SharedShuffleUnetModelv2, RayTracer
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 from censai.data.lenses_tng_v3 import decode_train, decode_physical_model_info
-from censai.definitions import DTYPE
+from censai.definitions import DTYPE, AutoClipper
 import os, glob, time, json
 from datetime import datetime
 
@@ -214,6 +214,7 @@ def main(args):
             ws = tf.keras.layers.Lambda(lambda s: tf.sqrt(s) / tf.reduce_sum(tf.sqrt(s), axis=(1, 2, 3), keepdims=True))
         else:
             raise ValueError("kappa_residual_weights must be in ['uniform', 'linear', 'quadratic', 'sqrt']")
+        autoclip = AutoClipper(clip_percentile=args.clip_percentile)
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         if args.logname is not None:
@@ -286,8 +287,7 @@ def main(args):
             # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
-        if args.clipping:
-            gradient = [tf.clip_by_norm(grad, 10.) for grad in gradient]
+        gradient, _ = autoclip(gradient)
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
         # Update metrics with "converged" score
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
@@ -557,16 +557,16 @@ if __name__ == "__main__":
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
-    parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
     parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
     parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
-    parser.add_argument("--reset_optimizer_states",  action="store_true",           help="When training from pre-trained weights, reset states of optimizer.")
-    parser.add_argument("--kappa_residual_weights",         default="uniform",              help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
-    parser.add_argument("--source_residual_weights",        default="uniform",              help="Options are ['uniform', 'linear', 'quadratic']")
+    parser.add_argument("--reset_optimizer_states", action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
+    parser.add_argument("--kappa_residual_weights", default="uniform",              help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
+    parser.add_argument("--source_residual_weights",default="uniform",              help="Options are ['uniform', 'linear', 'quadratic']")
+    parser.add_argument("--clip_percentile",        default=10,                     help="Auto clip the gradient global norm by the smallest 10th percentile previous step size")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
