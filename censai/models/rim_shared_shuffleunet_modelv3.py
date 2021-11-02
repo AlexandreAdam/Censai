@@ -9,7 +9,6 @@ class SharedShuffleUnetModelv2(tf.keras.Model):
             self,
             name="RIMUnetModel",
             filters=32,
-            filter_scaling=1,
             kernel_size=1,
             layers=2,                        # before bottleneck
             block_conv_layers=2,
@@ -25,7 +24,6 @@ class SharedShuffleUnetModelv2(tf.keras.Model):
             activation="elu",
             use_bias=True,
             trainable=True,
-            encoding_blurpool=True,
             decoding_blurpool=True,
             blurpool_kernel_size=5,
             gru_architecture="concat",  # or "plus"
@@ -33,7 +31,7 @@ class SharedShuffleUnetModelv2(tf.keras.Model):
     ):
         super(SharedShuffleUnetModelv2, self).__init__(name=name)
         self.trainable = trainable
-
+        filter_scaling = 2
         common_params = {"padding": "SAME", "kernel_initializer": initializer,
                          "data_format": "channels_last", "use_bias": use_bias,
                          "kernel_regularizer": tf.keras.regularizers.L1L2(l1=kernel_l1_amp, l2=kernel_l2_amp)}
@@ -58,12 +56,11 @@ class SharedShuffleUnetModelv2(tf.keras.Model):
                 ShuffleUnetEncodingLayer(
                     kernel_size=kernel_size,
                     filters=int(filter_scaling**(i) * filters),
+                    downsample_filters=int(filter_scaling**(i+1) * filters),
                     conv_layers=block_conv_layers,
                     activation=activation,
-                    strides=strides,
                     batch_norm=batch_norm,
                     dropout_rate=dropout_rate,
-                    blurpool=encoding_blurpool,
                     blurpool_kernel_size=blurpool_kernel_size,
                     **common_params
                 )

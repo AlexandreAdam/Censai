@@ -12,12 +12,12 @@ class ShuffleUnetEncodingLayer(tf.keras.layers.Layer):
     def __init__(
             self,
             filters=32,
+            downsample_filters=None,
             conv_layers=2,
             kernel_size=3,
             activation="linear",
             batch_norm=False,
             dropout_rate=None,
-            blurpool=False,
             blurpool_kernel_size=3,
             block_size=2, # equivalent to stride, used when blurpool is False
             name=None,
@@ -29,6 +29,8 @@ class ShuffleUnetEncodingLayer(tf.keras.layers.Layer):
         self.num_conv_layers = conv_layers
         self.filters = filters
         self.activation = get_activation(activation)
+        if downsample_filters is None:
+            downsample_filters = filters
 
         self.conv_layers = []
         self.batch_norms = []
@@ -48,10 +50,9 @@ class ShuffleUnetEncodingLayer(tf.keras.layers.Layer):
                 self.batch_norms.append(
                     tf.keras.layers.Lambda(lambda x, training=True: x)
                 )
-        if blurpool:
-            self.downsampling_layer = BlurPool2D(kernel_size=blurpool_kernel_size)
-        else:
-            self.downsampling_layer = tf.keras.layers.Lambda(lambda x: tf.nn.depth_to_space(x, block_size=block_size, data_format="NHWC"))
+        self.fully_connected = tf.keras.layers.Conv2D(filters=downsample_filters, kernel_size=(1,1), **kwargs)
+        self.downsampling_layer = tf.keras.layers.Lambda(lambda x: tf.nn.space_to_depth(x, block_size=block_size, data_format="NHWC"))
+        self.blur_layer = BlurPool2D(pool_size=1, kernel_size=blurpool_kernel_size)
         if dropout_rate is None:
             self.dropout = tf.keras.layers.Lambda(lambda x, training=True: x)
         else:
@@ -64,4 +65,7 @@ class ShuffleUnetEncodingLayer(tf.keras.layers.Layer):
             x = self.activation(x)
             x = self.dropout(x, training=training)
         x_down = self.downsampling_layer(x)
+        x_down = self.blur_layer(x_down)
+        x_down = self.fully_connected(x_down)
+        x_down = self.activation(x_down)
         return x, x_down
