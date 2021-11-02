@@ -15,3 +15,4 @@ from .rim_shared_memory_resunet_atrous_model import SharedMemoryResUnetAtrousMod
 from .rim_shared_resunet_atrous_model import SharedResUnetAtrousModel
 from .rim_shared_resunet_model import SharedResUnetModel
 from .rim_shared_unet_modelv2 import SharedUnetModelv2
+from .rim_shared_shuffleunet_modelv3 import SharedShuffleUnetModelv2

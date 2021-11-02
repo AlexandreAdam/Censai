@@ -12,3 +12,6 @@ from .resunet_atrous_decoding_layer import ResUnetAtrousDecodingLayer
 from .resunet_atrous_encoding_layer import ResUnetAtrousEncodingLayer
 from .pyramid_pooling_module import PSP
 from .gated_conv import GatedConv, ConcatELU
+from .blurpool import BlurPool2D
+from .shuffleunet_decoding_layer import ShuffleUnetDecodingLayer
+from .shuffleunet_encoding_layer import ShuffleUnetEncodingLayer
