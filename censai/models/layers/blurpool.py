@@ -1,5 +1,5 @@
 import tensorflow as tf
-import nump as np
+import numpy as np
 
 
 class BlurPool2D(tf.keras.layers.Layer):
@@ -11,8 +11,11 @@ class BlurPool2D(tf.keras.layers.Layer):
         super(BlurPool2D, self).__init__(**kwargs)
 
     def build(self, input_shape):
-
-        if self.kernel_size == 3:
+        if self.kernel_size == 2:
+            bk = np.array([[1, 1],
+                           [1, 1]])
+            bk = bk / np.sum(bk)
+        elif self.kernel_size == 3:
             bk = np.array([[1, 2, 1],
                            [2, 4, 2],
                            [1, 2, 1]])
@@ -37,11 +40,10 @@ class BlurPool2D(tf.keras.layers.Layer):
                                            initializer=blur_init,
                                            trainable=False)
 
-        super(BlurPool2D, self).build(input_shape)  # Be sure to call this at the end
+        super(BlurPool2D, self).build(input_shape)
 
     def call(self, x):
         x = tf.nn.depthwise_conv2d(x, self.blur_kernel, padding='same', strides=(self.pool_size, self.pool_size))
-
         return x
 
     def compute_output_shape(self, input_shape):
