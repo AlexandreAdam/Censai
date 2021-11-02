@@ -3,6 +3,7 @@ import numpy as np
 from astropy import units as u
 from astropy.constants import G, c
 from astropy.cosmology import Planck18 as cosmo
+import tensorflow_probability as tfp
 
 COSMO = cosmo
 DTYPE = tf.float32
@@ -84,6 +85,29 @@ def bipolar_leaky_relu(x, alpha=0.2, **kwargs):
     y1 = tf.nn.leaky_relu(x1, alpha=alpha)
     y2 = -tf.nn.leaky_relu(-x2, alpha=alpha)
     return tf.concat([y1, y2], axis=-1)
+
+
+class AutoClipper:
+    """
+    Prem Seetharaman, Gordon Wichern, Bryan Pardo, Jonathan Le Roux.
+    "AutoClip: Adaptive Gradient Clipping for Source Separation Networks."
+    2020 IEEE 30th International Workshop on Machine Learning for Signal Processing (MLSP). IEEE, 2020.
+
+    Official implementation: https://github.com/pseeth/autoclip
+    """
+    def __init__(self, clip_percentile, history_size=1000):
+        self.clip_percentile = clip_percentile
+        self.grad_history = tf.Variable(tf.zeros(history_size), trainable=False)
+        self.i = tf.Variable(0, trainable=False)
+        self.history_size = history_size
+
+    def __call__(self, gradients):
+        norm = tf.linalg.global_norm(gradients)
+        assign_idx = tf.math.mod(self.i, self.history_size)
+        self.grad_history = self.grad_history[assign_idx].assign(norm)
+        self.i = self.i.assign_add(1)
+        clip_value = tfp.stats.percentile(self.grad_history[: self.i], q=self.clip_percentile)
+        return tf.clip_by_global_norm(gradients, clip_value)
 
 
 def bipolar_relu(x):
