@@ -286,7 +286,7 @@ def main(args):
             # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
-        gradient, _ = tf.clip_by_global_norm(gradient, 10.)
+        gradient = [tf.clip_by_norm(g, 5.) for g in gradient]
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
         # Update metrics with "converged" score
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
