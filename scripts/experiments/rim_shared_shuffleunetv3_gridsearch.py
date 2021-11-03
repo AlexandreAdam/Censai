@@ -27,7 +27,6 @@ RIM_HPARAMS = [
 
 UNET_MODEL_HPARAMS = [
     "filters",
-    "filter_scaling",
     "kernel_size",
     "layers",
     "block_conv_layers",
