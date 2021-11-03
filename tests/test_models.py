@@ -116,7 +116,7 @@ def test_rim_shared_unet():
 
 def test_rim_shared_unetv2():
     phys = PhysicalModel(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
-    unet = SharedShuffleUnetModelv2()
+    unet = SharedShuffleUnetModelv2(input_kernel_size=1)
     rim = RIMSharedUnet(phys, unet, 4)
     lens = tf.random.normal(shape=[1, 64, 64, 1])
     source_series, kappa_series, chi_squared_series = rim.call(lens)
