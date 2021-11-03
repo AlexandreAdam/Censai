@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_shared_unetv3 import main
+from scripts.train_rim_shared_shuffleunetv3 import main
 import copy
 import pandas as pd
 
