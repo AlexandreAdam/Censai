@@ -272,7 +272,6 @@ if __name__ == '__main__':
     parser.add_argument("--reset_optimizer_states",  action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
     parser.add_argument("--kappa_residual_weights",  default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
     parser.add_argument("--source_residual_weights", default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic']")
-    parser.add_argument("--clip_percentile",        default=10,                     help="Auto clip the gradient global norm by the smallest 10th percentile previous step size")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")

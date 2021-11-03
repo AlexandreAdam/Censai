@@ -5,7 +5,7 @@ from censai import PhysicalModelv2, RIMSharedUnetv2
 from censai.models import SharedShuffleUnetModelv2, RayTracer
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 from censai.data.lenses_tng_v3 import decode_train, decode_physical_model_info
-from censai.definitions import DTYPE, AutoClipper
+from censai.definitions import DTYPE
 import os, glob, time, json
 from datetime import datetime
 
@@ -214,7 +214,6 @@ def main(args):
             ws = tf.keras.layers.Lambda(lambda s: tf.sqrt(s) / tf.reduce_sum(tf.sqrt(s), axis=(1, 2, 3), keepdims=True))
         else:
             raise ValueError("kappa_residual_weights must be in ['uniform', 'linear', 'quadratic', 'sqrt']")
-        autoclip = AutoClipper(clip_percentile=args.clip_percentile)
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         if args.logname is not None:
@@ -287,7 +286,7 @@ def main(args):
             # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
-        gradient, _ = autoclip(gradient)
+        gradient, _ = tf.clip_by_global_norm(gradient, 10.)
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
         # Update metrics with "converged" score
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
@@ -566,7 +565,6 @@ if __name__ == "__main__":
     parser.add_argument("--reset_optimizer_states", action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
     parser.add_argument("--kappa_residual_weights", default="uniform",              help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
     parser.add_argument("--source_residual_weights",default="uniform",              help="Options are ['uniform', 'linear', 'quadratic']")
-    parser.add_argument("--clip_percentile",        default=10,                     help="Auto clip the gradient global norm by the smallest 10th percentile previous step size")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
