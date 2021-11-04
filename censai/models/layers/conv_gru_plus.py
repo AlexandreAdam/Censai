@@ -71,4 +71,4 @@ class ConvGRUPlus(tf.keras.layers.Layer):
         r = tf.nn.sigmoid(self.w_r(x) + self.u_r(ht) + self.bias_r)  # reset gate
         h_tilde = tf.nn.tanh(self.w_h(x) + self.u_h(r * ht) + self.bias_h)  # candidate activation
         new_state = (1 - z)*ht + z*h_tilde
-        return new_state  # h_{t+1}
+        return new_state, new_state  # h_{t+1}

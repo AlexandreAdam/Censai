@@ -91,4 +91,4 @@ class ConvGRUPlusHighway(tf.keras.layers.Layer):
         new_state = (1 - z) * ht + z * h_tilde
         g = tf.nn.sigmoid(self.w_g(x) + self.u_g(ht) + self.bias_g)  # highway gate
         new_state = (1 - g) * x + g * new_state
-        return new_state  # h_{t+1}
+        return new_state, new_state  # h_{t+1}

@@ -42,4 +42,4 @@ class ConvGRU(tf.keras.layers.Layer):
         stacked_r_state = tf.concat([features, r_state], axis=3)
         tilde_h = self.candidate_activation_gate(stacked_r_state)
         new_state = tf.multiply(z, ht) + tf.multiply(1 - z, tilde_h)
-        return new_state  # h_{t+1}
+        return new_state, new_state  # h_{t+1}
