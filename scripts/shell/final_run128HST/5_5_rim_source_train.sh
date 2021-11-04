@@ -20,7 +20,6 @@ python $CENSAI_PATH/scripts/train_rim.py\
   --decay_rate 0.9\
   --decay_steps 50000\
   --staircase\
-  --clipping\
   --patience=80\
   --tolerance=0.01\
   --batch_size 1\
