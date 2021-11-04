@@ -98,8 +98,7 @@ class SharedResUnetAtrousModel(tf.keras.Model):
             self.gated_recurrent_blocks.append(
                     GRU(
                         filters=int(filter_scaling**(i) * filters),
-                        kernel_size=gru_kernel_size,
-                        activation=activation
+                        kernel_size=gru_kernel_size
                 )
             )
 
@@ -107,8 +106,7 @@ class SharedResUnetAtrousModel(tf.keras.Model):
 
         self.bottleneck_gru = GRU(
             filters=bottleneck_filters,
-            kernel_size=bottleneck_kernel_size,
-            activation=activation
+            kernel_size=bottleneck_kernel_size
         )
 
         self.output_layer = tf.keras.layers.Conv2D(

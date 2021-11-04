@@ -136,8 +136,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
             self.gated_recurrent_blocks.append(
                     GRU(
                         filters=int(filter_scaling**(i) * filters),
-                        kernel_size=gru_kernel_size,
-                        activation=activation
+                        kernel_size=gru_kernel_size
                 )
             )
 
@@ -151,8 +150,7 @@ class SharedMemoryResUnetAtrousModel(tf.keras.Model):
         self.bottleneck_group_norm = tf.keras.layers.BatchNormalization() if group_norm else tf.identity
         self.bottleneck_gru = GRU(
             filters=bottleneck_filters,
-            kernel_size=bottleneck_kernel_size,
-            activation=activation
+            kernel_size=bottleneck_kernel_size
         )
 
         self.source_output_layer = tf.keras.layers.Conv2D(
