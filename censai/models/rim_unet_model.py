@@ -1,5 +1,5 @@
 import tensorflow as tf
-from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer, ConvGRUPlusBlock, ConvGRUBlock
+from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer, ConvGRUPlusBlock, ConvGRUBlock, ConvGRUPlusHighwayBlock
 from .utils import get_activation
 from censai.definitions import DTYPE
 
@@ -26,7 +26,6 @@ class UnetModel(tf.keras.Model):
             kernel_l2_amp=0.,
             bias_l2_amp=0.,
             activation="leaky_relu",
-            alpha=0.1,
             use_bias=True,
             trainable=True,
             batch_norm=False,
@@ -47,8 +46,15 @@ class UnetModel(tf.keras.Model):
         bottleneck_kernel_size = bottleneck_kernel_size if bottleneck_kernel_size is not None else kernel_size
         bottleneck_filters = bottleneck_filters if bottleneck_filters is not None else int(filter_scaling**(layers + 1) * filters)
         gru_kernel_size = gru_kernel_size if gru_kernel_size is not None else kernel_size
-        activation = get_activation(activation, alpha=alpha)
-        GRU = ConvGRUBlock if gru_architecture == "concat" else ConvGRUPlusBlock
+        activation = get_activation(activation)
+        if gru_architecture == "concat":
+            GRU = ConvGRUBlock
+        elif gru_architecture == "plus":
+            GRU = ConvGRUPlusBlock
+        elif gru_architecture == "plus_highway":
+            GRU = ConvGRUPlusHighwayBlock
+        else:
+            raise ValueError(f"gru_architecture={gru_architecture}, should be in ['conca', 'plus', 'plus_highway']")
 
         self._num_layers = layers
         self._strides = strides
@@ -90,8 +96,7 @@ class UnetModel(tf.keras.Model):
             self.gated_recurrent_blocks.append(
                     GRU(
                         filters=int(filter_scaling**(i) * filters),
-                        kernel_size=gru_kernel_size,
-                        activation=activation
+                        kernel_size=gru_kernel_size
                 )
             )
 
@@ -111,8 +116,7 @@ class UnetModel(tf.keras.Model):
         )
         self.bottleneck_gru = GRU(
             filters=bottleneck_filters,
-            kernel_size=bottleneck_kernel_size,
-            activation=activation
+            kernel_size=bottleneck_kernel_size
         )
 
         self.output_layer = tf.keras.layers.Conv2D(

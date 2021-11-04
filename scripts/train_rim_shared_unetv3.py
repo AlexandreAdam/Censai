@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import math
 from censai import PhysicalModelv2, RIMSharedUnetv2
-from censai.models import SharedUnetModelv2, RayTracer
+from censai.models import SharedUnetModelv3, RayTracer
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 from censai.data.lenses_tng_v3 import decode_train, decode_physical_model_info
 from censai.definitions import DTYPE
@@ -49,7 +49,6 @@ UNET_MODEL_HPARAMS = [
     "kernel_l1_amp",
     "bias_l1_amp",
     "activation",
-    "alpha",
     "initializer",
     "gru_architecture"
 ]
@@ -145,7 +144,7 @@ def main(args):
             raytracer=raytracer,
         )
 
-        unet = SharedUnetModelv2(
+        unet = SharedUnetModelv3(
             filters=args.filters,
             filter_scaling=args.filter_scaling,
             kernel_size=args.kernel_size,
@@ -162,7 +161,6 @@ def main(args):
             kernel_l1_amp=args.kernel_l1_amp,
             bias_l1_amp=args.bias_l1_amp,
             activation=args.activation,
-            alpha=args.alpha,
             initializer=args.initializer,
             batch_norm=args.batch_norm,
             dropout_rate=args.dropout_rate
@@ -295,8 +293,7 @@ def main(args):
             # final cost is mean over global batch size
             cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
-        if args.clipping:
-            gradient = [tf.clip_by_norm(grad, 1.) for grad in gradient]
+        gradient = [tf.clip_by_norm(grad, 5.) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
         # Update metrics with "converged" score
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
@@ -545,7 +542,6 @@ if __name__ == "__main__":
     parser.add_argument("--kernel_l1_amp",                              default=0,      type=float)
     parser.add_argument("--bias_l1_amp",                                default=0,      type=float)
     parser.add_argument("--activation",                                 default="leaky_relu")
-    parser.add_argument("--alpha",                                      default=0.3,    type=float)
     parser.add_argument("--initializer",                                default="glorot_normal")
     parser.add_argument("--gru_architecture",                           default="concat",   help="'concat': architecture of Laurence. 'plus': original RNN architecture")
 
@@ -570,7 +566,6 @@ if __name__ == "__main__":
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
-    parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")

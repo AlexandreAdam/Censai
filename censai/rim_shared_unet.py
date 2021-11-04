@@ -27,7 +27,7 @@ class RIMSharedUnet:
             kappa_normalize=False,
             source_link="relu",
             beta_1=0.9,
-            beta_2=0.999,
+            beta_2=0.99,
             epsilon=1e-8,
             kappa_init=1e-1,
             source_init=1e-3
@@ -100,10 +100,8 @@ class RIMSharedUnet:
 
     def initial_states(self, batch_size):
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
-        source_init = self.source_inverse_link(
-            tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
-        kappa_init = self.kappa_inverse_link(
-            tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
+        source_init = self.source_inverse_link(tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init)
+        kappa_init = self.kappa_inverse_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
         states = self.unet.init_hidden_states(self.source_pixels, batch_size)
 
         # reset adam gradients

@@ -18,7 +18,7 @@ class RIMUnet:
             source_tukey_alpha=0.6,
             source_link='identity',
             beta_1=0.9,
-            beta_2=0.999,
+            beta_2=0.99,
             epsilon=1e-8,
             source_init=1e-3,
             kappa_init=1e-1,

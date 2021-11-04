@@ -27,7 +27,7 @@ class RIMSharedMemoryResAtrous:
             kappa_normalize=False,
             source_link="relu",
             beta_1=0.9,
-            beta_2=0.999,
+            beta_2=0.99,
             epsilon=1e-8,
             kappa_init=1e-1,
             source_init=1e-3

@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_shared_unetv3 import main
+from scripts.train_rim_unet_blockcoord import main
 import copy
 import pandas as pd
 
@@ -24,29 +24,49 @@ RIM_HPARAMS = [
     "kappa_init",
     "source_init"
 ]
-
-UNET_MODEL_HPARAMS = [
-    "filters",
-    "filter_scaling",
-    "kernel_size",
-    "layers",
-    "block_conv_layers",
-    "strides",
-    "bottleneck_kernel_size",
-    "resampling_kernel_size",
-    "input_kernel_size",
-    "gru_kernel_size",
-    "upsampling_interpolation",
-    "batch_norm",
-    "dropout_rate",
-    "kernel_l2_amp",
-    "bias_l2_amp",
-    "kernel_l1_amp",
-    "bias_l1_amp",
-    "activation",
-    "initializer",
-    "gru_architecture",
-    "flux_lagrange_multiplier"
+SOURCE_MODEL_HPARAMS = [
+    "kappa_filters",
+    "kappa_filter_scaling",
+    "kappa_kernel_size",
+    "kappa_layers",
+    "kappa_block_conv_layers",
+    "kappa_strides",
+    "kappa_bottleneck_kernel_size",
+    "kappa_bottleneck_filters",
+    "kappa_resampling_kernel_size",
+    "kappa_gru_kernel_size",
+    "kappa_upsampling_interpolation",
+    "kappa_kernel_l2_amp",
+    "kappa_bias_l2_amp",
+    "kappa_kernel_l1_amp",
+    "kappa_bias_l1_amp",
+    "kappa_activation",
+    "kappa_initializer",
+    "kappa_batch_norm",
+    "kappa_dropout_rate",
+    "kappa_input_kernel_size"
+]
+KAPPA_MODEL_HPARAMS = [
+    "source_filters",
+    "source_filter_scaling",
+    "source_kernel_size",
+    "source_layers",
+    "source_block_conv_layers",
+    "source_strides",
+    "source_bottleneck_kernel_size",
+    "source_bottleneck_filters",
+    "source_resampling_kernel_size",
+    "source_gru_kernel_size",
+    "source_upsampling_interpolation",
+    "source_kernel_l2_amp",
+    "source_bias_l2_amp",
+    "source_kernel_l1_amp",
+    "source_bias_l1_amp",
+    "source_activation",
+    "source_initializer",
+    "source_batch_norm",
+    "source_dropout_rate",
+    "source_input_kernel_size"
 ]
 
 EXTRA_PARAMS = [
@@ -54,12 +74,11 @@ EXTRA_PARAMS = [
     "optimizer",
     "seed",
     "batch_size",
+    "time_weights",
     "initial_learning_rate",
     "decay_rate",
     "decay_steps",
-    "time_weights",
-    "kappa_residual_weights",
-    "source_residual_weights"
+    "train_delay"
 ]
 
 
@@ -68,40 +87,55 @@ PARAMS_NICKNAME = {
     "optimizer": "O",
     "seed": "",
     "batch_size": "B",
+    "time_weights": "TW",
     "initial_learning_rate": "lr",
     "decay_rate": "dr",
     "decay_steps": "ds",
-    "time_weights": "TW",
-    "kappa_residual_weights": "KRW",
-    "source_residual_weights": "SRW",
+    "train_delay": "TD",
 
-    "filters": "F",
-    "filter_scaling": "FS",
-    "kernel_size": "K",
-    "layers": "L",
-    "block_conv_layers": "BCL",
-    "strides": "S",
-    "upsampling_interpolation": "BU",
-    "resampling_kernel_size": "RK",
-    "input_kernel_size": "IK",
-    "gru_kernel_size": "GK",
-    "kernel_l2_amp": "Kl2",
-    "kernel_l1_amp": "Kl1",
-    "bias_l2_amp": "Bl2",
-    "bias_l1_amp": "Bl1",
+    "kappa_filters": "KF",
+    "kappa_filter_scaling": "KFS",
+    "kappa_kernel_size": "KK",
+    "kappa_layers": "KL",
+    "kappa_block_conv_layers": "KBCL",
+    "kappa_strides": "KS",
+    "kappa_upsampling_interpolation": "KBU",
+    "kappa_resampling_kernel_size": "KRK",
+    "kappa_gru_kernel_size": "KGK",
+    "kappa_kernel_l2_amp": "KKl2",
+    "kappa_kernel_l1_amp": "KKl1",
+    "kappa_bias_l2_amp": "KBl2",
+    "kappa_bias_l1_amp": "KBl1",
+    "kappa_activation": "KA",
+    "kappa_batch_norm": "KBN",
+    "kappa_dropout_rate": "Kdr",
+    "kappa_input_kernel_size": "KIK",
+
+    "source_filters": "SF",
+    "source_filter_scaling": "SFS",
+    "source_kernel_size": "SK",
+    "source_layers": "SL",
+    "source_block_conv_layers": "SBCL",
+    "source_strides": "SS",
+    "source_upsampling_interpolation": "SBU",
+    "source_resampling_kernel_size": "SRK",
+    "source_gru_kernel_size": "SGK",
+    "source_kernel_l2_amp": "SKl2",
+    "source_kernel_l1_amp": "SKl1",
+    "source_bias_l2_amp": "SBl2",
+    "source_bias_l1_amp": "SBl1",
+    "source_activation": "SA",
+    "source_batch_norm": "SBN",
+    "source_dropout_rate": "Sdr",
+    "source_input_kernel_size": "SIK",
+
+    "steps": "TS",
     "kappalog": "KaL",
     "kappa_normalize": "KaN",
-    "activation": "NL",
-    "batch_norm": "BN",
-    "dropout_rate": "D",
-    "gru_architecture": "GA",
-
     "adam": "A",
-    "steps": "TS",
     "source_link": "Sli",
     "source_init": "Sini",
     "kappa_init": "Kini",
-    "flux_lagrange_multiplier": "FLM"
 }
 
 
@@ -118,8 +152,6 @@ def single_instance_args_generator(args):
         return uniform_grid_search(args)
     elif args.strategy == "exhaustive":
         return exhaustive_grid_search(args)
-    else:
-        raise NotImplementedError(f"{args.strategy} not in ['uniform', 'exhaustive']")
 
 
 def uniform_grid_search(args):
@@ -128,7 +160,7 @@ def uniform_grid_search(args):
         args_dict = vars(new_args)
         nicknames = []
         params = []
-        for p in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS:
+        for p in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS:
             if isinstance(args_dict[p], list):
                 if len(args_dict[p]) > 1:
                     # this way, numpy does not cast int to int64 or float to float32
@@ -148,7 +180,7 @@ def exhaustive_grid_search(args):
     """
     from itertools import product
     grid_params = []
-    for p in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS:
+    for p in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS:
         if isinstance(vars(args)[p], list):
             if len(vars(args)[p]) > 1:
                 grid_params.append(vars(args)[p])
@@ -161,7 +193,7 @@ def exhaustive_grid_search(args):
         nicknames = []
         params = []
         i = 0
-        for p in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS:
+        for p in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS:
             if isinstance(args_dict[p], list):
                 if len(args_dict[p]) > 1:
                     args_dict[p] = lex[i]
@@ -180,7 +212,7 @@ def distributed_strategy(args):
     for gridsearch_id in range((THIS_WORKER - 1), len(gridsearch_args), N_WORKERS):
         run_args = gridsearch_args[gridsearch_id]
         history, best_score = main(run_args)
-        params_dict = {k: v for k, v in vars(run_args).items() if k in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS}
+        params_dict = {k: v for k, v in vars(run_args).items() if k in RIM_HPARAMS + SOURCE_MODEL_HPARAMS + KAPPA_MODEL_HPARAMS + EXTRA_PARAMS}
         params_dict.update({
             "experiment_id": run_args.logname,
             "train_cost": history["train_cost"][-1],
@@ -212,7 +244,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--n_models",               default=10,     type=int,       help="Models to train")
     parser.add_argument("--datasets",               required=True,  nargs="+",      help="Path to directories that contains tfrecords of dataset. Can be multiple inputs (space separated)")
-    parser.add_argument("--val_datasets",           default=None,   nargs="+",      help="Validation dataset path")
+    parser.add_argument("--val_datasets",           default=None,  nargs="+",       help="Validation dataset path")
     parser.add_argument("--compression_type",       default=None,                   help="Compression type used to write data. Default assumes no compression.")
     parser.add_argument("--strategy",               default="uniform",              help="Allowed startegies are 'uniform' and 'exhaustive'.")
 
@@ -221,38 +253,57 @@ if __name__ == '__main__':
                                                                                          "'--raytracer' must be provided and point to model checkpoint directory.")
     parser.add_argument("--raytracer",              default=None,                   help="Path to raytracer checkpoint dir if method 'unet' is used.")
 
-    # RIM hyperparameters
-    parser.add_argument("--steps",              default=16, nargs="+",    type=int,       help="Number of time steps of RIM")
-    parser.add_argument("--adam",               default=0,  nargs="+",    type=int,       help="ADAM update for the log-likelihood gradient.")
-    parser.add_argument("--kappalog",           action="store_true")
-    parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
-    parser.add_argument("--kappa_init",         default=1e-1, nargs="+",  type=float,     help="Initial value of kappa for RIM")
-    parser.add_argument("--source_init",        default=1e-3, nargs="+",  type=float,     help="Initial value of source for RIM")
-    parser.add_argument("--flux_lagrange_multiplier",       default=1e-3, type=float, nargs="+",     help="Value of Lagrange multiplier for the flux constraint")
+    parser.add_argument("--steps",                  default=16, nargs="+", type=int, help="Number of time steps of RIM")
+    parser.add_argument("--adam",                   default=0,  nargs="+",  type=int,           help="ADAM update for the log-likelihood gradient.")
+    parser.add_argument("--kappalog",               action="store_true")
+    parser.add_argument("--kappa_normalize",        action="store_true")
+    parser.add_argument("--source_link",            default="identity",  nargs="+",  help="One of 'exp', 'source' or 'identity' (default).")
+    parser.add_argument("--kappa_init",             default=1e-1, nargs="+",  type=float,     help="Initial value of kappa for RIM")
+    parser.add_argument("--source_init",            default=1e-3, nargs="+",  type=float,     help="Initial value of source for RIM")
 
-    # Shared Unet params
-    parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
-    parser.add_argument("--filter_scaling",                             default=1, nargs="+",     type=float)
-    parser.add_argument("--kernel_size",                                default=3, nargs="+",     type=int)
-    parser.add_argument("--layers",                                     default=2, nargs="+",     type=int)
-    parser.add_argument("--block_conv_layers",                          default=2, nargs="+",     type=int)
-    parser.add_argument("--strides",                                    default=2, nargs="+",     type=int)
-    parser.add_argument("--bottleneck_kernel_size",                     default=None, nargs="+",  type=int)
-    parser.add_argument("--resampling_kernel_size",                     default=None, nargs="+",  type=int)
-    parser.add_argument("--input_kernel_size",                          default=11,   nargs="+",  type=int)
-    parser.add_argument("--gru_kernel_size",                            default=None, nargs="+",  type=int)
-    parser.add_argument("--upsampling_interpolation",                   default=0,    nargs="+",  type=int)
-    parser.add_argument("--batch_norm",                                 default=0,    nargs="+",  type=int)
-    parser.add_argument("--dropout_rate",                               default=None, nargs="+",  type=float)
-    parser.add_argument("--kernel_l2_amp",                              default=0, nargs="+",  type=float)
-    parser.add_argument("--bias_l2_amp",                                default=0, nargs="+",  type=float)
-    parser.add_argument("--kernel_l1_amp",                              default=0, nargs="+",  type=float)
-    parser.add_argument("--bias_l1_amp",                                default=0, nargs="+",  type=float)
-    parser.add_argument("--activation",                                 default="leaky_relu", nargs="+")
-    parser.add_argument("--initializer",                                default="glorot_normal", nargs="+",)
-    parser.add_argument("--gru_architecture",                           default="concat", nargs="+",  help="'concat': architecture of Laurence. 'plus': original RNN architecture")
+    # Kappa model hyperparameters
+    parser.add_argument("--kappa_filters",                  default=32, nargs="+",      type=int)
+    parser.add_argument("--kappa_filter_scaling",           default=1, nargs="+",       type=float)
+    parser.add_argument("--kappa_kernel_size",              default=3, nargs="+",       type=int)
+    parser.add_argument("--kappa_layers",                   default=2, nargs="+",       type=int)
+    parser.add_argument("--kappa_block_conv_layers",        default=2, nargs="+",       type=int)
+    parser.add_argument("--kappa_strides",                  default=2, nargs="+",       type=int)
+    parser.add_argument("--kappa_bottleneck_kernel_size",   default=None, nargs="+",    type=int)
+    parser.add_argument("--kappa_bottleneck_filters",       default=None, nargs="+",    type=int)
+    parser.add_argument("--kappa_resampling_kernel_size",   default=None, nargs="+",    type=int)
+    parser.add_argument("--kappa_gru_kernel_size",          default=None, nargs="+",    type=int)
+    parser.add_argument("--kappa_upsampling_interpolation", action="store_true")
+    parser.add_argument("--kappa_kernel_l2_amp",            default=1e-4, nargs="+",    type=float)
+    parser.add_argument("--kappa_bias_l2_amp",              default=1e-4, nargs="+",    type=float)
+    parser.add_argument("--kappa_kernel_l1_amp",            default=1e-4, nargs="+",    type=float)
+    parser.add_argument("--kappa_bias_l1_amp",              default=1e-4, nargs="+",    type=float)
+    parser.add_argument("--kappa_activation",               default="leaky_relu", nargs="+")
+    parser.add_argument("--kappa_initializer",              default="glorot_normal")
+    parser.add_argument("--kappa_batch_norm",               default=0,   nargs="+",     type=int)
+    parser.add_argument("--kappa_dropout_rate",             default=None, nargs="+",    type=float)
+    parser.add_argument("--kappa_input_kernel_size",         default=11,  nargs="+",    type=int)
 
+    # Source model hyperparameters
+    parser.add_argument("--source_filters",                  default=32, nargs="+",     type=int)
+    parser.add_argument("--source_filter_scaling",           default=1, nargs="+",      type=float)
+    parser.add_argument("--source_kernel_size",              default=3, nargs="+",      type=int)
+    parser.add_argument("--source_layers",                   default=2, nargs="+",      type=int)
+    parser.add_argument("--source_block_conv_layers",        default=2, nargs="+",      type=int)
+    parser.add_argument("--source_strides",                  default=2, nargs="+",      type=int)
+    parser.add_argument("--source_bottleneck_kernel_size",   default=None, nargs="+",   type=int)
+    parser.add_argument("--source_bottleneck_filters",       default=None, nargs="+",   type=int)
+    parser.add_argument("--source_resampling_kernel_size",   default=None, nargs="+",   type=int)
+    parser.add_argument("--source_gru_kernel_size",          default=None, nargs="+",   type=int)
+    parser.add_argument("--source_upsampling_interpolation", action="store_true")
+    parser.add_argument("--source_kernel_l2_amp",            default=0, nargs="+",      type=float)
+    parser.add_argument("--source_bias_l2_amp",              default=0, nargs="+",      type=float)
+    parser.add_argument("--source_kernel_l1_amp",            default=0, nargs="+",      type=float)
+    parser.add_argument("--source_bias_l1_amp",              default=0, nargs="+",      type=float)
+    parser.add_argument("--source_activation",               default="leaky_relu", nargs="+")
+    parser.add_argument("--source_initializer",              default="glorot_normal")
+    parser.add_argument("--source_batch_norm",               default=0,   nargs="+",    type=int)
+    parser.add_argument("--source_dropout_rate",             default=None, nargs="+",   type=float)
+    parser.add_argument("--source_input_kernel_size",         default=11,  nargs="+",    type=int)
 
     # Training set params
     parser.add_argument("--batch_size",             default=1, nargs="+",  type=int,       help="Number of images in a batch. ")
@@ -263,24 +314,21 @@ if __name__ == '__main__':
     parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
     parser.add_argument("--cycle_length",           default=4,      type=int,       help="Number of files to read concurrently.")
     parser.add_argument("--block_length",           default=1,      type=int,       help="Number of example to read from each files.")
+    parser.add_argument("--buffer_size",            default=10000,  type=int,      help="Buffer size for shuffling at each epoch.")
 
     # Optimization params
-    parser.add_argument("-e", "--epochs",           default=10,     type=int,      help="Number of epochs for training.")
-    parser.add_argument("--optimizer",              default="Adam", nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
-    parser.add_argument("--initial_learning_rate",  default=1e-3,   nargs="+",   type=float,     help="Initial learning rate.")
-    parser.add_argument("--decay_rate",             default=1.,     nargs="+",   type=float,     help="Exponential decay rate of learning rate (1=no decay).")
-    parser.add_argument("--decay_steps",            default=1000,   nargs="+",   type=int,       help="Decay steps of exponential decay of the learning rate.")
+    parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
+    parser.add_argument("--optimizer",              default="Adam",  nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
+    parser.add_argument("--initial_learning_rate",  default=1e-3,   nargs="+",  type=float,     help="Initial learning rate.")
+    parser.add_argument("--decay_rate",             default=1.,     nargs="+",  type=float,     help="Exponential decay rate of learning rate (1=no decay).")
+    parser.add_argument("--decay_steps",            default=1000,   nargs="+",  type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
+    parser.add_argument("--clipping",               action="store_true",            help="Clip backprop gradients between -10 and 10.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",            action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
-    parser.add_argument("--buffer_size",            default=1000,   type=int,       help="Buffer size for shuffling at each epoch.")
     parser.add_argument("--time_weights",           default="uniform", nargs="+",   help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
-    parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
-    parser.add_argument("--reset_optimizer_states",  action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
-    parser.add_argument("--kappa_residual_weights",         default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
-    parser.add_argument("--source_residual_weights",        default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic']")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
@@ -294,8 +342,9 @@ if __name__ == '__main__':
     parser.add_argument("--seed",                   default=42, nargs="+",  type=int, help="Random seed for numpy and tensorflow.")
 
     # Keep these as default, they need to be in Namespace but we dont use them for this script
-    parser.add_argument("--model_id",               default="None",                 help="Start training from previous checkpoint of this model if provided")
-    parser.add_argument("--json_override",          default=None,   nargs="+",      help="A json filepath that will override every command line parameters. Useful for reproducibility")
+    parser.add_argument("--model_id",                   default="None",              help="Start training from previous "
+                                                                                          "checkpoint of this model if provided")
+    parser.add_argument("--json_override",                  default=None,   nargs="+",      help="A json filepath that will override every command line parameters. Useful for reproducibility")
     parser.add_argument("--v2",                     action="store_true",            help="Use v2 decoding of tfrecords")
 
     args = parser.parse_args()

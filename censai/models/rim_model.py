@@ -91,8 +91,7 @@ class Model(tf.keras.Model):
         )
         self.bottleneck_gru = ConvGRUBlock(
             filters=2*bottleneck_filters,
-            kernel_size=bottleneck_kernel_size,
-            activation=activation
+            kernel_size=bottleneck_kernel_size
         )
 
         self.output_layer = tf.keras.layers.Conv2D(
