@@ -9,9 +9,9 @@ class ModelMorningstar(tf.keras.Model):
 
         common_params = {"padding": "valid", "data_format": "channels_last"}
         self.filters = filters
-        self.input_layer = tf.keras.layers.Conv2D(filters=filters, kernel_size=(11, 11), stride=4, **common_params)
+        self.input_layer = tf.keras.layers.Conv2D(filters=filters, kernel_size=(11, 11), strides=4, **common_params)
         self.gru1 = ConvGRU(filters=filters, kernel_size=(11, 11))
-        self.middle_layer = tf.keras.layers.Conv2DTranspose(filters, kernel_size=(11, 11), stride=4, **common_params)
+        self.middle_layer = tf.keras.layers.Conv2DTranspose(filters, kernel_size=(11, 11), strides=4, **common_params)
         self.gur2 = ConvGRU(filters=filters, kernel_size=(11, 11), **common_params)
         self.output_layer = tf.keras.layers.Conv2D(filters=1, kernel_size=(1, 1), **common_params)
 
