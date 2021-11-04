@@ -77,8 +77,7 @@ EXTRA_PARAMS = [
     "time_weights",
     "initial_learning_rate",
     "decay_rate",
-    "decay_steps",
-    "train_delay"
+    "decay_steps"
 ]
 
 
@@ -91,7 +90,6 @@ PARAMS_NICKNAME = {
     "initial_learning_rate": "lr",
     "decay_rate": "dr",
     "decay_steps": "ds",
-    "train_delay": "TD",
 
     "kappa_filters": "KF",
     "kappa_filter_scaling": "KFS",
