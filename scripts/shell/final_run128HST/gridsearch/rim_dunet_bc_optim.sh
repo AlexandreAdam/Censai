@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-8
+#SBATCH --array=1-16
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_blockcoord_gridsearch.py\
   --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_200k_control_validated_val\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=8\
+  --n_models=16\
   --forward_method=fft\
   --epochs=100000\
   --max_time=46\
@@ -30,12 +30,11 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_blockcoord_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --steps 4 8\
-  --time_weights quadratic\
+  --time_weights uniform quadratic\
   --adam 1\
   --kappalog\
   --kappa_init=1e-1\
   --source_init=1\
-  --delay 0\
   --source_link identity\
   --kappa_filters 16\
   --kappa_filter_scaling 2\
@@ -51,7 +50,7 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_blockcoord_gridsearch.py\
   --source_activation tanh relu\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsSC2\
-  --logname_prefixe=RIMDU128_hTNG2nsvdO\
+  --logname_prefixe=RIMDbc128hst\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\

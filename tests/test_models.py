@@ -1,6 +1,6 @@
 from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE, VAESecondStage
-from censai.models import SharedResUnetModel, SharedResUnetAtrousModel, SharedMemoryResUnetAtrousModel, SharedUnetModel, SharedShuffleUnetModelv2
-from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM, RIMSharedResAtrous, RIMSharedMemoryResAtrous, RIMSharedResUnet
+from censai.models import SharedResUnetModel, SharedResUnetAtrousModel, SharedMemoryResUnetAtrousModel, SharedUnetModel, SharedShuffleUnetModelv2, SharedUnetModelv3
+from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM, RIMSharedResAtrous, RIMSharedMemoryResAtrous, RIMSharedResUnet, PhysicalModelv2, RIMSharedUnetv2
 from censai.models.layers import ConvGRU, ConvGRUBlock, ConvGRUPlusBlock
 import tensorflow as tf
 
@@ -229,7 +229,6 @@ def test_rimsharedresunetatrous():
     lens = tf.nn.relu(tf.random.normal(shape=[1, 64, 64, 1], dtype=tf.float32))
     lens /= tf.reduce_max(lens)
     source_series, kappa_series, chi_squared_series = rim.call(lens)
-    pass
 
 
 def test_rim_shared_memoryresunetatrous():
@@ -240,23 +239,33 @@ def test_rim_shared_memoryresunetatrous():
     lens = tf.nn.relu(tf.random.normal(shape=[1, 64, 64, 1], dtype=tf.float32))
     lens /= tf.reduce_max(lens)
     source_series, kappa_series, chi_squared_series = rim.call(lens)
-    pass
+
+
+def test_rimsuv3():
+    phys = PhysicalModelv2(pixels=64, src_pixels=32, kappa_pixels=32, method="fft")
+    noise_rms = tf.constant(0.01, dtype=tf.float32)[None]
+    psf = phys.psf_models(0.15)
+    unet = SharedUnetModelv3(filter_scaling=2, layers=2, block_conv_layers=1)
+    rim = RIMSharedUnetv2(phys, unet, 4)
+    lens = tf.random.normal(shape=(1, 64, 64, 1))
+    rim.call(lens, noise_rms, psf)
 
 
 if __name__ == '__main__':
-    test_ray_tracer_512()
-    test_raytracer()
-    test_resnet_autoencoder()
-    test_unet_model()
-    test_shared_unet_model()
-    test_rim_shared_unet()
-    test_rim_unet()
-    test_resnet_vae()
-    test_resnet_encoder()
-    test_vae()
-    test_vae_second_stage()
-    test_convGRU()
-    test_rimsharedresunet()
-    test_rimsharedresunetatrous()
-    test_rim_shared_memoryresunetatrous()
-    test_rim_shared_unetv2()
+    # test_ray_tracer_512()
+    # test_raytracer()
+    # test_resnet_autoencoder()
+    # test_unet_model()
+    # test_shared_unet_model()
+    # test_rim_shared_unet()
+    # test_rim_unet()
+    # test_resnet_vae()
+    # test_resnet_encoder()
+    # test_vae()
+    # test_vae_second_stage()
+    # test_convGRU()
+    # test_rimsharedresunet()
+    # test_rimsharedresunetatrous()
+    # test_rim_shared_memoryresunetatrous()
+    # test_rim_shared_unetv2()
+    test_rimsuv3()
