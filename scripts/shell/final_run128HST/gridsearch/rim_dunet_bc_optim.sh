@@ -56,4 +56,5 @@ python $CENSAI_PATH/scripts/experiments/rim_unet_blockcoord_gridsearch.py\
   --max_to_keep=1\
   --n_residuals=1\
   --seed 42\
-  --track_train
+  --track_train\
+  --v2
