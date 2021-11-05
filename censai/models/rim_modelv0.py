@@ -7,12 +7,12 @@ class ModelMorningstar(tf.keras.Model):
     def __init__(self, filters=32):
         super(ModelMorningstar, self).__init__()
 
-        common_params = {"padding": "valid", "data_format": "channels_last"}
+        common_params = {"padding": "same", "data_format": "channels_last"}
         self.filters = filters
         self.input_layer = tf.keras.layers.Conv2D(filters=filters, kernel_size=(11, 11), strides=4, **common_params)
         self.gru1 = ConvGRU(filters=filters, kernel_size=(11, 11))
         self.middle_layer = tf.keras.layers.Conv2DTranspose(filters, kernel_size=(11, 11), strides=4, **common_params)
-        self.gur2 = ConvGRU(filters=filters, kernel_size=(11, 11), **common_params)
+        self.gru2 = ConvGRU(filters=filters, kernel_size=(11, 11))
         self.output_layer = tf.keras.layers.Conv2D(filters=1, kernel_size=(1, 1), **common_params)
 
     def __call__(self, xt, states, grad):
