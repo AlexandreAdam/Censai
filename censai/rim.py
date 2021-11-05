@@ -44,7 +44,7 @@ class RIM:
         if adam:
             self.grad_update = self.adam_grad_update
         else:
-            self.grad_update = tf.keras.layers.Lambda(lambda x, t: x)
+            self.grad_update = lambda x, t: x
 
     def initial_states(self, batch_size):
         x = tf.zeros(shape=(batch_size, self.source_pixels, self.source_pixels, 1))

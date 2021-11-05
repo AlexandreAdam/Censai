@@ -36,5 +36,6 @@ python $CENSAI_PATH/scripts/train_rim.py\
   --max_to_keep=4\
   --n_residuals=2\
   --seed 42\
+  --adam\
   --track_train\
   --v2
