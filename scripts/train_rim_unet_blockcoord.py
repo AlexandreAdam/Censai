@@ -57,9 +57,9 @@ def main(args):
             args_dict.update(json_override)
 
     if args.v2: # overwrite decoding procedure with version 2
-        from censai.data.lenses_tng_v2 import decode_train, decode_physical_model_info, preprocess
+        from censai.data.lenses_tng_v2 import decode_train, decode_physical_model_info
     else:
-        from censai.data.lenses_tng import decode_train, decode_physical_model_info, preprocess
+        from censai.data.lenses_tng import decode_train, decode_physical_model_info
 
     files = []
     for dataset in args.datasets:
@@ -83,7 +83,7 @@ def main(args):
         for physical_params in dataset.map(decode_physical_model_info):
             break
         # preprocessing
-        dataset = dataset.map(decode_train).map(preprocess)
+        dataset = dataset.map(decode_train)
         if args.cache_file is not None:
             dataset = dataset.cache(args.cache_file)
         train_dataset = dataset.shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).take(
@@ -95,9 +95,9 @@ def main(args):
         val_files = tf.data.Dataset.from_tensor_slices(val_files)
         val_dataset = val_files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
                                            block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-        val_dataset = val_dataset.map(decode_train).map(preprocess). \
-            shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True). \
-            take(math.ceil((1 - args.train_split) * args.total_items)). \
+        val_dataset = val_dataset.map(decode_train).\
+            shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).\
+            take(math.ceil((1 - args.train_split) * args.total_items)).\
             batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
     else:
         """
@@ -111,7 +111,7 @@ def main(args):
         for physical_params in dataset.map(decode_physical_model_info):
             break
         # preprocessing
-        dataset = dataset.map(decode_train).map(preprocess)
+        dataset = dataset.map(decode_train)
         if args.cache_file is not None:
             dataset = dataset.cache(args.cache_file)
         train_dataset = dataset.take(math.floor(args.train_split * args.total_items)).shuffle(
