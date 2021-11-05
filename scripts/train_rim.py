@@ -300,84 +300,84 @@ def main(args):
                 val_chi_squared.update_state([chi_squared])
                 val_source_loss.update_state([source_cost])
 
-                if args.n_residuals > 0 and math.ceil((1 - args.train_split) * args.total_items) > 0:  # validation set not empty set not empty
-                    source_pred, chi_squared = rim.predict(X, kappa)
-                    lens_pred = phys.forward(source_pred[-1], kappa)
-                for res_idx in range(min(args.n_residuals, args.batch_size, math.ceil((1 - args.train_split) * args.total_items))):
-                    try:
-                        tf.summary.image(f"Val Residuals {res_idx}",
-                                         plot_to_image(
-                                             residual_plot(
-                                                 X[res_idx],  # rescale intensity like it is done in the likelihood
-                                                 source[res_idx],
-                                                 kappa[res_idx],
-                                                 lens_pred[res_idx],
-                                                 source_pred[-1][res_idx],
-                                                 kappa[res_idx],
-                                                 chi_squared[-1][res_idx]
-                                             )), step=step)
-                    except ValueError:
-                        continue
-                val_cost = val_loss.result().numpy()
-                train_cost = epoch_loss.result().numpy()
-                val_chi_sq = val_chi_squared.result().numpy()
-                train_chi_sq = epoch_chi_squared.result().numpy()
-                val_source_cost = val_source_loss.result().numpy()
-                train_source_cost = epoch_source_loss.result().numpy()
-                tf.summary.scalar("Time per step", time_per_step.result(), step=step)
-                tf.summary.scalar("Chi Squared", train_chi_sq, step=step)
-                tf.summary.scalar("Source cost", train_source_cost, step=step)
-                tf.summary.scalar("Val Source cost", val_source_cost, step=step)
-                tf.summary.scalar("MSE", train_cost, step=step)
-                tf.summary.scalar("Val MSE", val_cost, step=step)
-                tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
-                tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
-            print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
-                  f"| lr {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s"
-                  f" | source cost {train_source_cost:.2e} | chi sq {train_chi_sq:.2e}")
-            history["train_cost"].append(train_cost)
-            history["val_cost"].append(val_cost)
-            history["learning_rate"].append(optim.lr(step).numpy())
-            history["train_chi_squared"].append(train_chi_sq)
-            history["val_chi_squared"].append(val_chi_sq)
-            history["time_per_step"].append(time_per_step.result().numpy())
-            history["train_source_cost"].append(train_source_cost)
-            history["val_source_cost"].append(val_source_cost)
-            history["step"].append(step)
-            history["wall_time"].append(time.time() - global_start)
+            if args.n_residuals > 0 and math.ceil((1 - args.train_split) * args.total_items) > 0:  # validation set not empty set not empty
+                source_pred, chi_squared = rim.predict(X, kappa)
+                lens_pred = phys.forward(source_pred[-1], kappa)
+            for res_idx in range(min(args.n_residuals, args.batch_size, math.ceil((1 - args.train_split) * args.total_items))):
+                try:
+                    tf.summary.image(f"Val Residuals {res_idx}",
+                                     plot_to_image(
+                                         residual_plot(
+                                             X[res_idx],  # rescale intensity like it is done in the likelihood
+                                             source[res_idx],
+                                             kappa[res_idx],
+                                             lens_pred[res_idx],
+                                             source_pred[-1][res_idx],
+                                             kappa[res_idx],
+                                             chi_squared[-1][res_idx]
+                                         )), step=step)
+                except ValueError:
+                    continue
+            val_cost = val_loss.result().numpy()
+            train_cost = epoch_loss.result().numpy()
+            val_chi_sq = val_chi_squared.result().numpy()
+            train_chi_sq = epoch_chi_squared.result().numpy()
+            val_source_cost = val_source_loss.result().numpy()
+            train_source_cost = epoch_source_loss.result().numpy()
+            tf.summary.scalar("Time per step", time_per_step.result(), step=step)
+            tf.summary.scalar("Chi Squared", train_chi_sq, step=step)
+            tf.summary.scalar("Source cost", train_source_cost, step=step)
+            tf.summary.scalar("Val Source cost", val_source_cost, step=step)
+            tf.summary.scalar("MSE", train_cost, step=step)
+            tf.summary.scalar("Val MSE", val_cost, step=step)
+            tf.summary.scalar("Learning Rate", optim.lr(step), step=step)
+            tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
+        print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
+              f"| lr {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s"
+              f" | source cost {train_source_cost:.2e} | chi sq {train_chi_sq:.2e}")
+        history["train_cost"].append(train_cost)
+        history["val_cost"].append(val_cost)
+        history["learning_rate"].append(optim.lr(step).numpy())
+        history["train_chi_squared"].append(train_chi_sq)
+        history["val_chi_squared"].append(val_chi_sq)
+        history["time_per_step"].append(time_per_step.result().numpy())
+        history["train_source_cost"].append(train_source_cost)
+        history["val_source_cost"].append(val_source_cost)
+        history["step"].append(step)
+        history["wall_time"].append(time.time() - global_start)
 
-            cost = train_cost if args.track_train else val_cost
-            if np.isnan(cost):
-                print("Training broke the Universe")
-                break
-            if cost < (1 - args.tolerance) * best_loss:
-                best_loss = cost
-                patience = args.patience
-            else:
-                patience -= 1
-            if (time.time() - global_start) > args.max_time * 3600:
-                out_of_time = True
-            if save_checkpoint:
-                checkpoint_manager.checkpoint.step.assign_add(1)  # a bit of a hack
-                if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1 or out_of_time:
-                    with open(os.path.join(checkpoints_dir, "score_sheet.txt"), mode="a") as f:
-                        np.savetxt(f, np.array([[lastest_checkpoint, cost]]))
-                    lastest_checkpoint += 1
-                    checkpoint_manager.save()
-                    print("Saved checkpoint for step {}: {}".format(int(checkpoint_manager.checkpoint.step),
-                                                                    checkpoint_manager.latest_checkpoint))
-            if patience == 0:
-                print("Reached patience")
-                break
-            if out_of_time:
-                break
-            if epoch > 0:  # First epoch is always very slow and not a good estimate of an epoch time.
-                estimated_time_for_epoch = time.time() - epoch_start
-            if optim.lr(step).numpy() < 1e-8:
-                print("Reached learning rate limit")
-                break
-        print(f"Finished training after {(time.time() - global_start) / 3600:.3f} hours.")
-        return history, best_loss
+        cost = train_cost if args.track_train else val_cost
+        if np.isnan(cost):
+            print("Training broke the Universe")
+            break
+        if cost < (1 - args.tolerance) * best_loss:
+            best_loss = cost
+            patience = args.patience
+        else:
+            patience -= 1
+        if (time.time() - global_start) > args.max_time * 3600:
+            out_of_time = True
+        if save_checkpoint:
+            checkpoint_manager.checkpoint.step.assign_add(1)  # a bit of a hack
+            if epoch % args.checkpoints == 0 or patience == 0 or epoch == args.epochs - 1 or out_of_time:
+                with open(os.path.join(checkpoints_dir, "score_sheet.txt"), mode="a") as f:
+                    np.savetxt(f, np.array([[lastest_checkpoint, cost]]))
+                lastest_checkpoint += 1
+                checkpoint_manager.save()
+                print("Saved checkpoint for step {}: {}".format(int(checkpoint_manager.checkpoint.step),
+                                                                checkpoint_manager.latest_checkpoint))
+        if patience == 0:
+            print("Reached patience")
+            break
+        if out_of_time:
+            break
+        if epoch > 0:  # First epoch is always very slow and not a good estimate of an epoch time.
+            estimated_time_for_epoch = time.time() - epoch_start
+        if optim.lr(step).numpy() < 1e-8:
+            print("Reached learning rate limit")
+            break
+    print(f"Finished training after {(time.time() - global_start) / 3600:.3f} hours.")
+    return history, best_loss
 
 
 if __name__ == "__main__":
