@@ -79,7 +79,7 @@ class RIMSharedResAtrous:
         if adam:
             self.grad_update = self.adam_grad_update
         else:
-            self.grad_update = lambda x, t: x
+            self.grad_update = lambda x, y, t: (x, y)
 
     def adam_grad_update(self, grad1, grad2, time_step):
         time_step = tf.cast(time_step, DTYPE)
