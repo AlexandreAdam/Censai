@@ -69,8 +69,8 @@ class RIMUnetBlocCoord:
             self.source_grad_update = self.adam_source_grad_update
             self.kappa_grad_update = self.adam_kappa_grad_update
         else:
-            self.source_grad_update = tf.keras.layers.Lambda(lambda x, t: x)
-            self.kappa_grad_update = tf.keras.layers.Lambda(lambda x, t: x)
+            self.source_grad_update = lambda x, t: x
+            self.kappa_grad_update = lambda x, t: x
 
     def initial_states(self, batch_size):
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
