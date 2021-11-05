@@ -197,7 +197,7 @@ def main(args):
     def train_step(X, source, kappa):
         with tf.GradientTape() as tape:
             tape.watch(rim.model.trainable_variables)
-            source_series, kappa_series, chi_squared = rim.call(X, kappa, outer_tape=tape)
+            source_series, chi_squared = rim.call(X, kappa, outer_tape=tape)
             # mean over image residuals
             source_cost1 = tf.reduce_mean(tf.square(rim.source_link(source_series) - source), axis=(2, 3, 4))
             # weighted mean over time steps
@@ -213,7 +213,7 @@ def main(args):
         return cost, chi_squared, source_cost
 
     def test_step(X, source, kappa):
-        source_series, kappa_series, chi_squared = rim.predict(X, kappa)
+        source_series, chi_squared = rim.predict(X, kappa)
         # mean over image residuals
         source_cost1 = tf.reduce_mean(tf.square(source_series - source), axis=(2, 3, 4))
         # weighted mean over time steps
