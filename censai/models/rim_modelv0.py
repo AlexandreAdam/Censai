@@ -26,7 +26,7 @@ class ModelMorningstar(tf.keras.Model):
         ht21_features = tf.nn.tanh(self.middle_layer(ht21))
         ht22, _ = self.gru2(ht21_features, ht12)
         dx = self.output_layer(ht22)
-        new_states = tf.concat([ht21, ht22], axis=3)
+        new_states = [ht21, ht22]
         xt1 = xt + dx
         return xt1, new_states
 
