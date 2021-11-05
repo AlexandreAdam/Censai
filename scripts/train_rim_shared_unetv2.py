@@ -93,7 +93,7 @@ def main(args):
         for physical_params in dataset.map(decode_physical_model_info):
             break
         # preprocessing
-        dataset = dataset.map(decode_train).map(preprocess)
+        dataset = dataset.map(decode_train)#.map(preprocess)
         if args.cache_file is not None:
             dataset = dataset.cache(args.cache_file)
         train_dataset = dataset.shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).take(args.total_items).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
@@ -103,7 +103,7 @@ def main(args):
             val_files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
         val_files = tf.data.Dataset.from_tensor_slices(val_files)
         val_dataset = val_files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type), block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
-        val_dataset = val_dataset.map(decode_train).map(preprocess).\
+        val_dataset = val_dataset.map(decode_train).\
             shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).\
             take(math.ceil((1 - args.train_split) * args.total_items)).\
             batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
@@ -119,7 +119,7 @@ def main(args):
         for physical_params in dataset.map(decode_physical_model_info):
             break
         # preprocessing
-        dataset = dataset.map(decode_train).map(preprocess)
+        dataset = dataset.map(decode_train)#.map(preprocess)
         if args.cache_file is not None:
             dataset = dataset.cache(args.cache_file)
         train_dataset = dataset.take(math.floor(args.train_split * args.total_items)).shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
