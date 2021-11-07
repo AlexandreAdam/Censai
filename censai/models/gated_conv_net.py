@@ -2,14 +2,14 @@ import tensorflow as tf
 from .layers import GatedConv, ConcatELU
 
 
-class GatedConvNet(tf.keras.layers.Layer):
-    def __init__(self, filters, num_layers=3, filters_out=-1):
+class GatedConvNet(tf.keras.Model):
+    def __init__(self, c_in, c_hidden, c_out=-1, num_layers=3):
         super().__init__()
-        c_out = filters_out if filters_out > 0 else 2 * filters
+        c_out = c_out if c_out > 0 else 2 * c_in
         layers = []
-        layers += [GatedConv(filters)]
+        layers += [GatedConv(c_hidden)]
         for i in range(num_layers):
-            layers += [GatedConv(filters), tf.keras.layers.LayerNormalization()]
+            layers += [GatedConv(c_hidden), tf.keras.layers.LayerNormalization()]
         layers += [ConcatELU(), GatedConv(c_out)]
         self.call_layers = layers
 

@@ -10,17 +10,17 @@ class ConcatELU(tf.keras.layers.Layer):
 
 
 class GatedConv(tf.keras.layers.Layer):
-    def __init__(self, filters):
+    def __init__(self, c_in, c_hidden=-1):
         super().__init__()
         self.conv1 = tf.keras.layers.Conv2D(
-            filters=filters,
+            filters=c_hidden if c_hidden > 1 else 2*c_in,
             kernel_size=(3,3),
             padding="SAME",
             data_format="channels_last",
         )
         self.concat_elu = ConcatELU()
         self.conv2 = tf.keras.layers.Conv2D(
-            filters=2 * filters,
+            filters=2 * c_in,
             kernel_size=(1,1),
             padding="SAME",
             data_format="channels_last",
