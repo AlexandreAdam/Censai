@@ -20,9 +20,7 @@ RIM_HPARAMS = [
     "steps",
     "kappalog",
     "kappa_normalize",
-    "source_link",
     "kappa_init",
-    "source_init"
 ]
 
 UNET_MODEL_HPARAMS = [
