@@ -25,9 +25,6 @@ elif len(gpus) > 1:
 RIM_HPARAMS = [
     "adam",
     "steps",
-    "kappalog",
-    "kappa_normalize",
-    "kappa_init",
     "source_init"
 ]
 UNET_MODEL_HPARAMS = [
@@ -206,7 +203,7 @@ def main(args):
         elif args.source_residual_weights == "sqrt":
             ws = tf.keras.layers.Lambda(lambda s: tf.sqrt(s) / tf.reduce_sum(tf.sqrt(s), axis=(1, 2, 3), keepdims=True))
         else:
-            raise ValueError("kappa_residual_weights must be in ['uniform', 'linear', 'quadratic', 'sqrt']")
+            raise ValueError("source_residual_weights must be in ['uniform', 'linear', 'quadratic', 'sqrt']")
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         if args.logname is not None:
@@ -269,7 +266,7 @@ def main(args):
             if args.unroll_time_steps:
                 source_series,  chi_squared = rim.call_function(X, kappa, noise_rms, psf)
             else:
-                source_series, kappa_series, chi_squared = rim.call(X, kappa, noise_rms, psf, outer_tape=tape)
+                source_series,  chi_squared = rim.call(X, kappa, noise_rms, psf, outer_tape=tape)
             # mean over image residuals
             source_cost1 = tf.reduce_sum(ws(source) * tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
             # weighted mean over time steps
@@ -294,13 +291,13 @@ def main(args):
         return global_loss, global_chi_squared, global_source_cost
 
     def test_step(X, source, kappa, noise_rms, psf):
-        source_series, kappa_series, chi_squared = rim.call(X, kappa, noise_rms, psf)
+        source_series, chi_squared = rim.call(X, kappa, noise_rms, psf)
         # mean over image residuals
         source_cost1 = tf.reduce_sum(tf.square(rim.source_link(source_series) - source), axis=(2, 3, 4))
         # weighted mean over time steps
         source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
         # final cost is mean over global batch size
-        cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
+        cost = tf.reduce_sum(source_cost) / args.batch_size
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         source_cost = tf.reduce_sum(source_cost1[-1]) / args.batch_size
         return cost, chi_squared, source_cost

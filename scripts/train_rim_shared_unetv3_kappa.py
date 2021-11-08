@@ -27,8 +27,7 @@ RIM_HPARAMS = [
     "steps",
     "kappalog",
     "kappa_normalize",
-    "kappa_init",
-    "source_init"
+    "kappa_init"
 ]
 UNET_MODEL_HPARAMS = [
     "filters",
@@ -295,7 +294,7 @@ def main(args):
         return global_loss, global_chi_squared, global_kappa_cost
 
     def test_step(X, source, kappa, noise_rms, psf):
-        source_series, kappa_series, chi_squared = rim.call(X, source, noise_rms, psf)
+        kappa_series, chi_squared = rim.call(X, source, noise_rms, psf)
         # mean over image residuals
         kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
         # weighted mean over time steps
