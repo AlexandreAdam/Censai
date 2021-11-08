@@ -190,3 +190,8 @@ class RIMSourceUnetv2:
         else:
             return tf.reduce_mean(source_cost, axis=(1, 2, 3)), chi
 
+
+if __name__ == '__main__':
+    unet = UnetModelv2()
+    phys = PhysicalModelv2(128)
+    rim = RIMSourceUnetv2(phys, unet, 2, source_link="identity")
