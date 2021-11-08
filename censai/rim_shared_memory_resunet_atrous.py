@@ -6,17 +6,6 @@ from censai.utils import nulltape
 
 
 class RIMSharedMemoryResAtrous:
-    """
-    Architecture has only 1 Unet. Source and kappa information are stacked along channel dimension.
-
-    There are 2 intended structures:
-        1. Kappa has a larger shape than Source tensor:
-            1 - Use a half-strided convolution to upsample the output of the Unet
-            3 - Use bilinear interpolation to upsample
-        2. Kappa and Source have the same tensor shape -> Identity layer
-
-    In any case, we use the Source shape for the Unet
-    """
     def __init__(
             self,
             physical_model: PhysicalModel,

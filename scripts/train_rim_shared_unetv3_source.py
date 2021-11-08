@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
 import math
-from censai import PhysicalModelv2, RIMSharedUnetv2
-from censai.models import SharedUnetModelv3, RayTracer
+from censai import PhysicalModelv2, RIMSourceUnetv2
+from censai.models import UnetModelv2, RayTracer
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 from censai.data.lenses_tng_v3 import decode_train, decode_physical_model_info
 from censai.definitions import DTYPE
@@ -144,7 +144,7 @@ def main(args):
             raytracer=raytracer,
         )
 
-        unet = SharedUnetModelv3(
+        unet = UnetModelv2(
             filters=args.filters,
             filter_scaling=args.filter_scaling,
             kernel_size=args.kernel_size,
@@ -165,15 +165,12 @@ def main(args):
             batch_norm=args.batch_norm,
             dropout_rate=args.dropout_rate
         )
-        rim = RIMSharedUnetv2(
+        rim = RIMSourceUnetv2(
             physical_model=phys,
             unet=unet,
             steps=args.steps,
             adam=args.adam,
-            kappalog=args.kappalog,
             source_link=args.source_link,
-            kappa_normalize=args.kappa_normalize,
-            kappa_init=args.kappa_init,
             source_init=args.source_init,
             flux_lagrange_multiplier=args.flux_lagrange_multiplier
         )
@@ -199,17 +196,6 @@ def main(args):
         else:
             raise ValueError("time_weights must be in ['uniform', 'linear', 'quadratic']")
         wt = wt[..., tf.newaxis]  # [steps, batch]
-
-        if args.kappa_residual_weights == "uniform":
-            wk = tf.keras.layers.Lambda(lambda k: tf.ones_like(k, dtype=DTYPE) / tf.cast(tf.math.reduce_prod(k.shape[1:]), DTYPE))
-        elif args.kappa_residual_weights == "linear":
-            wk = tf.keras.layers.Lambda(lambda k: k / tf.reduce_sum(k, axis=(1, 2, 3), keepdims=True))
-        elif args.kappa_residual_weights == "sqrt":
-            wk = tf.keras.layers.Lambda(lambda k: tf.sqrt(k) / tf.reduce_sum(tf.sqrt(k), axis=(1, 2, 3), keepdims=True))
-        elif args.kappa_residual_weights == "quadratic":
-            wk = tf.keras.layers.Lambda(lambda k: tf.square(k) / tf.reduce_sum(tf.square(k), axis=(1, 2, 3), keepdims=True))
-        else:
-            raise ValueError("kappa_residual_weights must be in ['uniform', 'linear', 'quadratic', 'sqrt']")
 
         if args.source_residual_weights == "uniform":
             ws = tf.keras.layers.Lambda(lambda s: tf.ones_like(s, dtype=DTYPE) / tf.cast(tf.math.reduce_prod(s.shape[1:]), DTYPE))
@@ -281,60 +267,52 @@ def main(args):
         with tf.GradientTape() as tape:
             tape.watch(rim.unet.trainable_variables)
             if args.unroll_time_steps:
-                source_series, kappa_series, chi_squared = rim.call_function(X, noise_rms, psf)
+                source_series,  chi_squared = rim.call_function(X, kappa, noise_rms, psf)
             else:
-                source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf, outer_tape=tape)
+                source_series, kappa_series, chi_squared = rim.call(X, kappa, noise_rms, psf, outer_tape=tape)
             # mean over image residuals
             source_cost1 = tf.reduce_sum(ws(source) * tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
-            kappa_cost1 = tf.reduce_sum(wk(kappa) * tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
             # weighted mean over time steps
             source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
-            kappa_cost = tf.reduce_sum(wt * kappa_cost1, axis=0)
             # final cost is mean over global batch size
-            cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
+            cost = tf.reduce_sum(source_cost) / args.batch_size
         gradient = tape.gradient(cost, rim.unet.trainable_variables)
         gradient = [tf.clip_by_norm(grad, 5.) for grad in gradient]
         optim.apply_gradients(zip(gradient, rim.unet.trainable_variables))
         # Update metrics with "converged" score
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         source_cost = tf.reduce_sum(source_cost1[-1]) / args.batch_size
-        kappa_cost = tf.reduce_sum(kappa_cost1[-1]) / args.batch_size
-        return cost, chi_squared, source_cost, kappa_cost
+        return cost, chi_squared, source_cost
 
     @tf.function
     def distributed_train_step(X, source, kappa, noise_rms, psf):
-        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(train_step, args=(X, source, kappa, noise_rms, psf))
+        per_replica_losses, per_replica_chi_squared, per_replica_source_cost = STRATEGY.run(train_step, args=(X, source, kappa, noise_rms, psf))
         # Replica losses are aggregated by summing them
         global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
         global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
         global_source_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_source_cost, axis=None)
-        global_kappa_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_kappa_cost, axis=None)
-        return global_loss, global_chi_squared, global_source_cost, global_kappa_cost
+        return global_loss, global_chi_squared, global_source_cost
 
     def test_step(X, source, kappa, noise_rms, psf):
-        source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf)
+        source_series, kappa_series, chi_squared = rim.call(X, kappa, noise_rms, psf)
         # mean over image residuals
         source_cost1 = tf.reduce_sum(tf.square(rim.source_link(source_series) - source), axis=(2, 3, 4))
-        kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
         # weighted mean over time steps
         source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
-        kappa_cost = tf.reduce_sum(wt * kappa_cost1, axis=0)
         # final cost is mean over global batch size
         cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         source_cost = tf.reduce_sum(source_cost1[-1]) / args.batch_size
-        kappa_cost = tf.reduce_sum(kappa_cost1[-1]) / args.batch_size
-        return cost, chi_squared, source_cost, kappa_cost
+        return cost, chi_squared, source_cost
 
     @tf.function
     def distributed_test_step(X, source, kappa, noise_rms, psf):
-        per_replica_losses, per_replica_chi_squared, per_replica_source_cost, per_replica_kappa_cost = STRATEGY.run(test_step, args=(X, source, kappa, noise_rms, psf))
+        per_replica_losses, per_replica_chi_squared, per_replica_source_cost = STRATEGY.run(test_step, args=(X, source, kappa, noise_rms, psf))
         # Replica losses are aggregated by summing them
         global_loss = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
         global_chi_squared = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_chi_squared, axis=None)
         global_source_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_source_cost, axis=None)
-        global_kappa_cost = STRATEGY.reduce(tf.distribute.ReduceOp.SUM, per_replica_kappa_cost, axis=None)
-        return global_loss, global_chi_squared, global_source_cost, global_kappa_cost
+        return global_loss, global_chi_squared, global_source_cost
 
     # ====== Training loop ============================================================================================
     epoch_loss = tf.metrics.Mean()
@@ -342,19 +320,15 @@ def main(args):
     val_loss = tf.metrics.Mean()
     epoch_chi_squared = tf.metrics.Mean()
     epoch_source_loss = tf.metrics.Mean()
-    epoch_kappa_loss = tf.metrics.Mean()
     val_chi_squared = tf.metrics.Mean()
     val_source_loss = tf.metrics.Mean()
-    val_kappa_loss = tf.metrics.Mean()
     history = {  # recorded at the end of an epoch only
         "train_cost": [],
         "train_chi_squared": [],
         "train_source_cost": [],
-        "train_kappa_cost": [],
         "val_cost": [],
         "val_chi_squared": [],
         "val_source_cost": [],
-        "val_kappa_cost": [],
         "learning_rate": [],
         "time_per_step": [],
         "step": [],
@@ -374,24 +348,22 @@ def main(args):
         epoch_loss.reset_states()
         epoch_chi_squared.reset_states()
         epoch_source_loss.reset_states()
-        epoch_kappa_loss.reset_states()
         time_per_step.reset_states()
         with writer.as_default():
             for batch, (X, source, kappa, noise_rms, psf) in enumerate(train_dataset):
                 start = time.time()
-                cost, chi_squared, source_cost, kappa_cost = distributed_train_step(X, source, kappa, noise_rms, psf)
+                cost, chi_squared, source_cost = distributed_train_step(X, source, kappa, noise_rms, psf)
         # ========== Summary and logs ==================================================================================
                 _time = time.time() - start
                 time_per_step.update_state([_time])
                 epoch_loss.update_state([cost])
                 epoch_chi_squared.update_state([chi_squared])
                 epoch_source_loss.update_state([source_cost])
-                epoch_kappa_loss.update_state([kappa_cost])
                 step += 1
             # last batch we make a summary of residuals
             if args.n_residuals > 0:
-                source_pred, kappa_pred, chi_squared = rim.predict(X, noise_rms, psf)
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1], psf)
+                source_pred, chi_squared = rim.predict(X, kappa, noise_rms, psf)
+                lens_pred = phys.forward(source_pred[-1], kappa, psf)
             for res_idx in range(min(args.n_residuals, args.batch_size)):
                 try:
                     tf.summary.image(f"Residuals {res_idx}",
@@ -402,7 +374,7 @@ def main(args):
                                              kappa[res_idx],
                                              lens_pred[res_idx],
                                              source_pred[-1][res_idx],
-                                             kappa_pred[-1][res_idx],
+                                             kappa[res_idx],
                                              chi_squared[-1][res_idx]
                                          )), step=step)
                 except ValueError:
@@ -412,17 +384,15 @@ def main(args):
             val_loss.reset_states()
             val_chi_squared.reset_states()
             val_source_loss.reset_states()
-            val_kappa_loss.reset_states()
             for X, source, kappa, noise_rms, psf in val_dataset:
                 cost, chi_squared, source_cost, kappa_cost = distributed_test_step(X, source, kappa, noise_rms, psf)
                 val_loss.update_state([cost])
                 val_chi_squared.update_state([chi_squared])
                 val_source_loss.update_state([source_cost])
-                val_kappa_loss.update_state([kappa_cost])
 
             if args.n_residuals > 0 and math.ceil((1 - args.train_split) * args.total_items) > 0:  # validation set not empty set not empty
-                source_pred, kappa_pred, chi_squared = rim.predict(X, noise_rms, psf)
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1], psf)
+                source_pred, chi_squared = rim.predict(X, kappa, noise_rms, psf)
+                lens_pred = phys.forward(source_pred[-1], kappa, psf)
             for res_idx in range(min(args.n_residuals, args.batch_size, math.ceil((1 - args.train_split) * args.total_items))):
                 try:
                     tf.summary.image(f"Val Residuals {res_idx}",
@@ -433,7 +403,7 @@ def main(args):
                                              kappa[res_idx],
                                              lens_pred[res_idx],
                                              source_pred[-1][res_idx],
-                                             kappa_pred[-1][res_idx],
+                                             kappa[res_idx],
                                              chi_squared[-1][res_idx]
                                          )), step=step)
                 except ValueError:
@@ -442,14 +412,10 @@ def main(args):
             train_cost = epoch_loss.result().numpy()
             val_chi_sq = val_chi_squared.result().numpy()
             train_chi_sq = epoch_chi_squared.result().numpy()
-            val_kappa_cost = val_kappa_loss.result().numpy()
-            train_kappa_cost = epoch_kappa_loss.result().numpy()
             val_source_cost = val_source_loss.result().numpy()
             train_source_cost = epoch_source_loss.result().numpy()
             tf.summary.scalar("Time per step", time_per_step.result(), step=step)
             tf.summary.scalar("Chi Squared", train_chi_sq, step=step)
-            tf.summary.scalar("Kappa cost", train_kappa_cost, step=step)
-            tf.summary.scalar("Val Kappa cost", val_kappa_cost, step=step)
             tf.summary.scalar("Source cost", train_source_cost, step=step)
             tf.summary.scalar("Val Source cost", val_source_cost, step=step)
             tf.summary.scalar("MSE", train_cost, step=step)
@@ -458,16 +424,14 @@ def main(args):
             tf.summary.scalar("Val Chi Squared", val_chi_sq, step=step)
         print(f"epoch {epoch} | train loss {train_cost:.3e} | val loss {val_cost:.3e} "
               f"| lr {optim.lr(step).numpy():.2e} | time per step {time_per_step.result().numpy():.2e} s"
-              f"| kappa cost {train_kappa_cost:.2e} | source cost {train_source_cost:.2e} | chi sq {train_chi_sq:.2e}")
+              f" | source cost {train_source_cost:.2e} | chi sq {train_chi_sq:.2e}")
         history["train_cost"].append(train_cost)
         history["val_cost"].append(val_cost)
         history["learning_rate"].append(optim.lr(step).numpy())
         history["train_chi_squared"].append(train_chi_sq)
         history["val_chi_squared"].append(val_chi_sq)
         history["time_per_step"].append(time_per_step.result().numpy())
-        history["train_kappa_cost"].append(train_kappa_cost)
         history["train_source_cost"].append(train_source_cost)
-        history["val_kappa_cost"].append(val_kappa_cost)
         history["val_source_cost"].append(val_source_cost)
         history["step"].append(step)
         history["wall_time"].append(time.time() - global_start)
@@ -516,10 +480,7 @@ if __name__ == "__main__":
     # RIM hyperparameters
     parser.add_argument("--steps",              default=16,     type=int,       help="Number of time steps of RIM")
     parser.add_argument("--adam",               action="store_true",            help="ADAM update for the log-likelihood gradient.")
-    parser.add_argument("--kappalog",           action="store_true")
-    parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--source_link",        default="sigmoid",              help="One of 'exp', 'source', 'relu' or 'identity' (default).")
-    parser.add_argument("--kappa_init",         default=1e-1,   type=float,     help="Initial value of kappa for RIM")
+    parser.add_argument("--source_link",        default="identity",              help="One of 'exp', 'source', 'relu' or 'identity' (default).")
     parser.add_argument("--source_init",        default=1e-3,   type=float,     help="Initial value of source for RIM")
     parser.add_argument("--flux_lagrange_multiplier",       default=1e-3,   type=float,     help="Value of Lagrange multiplier for the flux constraint")
 
@@ -573,13 +534,12 @@ if __name__ == "__main__":
     parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
     parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
     parser.add_argument("--reset_optimizer_states",  action="store_true",           help="When training from pre-trained weights, reset states of optimizer.")
-    parser.add_argument("--kappa_residual_weights",         default="uniform",              help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
     parser.add_argument("--source_residual_weights",        default="uniform",              help="Options are ['uniform', 'linear', 'quadratic']")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
     parser.add_argument("--logname",                 default=None,                  help="Overwrite name of the log with this argument")
-    parser.add_argument("--logname_prefixe",         default="RIMSUv3",             help="If name of the log is not provided, this prefix is prepended to the date")
+    parser.add_argument("--logname_prefixe",         default="RIMSourcev3",         help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
