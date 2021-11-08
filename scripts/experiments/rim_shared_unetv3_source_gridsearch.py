@@ -18,7 +18,8 @@ DATE = datetime.now().strftime("%y%m%d%H%M%S")
 RIM_HPARAMS = [
     "adam",
     "steps",
-    "source_init"
+    "source_init",
+    "source_link"
 ]
 
 UNET_MODEL_HPARAMS = [
