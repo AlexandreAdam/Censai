@@ -382,7 +382,7 @@ def main(args):
             val_chi_squared.reset_states()
             val_source_loss.reset_states()
             for X, source, kappa, noise_rms, psf in val_dataset:
-                cost, chi_squared, source_cost, kappa_cost = distributed_test_step(X, source, kappa, noise_rms, psf)
+                cost, chi_squared, source_cost = distributed_test_step(X, source, kappa, noise_rms, psf)
                 val_loss.update_state([cost])
                 val_chi_squared.update_state([chi_squared])
                 val_source_loss.update_state([source_cost])
