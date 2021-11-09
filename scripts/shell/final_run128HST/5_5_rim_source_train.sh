@@ -38,4 +38,5 @@ python $CENSAI_PATH/scripts/train_rim.py\
   --seed 42\
   --adam\
   --track_train\
+  --max_time=23\
   --v2
