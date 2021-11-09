@@ -1,9 +1,10 @@
 import tensorflow as tf
 from censai.models import UnetModelv2
-from censai.definitions import logkappa_normalization, log_10, DTYPE, logit, lrelu4p
+from censai.definitions import logkappa_normalization, DTYPE
 from censai import PhysicalModelv2
 from censai.utils import nulltape
 
+log_10 = lambda x: tf.math.log(x + 1e-6) / tf.math.log(10.)
 
 class RIMKappaUnetv2:
     def __init__(
