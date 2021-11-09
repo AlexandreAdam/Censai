@@ -46,7 +46,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_kappa_gridsearch.py\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation leaky_relu bipolar_relu\
+  --activation leaky_relu\
   --batch_norm 0\
   --gru_architecture concat plus_highway\
   --kappa_init=0\
