@@ -19,4 +19,4 @@ python $CENSAI_PATH/scripts/validate_lenses.py\
   --min_source_signal_pixels=10\
   --source_signal_threshold=0.1\
   --edge=5\
-  --edge_signal_tolerance=0.4
+  --edge_signal_tolerance=0.2
