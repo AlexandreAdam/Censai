@@ -45,13 +45,13 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_kappa_gridsearch.py\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation leaky_relu\
+  --activation tanh\
   --batch_norm 0\
   --gru_architecture concat\
   --kappa_init=0\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst2\
-  --logname_prefixe=RIMKappa128hstv3_control_fakesource\
+  --logname_prefixe=RIMKappa128hstv3_control\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
