@@ -43,8 +43,7 @@ UNET_MODEL_HPARAMS = [
     "bias_l1_amp",
     "activation",
     "initializer",
-    "gru_architecture",
-    "flux_lagrange_multiplier"
+    "gru_architecture"
 ]
 
 EXTRA_PARAMS = [
@@ -94,8 +93,7 @@ PARAMS_NICKNAME = {
 
     "adam": "A",
     "steps": "TS",
-    "kappa_init": "Kini",
-    "flux_lagrange_multiplier": "FLM"
+    "kappa_init": "Kini"
 }
 
 
@@ -219,7 +217,6 @@ if __name__ == '__main__':
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
     parser.add_argument("--kappa_init",         default=1e-1, nargs="+",  type=float,     help="Initial value of kappa for RIM")
-    parser.add_argument("--flux_lagrange_multiplier",       default=1e-3, type=float, nargs="+",     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
