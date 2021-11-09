@@ -60,8 +60,7 @@ class RIMKappaUnetv2:
         return m_hat / (tf.sqrt(v_hat) + self.epsilon)
 
     def initial_states(self, batch_size):
-        # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
-        kappa_init = self.kappa_inverse_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
+        kappa_init = tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init
         states = self.unet.init_hidden_states(self.kappa_pixels, batch_size)
 
         # reset adam gradients
