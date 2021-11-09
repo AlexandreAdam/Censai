@@ -293,7 +293,7 @@ def main(args):
     def test_step(X, source, kappa, noise_rms, psf):
         source_series, chi_squared = rim.call(X, kappa, noise_rms, psf)
         # mean over image residuals
-        source_cost1 = tf.reduce_sum(tf.square(rim.source_link(source_series) - source), axis=(2, 3, 4))
+        source_cost1 = tf.reduce_sum(ws(source) * tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
         # weighted mean over time steps
         source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
         # final cost is mean over global batch size
