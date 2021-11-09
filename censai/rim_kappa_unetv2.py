@@ -4,7 +4,8 @@ from censai.definitions import logkappa_normalization, DTYPE
 from censai import PhysicalModelv2
 from censai.utils import nulltape
 
-log_10 = lambda x: tf.math.log(x + 1e-6) / tf.math.log(10.)
+log_10 = lambda x: tf.math.log(x) / tf.math.log(10.)
+
 
 class RIMKappaUnetv2:
     def __init__(
@@ -62,11 +63,11 @@ class RIMKappaUnetv2:
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
         kappa_init = self.kappa_inverse_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
         states = self.unet.init_hidden_states(self.kappa_pixels, batch_size)
-        _source = tf.ones(shape=(batch_size, self.physical_model.src_pixels,  self.physical_model.src_pixels, 1))
+
         # reset adam gradients
         self._grad_mean = tf.zeros_like(kappa_init, dtype=DTYPE)
         self._grad_var = tf.zeros_like(kappa_init, dtype=DTYPE)
-        return kappa_init, states, _source
+        return kappa_init, states
 
     def time_step(self, kappa, grad, states):
         kappa, states = self.unet(xt=kappa, grad=grad, states=states)
@@ -80,7 +81,7 @@ class RIMKappaUnetv2:
         Used in training. Return linked kappa and source maps.
         """
         batch_size = lensed_image.shape[0]
-        kappa, states, fake_source = self.initial_states(batch_size)
+        kappa, states = self.initial_states(batch_size)
 
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
@@ -88,7 +89,7 @@ class RIMKappaUnetv2:
             with outer_tape.stop_recording():
                 with tf.GradientTape() as g:
                     g.watch(kappa)
-                    y_pred = self.physical_model.forward(fake_source, self.kappa_link(kappa), psf)
+                    y_pred = self.physical_model.forward(source, self.kappa_link(kappa), psf)
                     log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None]**2, axis=(1, 2, 3))
                     cost = tf.reduce_mean(log_likelihood)
                 grad = g.gradient(cost, kappa)
@@ -112,12 +113,12 @@ class RIMKappaUnetv2:
         when the graph is created.
         """
         batch_size = lensed_image.shape[0]
-        kappa, states, fake_source = self.initial_states(batch_size)
+        kappa, states= self.initial_states(batch_size)
 
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in tf.range(self.steps):
-            y_pred = self.physical_model.forward(fake_source, self.kappa_link(kappa), psf)
+            y_pred = self.physical_model.forward(source, self.kappa_link(kappa), psf)
             log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
             cost = tf.reduce_mean(log_likelihood)
             grad = tf.gradients(cost, kappa)
@@ -136,14 +137,14 @@ class RIMKappaUnetv2:
         Used in inference. Return physical kappa maps.
         """
         batch_size = lensed_image.shape[0]
-        kappa, states, fake_source = self.initial_states(batch_size)
+        kappa, states = self.initial_states(batch_size)
 
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         for current_step in range(self.steps):
             with tf.GradientTape() as g:
                 g.watch(kappa)
-                y_pred = self.physical_model.forward(fake_source, self.kappa_link(kappa), psf)
+                y_pred = self.physical_model.forward(source, self.kappa_link(kappa), psf)
                 log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
                 cost = tf.reduce_mean(log_likelihood)
             grad = g.gradient(cost, kappa)
