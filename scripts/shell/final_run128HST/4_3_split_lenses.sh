@@ -9,8 +9,8 @@
 # 00k-512_k128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/split_lenses.py\
+python $CENSAI_PATH/scripts/split_lensesv3.py\
   --dataset=$CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated\
   --train_split=0.9\
-  --examples_per_shard=50000\
+  --examples_per_shard=10000\
   --compression_type=GZIP

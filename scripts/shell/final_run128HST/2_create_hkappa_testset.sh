@@ -15,7 +15,7 @@ python $CENSAI_PATH/scripts/create_kappa_autoencoder_dataset.py\
   --kappa_dir=$HOME/scratch/Censai/data/hkappa188hst_TNG100_rau\
   --compression_type=GZIP\
   --crop=30\
-  --max_shift=0.8\
+  --max_shift=0.2\
   --rotate\
   --rotate_by=90\
   --batch=20\
