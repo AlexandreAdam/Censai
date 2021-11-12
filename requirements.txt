@@ -10,5 +10,6 @@ scipy
 astropy
 scikit-learn
 scikit-image
+galsim
 tqdm
 pandas
