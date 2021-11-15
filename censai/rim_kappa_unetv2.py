@@ -19,7 +19,8 @@ class RIMKappaUnetv2:
             beta_1=0.9,
             beta_2=0.99,
             epsilon=1e-8,
-            kappa_init=1e-1
+            kappa_init=1e-1,
+            meta_kappa_init=None
     ):
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.kappa_pixels
@@ -31,7 +32,12 @@ class RIMKappaUnetv2:
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
-        self._kappa_init = kappa_init
+        if meta_kappa_init is None:
+            self._kappa_init = kappa_init
+            self._kappa_init_func = lambda batch_size: tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init
+        else:
+            self.meta_init = meta_kappa_init
+            self._kappa_init_func = lambda batch_size: tf.tile(self.meta_init, [batch_size, 1, 1, 1])
 
         if self.kappalog:
             if self.kappa_normalize:
@@ -60,7 +66,7 @@ class RIMKappaUnetv2:
         return m_hat / (tf.sqrt(v_hat) + self.epsilon)
 
     def initial_states(self, batch_size):
-        kappa_init = tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init
+        kappa_init = self._kappa_init_func(batch_size)
         states = self.unet.init_hidden_states(self.kappa_pixels, batch_size)
 
         # reset adam gradients

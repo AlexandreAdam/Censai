@@ -134,9 +134,8 @@ if __name__ == '__main__':
                                                                                  "This window is used on cosmos postage stamps.")
 
     # Physics params
-    parser.add_argument("--z_source",       default=2.379,      type=float)
-    parser.add_argument("--z_lens",         default=0.4457,     type=float)
-
+    parser.add_argument("--z_source",           default=1.5, type=float)
+    parser.add_argument("--z_lens",             default=0.5, type=float)
     # Reproducibility params
     parser.add_argument("--json_override",  default=None, nargs="+",        help="A json filepath that will override every command line parameters. "
                                                                                  "Useful for reproducibility")
