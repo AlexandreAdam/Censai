@@ -132,6 +132,7 @@ def main(args):
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
         else:
             raytracer = None
+
         phys = PhysicalModelv2(
             pixels=physical_params["pixels"].numpy(),
             kappa_pixels=physical_params["kappa pixels"].numpy(),
@@ -164,6 +165,9 @@ def main(args):
             batch_norm=args.batch_norm,
             dropout_rate=args.dropout_rate
         )
+        if args.meta_kappa_init is not None:
+            meta_kappa_init = tf.constant(np.load(args.meta_kappa_init).reshape(shape=[1, phys.kappa_pixels, phys.kappa_pixels, 1]), dtype=DTYPE)
+
         rim = RIMKappaUnetv2(
             physical_model=phys,
             unet=unet,
@@ -171,7 +175,8 @@ def main(args):
             adam=args.adam,
             kappalog=args.kappalog,
             kappa_normalize=args.kappa_normalize,
-            kappa_init=args.kappa_init
+            kappa_init=args.kappa_init,
+            meta_kappa_init=meta_kappa_init
         )
         learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=args.initial_learning_rate,
@@ -483,6 +488,7 @@ if __name__ == "__main__":
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
     parser.add_argument("--kappa_init",         default=1e-1,   type=float,     help="Initial value of kappa for RIM")
+    parser.add_argument("--meta_kappa_init",    default=None,                   help="Path to meta_kappa_init npy file to overwrite kappa initialization")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32,     type=int)

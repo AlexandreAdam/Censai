@@ -15,14 +15,12 @@ python $CENSAI_PATH/scripts/create_kappa_autoencoder_dataset.py\
   --kappa_dir=$HOME/scratch/Censai/data/hkappa188hst_TNG100_rau\
   --compression_type=GZIP\
   --crop=30\
-  --max_shift=0.8\
+  --max_shift=0.1\
   --rotate\
   --rotate_by=90\
   --batch=20\
   --bins=10\
   --rescaling_size=100\
-  --min_theta_e=1\
-  --max_theta_e=3\
-  --z_source=2.379\
-  --z_lens=0.4457\
+  --min_theta_e=0.5\
+  --max_theta_e=2.5\
   --test_set
