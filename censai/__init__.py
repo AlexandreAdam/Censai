@@ -14,4 +14,4 @@ from .rim_shared_unetv2 import RIMSharedUnetv2
 from .rim_unet_bloc_coord import RIMUnetBlocCoord
 from .rim_source_unetv2 import RIMSourceUnetv2
 from .rim_kappa_unetv2 import RIMKappaUnetv2
-from rim_shared_unetv3 import RIMSharedUnetv3
+from .rim_shared_unetv3 import RIMSharedUnetv3
