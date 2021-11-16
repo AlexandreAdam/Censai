@@ -165,6 +165,8 @@ def main(args):
             batch_norm=args.batch_norm,
             dropout_rate=args.dropout_rate
         )
+        kappa_init = tf.constant(np.load(args.kappa_init).reshape(shape=[1, phys.kappa_pixels, phys.kappa_pixels, 1]), dtype=DTYPE)
+        source_init = tf.constant(np.load(args.source_init).reshape(shape=[1, phys.src_pixels, phys.src_pixels, 1]), dtype=DTYPE)
         rim = RIMSharedUnetv2(
             physical_model=phys,
             unet=unet,
@@ -173,8 +175,8 @@ def main(args):
             kappalog=args.kappalog,
             source_link=args.source_link,
             kappa_normalize=args.kappa_normalize,
-            kappa_init=args.kappa_init,
-            source_init=args.source_init,
+            kappa_init=kappa_init,
+            source_init=source_init,
             flux_lagrange_multiplier=args.flux_lagrange_multiplier
         )
         learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
@@ -519,8 +521,8 @@ if __name__ == "__main__":
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
     parser.add_argument("--source_link",        default="sigmoid",              help="One of 'exp', 'source', 'relu' or 'identity' (default).")
-    parser.add_argument("--kappa_init",         default=1e-1,   type=float,     help="Initial value of kappa for RIM")
-    parser.add_argument("--source_init",        default=1e-3,   type=float,     help="Initial value of source for RIM")
+    parser.add_argument("--kappa_init",         required=True,                  help="Path to initial kappa (npy file)")
+    parser.add_argument("--source_init",         required=True,                  help="Path to initial source (npy file)")
     parser.add_argument("--flux_lagrange_multiplier",       default=1e-3,   type=float,     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params
