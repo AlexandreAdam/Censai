@@ -20,11 +20,11 @@ python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
   --total_items 50000\
   --optimizer Adam\
   --initial_learning_rate 1e-4\
-  --decay_rate 0.7\
+  --decay_rate 0.7 0.9\
   --decay_steps=20000\
   --staircase\
   --beta_init 0.1\
-  --beta_end_value 0.3 0.6 1\
+  --beta_end_value 0.1 0.2 0.3\
   --beta_decay_power 1\
   --beta_decay_steps 5000 10000\
   --beta_cyclical 0\
