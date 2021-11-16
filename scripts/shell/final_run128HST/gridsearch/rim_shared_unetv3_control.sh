@@ -51,10 +51,10 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
   --activation tanh relu\
   --batch_norm 0\
   --gru_architecture concat\
-  --source_init=1\
-  --kappa_init=0.1\
+  --source_init=$CENSAI_PATH/data/cosmos_23.5_finalrun128_train_average.npy\
+  --kappa_init=$CENSAI_PATH/data/hkappa128hst_TNG100_rau_trainset_average.npy\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsFR128hst\
+  --logdir=$CENSAI_PATH/logsFR128hst3\
   --logname_prefixe=RIMSU128hstv3_control\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\

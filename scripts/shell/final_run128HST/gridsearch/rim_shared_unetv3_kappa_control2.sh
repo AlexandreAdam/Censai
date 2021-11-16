@@ -49,7 +49,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_kappa_gridsearch.py\
   --activation leaky_relu\
   --batch_norm 0\
   --gru_architecture concat plus_highway\
-  --kappa_init=0\
+  --kappa_init=$CENSAI_PATH/data/hkappa128hst_TNG100_rau_trainset_average.npy\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst2\
   --logname_prefixe=RIMKappa128hstv3_control\

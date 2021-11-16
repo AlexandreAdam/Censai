@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_shared_unetv3_kappa import main
+from scripts.train_rim_shared_unetv4 import main
 import copy
 import pandas as pd
 
@@ -20,7 +20,7 @@ RIM_HPARAMS = [
     "steps",
     "kappalog",
     "kappa_normalize",
-    "kappa_init",
+    "source_link",
 ]
 
 UNET_MODEL_HPARAMS = [
@@ -43,7 +43,8 @@ UNET_MODEL_HPARAMS = [
     "bias_l1_amp",
     "activation",
     "initializer",
-    "gru_architecture"
+    "gru_architecture",
+    "flux_lagrange_multiplier"
 ]
 
 EXTRA_PARAMS = [
@@ -56,6 +57,7 @@ EXTRA_PARAMS = [
     "decay_steps",
     "time_weights",
     "kappa_residual_weights",
+    "source_residual_weights"
 ]
 
 
@@ -69,6 +71,7 @@ PARAMS_NICKNAME = {
     "decay_steps": "ds",
     "time_weights": "TW",
     "kappa_residual_weights": "KRW",
+    "source_residual_weights": "SRW",
 
     "filters": "F",
     "filter_scaling": "FS",
@@ -93,7 +96,8 @@ PARAMS_NICKNAME = {
 
     "adam": "A",
     "steps": "TS",
-    "kappa_init": "Kini"
+    "source_link": "Sli",
+    "flux_lagrange_multiplier": "FLM"
 }
 
 
@@ -182,6 +186,8 @@ def distributed_strategy(args):
             "best_score": best_score,
             "train_kappa_cost": history["train_kappa_cost"][-1],
             "val_kappa_cost": history["val_kappa_cost"][-1],
+            "train_source_cost": history["train_source_cost"][-1],
+            "val_source_cost": history["val_source_cost"][-1]
         })
         # Save hyperparameters and scores in shared csv for this gridsearch
         df = pd.DataFrame(params_dict, index=[gridsearch_id])
@@ -216,7 +222,8 @@ if __name__ == '__main__':
     parser.add_argument("--adam",               default=0,  nargs="+",    type=int,       help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--kappa_init",         required=True,                      help="Path to initial kappa (npy file)")
+    parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
+    parser.add_argument("--flux_lagrange_multiplier",       default=1e-3, type=float, nargs="+",     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
@@ -267,6 +274,7 @@ if __name__ == '__main__':
     parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
     parser.add_argument("--reset_optimizer_states",  action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
     parser.add_argument("--kappa_residual_weights",         default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
+    parser.add_argument("--source_residual_weights",        default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic']")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
