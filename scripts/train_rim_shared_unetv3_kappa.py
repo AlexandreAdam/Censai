@@ -165,8 +165,7 @@ def main(args):
             batch_norm=args.batch_norm,
             dropout_rate=args.dropout_rate
         )
-        if args.meta_kappa_init is not None:
-            meta_kappa_init = tf.constant(np.load(args.meta_kappa_init).reshape(shape=[1, phys.kappa_pixels, phys.kappa_pixels, 1]), dtype=DTYPE)
+        kappa_init = tf.constant(np.load(args.kappa_init).reshape(shape=[1, phys.kappa_pixels, phys.kappa_pixels, 1]), dtype=DTYPE)
 
         rim = RIMKappaUnetv2(
             physical_model=phys,
@@ -175,8 +174,7 @@ def main(args):
             adam=args.adam,
             kappalog=args.kappalog,
             kappa_normalize=args.kappa_normalize,
-            kappa_init=args.kappa_init,
-            meta_kappa_init=meta_kappa_init
+            kappa_init=kappa_init,
         )
         learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=args.initial_learning_rate,
@@ -487,8 +485,7 @@ if __name__ == "__main__":
     parser.add_argument("--adam",               action="store_true",            help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--kappa_init",         default=1e-1,   type=float,     help="Initial value of kappa for RIM")
-    parser.add_argument("--meta_kappa_init",    default=None,                   help="Path to meta_kappa_init npy file to overwrite kappa initialization")
+    parser.add_argument("--kappa_init",         required=True,                  help="Path to initial kappa (npy file)")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32,     type=int)

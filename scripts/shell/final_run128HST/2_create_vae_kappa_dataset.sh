@@ -10,8 +10,8 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/make_kappa_vae_dataset.py\
-  --kappa_first_stage_vae=$CENSAI_PATH/models/VAE1_128hstfr_018_BN1_LS84_betaE0.6_betaDS10000_211016160612\
-  --output_dir=$CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_018_BN1_LS84_betaE0.6_betaDS10000_211016160612/\
+  --kappa_first_stage_vae=$CENSAI_PATH/models/VAE1_128hstfr_002_LS16_dr0.7_betaE0.2_betaDS5000_211115153537\
+  --output_dir=$CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_002_LS16_dr0.7_betaE0.2_betaDS5000_211115153537\
   --len_dataset=500000\
   --compression_type=GZIP\
   --kappa_fov=7.68\

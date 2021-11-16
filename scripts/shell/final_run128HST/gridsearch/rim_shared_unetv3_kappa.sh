@@ -48,9 +48,9 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_kappa_gridsearch.py\
   --activation leaky_relu tanh\
   --batch_norm 0\
   --gru_architecture concat\
-  --kappa_init=0\
+  --kappa_init=$CENSAI_PATH/data/hkappa128hst_TNG100_rau_trainset_average.npy\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsFR128hst2\
+  --logdir=$CENSAI_PATH/logsFR128hst3\
   --logname_prefixe=RIMKappa128hstv3_augmented\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\

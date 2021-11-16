@@ -10,6 +10,8 @@ class RIMSharedUnetv2:
             self,
             physical_model: PhysicalModelv2,
             unet: SharedUnetModelv2,
+            kappa_init: tf.Tensor,
+            source_init: tf.Tensor,
             steps: int,
             adam=True,
             kappalog=True,
@@ -18,10 +20,11 @@ class RIMSharedUnetv2:
             beta_1=0.9,
             beta_2=0.99,
             epsilon=1e-8,
-            kappa_init=1e-1,
-            source_init=1e-3,
-            flux_lagrange_multiplier: float=1.
+
+            flux_lagrange_multiplier: float=0.
     ):
+        assert len(kappa_init.shape) == 4
+        assert len(source_init.shape) == 4
         self.physical_model = physical_model
         self.kappa_pixels = physical_model.kappa_pixels
         self.source_pixels = physical_model.src_pixels
@@ -34,9 +37,9 @@ class RIMSharedUnetv2:
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
-        self._kappa_init = kappa_init
-        self._source_init = source_init
         self.flux_lagrange_multiplier = flux_lagrange_multiplier
+        self.kappa_init = kappa_init
+        self.source_init = source_init
 
         if self.kappalog:
             if self.kappa_normalize:
@@ -91,8 +94,9 @@ class RIMSharedUnetv2:
 
     def initial_states(self, batch_size):
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
-        source_init = tf.ones(shape=(batch_size, self.source_pixels, self.source_pixels, 1)) * self._source_init
-        kappa_init = self.kappa_inverse_link(tf.ones(shape=(batch_size, self.kappa_pixels, self.kappa_pixels, 1)) * self._kappa_init)
+        source_init = tf.tile(self.source_inverse_link(self.source_init), [batch_size, 1, 1, 1])
+        kappa_init = tf.tile(self.kappa_inverse_link(self.kappa_init), [batch_size, 1, 1, 1])
+
         states = self.unet.init_hidden_states(self.source_pixels, batch_size)
 
         # reset adam gradients
@@ -215,7 +219,7 @@ class RIMSharedUnetv2:
 
         """
         source_series, kappa_series, chi_squared = self.call(lensed_image, psf=psf, noise_rms=noise_rms, outer_tape=outer_tape)
-        source_cost = tf.reduce_sum(tf.square(self.source_link(source_series) - source), axis=0) / self.steps
+        source_cost = tf.reduce_sum(tf.square(source_series - self.source_inverse_link(source)), axis=0) / self.steps
         kappa_cost = tf.reduce_sum(tf.square(kappa_series - self.kappa_inverse_link(kappa)), axis=0) / self.steps
         chi = tf.reduce_sum(chi_squared, axis=0) / self.steps
 
