@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-8
+#SBATCH --array=1-16
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -14,13 +14,13 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
   --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_validated_val\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=8\
+  --n_models=16\
   --forward_method=fft\
   --epochs=200\
   --max_time=47\
-  --optimizer ADAMAX\
-  --initial_learning_rate 1e-4\
-  --decay_rate 0.9\
+  --optimizer SGD\
+  --initial_learning_rate 1e-5\
+  --decay_rate 1\
   --decay_steps 50000\
   --staircase\
   --patience=80\
@@ -30,12 +30,12 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
-  --steps 5 8\
-  --flux_lagrange_multiplier 0.\
+  --steps 8\
+  --flux_lagrange_multiplier 0. 1.\
   --time_weights uniform quadratic\
   --kappa_residual_weights uniform\
   --source_residual_weights uniform\
-  --adam 1\
+  --adam 0 1\
   --upsampling_interpolation 0\
   --kappalog\
   --source_link identity\
@@ -50,7 +50,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
   --gru_kernel_size 3\
   --activation tanh relu\
   --batch_norm 0\
-  --gru_architecture concat plus_highway\
+  --gru_architecture concat\
   --source_init=1\
   --kappa_init=0.1\
   --cache_file=$SLURM_TMPDIR/cache\
