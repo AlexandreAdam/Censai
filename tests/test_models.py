@@ -1,6 +1,6 @@
-from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE, VAESecondStage
+from censai.models import CosmosAutoencoder, RayTracer512, UnetModel, SharedUnetModel, RayTracer, Model, ResnetVAE, ResnetEncoder, VAE, VAESecondStage, SharedUnetModelv4
 from censai.models import SharedResUnetModel, SharedResUnetAtrousModel, SharedMemoryResUnetAtrousModel, SharedUnetModel, SharedShuffleUnetModelv2, SharedUnetModelv3
-from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM, RIMSharedResAtrous, RIMSharedMemoryResAtrous, RIMSharedResUnet, PhysicalModelv2, RIMSharedUnetv2
+from censai import RIMUnet, RIMSharedUnet, PhysicalModel, RIM, RIMSharedResAtrous, RIMSharedMemoryResAtrous, RIMSharedResUnet, PhysicalModelv2, RIMSharedUnetv2, RIMSharedUnetv3
 from censai.models.layers import ConvGRU, ConvGRUBlock, ConvGRUPlusBlock
 import tensorflow as tf
 
@@ -251,6 +251,16 @@ def test_rimsuv3():
     rim.call(lens, noise_rms, psf)
 
 
+def test_rim_shared_unetv4():
+    phys = PhysicalModelv2(64)
+    psf = phys.psf_models(7.68/64)
+    unet = SharedUnetModelv4(layers=4, block_conv_layers=1)
+    rim = RIMSharedUnetv3(phys, unet, steps=5)
+    im = tf.random.uniform(shape=[1, 64, 64, 1])
+    pred = rim.call(im, tf.constant([0.01]), psf)
+    print(pred)
+
+
 if __name__ == '__main__':
     # test_ray_tracer_512()
     # test_raytracer()
@@ -268,4 +278,5 @@ if __name__ == '__main__':
     # test_rimsharedresunetatrous()
     # test_rim_shared_memoryresunetatrous()
     # test_rim_shared_unetv2()
-    test_rimsuv3()
+    # test_rimsuv3()
+    test_rim_shared_unetv4()

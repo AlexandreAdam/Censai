@@ -134,8 +134,8 @@ class RIMSharedUnetv3:
                 source_grad, kappa_grad = g.gradient(cost, [source, kappa])
                 source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
-            source_series = source_series.write(index=current_step, value=self.source_link(source))
-            kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
+            source_series = source_series.write(index=current_step, value=source)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
         # last step score
@@ -166,8 +166,8 @@ class RIMSharedUnetv3:
             source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
-            source_series = source_series.write(index=current_step, value=self.source_link(source))
-            kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
+            source_series = source_series.write(index=current_step, value=source)
+            kappa_series = kappa_series.write(index=current_step, value=kappa)
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
         # last step score
