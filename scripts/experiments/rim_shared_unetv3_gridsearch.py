@@ -225,7 +225,7 @@ if __name__ == '__main__':
     parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
     parser.add_argument("--kappa_init",         required=True,                  help="Path to initial kappa (npy file)")
     parser.add_argument("--source_init",        required=True,                  help="Path to initial source (npy file)")
-    parser.add_argument("--flux_lagrange_multiplier",       default=0.,   type=float,     help="Value of Lagrange multiplier for the flux constraint")
+    parser.add_argument("--flux_lagrange_multiplier",       default=0.,   nargs="+", type=float,     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
