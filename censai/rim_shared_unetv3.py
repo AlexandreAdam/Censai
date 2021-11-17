@@ -101,7 +101,7 @@ class RIMSharedUnetv3:
         return source_init, kappa_init, source_grad, kappa_grad, states
 
     def time_step(self, lens, source, kappa, source_grad, kappa_grad, states, training=True):
-        x = tf.concat([lens, source, kappa, source_grad, kappa_grad])
+        x = tf.concat([lens, source, kappa, source_grad, kappa_grad], axis=3)
         delta_xt, states = self.unet(x, states, training=training)
         delta_source, delta_kappa = tf.split(delta_xt, 2, axis=-1)
         source = source + delta_source
