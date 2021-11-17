@@ -165,7 +165,7 @@ def main(args):
             batch_norm=args.batch_norm,
             dropout_rate=args.dropout_rate
         )
-        kappa_init = tf.constant(np.load(args.kappa_init).reshape(shape=[1, phys.kappa_pixels, phys.kappa_pixels, 1]), dtype=DTYPE)
+        kappa_init = tf.constant(np.load(args.kappa_init).reshape([1, phys.kappa_pixels, phys.kappa_pixels, 1]), dtype=DTYPE)
 
         rim = RIMKappaUnetv2(
             physical_model=phys,
