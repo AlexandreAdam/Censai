@@ -175,11 +175,8 @@ class AugmentedTNGKappaGenerator:
         if random_draw:
             batch_indices = np.random.choice(list(range(len(self.kappa_files))), replace=False, size=batch_size)
         else:
-            batch_indices = list(range(self.index, min(self.index + batch_size, len(self.kappa_files))))
-            if len(batch_indices) <= batch_size:
-                self.index = 0  # reset counter
-            else:
-                self.index += batch_size
+            batch_indices = [d % len(self.kappa_files) for d in range(self.index, self.index + batch_size)]
+            self.index += batch_size
         kappa = []
         kappa_ids = []
         for kap_index in batch_indices:

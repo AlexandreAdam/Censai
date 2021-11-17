@@ -10,11 +10,10 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/cosmos_to_tfrecords_distributed.py\
-  --pixels=158\
+  --pixels=612\
   --sample=23.5\
   --exclusion_level=marginal\
-  --min_flux=50\
-  --cosmos_dir=$HOME/projects/rrg-lplevass/data/COSMOS/COSMOS_23.5_training_sample/\
+  --min_flux=30\
+  --cosmos_dir=$CENSAI_PATH/data/COSMOS/COSMOS_23.5_training_sample/\
   --store_attributes\
-  --rotation\
-  --output_dir=$HOME/scratch/Censai/data/cosmos_23.5_finalrun158/
+  --output_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun612/

@@ -49,7 +49,7 @@ def distributed_strategy(args):
         for i in range((THIS_WORKER - 1) * args.batch_size, args.len_dataset, N_WORKERS * args.batch_size):
 
             kappa, einstein_radius, rescaling_factors, kappa_ids, einstein_radius_init = kappa_gen.draw_batch(
-                args.batch_size, rescale=True, shift=True, rotate=args.rotate, random_draw=True, return_einstein_radius_init=True)
+                args.batch_size, rescale=True, shift=True, rotate=args.rotate, random_draw=args.random_draw, return_einstein_radius_init=True)
 
             records = encode_examples(
                 kappa=kappa,
@@ -86,13 +86,14 @@ if __name__ == '__main__':
                                                                                  "with nearest neighbor interpolation and zero padding")
     parser.add_argument("--bins",           default=10,         type=int,   help="Number of bins to estimate Einstein radius distribution of a kappa given "
                                                                                  "a set of rescaling factors.")
+    parser.add_argument("--random_draw",    action="store_true")
     parser.add_argument("--rescaling_size", default=100,        type=int,   help="Number of rescaling factors to try for a given kappa map")
     parser.add_argument("--max_theta_e",    default=None,       type=float, help="Maximum allowed Einstein radius, default is 5 arcseconds")
     parser.add_argument("--min_theta_e",    default=None,       type=float, help="Minimum allowed Einstein radius, default is 1 arcseconds")
 
     # Physics params
-    parser.add_argument("--z_source",       default=2.379,      type=float)
-    parser.add_argument("--z_lens",         default=0.4457,     type=float)
+    parser.add_argument("--z_source",           default=1.5, type=float)
+    parser.add_argument("--z_lens",             default=0.5, type=float)
 
     # Reproducibility params
     parser.add_argument("--seed",           default=None,       type=int,   help="Random seed for numpy and tensorflow")
