@@ -19,36 +19,36 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
   --epochs=200\
   --max_time=47\
   --optimizer SGD\
-  --initial_learning_rate 1e-5\
-  --decay_rate 1\
+  --initial_learning_rate 1e-4\
+  --decay_rate 0.8\
   --decay_steps 50000\
   --staircase\
-  --patience=80\
+  --patience=10\
   --tolerance=0.01\
   --batch_size 1\
   --train_split=0.9\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
-  --steps 8\
-  --flux_lagrange_multiplier 0. 1.\
-  --time_weights uniform quadratic\
-  --kappa_residual_weights uniform\
+  --steps 8 15\
+  --flux_lagrange_multiplier 0.\
+  --time_weights uniform\
+  --kappa_residual_weights uniform sqrt\
   --source_residual_weights uniform\
-  --adam 0 1\
+  --adam 1\
   --upsampling_interpolation 0\
   --kappalog\
-  --source_link identity\
-  --filters 32\
+  --source_link lrelu4p\
+  --filters 8\
   --filter_scaling 2\
   --kernel_size 3\
-  --layers 4\
+  --layers 6\
   --block_conv_layers 1\
   --kernel_size 3\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation tanh relu\
+  --activation leaky_relu bipolar_relu\
   --batch_norm 0\
   --gru_architecture concat\
   --source_init=$CENSAI_PATH/data/cosmos_23.5_finalrun128_train_average.npy\
