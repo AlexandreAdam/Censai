@@ -216,8 +216,7 @@ if __name__ == '__main__':
     parser.add_argument("--adam",               default=0,  nargs="+",    type=int,       help="ADAM update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--kappa_init",         default=1e-1, nargs="+",  type=float,     help="Initial value of kappa for RIM")
-    parser.add_argument("--meta_kappa_init",    default=None,                   help="Path to meta_kappa_init npy file to overwrite kappa initialization")
+    parser.add_argument("--kappa_init",         required=True,                      help="Path to initial kappa (npy file)")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)

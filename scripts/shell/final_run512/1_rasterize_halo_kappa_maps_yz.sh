@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-20
+#SBATCH --array=1-40%5
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3  # maximum cpu per task is 3.5 per gpus
 #SBATCH --mem=64G			     # memory per node
@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/rasterize_halo_kappa_maps.py\
-  --output_dir=$HOME/scratch/Censai/data/hkappa612_TNG100_512\
+  --output_dir=$HOME/scratch/Censai/data/hkappa612_TNG100_rau\
   --subhalo_id=$HOME/scratch/Censai/data/subhalo_TNG100-1_id.npy\
   --groupcat_dir=$HOME/projects/rrg-lplevass/data/TNG100-1/groupcat99/\
   --snapshot_dir=$HOME/projects/rrg-lplevass/data/TNG100-1/snapshot99/\

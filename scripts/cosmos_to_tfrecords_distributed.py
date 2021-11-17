@@ -52,8 +52,7 @@ def distributed_strategy(args):
             # preprocess image
             # For correlated noise, we estimate that the sqrt of the Energy Spectral Density of the noise at (f_x=f_y=0)
             # is a good estimate of the STD
-            # Background is interpreted as the sqrt(Var(im)).
-            im = tf.nn.relu(im - ps[0, 0]).numpy()       # subtract backgroung, fold negative pixels to 0
+            im = tf.nn.relu(im - ps[0, 0]).numpy()       # subtract background, fold negative pixels to 0
             im /= im.max()                               # normalize peak to 1
             signal_pixels = np.sum(im > args.signal_threshold)     # how many pixels have a value above a certain threshold
             if signal_pixels < args.signal_pixels:  # argument used to select only examples that are more distinct galaxy features (it does however bias the dataset in redshift space)

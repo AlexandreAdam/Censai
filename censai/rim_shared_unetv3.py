@@ -1,17 +1,15 @@
 import tensorflow as tf
-from censai.models import SharedUnetModelv2
+from censai.models import SharedUnetModelv4
 from censai.definitions import logkappa_normalization, log_10, DTYPE, logit, lrelu4p
 from censai import PhysicalModelv2
 from censai.utils import nulltape
 
 
-class RIMSharedUnetv2:
+class RIMSharedUnetv3:
     def __init__(
             self,
             physical_model: PhysicalModelv2,
-            unet: SharedUnetModelv2,
-            kappa_init: tf.Tensor,
-            source_init: tf.Tensor,
+            unet: SharedUnetModelv4,
             steps: int,
             adam=True,
             kappalog=True,
@@ -20,14 +18,10 @@ class RIMSharedUnetv2:
             beta_1=0.9,
             beta_2=0.99,
             epsilon=1e-8,
-
             flux_lagrange_multiplier: float=0.
     ):
-        assert len(kappa_init.shape) == 4
-        assert len(source_init.shape) == 4
         self.physical_model = physical_model
-        self.kappa_pixels = physical_model.kappa_pixels
-        self.source_pixels = physical_model.src_pixels
+        self.pixels = physical_model.pixels
         self.unet = unet
         self.steps = steps
         self.adam = adam
@@ -38,8 +32,6 @@ class RIMSharedUnetv2:
         self.beta_2 = beta_2
         self.epsilon = epsilon
         self.flux_lagrange_multiplier = flux_lagrange_multiplier
-        self.kappa_init = kappa_init
-        self.source_init = source_init
 
         if self.kappalog:
             if self.kappa_normalize:
@@ -94,20 +86,26 @@ class RIMSharedUnetv2:
 
     def initial_states(self, batch_size):
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
-        source_init = tf.tile(self.source_inverse_link(self.source_init), [batch_size, 1, 1, 1])
-        kappa_init = tf.tile(self.kappa_inverse_link(self.kappa_init), [batch_size, 1, 1, 1])
+        source_init = tf.zeros(shape=[batch_size, self.pixels, self.pixels, 1], dtype=DTYPE)
+        kappa_init = tf.zeros(shape=[batch_size, self.pixels, self.pixels, 1], dtype=DTYPE)
+        source_grad = tf.zeros(shape=[batch_size, self.pixels, self.pixels, 1], dtype=DTYPE)
+        kappa_grad = tf.zeros(shape=[batch_size, self.pixels, self.pixels, 1], dtype=DTYPE)
 
-        states = self.unet.init_hidden_states(self.source_pixels, batch_size)
+        states = self.unet.init_hidden_states(self.pixels, batch_size)
 
         # reset adam gradients
         self._grad_mean1 = tf.zeros_like(source_init, dtype=DTYPE)
         self._grad_var1 = tf.zeros_like(source_init, dtype=DTYPE)
         self._grad_mean2 = tf.zeros_like(kappa_init, dtype=DTYPE)
         self._grad_var2 = tf.zeros_like(kappa_init, dtype=DTYPE)
-        return source_init, kappa_init, states
+        return source_init, kappa_init, source_grad, kappa_grad, states
 
-    def time_step(self, source, kappa, source_grad, kappa_grad, states, training=True):
-        source, kappa, states = self.unet(source, kappa, source_grad, kappa_grad, states, training=training)
+    def time_step(self, lens, source, kappa, source_grad, kappa_grad, states, training=True):
+        x = tf.concat([lens, source, kappa, source_grad, kappa_grad], axis=3)
+        delta_xt, states = self.unet(x, states, training=training)
+        delta_source, delta_kappa = tf.split(delta_xt, 2, axis=-1)
+        source = source + delta_source
+        kappa = kappa + delta_kappa
         return source, kappa, states
 
     def __call__(self, lensed_image, noise_rms, psf, outer_tape=nulltape):
@@ -118,11 +116,12 @@ class RIMSharedUnetv2:
         Used in training. Return linked kappa and source maps.
         """
         batch_size = lensed_image.shape[0]
-        source, kappa, states = self.initial_states(batch_size)
-
+        source, kappa, source_grad, kappa_grad, states = self.initial_states(batch_size)  # initiate all tensors to 0
+        source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)  # Use lens to make an initial guess with Unet
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        # Main optimization loop
         for current_step in tf.range(self.steps):
             with outer_tape.stop_recording():
                 with tf.GradientTape() as g:
@@ -134,14 +133,14 @@ class RIMSharedUnetv2:
                     cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
                 source_grad, kappa_grad = g.gradient(cost, [source, kappa])
                 source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
-            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
+            source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step, value=source)
             kappa_series = kappa_series.write(index=current_step, value=kappa)
             if current_step > 0:
-                chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
+                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
-        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
+        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     @tf.function
@@ -154,8 +153,8 @@ class RIMSharedUnetv2:
         when the graph is created.
         """
         batch_size = lensed_image.shape[0]
-        source, kappa, states = self.initial_states(batch_size)
-
+        source, kappa, source_grad, kappa_grad, states = self.initial_states(batch_size)  # initiate all tensors to 0
+        source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)  # Use lens to make an initial guess with Unet
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
@@ -166,14 +165,14 @@ class RIMSharedUnetv2:
             cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
             source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
-            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
+            source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step, value=source)
             kappa_series = kappa_series.write(index=current_step, value=kappa)
             if current_step > 0:
-                chi_squared_series = chi_squared_series.write(index=current_step-1, value=log_likelihood)
+                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
-        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
+        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def predict(self, lensed_image, noise_rms, psf):
@@ -181,11 +180,12 @@ class RIMSharedUnetv2:
         Used in inference. Return physical kappa and source maps.
         """
         batch_size = lensed_image.shape[0]
-        source, kappa, states = self.initial_states(batch_size)
-
+        source, kappa, source_grad, kappa_grad, states = self.initial_states(batch_size)  # initiate all tensors to 0
+        source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)  # Use lens to make an initial guess with Unet
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        # Main optimization loop
         for current_step in range(self.steps):
             with tf.GradientTape() as g:
                 g.watch(source)
@@ -196,7 +196,7 @@ class RIMSharedUnetv2:
                 cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
-            source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states, training=False)
+            source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states, training=False)
             source_series = source_series.write(index=current_step, value=self.source_link(source))
             kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
             if current_step > 0:

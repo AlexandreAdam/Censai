@@ -10,7 +10,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/vae_kappa_gridsearch.py\
-  --datasets $CENSAI_PATH/data/hkappa128hst_TNG100_fr_trainset/\
+  --datasets $CENSAI_PATH/data/hkappa128hst_TNG100_rau_trainset/\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --epochs=100\

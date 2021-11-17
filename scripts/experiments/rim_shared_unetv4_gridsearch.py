@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_shared_unetv3 import main
+from scripts.train_rim_shared_unetv4 import main
 import copy
 import pandas as pd
 
@@ -20,7 +20,7 @@ RIM_HPARAMS = [
     "steps",
     "kappalog",
     "kappa_normalize",
-    "source_link"
+    "source_link",
 ]
 
 UNET_MODEL_HPARAMS = [
@@ -223,9 +223,7 @@ if __name__ == '__main__':
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
     parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
-    parser.add_argument("--kappa_init",         required=True,                  help="Path to initial kappa (npy file)")
-    parser.add_argument("--source_init",        required=True,                  help="Path to initial source (npy file)")
-    parser.add_argument("--flux_lagrange_multiplier",       default=0.,   nargs="+", type=float,     help="Value of Lagrange multiplier for the flux constraint")
+    parser.add_argument("--flux_lagrange_multiplier",       default=1e-3, type=float, nargs="+",     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
