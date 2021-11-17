@@ -512,6 +512,7 @@ if __name__ == "__main__":
     # RIM hyperparameters
     parser.add_argument("--steps",              default=16,     type=int,       help="Number of time steps of RIM")
     parser.add_argument("--adam",               action="store_true",            help="ADAM update for the log-likelihood gradient.")
+    parser.add_argument("--rmsprop",            action="store_true",            help="RMSProp update for the log-likelihood gradient. Supersede adam.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
     parser.add_argument("--source_link",        default="identity",             help="One of 'exp', 'source', 'relu' or 'identity' (default).")

@@ -12,6 +12,7 @@ class RIMSharedUnetv3:
             unet: SharedUnetModelv4,
             steps: int,
             adam=True,
+            rmsprop=True, # overwrite ADAM for now
             kappalog=True,
             kappa_normalize=False,
             source_link="relu",
@@ -66,7 +67,9 @@ class RIMSharedUnetv3:
             raise NotImplementedError(
                 f"{source_link} not in ['exp', 'identity', 'relu', 'leaky_relu', 'lrelu4p', 'sigmoid']")
 
-        if adam:
+        if rmsprop:
+            self.grad_update = self.rmsprop_grad_update
+        elif adam:
             self.grad_update = self.adam_grad_update
         else:
             self.grad_update = lambda x, y, t: (x, y)
@@ -77,12 +80,21 @@ class RIMSharedUnetv3:
         self._grad_var1 = self.beta_2 * self._grad_var1 + (1 - self.beta_2) * tf.square(grad1)
         self._grad_mean2 = self.beta_1 * self._grad_mean2 + (1 - self.beta_1) * grad2
         self._grad_var2 = self.beta_2 * self._grad_var2 + (1 - self.beta_2) * tf.square(grad2)
-        # for grad update, unbias the moments
+        # Unbias the moments
         m_hat1 = self._grad_mean1 / (1 - self.beta_1 ** (time_step + 1))
         v_hat1 = self._grad_var1 / (1 - self.beta_2 ** (time_step + 1))
         m_hat2 = self._grad_mean2 / (1 - self.beta_1 ** (time_step + 1))
         v_hat2 = self._grad_var2 / (1 - self.beta_2 ** (time_step + 1))
         return m_hat1 / (tf.sqrt(v_hat1) + self.epsilon), m_hat2 / (tf.sqrt(v_hat2) + self.epsilon)
+
+    def rmsprop_grad_update(self, grad1, grad2, time_step):
+        time_step = tf.cast(time_step, DTYPE)
+        self._grad_var1 = self.beta_1 * self._grad_var1 + (1 - self.beta_1) * tf.square(grad1)
+        self._grad_var2 = self.beta_1 * self._grad_var2 + (1 - self.beta_1) * tf.square(grad2)
+        # Unbias the moments
+        v_hat1 = self._grad_var1 / (1 - self.beta_1 ** (time_step + 1))
+        v_hat2 = self._grad_var2 / (1 - self.beta_1 ** (time_step + 1))
+        return grad1 / (tf.sqrt(v_hat1) + self.epsilon), grad2 / (tf.sqrt(v_hat2) + self.epsilon)
 
     def initial_states(self, batch_size):
         # Define initial guess in physical space, then apply inverse link function to bring them in prediction space
@@ -121,8 +133,11 @@ class RIMSharedUnetv3:
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        # record initial guess
+        source_series = source_series.write(index=0, value=source)
+        kappa_series = kappa_series.write(index=0, value=kappa)
         # Main optimization loop
-        for current_step in tf.range(self.steps):
+        for current_step in tf.range(self.steps-1):
             with outer_tape.stop_recording():
                 with tf.GradientTape() as g:
                     g.watch(source)
@@ -134,13 +149,12 @@ class RIMSharedUnetv3:
                 source_grad, kappa_grad = g.gradient(cost, [source, kappa])
                 source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
-            source_series = source_series.write(index=current_step, value=source)
-            kappa_series = kappa_series.write(index=current_step, value=kappa)
-            if current_step > 0:
-                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+            source_series = source_series.write(index=current_step+1, value=source)
+            kappa_series = kappa_series.write(index=current_step+1, value=kappa)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
-        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     @tf.function
@@ -158,7 +172,11 @@ class RIMSharedUnetv3:
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
-        for current_step in tf.range(self.steps):
+        # record initial guess
+        source_series = source_series.write(index=0, value=source)
+        kappa_series = kappa_series.write(index=0, value=kappa)
+        # Main optimization loop
+        for current_step in tf.range(self.steps-1):
             y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
             flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
             log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
@@ -166,13 +184,12 @@ class RIMSharedUnetv3:
             source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
-            source_series = source_series.write(index=current_step, value=source)
-            kappa_series = kappa_series.write(index=current_step, value=kappa)
-            if current_step > 0:
-                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+            source_series = source_series.write(index=current_step+1, value=source)
+            kappa_series = kappa_series.write(index=current_step+1, value=kappa)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
-        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def predict(self, lensed_image, noise_rms, psf):
@@ -185,8 +202,11 @@ class RIMSharedUnetv3:
         source_series = tf.TensorArray(DTYPE, size=self.steps)
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+        # record initial guess
+        source_series = source_series.write(index=0, value=source)
+        kappa_series = kappa_series.write(index=0, value=kappa)
         # Main optimization loop
-        for current_step in range(self.steps):
+        for current_step in range(self.steps-1):
             with tf.GradientTape() as g:
                 g.watch(source)
                 g.watch(kappa)
@@ -197,13 +217,12 @@ class RIMSharedUnetv3:
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states, training=False)
-            source_series = source_series.write(index=current_step, value=self.source_link(source))
-            kappa_series = kappa_series.write(index=current_step, value=self.kappa_link(kappa))
-            if current_step > 0:
-                chi_squared_series = chi_squared_series.write(index=current_step - 1, value=log_likelihood)
+            source_series = source_series.write(index=current_step+1, value=self.source_link(source))
+            kappa_series = kappa_series.write(index=current_step+1, value=self.kappa_link(kappa))
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
-        chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()  # stack along 0-th dimension
 
     def cost_function(self, lensed_image, source, kappa, noise_rms, psf, outer_tape=nulltape, reduction=True):
