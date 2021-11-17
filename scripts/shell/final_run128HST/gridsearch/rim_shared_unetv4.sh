@@ -10,8 +10,8 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
-  --datasets $CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_denoised_validated_train\
-  --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_denoised_validated_val\
+  --datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_train\
+  --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_val\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=16\
@@ -33,14 +33,14 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --steps 8 16\
   --flux_lagrange_multiplier 0.\
   --time_weights uniform quadratic\
-  --kappa_residual_weights sqrt\
+  --kappa_residual_weights uniform sqrt\
   --source_residual_weights uniform\
   --adam 1\
   --rmsprop 0 1\
   --upsampling_interpolation 0\
   --kappalog\
   --source_link identity\
-  --filters 32\
+  --filters 16 32\
   --filter_scaling 2\
   --kernel_size 3\
   --layers 4\
@@ -49,7 +49,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation tanh bipolar_relu\
+  --activation tanh bipolar_relu leaky_relu\
   --batch_norm 0\
   --gru_architecture concat\
   --cache_file=$SLURM_TMPDIR/cache\

@@ -17,6 +17,7 @@ DATE = datetime.now().strftime("%y%m%d%H%M%S")
 
 RIM_HPARAMS = [
     "adam",
+    "rmsprop",
     "steps",
     "kappalog",
     "kappa_normalize",
@@ -95,6 +96,7 @@ PARAMS_NICKNAME = {
     "gru_architecture": "GA",
 
     "adam": "A",
+    "rmsprop": "RMSP",
     "steps": "TS",
     "source_link": "Sli",
     "flux_lagrange_multiplier": "FLM"
@@ -220,6 +222,7 @@ if __name__ == '__main__':
     # RIM hyperparameters
     parser.add_argument("--steps",              default=16, nargs="+",    type=int,       help="Number of time steps of RIM")
     parser.add_argument("--adam",               default=0,  nargs="+",    type=int,       help="ADAM update for the log-likelihood gradient.")
+    parser.add_argument("--rmsprop",            default=0,  nargs="+",    type=int,       help="RMSprop update for the log-likelihood gradient. Supersede ADAM")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
     parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
