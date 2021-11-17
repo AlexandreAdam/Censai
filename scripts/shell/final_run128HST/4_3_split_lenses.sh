@@ -3,7 +3,7 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
-#SBATCH --time=0-04:00		# time (DD-HH:MM)
+#SBATCH --time=0-20:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=SplitLense
 # 00k-512_k128
