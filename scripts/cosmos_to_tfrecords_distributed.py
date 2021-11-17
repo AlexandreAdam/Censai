@@ -46,17 +46,17 @@ def distributed_strategy(args):
             ps = gal.noise._get_update_rootps((args.pixels, args.pixels), wcs=galsim.PixelScale(args.pixel_scale))
 
             # We draw the pixel image of the convolved image
-            im = gal.drawImage(nx=args.pixels, ny=args.pixels, scale=args.pixel_scale,
-                               method='no_pixel', use_true_center=False).array.astype('float32')
+            im = gal.drawImage(nx=args.pixels, ny=args.pixels, scale=args.pixel_scale, method='no_pixel', use_true_center=False).array.astype('float32')
 
             # preprocess image
             # For correlated noise, we estimate that the sqrt of the Energy Spectral Density of the noise at (f_x=f_y=0)
             # is a good estimate of the STD
-            im = tf.nn.relu(im - ps[0, 0]).numpy()       # subtract background, fold negative pixels to 0
-            im /= im.max()                               # normalize peak to 1
-            signal_pixels = np.sum(im > args.signal_threshold)     # how many pixels have a value above a certain threshold
-            if signal_pixels < args.signal_pixels:  # argument used to select only examples that are more distinct galaxy features (it does however bias the dataset in redshift space)
-                continue
+            if args.preprocess:
+                im = tf.nn.relu(im - ps[0, 0]).numpy()       # subtract background, fold negative pixels to 0
+                im /= im.max()                               # normalize peak to 1
+                signal_pixels = np.sum(im > args.signal_threshold)     # how many pixels have a value above a certain threshold
+                if signal_pixels < args.signal_pixels:  # argument used to select only examples that are more distinct galaxy features (it does however bias the dataset in redshift space)
+                    continue
 
             # Draw a kimage of the galaxy, just to figure out what maxk is, there might
             # be more efficient ways to do this though...
@@ -126,6 +126,7 @@ if __name__ == '__main__':
     parser.add_argument("--store_attributes",       action="store_true",            help="Wether to store ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'z_phot] or not")
     parser.add_argument("--output_dir",             required=True,                  help="Path to the directory where to store tf records")
     parser.add_argument("--compression_type",       default=None,                   help="Default is no compression. Use 'GZIP' to compress")
+    parser.add_argument("--preprocess",             action="store_true",            help="Preprocess data (relu, peak scaling and signa threshold)")
 
     args = parser.parse_args()
     if args.store_attributes:

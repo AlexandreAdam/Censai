@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-12
+#SBATCH --array=1-16
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_kappa_gridsearch.py\
   --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_denoised_validated_val\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=12\
+  --n_models=16\
   --forward_method=fft\
   --epochs=200\
   --max_time=47\
@@ -30,24 +30,24 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_kappa_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
-  --steps 8\
+  --steps 8 16\
   --time_weights uniform\
-  --kappa_residual_weights uniform\
+  --kappa_residual_weights uniform sqrt\
   --adam 1\
   --upsampling_interpolation 0\
   --kappalog\
-  --filters 8\
-  --filter_scaling 2\
+  --filters 32\
+  --filter_scaling 1\
   --kernel_size 3\
-  --layers 2 4 6\
+  --layers 5 6\
   --block_conv_layers 1 2\
   --kernel_size 3\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation leaky_relu\
+  --activation tanh\
   --batch_norm 0\
-  --gru_architecture concat plus_highway\
+  --gru_architecture plus\
   --kappa_init=$CENSAI_PATH/data/hkappa128hst_TNG100_rau_trainset_average.npy\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst2\
