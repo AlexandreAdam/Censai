@@ -522,7 +522,7 @@ if __name__ == "__main__":
     parser.add_argument("--kappa_normalize",    action="store_true")
     parser.add_argument("--source_link",        default="sigmoid",              help="One of 'exp', 'source', 'relu' or 'identity' (default).")
     parser.add_argument("--kappa_init",         required=True,                  help="Path to initial kappa (npy file)")
-    parser.add_argument("--source_init",         required=True,                  help="Path to initial source (npy file)")
+    parser.add_argument("--source_init",        required=True,                  help="Path to initial source (npy file)")
     parser.add_argument("--flux_lagrange_multiplier",       default=1e-3,   type=float,     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params

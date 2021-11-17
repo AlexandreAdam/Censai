@@ -31,7 +31,6 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_kappa_gridsearch.py\
   --block_length=1\
   --buffer_size=10000\
   --steps 8 16\
-  --flux_lagrange_multiplier 0.\
   --time_weights uniform quadratic\
   --kappa_residual_weights uniform sqrt\
   --adam 1\

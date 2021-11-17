@@ -20,9 +20,7 @@ RIM_HPARAMS = [
     "steps",
     "kappalog",
     "kappa_normalize",
-    "source_link",
-    "kappa_init",
-    "source_init"
+    "source_link"
 ]
 
 UNET_MODEL_HPARAMS = [
@@ -99,8 +97,6 @@ PARAMS_NICKNAME = {
     "adam": "A",
     "steps": "TS",
     "source_link": "Sli",
-    "source_init": "Sini",
-    "kappa_init": "Kini",
     "flux_lagrange_multiplier": "FLM"
 }
 
@@ -227,9 +223,9 @@ if __name__ == '__main__':
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
     parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
-    parser.add_argument("--kappa_init",         default=1e-1, nargs="+",  type=float,     help="Initial value of kappa for RIM")
-    parser.add_argument("--source_init",        default=1e-3, nargs="+",  type=float,     help="Initial value of source for RIM")
-    parser.add_argument("--flux_lagrange_multiplier",       default=1e-3, type=float, nargs="+",     help="Value of Lagrange multiplier for the flux constraint")
+    parser.add_argument("--kappa_init",         required=True,                  help="Path to initial kappa (npy file)")
+    parser.add_argument("--source_init",        required=True,                  help="Path to initial source (npy file)")
+    parser.add_argument("--flux_lagrange_multiplier",       default=0.,   type=float,     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
