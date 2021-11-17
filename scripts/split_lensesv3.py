@@ -2,34 +2,49 @@ import tensorflow as tf
 from censai.data.lenses_tng_v3 import decode_all
 from censai.utils import _bytes_feature, _int64_feature, _float_feature
 import os, glob
-import math
+import numpy as np
+import math, time
+
+# total number of slurm workers detected
+# defaults to 1 if not running under SLURM
+N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
+
+# this worker's array index. Assumes slurm array job is zero-indexed
+# defaults to zero if not running under SLURM
+THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 
-def main(args):
+def distributed_strategy(args):
     files = [glob.glob(os.path.join(args.dataset, "*.tfrecords"))]
     # Read concurrently from multiple records
     files = tf.data.Dataset.from_tensor_slices(files).shuffle(len(files), reshuffle_each_iteration=False)
     dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
                                block_length=1, num_parallel_calls=tf.data.AUTOTUNE)
-    total_items = 0
-    for _ in dataset:
-        total_items += 1
-
+    total_items = int(np.sum(np.loadtxt(os.path.join(args.dataset, "shard_size.txt")), axis=0)[1])
     train_items = math.floor(args.train_split * total_items)
 
     dataset = dataset.shuffle(args.buffer_size, reshuffle_each_iteration=False).map(decode_all)
     train_dataset = dataset.take(train_items)
     val_dataset = dataset.skip(train_items)
 
+    if THIS_WORKER > 1:
+        time.sleep(3)
     train_dir = args.dataset + "_train"
     if not os.path.isdir(train_dir):
         os.mkdir(train_dir)
     val_dir = args.dataset + "_val"
     if not os.path.isdir(val_dir):
         os.mkdir(val_dir)
+    if THIS_WORKER <= 1:
+        with open(os.path.join(train_dir, "dataset_size.txt"), "w") as f:
+            f.write(f"{train_items:d}")
+        with open(os.path.join(val_dir, "dataset_size.txt"), "w") as f:
+            f.write(f"{total_items-train_items:d}")
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     train_shards = train_items // args.examples_per_shard + 1 * (train_items % args.examples_per_shard > 0)
-    for shard in range(train_shards):
+    val_shards = (total_items - train_items) // args.examples_per_shard + 1 * ((total_items - train_items) % args.examples_per_shard > 0)
+
+    for shard in range((THIS_WORKER - 1), train_shards, N_WORKERS):
         data = train_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
         with tf.io.TFRecordWriter(os.path.join(train_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
             for example in data:
@@ -53,8 +68,7 @@ def main(args):
                 serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
                 record = serialized_output.SerializeToString()
                 writer.write(record)
-    val_shards = (total_items - train_items) // args.examples_per_shard + 1 * ((total_items - train_items) % args.examples_per_shard > 0)
-    for shard in range(val_shards):
+    for shard in range((THIS_WORKER - 1), val_shards, N_WORKERS):
         data = val_dataset.skip(shard * args.examples_per_shard).take(args.examples_per_shard)
         with tf.io.TFRecordWriter(os.path.join(val_dir, f"data_{shard:02d}.tfrecords"), options=options) as writer:
             for example in data:
@@ -78,10 +92,6 @@ def main(args):
                 serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
                 record = serialized_output.SerializeToString()
                 writer.write(record)
-    with open(os.path.join(train_dir, "dataset_size.txt"), "w") as f:
-        f.write(f"{train_items:d}")
-    with open(os.path.join(val_dir, "dataset_size.txt"), "w") as f:
-        f.write(f"{total_items-train_items:d}")
 
 
 if __name__ == '__main__':
@@ -95,4 +105,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    main(args)
+    distributed_strategy(args)
