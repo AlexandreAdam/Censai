@@ -6,10 +6,10 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=2-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_SharedUnetv4_FR128hst_control_sie
+#SBATCH --job-name=Train_RIM_SharedUnetv3_FR128hst_control_sie
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
+python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses128hst_SIE_200k_control_validated_train\
   --val_datasets $CENSAI_PATH/data/lenses128hst_SIE_200k_control_validated_val\
   --compression_type=GZIP\
@@ -18,8 +18,8 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --forward_method=fft\
   --epochs=200\
   --max_time=47\
-  --optimizer ADAMAX\
-  --initial_learning_rate 1e-4\
+  --optimizer SGD\
+  --initial_learning_rate 1e-5\
   --decay_rate 1\
   --decay_steps 50000\
   --staircase\
@@ -51,9 +51,11 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --activation tanh relu\
   --batch_norm 0\
   --gru_architecture concat\
+  --source_init=$CENSAI_PATH/data/cosmos_23.5_finalrun128_train_average.npy\
+  --kappa_init=$CENSAI_PATH/data/hkappa128hst_TNG100_rau_trainset_average.npy\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst3\
-  --logname_prefixe=RIMSU128hstv4_controlsie\
+  --logname_prefixe=RIMSU128hstv3_controlsie\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
