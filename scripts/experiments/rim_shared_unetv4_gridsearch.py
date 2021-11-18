@@ -249,7 +249,7 @@ if __name__ == '__main__':
     parser.add_argument("--activation",                                 default="leaky_relu", nargs="+")
     parser.add_argument("--initializer",                                default="glorot_normal", nargs="+",)
     parser.add_argument("--gru_architecture",                           default="concat", nargs="+",  help="'concat': architecture of Laurence. 'plus': original RNN architecture")
-
+    parser.add_argument("--filter_cap",                                 default=1024,   type=int,   help="Put a maximum amount of filter for each layers. Useful when use din conjunction with filter scaling")
 
     # Training set params
     parser.add_argument("--batch_size",             default=1, nargs="+",  type=int,       help="Number of images in a batch. ")
