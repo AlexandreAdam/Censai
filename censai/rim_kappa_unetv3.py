@@ -77,8 +77,7 @@ class RIMKappaUnetv3:
     def time_step(self, lens, kappa, kappa_grad, states):
         x = tf.concat([lens, kappa, kappa_grad], axis=3)
         delta_xt, states = self.unet(x, states)
-        delta_source, delta_kappa = tf.split(delta_xt, 2, axis=-1)
-        kappa = kappa + delta_kappa
+        kappa = kappa + delta_xt
         return kappa, states
 
     def __call__(self, lensed_image, noise_rms, psf, outer_tape=nulltape):
