@@ -4,7 +4,7 @@ from .utils import get_activation
 from censai.definitions import DTYPE
 
 
-class UnetModelv2(tf.keras.Model):
+class UnetModelv3(tf.keras.Model):
     def __init__(
             self,
             name="RIMUnetModel",
@@ -33,7 +33,7 @@ class UnetModelv2(tf.keras.Model):
             gru_architecture="concat",
             initializer="glorot_uniform",
     ):
-        super(UnetModelv2, self).__init__(name=name)
+        super(UnetModelv3, self).__init__(name=name)
         self.trainable = trainable
 
         common_params = {"padding": "same", "kernel_initializer": initializer,
@@ -132,12 +132,11 @@ class UnetModelv2(tf.keras.Model):
             **common_params
         )
 
-    def __call__(self, xt, states, grad):
-        return self.call(xt, states, grad)
+    def __call__(self, xt, states):
+        return self.call(xt, states)
 
-    def call(self, xt, states, grad):
-        delta_xt = tf.concat([tf.identity(xt), grad], axis=3)
-        delta_xt = self.input_layer(delta_xt)
+    def call(self, xt, states):
+        delta_xt = self.input_layer(xt)
         skip_connections = []
         new_states = []
         for i in range(self._num_layers):
@@ -153,8 +152,7 @@ class UnetModelv2(tf.keras.Model):
         for i in range(self._num_layers):
             delta_xt = self.decoding_layers[i](delta_xt, skip_connections[i])
         delta_xt = self.output_layer(delta_xt)
-        xt_1 = xt + delta_xt  # update image
-        return xt_1, new_states
+        return delta_xt, new_states
 
     def init_hidden_states(self, input_pixels, batch_size, constant=0.):
         hidden_states = []

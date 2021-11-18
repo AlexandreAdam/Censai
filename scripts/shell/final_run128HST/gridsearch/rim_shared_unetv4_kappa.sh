@@ -6,10 +6,10 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=2-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_KappaUnetv3_wFakeSource_FR128hst
+#SBATCH --job-name=Train_RIM_KappaUnetv3_VAE_FR128hst
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_kappa_gridsearch.py\
+python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_kappa_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_train\
   --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_val\
   --compression_type=GZIP\
@@ -30,28 +30,28 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv3_kappa_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
-  --steps 10\
-  --time_weights uniform quadratic\
-  --kappa_residual_weights uniform sqrt linear\
-  --adam 0 1\
+  --steps 8 16\
+  --time_weights uniform\
+  --kappa_residual_weights uniform sqrt\
+  --adam 1\
+  --rsmprop 0 1\
   --kappalog\
   --upsampling_interpolation 0\
   --filters 16\
   --filter_scaling 2\
   --kernel_size 3\
-  --layers 4 6\
+  --layers 4 5 6\
   --block_conv_layers 1\
   --kernel_size 3\
-  --resampling_kernel_size 3 6\
-  --input_kernel_size 7 11\
+  --resampling_kernel_size 3\
+  --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation leaky_relu tanh\
+  --activation tanh\
   --batch_norm 0\
-  --gru_architecture concat\
-  --kappa_init=$CENSAI_PATH/data/hkappa128hst_TNG100_rau_trainset_average.npy\
+  --gru_architecture concat plus plus_highway\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst3\
-  --logname_prefixe=RIMKappa128hstv3_augmented\
+  --logname_prefixe=RIMKappa128hstv4_augmented\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\

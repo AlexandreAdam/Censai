@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_shared_unetv3_kappa import main
+from scripts.train_rim_shared_unetv4_kappa import main
 import copy
 import pandas as pd
 
@@ -19,8 +19,7 @@ RIM_HPARAMS = [
     "adam",
     "steps",
     "kappalog",
-    "kappa_normalize",
-    "kappa_init",
+    "kappa_normalize"
 ]
 
 UNET_MODEL_HPARAMS = [
@@ -92,6 +91,7 @@ PARAMS_NICKNAME = {
     "gru_architecture": "GA",
 
     "adam": "A",
+    "rmspprop": "RMSP",
     "steps": "TS",
     "kappa_init": "Kini"
 }
@@ -214,9 +214,9 @@ if __name__ == '__main__':
     # RIM hyperparameters
     parser.add_argument("--steps",              default=16, nargs="+",    type=int,       help="Number of time steps of RIM")
     parser.add_argument("--adam",               default=0,  nargs="+",    type=int,       help="ADAM update for the log-likelihood gradient.")
+    parser.add_argument("--rmsprop",            default=0,  nargs="+",    type=int,       help="RMSProp update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--kappa_init",         required=True,                      help="Path to initial kappa (npy file)")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)

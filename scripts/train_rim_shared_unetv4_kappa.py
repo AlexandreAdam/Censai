@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
 import math
-from censai import PhysicalModelv2, RIMKappaUnetv2
-from censai.models import UnetModelv2, RayTracer
+from censai import PhysicalModelv2, RIMKappaUnetv3
+from censai.models import UnetModelv3, RayTracer
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 from censai.data.lenses_tng_v3 import decode_train, decode_physical_model_info
 from censai.definitions import DTYPE
@@ -26,9 +26,9 @@ RIM_HPARAMS = [
     "adam",
     "steps",
     "kappalog",
-    "kappa_normalize",
-    "kappa_init"
+    "kappa_normalize"
 ]
+
 UNET_MODEL_HPARAMS = [
     "filters",
     "filter_scaling",
@@ -144,7 +144,7 @@ def main(args):
             raytracer=raytracer,
         )
 
-        unet = UnetModelv2(
+        unet = UnetModelv3(
             filters=args.filters,
             filter_scaling=args.filter_scaling,
             kernel_size=args.kernel_size,
@@ -165,16 +165,14 @@ def main(args):
             batch_norm=args.batch_norm,
             dropout_rate=args.dropout_rate
         )
-        kappa_init = tf.constant(np.load(args.kappa_init).reshape([1, phys.kappa_pixels, phys.kappa_pixels, 1]), dtype=DTYPE)
-
-        rim = RIMKappaUnetv2(
+        rim = RIMKappaUnetv3(
             physical_model=phys,
             unet=unet,
             steps=args.steps,
             adam=args.adam,
+            rmsprop=args.rmsprop,
             kappalog=args.kappalog,
             kappa_normalize=args.kappa_normalize,
-            kappa_init=kappa_init,
         )
         learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=args.initial_learning_rate,
@@ -483,9 +481,9 @@ if __name__ == "__main__":
     # RIM hyperparameters
     parser.add_argument("--steps",              default=16,     type=int,       help="Number of time steps of RIM")
     parser.add_argument("--adam",               action="store_true",            help="ADAM update for the log-likelihood gradient.")
+    parser.add_argument("--rmsprop",            action="store_true",            help="RMSProp update for the log-likelihood gradient. Supersede adam.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--kappa_init",         required=True,                  help="Path to initial kappa (npy file)")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32,     type=int)
