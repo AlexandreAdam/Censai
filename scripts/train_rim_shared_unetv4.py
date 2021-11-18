@@ -48,7 +48,8 @@ UNET_MODEL_HPARAMS = [
     "bias_l1_amp",
     "activation",
     "initializer",
-    "gru_architecture"
+    "gru_architecture",
+    "filter_cap"
 ]
 
 
@@ -161,7 +162,8 @@ def main(args):
             activation=args.activation,
             initializer=args.initializer,
             batch_norm=args.batch_norm,
-            dropout_rate=args.dropout_rate
+            dropout_rate=args.dropout_rate,
+            filter_cap=args.filter_cap
         )
         rim = RIMSharedUnetv3(
             physical_model=phys,
@@ -539,6 +541,7 @@ if __name__ == "__main__":
     parser.add_argument("--activation",                                 default="leaky_relu")
     parser.add_argument("--initializer",                                default="glorot_normal")
     parser.add_argument("--gru_architecture",                           default="concat",   help="'concat': architecture of Laurence. 'plus': original RNN architecture")
+    parser.add_argument("--filter_cap",                                 default=1024,   type=int,   help="Put a maximum amount of filter for each layers. Useful when use din conjunction with filter scaling")
 
     # Physical model hyperparameter
     parser.add_argument("--forward_method",         default="conv2d",               help="One of ['conv2d', 'fft', 'unet']. If the option 'unet' is chosen, the parameter "

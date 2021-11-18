@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer, ConvGRU, ConvGRUPlus, ConvGRUPlusHighway
 from censai.models.utils import get_activation
@@ -30,6 +31,7 @@ class SharedUnetModelv4(tf.keras.Model):
             trainable=True,
             gru_architecture="concat",  # or "plus"
             initializer="glorot_uniform",
+            filter_cap=None
     ):
         super(SharedUnetModelv4, self).__init__(name=name)
         self.trainable = trainable
@@ -44,6 +46,7 @@ class SharedUnetModelv4(tf.keras.Model):
         resampling_kernel_size = resampling_kernel_size if resampling_kernel_size is not None else kernel_size
         bottleneck_kernel_size = bottleneck_kernel_size if bottleneck_kernel_size is not None else kernel_size
         gru_kernel_size = gru_kernel_size if gru_kernel_size is not None else kernel_size
+        self.filter_cap = filter_cap if isinstance(filter_cap, int) else np.inf
         activation = get_activation(activation)
         if gru_architecture == "concat":
             GRU = ConvGRU
@@ -67,8 +70,8 @@ class SharedUnetModelv4(tf.keras.Model):
                 UnetEncodingLayer(
                     kernel_size=kernel_size,
                     downsampling_kernel_size=resampling_kernel_size,
-                    filters=int(filter_scaling**(i) * filters),
-                    downsampling_filters=int(filter_scaling**(i + 1) * filters),
+                    filters=min(filter_cap, int(filter_scaling**(i) * filters)),
+                    downsampling_filters=min(filter_cap, int(filter_scaling**(i + 1) * filters)),
                     conv_layers=block_conv_layers,
                     activation=activation,
                     strides=strides,
@@ -81,7 +84,7 @@ class SharedUnetModelv4(tf.keras.Model):
                 UnetDecodingLayer(
                     kernel_size=kernel_size,
                     upsampling_kernel_size=resampling_kernel_size,
-                    filters=int(filter_scaling**(i) * filters),
+                    filters=min(filter_cap, int(filter_scaling**(i) * filters)),
                     conv_layers=block_conv_layers,
                     activation=activation,
                     bilinear=upsampling_interpolation,
@@ -92,7 +95,7 @@ class SharedUnetModelv4(tf.keras.Model):
             )
             self.gated_recurrent_blocks.append(
                     GRU(
-                        filters=int(filter_scaling**(i) * filters),
+                        filters=min(filter_cap, int(filter_scaling**(i) * filters)),
                         kernel_size=gru_kernel_size
                 )
             )
@@ -100,7 +103,7 @@ class SharedUnetModelv4(tf.keras.Model):
         self.decoding_layers = self.decoding_layers[::-1]
 
         self.bottleneck_gru = GRU(
-            filters=int(filters * filter_scaling**(layers)),
+            filters=min(filter_cap, int(filters * filter_scaling**(layers))),
             kernel_size=bottleneck_kernel_size
         )
 
@@ -142,12 +145,12 @@ class SharedUnetModelv4(tf.keras.Model):
         hidden_states = []
         for i in range(self._num_layers):
             pixels = input_pixels // self._strides**(i)
-            filters = int(self._filter_scaling**(i) * self._init_filters)
+            filters = min(self.filter_cap, int(self._filter_scaling**(i) * self._init_filters))
             hidden_states.append(
                 tf.zeros(shape=[batch_size, pixels, pixels, filters], dtype=DTYPE)
             )
         pixels = input_pixels // self._strides ** (self._num_layers)
         hidden_states.append(
-            tf.zeros(shape=[batch_size, pixels, pixels, int(self._init_filters * self._filter_scaling**(self._num_layers))], dtype=DTYPE)
+            tf.zeros(shape=[batch_size, pixels, pixels, min(self.filter_cap, int(self._init_filters * self._filter_scaling**(self._num_layers)))], dtype=DTYPE)
         )
         return hidden_states

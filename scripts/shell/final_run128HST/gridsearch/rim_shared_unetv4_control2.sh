@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-16
+#SBATCH --array=1-24
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_denoised_validated_val\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=16\
+  --n_models=24\
   --forward_method=fft\
   --epochs=200\
   --max_time=47\
@@ -40,16 +40,16 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --upsampling_interpolation 0\
   --kappalog\
   --source_link identity\
-  --filters 32\
+  --filters 32 64\
   --filter_scaling 1\
   --kernel_size 3\
-  --layers 5 6\
+  --layers 4 5 6\
   --block_conv_layers 1 2\
   --kernel_size 3\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation tanh bipolar_relu\
+  --activation tanh\
   --batch_norm 0\
   --gru_architecture concat\
   --cache_file=$SLURM_TMPDIR/cache\
