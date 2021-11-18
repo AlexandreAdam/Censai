@@ -52,7 +52,7 @@ class SharedUnetModelv4(tf.keras.Model):
         elif gru_architecture == "plus_highway":
             GRU = ConvGRUPlusHighway
         else:
-            raise ValueError(f"gru_architecture={gru_architecture}, should be in ['conca', 'plus', 'plus_highway']")
+            raise ValueError(f"gru_architecture={gru_architecture}, should be in ['concat', 'plus', 'plus_highway']")
 
         self._num_layers = layers
         self._strides = strides

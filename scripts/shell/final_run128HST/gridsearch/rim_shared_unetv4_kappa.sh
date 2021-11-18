@@ -34,7 +34,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_kappa_gridsearch.py\
   --time_weights uniform\
   --kappa_residual_weights uniform sqrt\
   --adam 1\
-  --rsmprop 0 1\
+  --rmsprop 0 1\
   --kappalog\
   --upsampling_interpolation 0\
   --filters 16\
