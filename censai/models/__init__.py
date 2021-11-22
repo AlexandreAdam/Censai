@@ -20,3 +20,4 @@ from .rim_shared_unet_modelv3 import SharedUnetModelv3
 from .rim_modelv0 import ModelMorningstar
 from .rim_unet_modelv2 import UnetModelv2
 from .rim_shared_unet_modelv4 import SharedUnetModelv4
+from .rim_unet_modelv3 import UnetModelv3
