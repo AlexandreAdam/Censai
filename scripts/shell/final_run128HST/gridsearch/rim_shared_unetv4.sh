@@ -6,7 +6,7 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=2-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_SharedUnetv4_FR128hst_control
+#SBATCH --job-name=Train_RIM_SharedUnetv4_FR128hst
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
@@ -54,7 +54,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --gru_architecture concat\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst3\
-  --logname_prefixe=RIMSU128hstv4_control\
+  --logname_prefixe=RIMSU128hstv4\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
