@@ -10,8 +10,8 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
-  --datasets $CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_denoised_validated_train\
-  --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_denoised_validated_val\
+  --datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_train\
+  --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_val\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=24\
@@ -20,7 +20,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --max_time=47\
   --optimizer ADAMAX\
   --initial_learning_rate 1e-4\
-  --decay_rate 1\
+  --decay_rate 0.96\
   --decay_steps 50000\
   --staircase\
   --patience=80\
@@ -30,22 +30,23 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
-  --steps 10\
+  --steps 8 12\
   --flux_lagrange_multiplier 0.\
   --time_weights uniform\
   --kappa_residual_weights sqrt\
   --source_residual_weights uniform\
   --adam 1\
-  --rmsprop 0 1\
+  --rmsprop 0\
   --upsampling_interpolation 0\
   --kappalog\
   --source_link identity\
-  --filters 32 64\
-  --filter_scaling 1\
+  --filters 128\
+  --filter_scaling 2\
   --kernel_size 3\
   --layers 4 5 6\
+  --filter_cap=1024\
   --block_conv_layers 1 2\
-  --kernel_size 3\
+  --kernel_size 3 5\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\

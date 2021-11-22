@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from scripts.train_rim_shared_unetv4 import main
+from scripts.train_rim_shared_unetv4_kappa import main
 import copy
 import pandas as pd
 
@@ -17,11 +17,9 @@ DATE = datetime.now().strftime("%y%m%d%H%M%S")
 
 RIM_HPARAMS = [
     "adam",
-    "rmsprop",
     "steps",
     "kappalog",
-    "kappa_normalize",
-    "source_link",
+    "kappa_normalize"
 ]
 
 UNET_MODEL_HPARAMS = [
@@ -44,8 +42,7 @@ UNET_MODEL_HPARAMS = [
     "bias_l1_amp",
     "activation",
     "initializer",
-    "gru_architecture",
-    "flux_lagrange_multiplier"
+    "gru_architecture"
 ]
 
 EXTRA_PARAMS = [
@@ -58,7 +55,6 @@ EXTRA_PARAMS = [
     "decay_steps",
     "time_weights",
     "kappa_residual_weights",
-    "source_residual_weights"
 ]
 
 
@@ -72,7 +68,6 @@ PARAMS_NICKNAME = {
     "decay_steps": "ds",
     "time_weights": "TW",
     "kappa_residual_weights": "KRW",
-    "source_residual_weights": "SRW",
 
     "filters": "F",
     "filter_scaling": "FS",
@@ -96,10 +91,9 @@ PARAMS_NICKNAME = {
     "gru_architecture": "GA",
 
     "adam": "A",
-    "rmsprop": "RMSP",
+    "rmspprop": "RMSP",
     "steps": "TS",
-    "source_link": "Sli",
-    "flux_lagrange_multiplier": "FLM"
+    "kappa_init": "Kini"
 }
 
 
@@ -188,8 +182,6 @@ def distributed_strategy(args):
             "best_score": best_score,
             "train_kappa_cost": history["train_kappa_cost"][-1],
             "val_kappa_cost": history["val_kappa_cost"][-1],
-            "train_source_cost": history["train_source_cost"][-1],
-            "val_source_cost": history["val_source_cost"][-1]
         })
         # Save hyperparameters and scores in shared csv for this gridsearch
         df = pd.DataFrame(params_dict, index=[gridsearch_id])
@@ -222,11 +214,9 @@ if __name__ == '__main__':
     # RIM hyperparameters
     parser.add_argument("--steps",              default=16, nargs="+",    type=int,       help="Number of time steps of RIM")
     parser.add_argument("--adam",               default=0,  nargs="+",    type=int,       help="ADAM update for the log-likelihood gradient.")
-    parser.add_argument("--rmsprop",            default=0,  nargs="+",    type=int,       help="RMSprop update for the log-likelihood gradient. Supersede ADAM")
+    parser.add_argument("--rmsprop",            default=0,  nargs="+",    type=int,       help="RMSProp update for the log-likelihood gradient.")
     parser.add_argument("--kappalog",           action="store_true")
     parser.add_argument("--kappa_normalize",    action="store_true")
-    parser.add_argument("--source_link",        default="identity",  nargs="+",           help="One of 'exp', 'source' or 'identity' (default).")
-    parser.add_argument("--flux_lagrange_multiplier",       default=1e-3, type=float, nargs="+",     help="Value of Lagrange multiplier for the flux constraint")
 
     # Shared Unet params
     parser.add_argument("--filters",                                    default=32, nargs="+",    type=int)
@@ -249,7 +239,7 @@ if __name__ == '__main__':
     parser.add_argument("--activation",                                 default="leaky_relu", nargs="+")
     parser.add_argument("--initializer",                                default="glorot_normal", nargs="+",)
     parser.add_argument("--gru_architecture",                           default="concat", nargs="+",  help="'concat': architecture of Laurence. 'plus': original RNN architecture")
-    parser.add_argument("--filter_cap",                                 default=1024,   type=int,   help="Put a maximum amount of filter for each layers. Useful when use din conjunction with filter scaling")
+
 
     # Training set params
     parser.add_argument("--batch_size",             default=1, nargs="+",  type=int,       help="Number of images in a batch. ")
@@ -277,7 +267,6 @@ if __name__ == '__main__':
     parser.add_argument("--unroll_time_steps",      action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
     parser.add_argument("--reset_optimizer_states",  action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
     parser.add_argument("--kappa_residual_weights",         default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
-    parser.add_argument("--source_residual_weights",        default="uniform",        nargs="+",     help="Options are ['uniform', 'linear', 'quadratic']")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
