@@ -12,6 +12,7 @@ source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/augment_cosmos.py\
     --output_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun512_augmented\
     --batch_size=10\
+    --compression_type=GZIP\
     --cosmos_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun612/\
     --crop=50\
     --max_shift=25

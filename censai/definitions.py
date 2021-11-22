@@ -134,7 +134,7 @@ def xsquared(x):
 
 
 def log_10(x):
-    return tf.math.log(x + LOGFLOOR) / LOG10
+    return tf.math.log(x) / LOG10
 
 
 def kappa_clipped_exponential(log_kappa):
