@@ -292,3 +292,6 @@ if __name__ == '__main__':
     parser.add_argument("--max_ellipticity",    default=0.6,        type=float, help="Maximum ellipticty of density profile.")
     parser.add_argument("--max_theta_e",        default=0.5,        type=float, help="Maximum allowed Einstein radius")
     parser.add_argument("--min_theta_e",        default=2.5,        type=float, help="Minimum allowed Einstein radius")
+
+    args = parser.parse_args()
+    distributed_strategy(args)
