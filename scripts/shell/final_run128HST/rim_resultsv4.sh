@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G			     # memory per node
-#SBATCH --time=0-10:00		# time (DD-HH:MM)
+#SBATCH --time=1-0:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Save_RIM_resultsv4
 #SBATCH --output=%x-%j.out
@@ -17,7 +17,7 @@ python $CENSAI_PATH/scripts/rim_results_v4.py\
   --test_dataset=lenses128hst_TNG_rau_200k_control_denoised_testset_validated\
   --train_size=10000\
   --val_size=10000\
-  --test_size=200000\
+  --test_size=30000\
   --buffer_size=10000\
   --batch_size=1\
   --lens_coherence_bins=40\
