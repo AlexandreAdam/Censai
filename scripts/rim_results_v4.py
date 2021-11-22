@@ -41,7 +41,7 @@ def distributed_strategy(args):
     test_dataset = test_dataset.map(decode_results).shuffle(buffer_size=args.buffer_size)
 
     ps_lens = PowerSpectrum(bins=args.lens_coherence_bins, pixels=physical_params["pixels"].numpy())
-    ps_source = PowerSpectrum(bins=args.source_coherence_bins,  pixels=physical_params["source pixels"].numpy())
+    ps_source = PowerSpectrum(bins=args.source_coherence_bins,  pixels=physical_params["src pixels"].numpy())
     ps_kappa = PowerSpectrum(bins=args.kappa_coherence_bins,  pixels=physical_params["kappa pixels"].numpy())
 
     phys = PhysicalModelv2(
