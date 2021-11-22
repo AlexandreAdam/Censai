@@ -9,6 +9,6 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/split_cosmos.py\
-  --dataset=$CENSAI_PATH/data/cosmos_23.5_finalrun512\
+  --dataset=$CENSAI_PATH/data/cosmos_23.5_finalrun512_augmented\
   --train_split=0.9\
   --buffer_size=1000
