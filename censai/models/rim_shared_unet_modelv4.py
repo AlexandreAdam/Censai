@@ -70,8 +70,8 @@ class SharedUnetModelv4(tf.keras.Model):
                 UnetEncodingLayer(
                     kernel_size=kernel_size,
                     downsampling_kernel_size=resampling_kernel_size,
-                    filters=min(filter_cap, int(filter_scaling**(i) * filters)),
-                    downsampling_filters=min(filter_cap, int(filter_scaling**(i + 1) * filters)),
+                    filters=min(self.filter_cap, int(filter_scaling**(i) * filters)),
+                    downsampling_filters=min(self.filter_cap, int(filter_scaling**(i + 1) * filters)),
                     conv_layers=block_conv_layers,
                     activation=activation,
                     strides=strides,
@@ -84,7 +84,7 @@ class SharedUnetModelv4(tf.keras.Model):
                 UnetDecodingLayer(
                     kernel_size=kernel_size,
                     upsampling_kernel_size=resampling_kernel_size,
-                    filters=min(filter_cap, int(filter_scaling**(i) * filters)),
+                    filters=min(self.filter_cap, int(filter_scaling**(i) * filters)),
                     conv_layers=block_conv_layers,
                     activation=activation,
                     bilinear=upsampling_interpolation,
@@ -95,7 +95,7 @@ class SharedUnetModelv4(tf.keras.Model):
             )
             self.gated_recurrent_blocks.append(
                     GRU(
-                        filters=min(filter_cap, int(filter_scaling**(i) * filters)),
+                        filters=min(self.filter_cap, int(filter_scaling**(i) * filters)),
                         kernel_size=gru_kernel_size
                 )
             )
@@ -103,7 +103,7 @@ class SharedUnetModelv4(tf.keras.Model):
         self.decoding_layers = self.decoding_layers[::-1]
 
         self.bottleneck_gru = GRU(
-            filters=min(filter_cap, int(filters * filter_scaling**(layers))),
+            filters=min(self.filter_cap, int(filters * filter_scaling**(layers))),
             kernel_size=bottleneck_kernel_size
         )
 
