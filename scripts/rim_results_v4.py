@@ -117,7 +117,7 @@ def distributed_strategy(args):
                 g.create_dataset(name="source_fov", shape=[1], dtype=np.float32)
                 g.create_dataset(name="lens_fov", shape=[1], dtype=np.float32)
 
-                for batch, (lens, source, kappa, noise_rms, psf, fwhm) in dataset.take(data_len).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE):
+                for batch, (lens, source, kappa, noise_rms, psf, fwhm) in enumerate(dataset.take(data_len).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)):
                     batch_size = lens.shape[0]
                     # Compute predictions for kappa and source
                     source_pred, kappa_pred, chi_squared = rim.predict(lens, noise_rms, psf)
@@ -202,7 +202,7 @@ def distributed_strategy(args):
             g.create_dataset(name="source_fov", shape=[1], dtype=np.float32)
             g.create_dataset(name="lens_fov", shape=[1], dtype=np.float32)
 
-            for batch, (_, source, _, noise_rms, psf, fwhm) in sie_dataset.take(data_len).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE):
+            for batch, (_, source, _, noise_rms, psf, fwhm) in enumerate(sie_dataset.take(data_len).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)):
                 batch_size = source.shape[0]
                 # Create some SIE kappa maps
                 _r = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=0, maxval=args.max_shift)
