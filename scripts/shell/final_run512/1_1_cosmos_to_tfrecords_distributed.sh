@@ -14,6 +14,7 @@ python $CENSAI_PATH/scripts/cosmos_to_tfrecords_distributed.py\
   --sample=23.5\
   --exclusion_level=marginal\
   --min_flux=30\
+  --compression_type=GZIP\
   --cosmos_dir=$CENSAI_PATH/data/COSMOS/COSMOS_23.5_training_sample/\
   --store_attributes\
   --output_dir=$CENSAI_PATH/data/cosmos_23.5_finalrun612/
