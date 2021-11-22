@@ -74,13 +74,13 @@ def distributed_strategy(args):
 
     for model_i in range(THIS_WORKER - 1, len(models), N_WORKERS):
         model = models[model_i]
-        with open(os.path.join(model, "unet_hparams.json", "r")) as f:
+        with open(os.path.join(model, "unet_hparams.json")) as f:
             unet_params = json.load(f)
         unet = SharedUnetModelv4(**unet_params)
         ckpt = tf.train.Checkpoint(net=unet)
         checkpoint_manager = tf.train.CheckpointManager(ckpt, model, 1)
         checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint).expect_partial()
-        with open(os.path.join(model, "rim_hparams.json", "r")) as f:
+        with open(os.path.join(model, "rim_hparams.json")) as f:
             rim_params = json.load(f)
 
         rim = RIMSharedUnetv3(phys, unet, **rim_params)
