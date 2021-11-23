@@ -74,8 +74,12 @@ def distributed_strategy(args):
         rim_hparams = json.load(f)
     with open(os.path.join(model_dir, model, "script_params.json")) as f:
         script_hparams = json.load(f)
-    keys = ["kappa_residual_weights", "source_residual_weights", "rmsprop", "source_link", "flux_lagrange_multiplier"]
+    keys = ["kappa_residual_weights", "source_residual_weights", "source_link", "flux_lagrange_multiplier"]
     optim_params = {key: value for key, value in zip(keys, [script_hparams[k] for k in keys])}
+    if "rmsprop" in script_hparams.keys():
+        vars(args)["rmsprop"] = script_hparams["rmsprop"]
+    else:
+        vars(args)["rmsprop"] = 0
     vars(args).update(unet_hparams)
     vars(args).update(rim_hparams)
     vars(args).update(optim_params)
