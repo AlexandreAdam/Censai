@@ -21,7 +21,7 @@ python $CENSAI_PATH/scripts/experiments/continue_rim_shared_unetv4.py\
   RIMSU128hstv4_augmented_001_TS8_K3_L4_BCL2_211118160659\
   RIMSU128hstv4_augmented_000_TS8_K3_L4_BCL1_211118160659\
   RIMSU128hstv4_augmented_003_RMSP0_TS8_F16_NLtanh_TWquadratic_KRWsqrt_211117182256\
-  RIMSU128hstv4_control_000_A0_NLtanh_FLM0.0_TWuniform_21111\
+  RIMSU128hstv4_control_000_A0_NLtanh_FLM0.0_TWuniform_211117090521\
   --forward_method=fft\
   --epochs=200\
   --max_time=47\
