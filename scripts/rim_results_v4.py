@@ -248,8 +248,6 @@ def distributed_strategy(args):
                 g["lens_coherence_spectrum2"][i_begin:i_end] = _ps_lens2.numpy().astype(np.float32)
                 g["source_coherence_spectrum"][i_begin:i_end] = _ps_source.numpy().astype(np.float32)
                 g["source_coherence_spectrum2"][i_begin:i_end] = _ps_source2.numpy().astype(np.float32)
-                g["lens_coherence_spectrum"][i_begin:i_end] = _ps_lens.numpy().astype(np.float32)
-                g["lens_coherence_spectrum"][i_begin:i_end] = _ps_lens.numpy().astype(np.float32)
                 g["kappa_coherence_spectrum"][i_begin:i_end] = _ps_kappa.numpy().astype(np.float32)
                 g["einstein_radius"][i_begin:i_end] = einstein_radius[:, 0, 0, 0].numpy().astype(np.float32)
                 g["position"][i_begin:i_end] = tf.stack([x0[:, 0, 0, 0], y0[:, 0, 0, 0]], axis=1).numpy().astype(np.float32)
