@@ -158,7 +158,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_residuals",             default=1,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
 
     # Make sure each model train on the same dataset
-    parser.add_argument("--seed",                   default=42, nargs="+",  type=int, help="Random seed for numpy and tensorflow.")
+    parser.add_argument("--seed",                   default=42,     type=int, help="Random seed for numpy and tensorflow.")
 
     # Keep these as default, they need to be in Namespace but we dont use them for this script
     parser.add_argument("--model_id",               default="None",                 help="Start training from previous checkpoint of this model if provided")
