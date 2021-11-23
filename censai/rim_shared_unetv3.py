@@ -203,8 +203,8 @@ class RIMSharedUnetv3:
         kappa_series = tf.TensorArray(DTYPE, size=self.steps)
         chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
         # record initial guess
-        source_series = source_series.write(index=0, value=source)
-        kappa_series = kappa_series.write(index=0, value=kappa)
+        source_series = source_series.write(index=0, value=self.source_link(source))
+        kappa_series = kappa_series.write(index=0, value=self.kappa_link(kappa))
         # Main optimization loop
         for current_step in range(self.steps-1):
             with tf.GradientTape() as g:
