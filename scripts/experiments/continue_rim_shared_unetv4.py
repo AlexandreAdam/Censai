@@ -72,8 +72,13 @@ def distributed_strategy(args):
         unet_hparams = json.load(f)
     with open(os.path.join(model_dir, model, "rim_hparams.json")) as f:
         rim_hparams = json.load(f)
+    with open(os.path.join(model_dir, model, "script_params.json")) as f:
+        script_hparams = json.load(f)
+    keys = ["kappa_residual_weights", "source_residual_weights"]
+    optim_params = {key: value for key, value in zip(keys, [script_hparams[k] for k in keys])}
     vars(args).update(unet_hparams)
     vars(args).update(rim_hparams)
+    vars(args).update(optim_params)
     vars(args)["logname"] = f"continue_lr{args.initial_learning_rate}_" + DATE
     history, best_score = main(args)
     params_dict = {k: v for k, v in vars(args).items() if k in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS}
@@ -118,9 +123,9 @@ if __name__ == '__main__':
     parser.add_argument("--raytracer",              default=None,                   help="Path to raytracer checkpoint dir if method 'unet' is used.")
 
     # Training set params
-    parser.add_argument("--batch_size",             default=1, nargs="+",  type=int,       help="Number of images in a batch. ")
+    parser.add_argument("--batch_size",             default=1,      type=int,       help="Number of images in a batch. ")
     parser.add_argument("--train_split",            default=0.8,    type=float,     help="Fraction of the training set.")
-    parser.add_argument("--total_items",            required=True,  nargs="+", type=int,  help="Total images in an epoch.")
+    parser.add_argument("--total_items",            required=True,  type=int,  help="Total images in an epoch.")
     # ... for tfrecord dataset
     parser.add_argument("--num_parallel_reads",     default=10,     type=int,       help="TFRecord dataset number of parallel reads when loading data.")
     parser.add_argument("--cache_file",             default=None,                   help="Path to cache file, useful when training on server. Use ${SLURM_TMPDIR}/cache")
@@ -129,21 +134,21 @@ if __name__ == '__main__':
 
     # Optimization params
     parser.add_argument("-e", "--epochs",            default=10,     type=int,      help="Number of epochs for training.")
-    parser.add_argument("--optimizer",               default="Adam", nargs="+",     help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
-    parser.add_argument("--initial_learning_rate",   default=1e-3,   nargs="+",   type=float,     help="Initial learning rate.")
-    parser.add_argument("--decay_rate",              default=1.,     nargs="+",   type=float,     help="Exponential decay rate of learning rate (1=no decay).")
-    parser.add_argument("--decay_steps",             default=1000,   nargs="+",   type=int,       help="Decay steps of exponential decay of the learning rate.")
+    parser.add_argument("--optimizer",               default="Adam",                help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
+    parser.add_argument("--initial_learning_rate",   default=1e-3,   type=float,     help="Initial learning rate.")
+    parser.add_argument("--decay_rate",              default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
+    parser.add_argument("--decay_steps",             default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",               action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
     parser.add_argument("--patience",                default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",               default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--track_train",             action="store_true",            help="Track training metric instead of validation metric, in case we want to overfit")
     parser.add_argument("--max_time",                default=np.inf, type=float,     help="Time allowed for the training, in hours.")
     parser.add_argument("--buffer_size",             default=1000,   type=int,       help="Buffer size for shuffling at each epoch.")
-    parser.add_argument("--time_weights",            default="uniform", nargs="+",   help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
+    parser.add_argument("--time_weights",            default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
     parser.add_argument("--unroll_time_steps",       action="store_true",            help="Unroll time steps of RIM in GPU usinf tf.function")
     parser.add_argument("--reset_optimizer_states",  action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
-    parser.add_argument("--kappa_residual_weights",  default="uniform",  nargs="+",  help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
-    parser.add_argument("--source_residual_weights", default="uniform",  nargs="+",  help="Options are ['uniform', 'linear', 'quadratic']")
+    parser.add_argument("--kappa_residual_weights",  default="uniform",              help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
+    parser.add_argument("--source_residual_weights", default="uniform",              help="Options are ['uniform', 'linear', 'quadratic']")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
