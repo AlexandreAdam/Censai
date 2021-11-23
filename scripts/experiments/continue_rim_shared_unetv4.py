@@ -161,6 +161,7 @@ if __name__ == '__main__':
     parser.add_argument("--seed",                   default=42,     type=int, help="Random seed for numpy and tensorflow.")
 
     # Keep these as default, they need to be in Namespace but we dont use them for this script
+    parser.add_argument("--filter_cap",             default=1024,   type=int,       help="Put there for legacy scripts, make sure more recent scripts have this cap as well")
     parser.add_argument("--model_id",               default="None",                 help="Start training from previous checkpoint of this model if provided")
     parser.add_argument("--json_override",          default=None,   nargs="+",      help="A json filepath that will override every command line parameters. Useful for reproducibility")
 
