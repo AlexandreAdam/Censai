@@ -151,7 +151,7 @@ class RIMSharedUnetv3:
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step+1, value=source)
             kappa_series = kappa_series.write(index=current_step+1, value=kappa)
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood/self.pixels**2)  # renormalize chi squared here
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
         chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
@@ -186,10 +186,10 @@ class RIMSharedUnetv3:
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step+1, value=source)
             kappa_series = kappa_series.write(index=current_step+1, value=kappa)
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood/self.pixels**2)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
-        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood) # chi squared is normalized in physical model
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def predict(self, lensed_image, noise_rms, psf):
@@ -219,7 +219,7 @@ class RIMSharedUnetv3:
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states, training=False)
             source_series = source_series.write(index=current_step+1, value=self.source_link(source))
             kappa_series = kappa_series.write(index=current_step+1, value=self.kappa_link(kappa))
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood/self.pixels**2)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
         chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood)
