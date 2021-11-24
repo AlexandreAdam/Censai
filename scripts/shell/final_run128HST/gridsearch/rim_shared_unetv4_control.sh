@@ -30,17 +30,17 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
-  --steps 8 16\
+  --steps 8 10\
   --flux_lagrange_multiplier 0.\
   --time_weights uniform quadratic\
-  --kappa_residual_weights sqrt\
+  --kappa_residual_weights uniform sqrt\
   --source_residual_weights uniform\
   --adam 1\
   --rmsprop 0 1\
   --upsampling_interpolation 0\
   --kappalog\
   --source_link identity\
-  --filters 32\
+  --filters 16 32\
   --filter_scaling 2\
   --kernel_size 3\
   --layers 4\
@@ -49,11 +49,11 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation tanh bipolar_relu\
+  --activation tanh\
   --batch_norm 0\
   --gru_architecture concat\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsFR128hst3\
+  --logdir=$CENSAI_PATH/logsFR128hst4\
   --logname_prefixe=RIMSU128hstv4_control\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\

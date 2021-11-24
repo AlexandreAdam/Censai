@@ -20,7 +20,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --max_time=47\
   --optimizer ADAMAX\
   --initial_learning_rate 1e-4\
-  --decay_rate 0.96\
+  --decay_rate 1\
   --decay_steps 50000\
   --staircase\
   --patience=80\
@@ -30,7 +30,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
-  --steps 8 12\
+  --steps 8\
   --flux_lagrange_multiplier 0.\
   --time_weights uniform\
   --kappa_residual_weights sqrt\
@@ -54,8 +54,8 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --batch_norm 0\
   --gru_architecture concat\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsFR128hst3\
-  --logname_prefixe=RIMSU128hstv4_control\
+  --logdir=$CENSAI_PATH/logsFR128hst4\
+  --logname_prefixe=RIMSU128hstv4_augmented\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\

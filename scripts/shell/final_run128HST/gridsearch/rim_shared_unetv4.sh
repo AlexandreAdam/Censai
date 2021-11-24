@@ -10,8 +10,8 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
-  --datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_train\
-  --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_val\
+  --datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_train  $CENSAI_PATH/data/lenses128hst_SIE_200k_control_validated_train\
+  --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_2M_validated_val  $CENSAI_PATH/data/lenses128hst_SIE_200k_control_validated_val\
   --compression_type=GZIP\
   --strategy=exhaustive\
   --n_models=16\
@@ -30,7 +30,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
-  --steps 8 16\
+  --steps 8 10\
   --flux_lagrange_multiplier 0.\
   --time_weights uniform quadratic\
   --kappa_residual_weights uniform sqrt\
@@ -49,12 +49,12 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation tanh bipolar_relu leaky_relu\
+  --activation tanh\
   --batch_norm 0\
   --gru_architecture concat\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsFR128hst3\
-  --logname_prefixe=RIMSU128hstv4\
+  --logdir=$CENSAI_PATH/logsFR128hst4\
+  --logname_prefixe=RIMSU128hstv4_augmented\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
