@@ -6,7 +6,7 @@
 #SBATCH --mem=32G			     # memory per node
 #SBATCH --time=2-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
-#SBATCH --job-name=Train_RIM_KappaUnetv3_VAE_FR128hst
+#SBATCH --job-name=Train_RIM_KappaUnetv4_VAE_FR128hst
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_kappa_gridsearch.py\
@@ -20,7 +20,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_kappa_gridsearch.py\
   --max_time=47\
   --optimizer ADAMAX\
   --initial_learning_rate 1e-4 1e-5\
-  --decay_rate 0.9\
+  --decay_rate 0.96\
   --decay_steps 50000\
   --staircase\
   --patience=10\
