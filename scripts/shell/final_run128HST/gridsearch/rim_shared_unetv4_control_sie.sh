@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-16
+#SBATCH --array=1-12
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --val_datasets $CENSAI_PATH/data/lenses128hst_SIE_200k_control_validated_val\
   --compression_type=GZIP\
   --strategy=exhaustive\
-  --n_models=16\
+  --n_models=12\
   --forward_method=fft\
   --epochs=200\
   --max_time=47\
@@ -31,11 +31,11 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --block_length=1\
   --buffer_size=10000\
   --steps 8\
-  --flux_lagrange_multiplier 0. 1.\
+  --flux_lagrange_multiplier 0.\
   --time_weights uniform quadratic\
   --kappa_residual_weights uniform\
   --source_residual_weights uniform\
-  --adam 0 1\
+  --adam 1\
   --upsampling_interpolation 0\
   --kappalog\
   --source_link identity\
@@ -48,9 +48,9 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
   --gru_kernel_size 3\
-  --activation tanh relu\
+  --activation tanh bipolar_relu\
   --batch_norm 0\
-  --gru_architecture concat\
+  --gru_architecture concat plus plus_highway\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst3\
   --logname_prefixe=RIMSU128hstv4_controlsie\
