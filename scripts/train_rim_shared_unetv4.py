@@ -81,8 +81,8 @@ def main(args):
         
         Also, validation is not a split of the training data, but a saved dataset on disk. 
         """
-        files = tf.data.Dataset.from_tensor_slices(files)
-        dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type).shuffle(len(files), reshuffle_each_iteration=True),
+        files = tf.data.Dataset.from_tensor_slices(files).shuffle(len(files), reshuffle_each_iteration=True)
+        dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
                                    block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
         # Read off global parameters from first example in dataset
         for physical_params in dataset.map(decode_physical_model_info):
@@ -96,12 +96,12 @@ def main(args):
         val_files = []
         for dataset in args.val_datasets:
             val_files.extend(glob.glob(os.path.join(dataset, "*.tfrecords")))
-        val_files = tf.data.Dataset.from_tensor_slices(val_files)
+        val_files = tf.data.Dataset.from_tensor_slices(val_files).shuffle(len(files), reshuffle_each_iteration=True)
         val_dataset = val_files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type), block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
         val_dataset = val_dataset.map(decode_train).shuffle(buffer_size=args.buffer_size, reshuffle_each_iteration=True).\
             take(math.ceil((1 - args.train_split) * args.total_items)).\
             batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
-    else:
+    else:#TODO make use of the entire dataset, not just dataset size
         """
         Here, we split the dataset, so we assume total_items is the true dataset size. Any extra items will be discarded. 
         This is to make sure validation set is never seen by the model, so shuffling occurs after the split.
