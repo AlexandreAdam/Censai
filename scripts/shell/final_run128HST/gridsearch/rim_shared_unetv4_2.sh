@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G			     # memory per node
-#SBATCH --time=2-00:00		# time (DD-HH:MM)
+#SBATCH --time=4-00:00		# time (DD-HH:MM)
 #SBATCH --account=rrg-lplevass
 #SBATCH --job-name=Train_RIM_SharedUnetv4_FR128hst_control
 #SBATCH --output=%x-%j.out
@@ -16,15 +16,15 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --strategy=exhaustive\
   --n_models=24\
   --forward_method=fft\
-  --epochs=200\
-  --max_time=47\
+  --epochs=500\
+  --max_time=95\
   --optimizer ADAMAX\
   --initial_learning_rate 1e-4\
-  --decay_rate 1\
-  --decay_steps 50000\
+  --decay_rate 0.95\
+  --decay_steps 100000\
   --staircase\
-  --patience=80\
-  --tolerance=0.01\
+  --patience=50\
+  --tolerance=0.0\
   --batch_size 1\
   --train_split=0.9\
   --total_items 10000\
@@ -57,8 +57,8 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --logdir=$CENSAI_PATH/logsFR128hst4\
   --logname_prefixe=RIMSU128hstv4_augmented\
   --model_dir=$CENSAI_PATH/models\
-  --checkpoints=5\
-  --max_to_keep=1\
-  --n_residuals=2\
+  --checkpoints=10\
+  --max_to_keep=5\
+  --n_residuals=1\
   --seed 42\
   --track_train\
