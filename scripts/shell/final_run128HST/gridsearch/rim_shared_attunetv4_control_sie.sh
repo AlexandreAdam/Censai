@@ -9,7 +9,7 @@
 #SBATCH --job-name=Train_RIM_SharedUnetv4_FR128hst_control_sie
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
+python $CENSAI_PATH/scripts/experiments/rim_shared_attunetv4_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses128hst_SIE_200k_control_validated_train\
   --val_datasets $CENSAI_PATH/data/lenses128hst_SIE_200k_control_validated_val\
   --compression_type=GZIP\
