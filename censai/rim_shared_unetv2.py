@@ -20,7 +20,6 @@ class RIMSharedUnetv2:
             beta_1=0.9,
             beta_2=0.99,
             epsilon=1e-8,
-
             flux_lagrange_multiplier: float=0.
     ):
         assert len(kappa_init.shape) == 4
