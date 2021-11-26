@@ -5,7 +5,7 @@ from censai.models.utils import get_activation
 from censai.definitions import DTYPE
 
 
-class SharedUnetModelv4(tf.keras.Model):
+class SharedAttUnetModelv4(tf.keras.Model):
     def __init__(
             self,
             name="RIMUnetModel",
@@ -33,7 +33,7 @@ class SharedUnetModelv4(tf.keras.Model):
             initializer="glorot_uniform",
             filter_cap=None
     ):
-        super(SharedUnetModelv4, self).__init__(name=name)
+        super(SharedAttUnetModelv4, self).__init__(name=name)
         self.trainable = trainable
 
         common_params = {"padding": "same", "kernel_initializer": initializer,
