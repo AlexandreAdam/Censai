@@ -52,7 +52,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --batch_norm 0\
   --gru_architecture concat plus plus_highway\
   --cache_file=$SLURM_TMPDIR/cache\
-  --logdir=$CENSAI_PATH/logsFR128hst3\
+  --logdir=$CENSAI_PATH/logsFR128hst4\
   --logname_prefixe=RIMSU128hstv4_controlsie\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\

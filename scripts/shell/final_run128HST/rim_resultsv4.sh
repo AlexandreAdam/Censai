@@ -15,10 +15,10 @@ python $CENSAI_PATH/scripts/rim_results_v4.py\
   --val_dataset=lenses128hst_TNG_rau_200k_control_denoised_validated_val\
   --train_dataset=lenses128hst_TNG_rau_200k_control_denoised_validated_train\
   --test_dataset=lenses128hst_TNG_rau_200k_control_denoised_testset_validated\
-  --train_size=10000\
-  --val_size=10000\
-  --test_size=30000\
-  --buffer_size=10000\
+  --train_size=1000\
+  --val_size=1000\
+  --test_size=1000\
+  --buffer_size=1000\
   --batch_size=1\
   --lens_coherence_bins=40\
   --source_coherence_bins=40\
