@@ -573,6 +573,11 @@ if __name__ == "__main__":
     parser.add_argument("--reset_optimizer_states",  action="store_true",           help="When training from pre-trained weights, reset states of optimizer.")
     parser.add_argument("--kappa_residual_weights",         default="uniform",              help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
     parser.add_argument("--source_residual_weights",        default="uniform",              help="Options are ['uniform', 'linear', 'quadratic']")
+    # parser.add_argument("--add_chisq",              action="store_true",            help="Add log likelihood to loss")
+    # parser.add_argument("--chisq_decay_steps",      default=50000,  type=int,       help="Number of steps for coefficient to increase")
+    # parser.add_argument("--chisq_value",            default=1e-4,   type=float,     help="Initial value of coefficient multiplying log likelihood loss")
+    # parser.add_argument("--chisq_end_value",        default=1,      type=float,     help="Initial value of coefficient multiplying log likelihood loss")
+    # parser.add_argument("--chisq_decay_rate",       default=1.1,    type=float)
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
