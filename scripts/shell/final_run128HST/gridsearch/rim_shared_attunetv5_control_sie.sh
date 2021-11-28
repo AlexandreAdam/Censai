@@ -9,7 +9,7 @@
 #SBATCH --job-name=Train_RIM_SharedUnetv4_FR128hst_control_sie
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
+python $CENSAI_PATH/scripts/experiments/rim_shared_attunetv4_gridsearch.py\
   --datasets $CENSAI_PATH/data/lenses128hst_SIE_200k_control_validated_train\
   --val_datasets $CENSAI_PATH/data/lenses128hst_SIE_200k_control_validated_val\
   --compression_type=GZIP\
@@ -42,8 +42,8 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --filters 32\
   --filter_scaling 2\
   --kernel_size 3\
-  --layers 4\
-  --block_conv_layers 1 2\
+  --layers 4 5\
+  --block_conv_layers 1\
   --kernel_size 3\
   --resampling_kernel_size 3\
   --input_kernel_size 11\
@@ -53,7 +53,7 @@ python $CENSAI_PATH/scripts/experiments/rim_shared_unetv4_gridsearch.py\
   --gru_architecture concat\
   --cache_file=$SLURM_TMPDIR/cache\
   --logdir=$CENSAI_PATH/logsFR128hst4\
-  --logname_prefixe=RIMSU128hstv4_controlsie\
+  --logname_prefixe=RIMSAU128hstv5_controlsie\
   --model_dir=$CENSAI_PATH/models\
   --checkpoints=5\
   --max_to_keep=1\
