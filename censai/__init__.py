@@ -17,3 +17,4 @@ from .rim_kappa_unetv2 import RIMKappaUnetv2
 from .rim_shared_unetv3 import RIMSharedUnetv3
 from .rim_kappa_unetv3 import RIMKappaUnetv3
 from .rim_shared_attunetv3 import RIMSharedAttUnetv3
+from .rim_shared_unetv4 import RIMSharedUnetv4
