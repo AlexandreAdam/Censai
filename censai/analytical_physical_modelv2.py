@@ -3,17 +3,20 @@ import numpy as np
 import tensorflow_addons as tfa
 
 
-class AnalyticalPhysicalModel:
+class AnalyticalPhysicalModelv2:
+    """
+    This model produces convolved images of SIE+Shear with a Disc+Bulge Sersic Galaxy image
+    """
     def __init__(
             self,
-            pixels=256,
+            pixels=128,
             image_fov=7.68,
             src_fov=3.0,
-            theta_c=1e-4):
+            psf_cutout_size=16
+    ):
         self.src_fov = src_fov
         self.pixels = pixels
         self.image_fov = image_fov
-        self.theta_c = tf.constant(theta_c, dtype=tf.float32)
 
         # coordinates for image
         x = np.linspace(-1, 1, self.pixels) * self.image_fov/2
@@ -21,6 +24,14 @@ class AnalyticalPhysicalModel:
         # reshape for broadcast to [batch_size, pixels, pixels, channels]
         self.theta1 = tf.constant(xx[np.newaxis, ..., np.newaxis], dtype=tf.float32)
         self.theta2 = tf.constant(yy[np.newaxis, ..., np.newaxis], dtype=tf.float32)
+
+        # coordinates for psf
+        self.r_squared = self.theta1**2 + self.theta1**2
+        self.r_squared = tf.image.crop_to_bounding_box(self.r_squared,
+                                                       offset_height=self.pixels//2 - psf_cutout_size//2,
+                                                       offset_width=self.pixels//2 - psf_cutout_size//2,
+                                                       target_width=psf_cutout_size,
+                                                       target_height=psf_cutout_size)
 
     def kappa_field(
             self,

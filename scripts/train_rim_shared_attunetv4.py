@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
 import math
-from censai import PhysicalModelv2, RIMSharedUnetv3
-from censai.models import SharedUnetModelv4, RayTracer
+from censai import PhysicalModelv2, RIMSharedAttUnetv3
+from censai.models import SharedAttUnetModelv4, RayTracer
 from censai.utils import nullwriter, rim_residual_plot as residual_plot, plot_to_image
 from censai.data.lenses_tng_v3 import decode_train, decode_physical_model_info
 from censai.definitions import DTYPE
@@ -143,7 +143,7 @@ def main(args):
             raytracer=raytracer,
         )
 
-        unet = SharedUnetModelv4(
+        unet = SharedAttUnetModelv4(
             filters=args.filters,
             filter_scaling=args.filter_scaling,
             kernel_size=args.kernel_size,
@@ -165,7 +165,7 @@ def main(args):
             dropout_rate=args.dropout_rate,
             filter_cap=args.filter_cap
         )
-        rim = RIMSharedUnetv3(
+        rim = RIMSharedAttUnetv3(
             physical_model=phys,
             unet=unet,
             steps=args.steps,
