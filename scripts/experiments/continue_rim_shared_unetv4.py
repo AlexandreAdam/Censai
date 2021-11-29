@@ -100,7 +100,7 @@ def distributed_strategy(args):
         "val_source_cost": history["val_source_cost"][-1]
     })
     # Save hyperparameters and scores in shared csv for this gridsearch
-    df = pd.DataFrame(params_dict)
+    df = pd.DataFrame(params_dict, index=[THIS_WORKER-1])
     grid_csv_path = os.path.join(os.getenv("CENSAI_PATH"), "results", f"{args.logname_prefixe}.csv")
     this_run_csv_path = os.path.join(os.getenv("CENSAI_PATH"), "results", f"{logname}.csv")
     if not os.path.exists(grid_csv_path):
