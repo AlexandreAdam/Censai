@@ -151,38 +151,38 @@ def distributed_strategy(args):
                 fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_{args.source_model}_{dataset_name}_{args.seed}_{NOW}.png"), bbox_inches="tight")
                 plt.clf()
 
-            data_len = args.sie_size
-            sie_dataset = test_dataset.take(data_len)
-            for batch, (_, source, _, noise_rms, psf, fwhm) in enumerate(sie_dataset.take(data_len).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)):
-                batch_size = source.shape[0]
-                # Create some SIE kappa maps
-                _r = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=0, maxval=args.max_shift)
-                _theta = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=-np.pi, maxval=np.pi)
-                x0 = _r * tf.math.cos(_theta)
-                y0 = _r * tf.math.sin(_theta)
-                ellipticity = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=0., maxval=args.max_ellipticity)
-                phi = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=-np.pi, maxval=np.pi)
-                einstein_radius = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=args.min_theta_e, maxval=args.max_theta_e)
-                kappa = phys_sie.kappa_field(x0=x0, y0=y0, e=ellipticity, phi=phi, r_ein=einstein_radius)
-                lens = phys.noisy_forward(source, kappa, noise_rms=noise_rms, psf=psf)
+        data_len = args.sie_size
+        sie_dataset = test_dataset.take(data_len)
+        for batch, (_, source, _, noise_rms, psf, fwhm) in enumerate(sie_dataset.take(data_len).batch(args.batch_size).prefetch(tf.data.experimental.AUTOTUNE)):
+            batch_size = source.shape[0]
+            # Create some SIE kappa maps
+            _r = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=0, maxval=args.max_shift)
+            _theta = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=-np.pi, maxval=np.pi)
+            x0 = _r * tf.math.cos(_theta)
+            y0 = _r * tf.math.sin(_theta)
+            ellipticity = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=0., maxval=args.max_ellipticity)
+            phi = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=-np.pi, maxval=np.pi)
+            einstein_radius = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=args.min_theta_e, maxval=args.max_theta_e)
+            kappa = phys_sie.kappa_field(x0=x0, y0=y0, e=ellipticity, phi=phi, r_ein=einstein_radius)
+            lens = phys.noisy_forward(source, kappa, noise_rms=noise_rms, psf=psf)
 
-                # Compute predictions for kappa and source
-                source_pred, kappa_pred, chi_squared = rim.predict(lens, noise_rms, psf)
-                lens_pred = phys.forward(source_pred[-1], kappa_pred[-1], psf)
-                # Re-optimize source with a trained source model
-                source_pred2, chi_squared2 = rim_source.predict(lens, kappa_pred[-1], noise_rms, psf)
-                lens_pred2 = phys.forward(source_pred2[-1], kappa_pred[-1], psf)
+            # Compute predictions for kappa and source
+            source_pred, kappa_pred, chi_squared = rim.predict(lens, noise_rms, psf)
+            lens_pred = phys.forward(source_pred[-1], kappa_pred[-1], psf)
+            # Re-optimize source with a trained source model
+            source_pred2, chi_squared2 = rim_source.predict(lens, kappa_pred[-1], noise_rms, psf)
+            lens_pred2 = phys.forward(source_pred2[-1], kappa_pred[-1], psf)
 
-                N = batch_size
-                fig = plot_results(N, chi_squared[-1], source, source_pred[-1], kappa, kappa_pred[-1], lens, lens_pred, title="SIE Test")
-                plt.subplots_adjust(wspace=0, hspace=0)
-                fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_sie_test_{args.seed}_{NOW}.png"), bbox_inches="tight")
-                plt.clf()
+            N = batch_size
+            fig = plot_results(N, chi_squared[-1], source, source_pred[-1], kappa, kappa_pred[-1], lens, lens_pred, title="SIE Test")
+            plt.subplots_adjust(wspace=0, hspace=0)
+            fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_sie_test_{args.seed}_{NOW}.png"), bbox_inches="tight")
+            plt.clf()
 
-                fig = plot_results(N, chi_squared2[-1], source, source_pred2[-1], kappa, kappa_pred[-1], lens, lens_pred2, title=dataset_name)
-                plt.subplots_adjust(wspace=0, hspace=0)
-                fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_{args.source_model}_sie_test_{args.seed}_{NOW}.png"), bbox_inches="tight")
-                plt.clf()
+            fig = plot_results(N, chi_squared2[-1], source, source_pred2[-1], kappa, kappa_pred[-1], lens, lens_pred2, title="SIE Test")
+            plt.subplots_adjust(wspace=0, hspace=0)
+            fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_{args.source_model}_sie_test_{args.seed}_{NOW}.png"), bbox_inches="tight")
+            plt.clf()
 
 
 if __name__ == '__main__':
