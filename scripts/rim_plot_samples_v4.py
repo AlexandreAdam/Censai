@@ -163,7 +163,7 @@ def distributed_strategy(args):
                 ellipticity = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=0., maxval=args.max_ellipticity)
                 phi = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=-np.pi, maxval=np.pi)
                 einstein_radius = tf.random.uniform(shape=[batch_size, 1, 1, 1], minval=args.min_theta_e, maxval=args.max_theta_e)
-                kappa = phys_sie.kappa_field(x0, y0, ellipticity, phi, einstein_radius)
+                kappa = phys_sie.kappa_field(x0=x0, y0=y0, e=ellipticity, phi=phi, r_ein=einstein_radius)
                 lens = phys.noisy_forward(source, kappa, noise_rms=noise_rms, psf=psf)
 
                 # Compute predictions for kappa and source
