@@ -143,12 +143,12 @@ def distributed_strategy(args):
                 N = batch_size
                 fig = plot_results(N, chi_squared[-1], source, source_pred[-1], kappa, kappa_pred[-1], lens, lens_pred, title=dataset_name)
                 plt.subplots_adjust(wspace=0, hspace=0)
-                fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_{dataset_name}_{args.seed}_{NOW}.png"), bbox_inches="tight")
+                fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_{dataset_name}_{args.seed}_{NOW}_{batch:02d}.png"), bbox_inches="tight")
                 plt.clf()
 
                 fig = plot_results(N, chi_squared2[-1], source, source_pred2[-1], kappa, kappa_pred[-1], lens, lens_pred2, title=dataset_name)
                 plt.subplots_adjust(wspace=0, hspace=0)
-                fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_{args.source_model}_{dataset_name}_{args.seed}_{NOW}.png"), bbox_inches="tight")
+                fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_{args.source_model}_{dataset_name}_{args.seed}_{NOW}_{batch:02d}.png"), bbox_inches="tight")
                 plt.clf()
 
         data_len = args.sie_size
@@ -176,12 +176,12 @@ def distributed_strategy(args):
             N = batch_size
             fig = plot_results(N, chi_squared[-1], source, source_pred[-1], kappa, kappa_pred[-1], lens, lens_pred, title="SIE Test")
             plt.subplots_adjust(wspace=0, hspace=0)
-            fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_sie_test_{args.seed}_{NOW}.png"), bbox_inches="tight")
+            fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_sie_test_{args.seed}_{NOW}_{batch:02d}.png"), bbox_inches="tight")
             plt.clf()
 
             fig = plot_results(N, chi_squared2[-1], source, source_pred2[-1], kappa, kappa_pred[-1], lens, lens_pred2, title="SIE Test")
             plt.subplots_adjust(wspace=0, hspace=0)
-            fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_{args.source_model}_sie_test_{args.seed}_{NOW}.png"), bbox_inches="tight")
+            fig.savefig(os.path.join(os.getenv('CENSAI_PATH'), "results", f"{model_name}_{args.source_model}_sie_test_{args.seed}_{NOW}_{batch:02d}.png"), bbox_inches="tight")
             plt.clf()
 
 
