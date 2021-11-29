@@ -54,7 +54,7 @@ def plot_results(N, chi_squared, source, source_pred, kappa, kappa_pred, lens, l
 
 
 def distributed_strategy(args):
-    if args.args.minimum_date is None:
+    if args.minimum_date is None:
         min_date = datetime.strptime("00010100000", "%y%m%d%H%M%S")
     else:
         min_date = datetime.strptime(args.minimum_date, '%y%m%d%H%M%S')

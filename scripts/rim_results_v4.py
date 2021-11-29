@@ -17,7 +17,8 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 
 def distributed_strategy(args):
-    models = glob.glob(os.path.join(os.getenv('CENSAI_PATH'), "models", args.model_prefix + "*"))
+    # models = glob.glob(os.path.join(os.getenv('CENSAI_PATH'), "models", args.model_prefix + "*"))
+    models = [os.path.join(os.getenv('CENSAI_PATH'), "models", m) for m in args.model_list]
 
     files = glob.glob(os.path.join(os.getenv('CENSAI_PATH'), "data", args.train_dataset, "*.tfrecords"))
     files = tf.data.Dataset.from_tensor_slices(files)
@@ -271,7 +272,7 @@ def distributed_strategy(args):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument("--model_prefix",       required=True)
+    parser.add_argument("--model_list",         required=True,  nargs="+",  help="List of model name")
     parser.add_argument("--source_model",       required=True,      help="Give the path to a source RIM to converge even further the source")
     parser.add_argument("--compression_type",   default="GZIP")
     parser.add_argument("--val_dataset",        required=True,      help="Name of the dataset, not full path")
