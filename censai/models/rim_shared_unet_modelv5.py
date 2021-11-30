@@ -1,11 +1,11 @@
 import numpy as np
 import tensorflow as tf
-from censai.models.layers import AttUnetDecodingLayer, UnetEncodingLayer, ConvGRU, ConvGRUPlus, ConvGRUPlusHighway
+from censai.models.layers import UnetDecodingLayer, UnetEncodingLayer, ConvGRUBlock, ConvGRUPlusBlock, ConvGRUPlusHighwayBlock
 from censai.models.utils import get_activation
 from censai.definitions import DTYPE
 
 
-class SharedAttUnetModelv4(tf.keras.Model):
+class SharedUnetModelv5(tf.keras.Model):
     def __init__(
             self,
             name="RIMUnetModel",
@@ -31,9 +31,9 @@ class SharedAttUnetModelv4(tf.keras.Model):
             trainable=True,
             gru_architecture="concat",  # or "plus"
             initializer="glorot_uniform",
-            filter_cap=None
+            filter_cap=1024
     ):
-        super(SharedAttUnetModelv4, self).__init__(name=name)
+        super(SharedUnetModelv5, self).__init__(name=name)
         self.trainable = trainable
 
         common_params = {"padding": "same", "kernel_initializer": initializer,
@@ -49,11 +49,11 @@ class SharedAttUnetModelv4(tf.keras.Model):
         self.filter_cap = filter_cap if isinstance(filter_cap, int) else np.inf
         activation = get_activation(activation)
         if gru_architecture == "concat":
-            GRU = ConvGRU
+            GRU = ConvGRUBlock
         elif gru_architecture == "plus":
-            GRU = ConvGRUPlus
+            GRU = ConvGRUPlusBlock
         elif gru_architecture == "plus_highway":
-            GRU = ConvGRUPlusHighway
+            GRU = ConvGRUPlusHighwayBlock
         else:
             raise ValueError(f"gru_architecture={gru_architecture}, should be in ['concat', 'plus', 'plus_highway']")
 
@@ -81,7 +81,7 @@ class SharedAttUnetModelv4(tf.keras.Model):
                 )
             )
             self.decoding_layers.append(
-                AttUnetDecodingLayer(
+                UnetDecodingLayer(
                     kernel_size=kernel_size,
                     upsampling_kernel_size=resampling_kernel_size,
                     filters=min(self.filter_cap, int(filter_scaling**(i) * filters)),
@@ -145,12 +145,12 @@ class SharedAttUnetModelv4(tf.keras.Model):
         hidden_states = []
         for i in range(self._num_layers):
             pixels = input_pixels // self._strides**(i)
-            filters = min(self.filter_cap, int(self._filter_scaling**(i) * self._init_filters))
+            filters = 2 * min(self.filter_cap, int(self._filter_scaling**(i) * self._init_filters))
             hidden_states.append(
                 tf.zeros(shape=[batch_size, pixels, pixels, filters], dtype=DTYPE)
             )
         pixels = input_pixels // self._strides ** (self._num_layers)
         hidden_states.append(
-            tf.zeros(shape=[batch_size, pixels, pixels, min(self.filter_cap, int(self._init_filters * self._filter_scaling**(self._num_layers)))], dtype=DTYPE)
+            tf.zeros(shape=[batch_size, pixels, pixels, 2 * min(self.filter_cap, int(self._init_filters * self._filter_scaling**(self._num_layers)))], dtype=DTYPE)
         )
         return hidden_states
