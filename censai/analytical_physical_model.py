@@ -181,4 +181,3 @@ class AnalyticalPhysicalModel:
         b = r_ein_conv * tf.sqrt((1 + q ** 2) / 2)
         s = self.theta_c * tf.sqrt((1 + q ** 2) / (2 * q ** 2))
         return b, q, s
-

@@ -74,8 +74,11 @@ def distributed_strategy(args):
         rim_hparams = json.load(f)
     with open(os.path.join(model_dir, model, "script_params.json")) as f:
         script_hparams = json.load(f)
-    keys = ["kappa_residual_weights", "source_residual_weights", "source_link", "flux_lagrange_multiplier"]
+    keys = ["source_link", "flux_lagrange_multiplier"]
     optim_params = {key: value for key, value in zip(keys, [script_hparams[k] for k in keys])}
+    if args.use_residual_weights: # use the values from previous training, otherwise used the one provided
+        keys = ["kappa_residual_weights", "source_residual_weights"]
+        optim_params.update({key: value for key, value in zip(keys, [script_hparams[k] for k in keys])})
     if "rmsprop" in script_hparams.keys():
         vars(args)["rmsprop"] = script_hparams["rmsprop"]
     else:
@@ -100,7 +103,7 @@ def distributed_strategy(args):
         "val_source_cost": history["val_source_cost"][-1]
     })
     # Save hyperparameters and scores in shared csv for this gridsearch
-    df = pd.DataFrame(params_dict)
+    df = pd.DataFrame(params_dict, index=[THIS_WORKER-1])
     grid_csv_path = os.path.join(os.getenv("CENSAI_PATH"), "results", f"{args.logname_prefixe}.csv")
     this_run_csv_path = os.path.join(os.getenv("CENSAI_PATH"), "results", f"{logname}.csv")
     if not os.path.exists(grid_csv_path):
@@ -168,6 +171,8 @@ if __name__ == '__main__':
     parser.add_argument("--filter_cap",             default=1024,   type=int,       help="Put there for legacy scripts, make sure more recent scripts have this cap as well")
     parser.add_argument("--model_id",               default="None",                 help="Start training from previous checkpoint of this model if provided")
     parser.add_argument("--json_override",          default=None,   nargs="+",      help="A json filepath that will override every command line parameters. Useful for reproducibility")
+
+    parser.add_argument("--use_residual_weights",   action="store_true",            help="Use previous run residual weights, otherwise overwrite with new value")
 
     args = parser.parse_args()
     distributed_strategy(args)
