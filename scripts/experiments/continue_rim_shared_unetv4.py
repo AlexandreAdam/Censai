@@ -78,7 +78,7 @@ def distributed_strategy(args):
     optim_params = {key: value for key, value in zip(keys, [script_hparams[k] for k in keys])}
     if args.use_residual_weights: # use the values from previous training, otherwise used the one provided
         keys = ["kappa_residual_weights", "source_residual_weights"]
-        optim_params = {key: value for key, value in zip(keys, [script_hparams[k] for k in keys])}
+        optim_params.update({key: value for key, value in zip(keys, [script_hparams[k] for k in keys])})
     if "rmsprop" in script_hparams.keys():
         vars(args)["rmsprop"] = script_hparams["rmsprop"]
     else:
