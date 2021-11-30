@@ -20,7 +20,7 @@ python $CENSAI_PATH/scripts/experiments/continue_rim_shared_unetv4.py\
   RIMSU128hstv4_augmented_000_K3_L4_BCL1_211124140833\
   --forward_method=fft\
   --epochs=200\
-  --max_time=145\
+  --max_time=143\
   --optimizer ADAMAX\
   --initial_learning_rate 6e-5\
   --decay_rate 0.9\
