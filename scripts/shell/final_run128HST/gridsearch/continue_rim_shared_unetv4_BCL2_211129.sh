@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-3
+#SBATCH --array=1-4
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -17,12 +17,13 @@ python $CENSAI_PATH/scripts/experiments/continue_rim_shared_unetv4.py\
   RIMSU128hstv4_augmented_001_K3_L4_BCL2_211124140833\
   RIMSU128hstv4_augmented_003_K3_L5_BCL2_211124140837\
   RIMSU128hstv4_augmented_007_K5_L4_BCL2_211124140833\
+  RIMSU128hstv4_augmented_000_K3_L4_BCL1_211124140833\
   --forward_method=fft\
   --epochs=200\
   --max_time=145\
   --optimizer ADAMAX\
   --initial_learning_rate 6e-5\
-  --decay_rate 0.95\
+  --decay_rate 0.9\
   --decay_steps 100000\
   --patience=40\
   --tolerance=0.01\
