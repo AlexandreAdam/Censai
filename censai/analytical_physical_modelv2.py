@@ -281,9 +281,10 @@ class AnalyticalPhysicalModelv2:
 
     def noisy_lens_sersic_func_vec(self, x, noise_rms, psf_fwhm):
         im = self.lens_source_sersic_func_vec(x, psf_fwhm)
-        peaks = tf.reduce_max(im, axis=(1, 2, 3), keepdims=True)
-        im += tf.random.normal(shape=im.shape, mean=0., stddev=noise_rms[:, None, None, None] * peaks)
-        return im
+        peaks = tf.reduce_max(im, axis=(1, 2, 3))
+        noise_rms = noise_rms * peaks
+        im += tf.random.normal(shape=im.shape, mean=0., stddev=noise_rms)
+        return im, noise_rms
 
     def lens_gaussian_source_func_given_alpha(
             self,
@@ -504,7 +505,7 @@ class AnalyticalPhysicalModelv2:
         noise_rms = self.noise_rms_pdf.sample(sample_shape=(batch_size))
         psf_fwhm = self.psf_fwhm_pdf.sample(sample_shape=(batch_size))
 
-        lens = self.noisy_lens_sersic_func_vec(x, noise_rms, psf_fwhm)
+        lens, noise_rms = self.noisy_lens_sersic_func_vec(x, noise_rms, psf_fwhm)
         return lens, x, noise_rms, psf_fwhm
 
 
