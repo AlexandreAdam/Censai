@@ -151,13 +151,15 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         x, y = _np.meshgrid(x, y)
         pixel_grid = _np.stack([x, y], axis=-1)
 
-        Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
+        Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32) # Convergence
+        # Alpha = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)  # Deflection angles
+        # Psi = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)  # Lensing potential
         variance = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
         alpha_variance = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)
         for _coords, _mass, _ell_hat in dataset:
             xi = _coords - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
             r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
-            Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)  # gaussian kernel
+            Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)
             # Poisson shot noise of convergence field
             variance += _np.sum((_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2))**2, axis=0)
             # Propagated uncertainty to deflection angles
