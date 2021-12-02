@@ -20,3 +20,4 @@ from .conv_gru_plus_highway import ConvGRUPlusHighway
 from .conv_gru_plus_highway_component import ConvGRUPlusHighwayBlock
 from .spatial_attention_gate import SpatialAttentionGate
 from .attunet_decoding_layer import AttUnetDecodingLayer
+from .gru import GRU

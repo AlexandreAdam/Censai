@@ -1,5 +1,5 @@
 import numpy as np
-from censai import PhysicalModel, AnalyticalPhysicalModel
+from censai import PhysicalModel, AnalyticalPhysicalModel, AnalyticalPhysicalModelv2
 import tensorflow as tf
 from censai.utils import raytracer_residual_plot
 
@@ -154,16 +154,95 @@ def test_lagrange_multiplier_for_lens_intensity():
     return log_likilhood_test, log_likelihood_best, tf.squeeze(lam_tests), lam_lagrange
 
 
+def test_anal2():
+    phys = AnalyticalPhysicalModelv2(pixels=64)
+    # try to oversample kappa map for comparison
+    # phys2 = AnalyticalPhysicalModelv2(pixels=256)
+    # phys_ref = PhysicalModel(pixels=256, src_pixels=64, method="fft", kappa_fov=7.68)
+    phys_ref = PhysicalModel(pixels=64, method="fft")
+
+    # make some dummy coordinates
+    x = np.linspace(-1, 1, 64) * 3.0/2
+    xx, yy = np.meshgrid(x, x)
+
+    # lens params
+    r_ein = 2
+    x0 = 0.1
+    y0 = 0.1
+    q = 0.98
+    phi = 0.#np.pi/3
+
+    gamma = 0.
+    phi_gamma = 0.
+
+    # source params
+    xs = 0.1
+    ys = 0.1
+    qs = 0.9
+    phi_s = 0.#np.pi/4
+    r_eff = 0.4
+    n = 1.
+
+    source = phys.sersic_source(xx, yy, xs, ys, qs, phi_s, n, r_eff)[None, ..., None]
+    # kappa = phys2.kappa_field(r_ein, q, phi, x0, y0)
+    kappa = phys.kappa_field(r_ein, q, phi, x0, y0)
+    lens_a = phys.lens_source_sersic_func(r_ein, q, phi, x0, y0, gamma, phi_gamma, xs, ys, qs, phi_s, n, r_eff)
+    lens_b = phys_ref.lens_source(source, kappa)
+    # lens_b = tf.image.resize(lens_b, [64, 64])
+    lens_c = phys.lens_source(source, r_ein, q, phi, x0, y0, gamma, phi_gamma)
+    # alpha1t, alpha2t = tf.split(phys.analytical_deflection_angles(r_ein, q, phi, x0, y0), 2, axis=-1)
+    alpha1t, alpha2t = tf.split(phys.approximate_deflection_angles(r_ein, q, phi, x0, y0), 2, axis=-1)
+    alpha1, alpha2 = phys_ref.deflection_angle(kappa)
+    # alpha1 = tf.image.resize(alpha1, [64, 64])
+    # alpha2 = tf.image.resize(alpha2, [64, 64])
+    beta1 = phys.theta1 - alpha1
+    beta2 = phys.theta2 - alpha2
+    lens_d = phys.sersic_source(beta1, beta2, xs, ys, q, phi, n, r_eff)
+
+    # plt.imshow(source[0, ..., 0], cmap="twilight", origin="lower")
+    # plt.colorbar()
+    # plt.show()
+    # plt.imshow(np.log10(kappa[0, ..., 0]), cmap="twilight", origin="lower")
+    # plt.colorbar()
+    # plt.show()
+    plt.imshow(lens_a[0, ..., 0], cmap="twilight", origin="lower")
+    plt.colorbar()
+    plt.show()
+    plt.imshow(lens_b[0, ..., 0], cmap="twilight", origin="lower")
+    plt.colorbar()
+    plt.show()
+    # plt.imshow(lens_c[0, ..., 0], cmap="twilight", origin="lower")
+    # plt.colorbar()
+    # plt.show()
+    # plt.imshow(lens_d[0, ..., 0], cmap="twilight", origin="lower")
+    # plt.colorbar()
+    # plt.show()
+    plt.imshow(((lens_a - lens_b))[0, ..., 0], cmap="seismic", vmin=-0.1, vmax=0.1, origin="lower")
+    plt.colorbar()
+    plt.show()
+    # plt.imshow(((lens_a - lens_c))[0, ..., 0], cmap="seismic", vmin=-0.1, vmax=0.1, origin="lower")
+    # plt.colorbar()
+    # plt.show()
+    # plt.imshow(((lens_a - lens_d))[0, ..., 0], cmap="seismic", vmin=-0.1, vmax=0.1, origin="lower")
+    # plt.colorbar()
+    # plt.show()
+    plt.imshow(((alpha1t - alpha1))[0, ..., 0], cmap="seismic", vmin=-1, vmax=1, origin="lower")
+    plt.colorbar()
+    plt.show()
+
+    pass
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib.colors import LogNorm, SymLogNorm, CenteredNorm
-    im = np.random.normal(0, 1, size=(2, 64, 64, 1))
-    phys = PhysicalModel(pixels=64)
-    psf1 = phys.psf_model(0.15)
-    psf2 = phys.psf_model(0.5)
-    psf = np.stack([psf1, psf2], axis=0)
-    c1 = phys.convolve_with_psf(im, )
+    test_anal2()
+    # im = np.random.normal(0, 1, size=(2, 64, 64, 1))
+    # phys = PhysicalModel(pixels=64)
+    # psf1 = phys.psf_model(0.15)
+    # psf2 = phys.psf_model(0.5)
+    # psf = np.stack([psf1, psf2], axis=0)
+    # c1 = phys.convolve_with_psf(im, )
     # test_lens_func_given_alpha()
     # im = test_analytical_lensing()
     # # im = test_lens_source_conv2()[0, ..., 0]
@@ -246,3 +325,6 @@ if __name__ == "__main__":
     # plt.ylabel(r"$\mathcal{L}(y \mid x)$")
     #
     plt.show()
+
+
+
