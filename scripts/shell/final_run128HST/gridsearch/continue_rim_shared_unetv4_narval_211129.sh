@@ -17,7 +17,7 @@ python $CENSAI_PATH/scripts/experiments/continue_rim_shared_unetv4.py\
  RIMSU128hstv4_augmented_013_RMSP0_TS10_F32_TWuniform_KRWsqrt_211124140837\
  RIMSU128hstv4_augmented_005_RMSP0_TS8_F32_TWuniform_KRWsqrt_211124140804\
  RIMSU128hstv4_augmented_015_RMSP0_TS10_F32_TWquadratic_KRWsqrt_211124140833\
- RIMSU128hstv4_augmented_009_RMSP0_TS10_F16_TWuniform_KRWsqrt_21112414083\
+ RIMSU128hstv4_augmented_009_RMSP0_TS10_F16_TWuniform_KRWsqrt_211124140837\
  RIMSU128hstv4_augmented_007_RMSP0_TS8_F32_TWquadratic_KRWsqrt_211124140837\
   --forward_method=fft\
   --epochs=200\
