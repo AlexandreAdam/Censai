@@ -352,8 +352,8 @@ class AnalyticalPhysicalModelv2:
         # rotate to major/minor axis coordinates
         theta1, theta2 = self.rotated_and_shifted_coords(x0, y0, phi)
         psi = tf.sqrt(q ** 2 * (s ** 2 + theta1 ** 2) + theta2 ** 2)
-        alpha1 = b * q / tf.sqrt(1. - q ** 2) * tf.math.atan(np.sqrt(1. - q ** 2) * theta1 / (psi + s))
-        alpha2 = b * q / tf.sqrt(1. - q ** 2) * tf.math.atanh(np.sqrt(1. - q ** 2) * theta2 / (psi + s * q ** 2))
+        alpha1 = b * q / tf.sqrt(1. - q ** 2) * tf.math.atan(tf.sqrt(1. - q ** 2) * theta1 / (psi + s))
+        alpha2 = b * q / tf.sqrt(1. - q ** 2) * tf.math.atanh(tf.sqrt(1. - q ** 2) * theta2 / (psi + s * q ** 2))
         # # rotate back
         alpha1, alpha2 = self._rotate(alpha1, alpha2, -phi)
         return tf.concat([alpha1, alpha2], axis=-1)
@@ -468,7 +468,7 @@ class AnalyticalPhysicalModelv2:
         return convolved_images
 
     def psf_models(self, psf_fwhm: float):
-        psf_sigma =psf_fwhm/ (2 * np.sqrt(2. * np.log(2.)))
+        psf_sigma =psf_fwhm/ (2 * tf.sqrt(2. * tf.math.log(2.)))
         psf = tf.math.exp(-0.5 * self.r_squared / psf_sigma**2)
         psf /= tf.reduce_sum(psf, axis=(1, 2, 3), keepdims=True)
         return psf
