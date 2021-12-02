@@ -364,6 +364,37 @@ def sampling_plot(y):
     fig.subplots_adjust(wspace=0, hspace=0)
     return fig
 
+# def rim_analytic_residual_plot(phys, rim, batch_size, total_preds):
+#     x_preds = []
+#     x_true = []
+#     chi_sq = []
+#     total_preds = total_preds//batch_size * batch_size
+#     for i in range(total_preds//batch_size):
+#         lens, params, noise_rms, psf_fwhm = phys.draw_sersic_batch(batch_size)
+#         x_pred, chi = rim.predict(lens, noise_rms, psf_fwhm)
+#         # preds are shaped [time steps, batch size, params]
+#         x_preds.append(x_pred.numpy())
+#         chi_sq.append(chi_sq.numpy())
+#         x_true.append(params.numpy())
+#     x_preds = np.concatenate(x_preds[-1], axis=0)
+#     chi_sq = np.concatenate(chi_sq[-1], axis=0)
+#     y_true = np.concatenate(y_true, axis=0)
+#     titles = [
+#         r"$\theta_E$",
+#         r"$\kappa$ axis ratio $q_\kappa$",
+#         r"$\kappa$ orientation $\varphi_\kappa$",
+#         r"$x_0$",
+#         r"$y_0$",
+#         r"Shear $\gamma$",
+#         r"Shear orientation $\varphi_\gamma$",
+#         r"$x_s$",
+#         r"$y_s$",
+#         r"Source axis ratio $q_s$",
+#         r"Source orientation $\varphi_s$",
+#         r"Sersic index $n$",
+#         r"Half light radius $R_{e}$"
+#     ]
+#     return fig
 
 if __name__ == '__main__':
     x = np.random.normal(size=[81, 64, 64, 1])

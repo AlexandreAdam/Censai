@@ -23,3 +23,4 @@ from .rim_shared_unet_modelv4 import SharedUnetModelv4
 from .rim_unet_modelv3 import UnetModelv3
 from .rim_shared_attunet_model import SharedAttUnetModelv4
 from .rim_shared_unet_modelv5 import SharedUnetModelv5
+from .rim_model_analytic import ModelAnalytic
