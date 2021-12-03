@@ -23,7 +23,9 @@ python $CENSAI_PATH/scripts/experiments/rim_analytic_gridsearch.py\
   --total_items 1000\
   --epochs 500\
   --optimizer adamax\
-  --initial_learning_rate 1e-3 1e-4\
+  --initial_learning_rate 1e-2 1e-3 1e-4\
+  --decay_rate 1 0.9 0.8\
+  --decay_steps 10000\
   --max_time 9.5\
   --checkpoints=10\
   --max_to_keep=1\
