@@ -302,7 +302,7 @@ if __name__ == "__main__":
     parser.add_argument("--unit_scaling",           default=1,     type=int)
     parser.add_argument("--unit_cap",               default=1024,   type=int)
     parser.add_argument("--mlp_before_gru",         default=2,      type=int)
-    parser.add_argument("--activation",             default="elu")
+    parser.add_argument("--activation",             default="tanh")
 
     # Training set params
     parser.add_argument("-b", "--batch_size",       default=10,      type=int,       help="Number of images in a batch. ")
