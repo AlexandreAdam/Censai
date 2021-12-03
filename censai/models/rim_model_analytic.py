@@ -28,16 +28,16 @@ class ModelAnalytic(tf.keras.Model):
         for i in range(layers):
             self._feature_layers.append([
                 tf.keras.layers.Dense(
-                    units=min(units * unit_scaling**(i + 1), unit_cap),
+                    units=int(min(units * unit_scaling**(i + 1), unit_cap)),
                     activation=activation
                 )
                 for j in range(mlp_before_gru)]
             )
-            self._up_grus.append(GRU(hidden_units=min(units * unit_scaling**(i + 1), unit_cap)))
-            self._down_grus.append(GRU(hidden_units=min(units * unit_scaling**(i + 1), unit_cap)))
+            self._up_grus.append(GRU(hidden_units=int(min(units * unit_scaling**(i + 1), unit_cap))))
+            self._down_grus.append(GRU(hidden_units=int(min(units * unit_scaling**(i + 1), unit_cap))))
             self._reconstruction_layers.append([
                 tf.keras.layers.Dense(
-                    units=min(units * unit_scaling**(i + 1), unit_cap),
+                    units=int(min(units * unit_scaling**(i + 1), unit_cap)),
                     activation=activation
                 )
                 for j in range(mlp_before_gru)]
@@ -69,7 +69,7 @@ class ModelAnalytic(tf.keras.Model):
     def init_hidden_states(self, batch_size):
         hts = []
         for i in range(self.n_layers):
-            hts.append(tf.zeros(shape=(batch_size, min(self.hidden_units * self.hidden_units_scaling**(i + 1), self.hidden_unit_cap)), dtype=DTYPE))
+            hts.append(tf.zeros(shape=(batch_size, int(min(self.hidden_units * self.hidden_units_scaling**(i + 1), self.hidden_unit_cap))), dtype=DTYPE))
         for i in reversed(range(self.n_layers)):
-            hts.append(tf.zeros(shape=(batch_size, min(self.hidden_units * self.hidden_units_scaling**(i + 1), self.hidden_unit_cap)), dtype=DTYPE))
+            hts.append(tf.zeros(shape=(batch_size, int(min(self.hidden_units * self.hidden_units_scaling**(i + 1), self.hidden_unit_cap))), dtype=DTYPE))
         return hts
