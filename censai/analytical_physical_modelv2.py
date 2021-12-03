@@ -442,7 +442,7 @@ class AnalyticalPhysicalModelv2:
         e1s, e2s = self._qphi_to_ellipticity(qs, phi_s)
         e1s = (e1s / self.max_ellipticity + 1)/2
         e2s = e2s / self.max_ellipticity
-        n = (n - self.n_min) / (self.n_max - self.n_max)
+        n = (n - self.n_min) / (self.n_max - self.n_min)
         r_eff = (r_eff - self.r_eff_min) / (self.r_eff_max - self.r_eff_min)
         x = logit(tf.concat([r_ein, e1, e2, x0, y0, gamma1, gamma2, xs, ys, e1s, e2s, n, r_eff], axis=-1))
         return x
@@ -535,6 +535,7 @@ if __name__ == '__main__':
     for i in range(10):
         lens, x, noise_rms, psf_fwhm = phys.draw_sersic_batch(1)
         print(x)
+        print(phys.sersic_physical_to_logits(x))
         print(lens.numpy().max())
         plt.imshow(lens[0, ..., 0], cmap="hot")
         plt.colorbar()

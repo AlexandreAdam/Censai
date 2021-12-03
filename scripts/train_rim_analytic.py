@@ -289,8 +289,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_source_shift",       default=0.3,    type=float)
     parser.add_argument("--noise_rms_min",          default=0.001,  type=float)
     parser.add_argument("--noise_rms_max",          default=0.05,   type=float)
-    parser.add_argument("--noise_rms_mean",         default=0.08,   type=float)
-    parser.add_argument("--noise_rms_std",          default=0.08,   type=float)
+    parser.add_argument("--noise_rms_mean",         default=0.008,   type=float)
+    parser.add_argument("--noise_rms_std",          default=0.008,   type=float)
     parser.add_argument("--psf_fwhm_min",           default=0.06,   type=float)
     parser.add_argument("--psf_fwhm_max",           default=0.5,    type=float)
     parser.add_argument("--psf_fwhm_mean",          default=0.1,    type=float)
@@ -299,19 +299,19 @@ if __name__ == "__main__":
     # Model hyperparameters
     parser.add_argument("--layers",                 default=2,     type=int)
     parser.add_argument("--units",                  default=24,    type=int)
-    parser.add_argument("--unit_scaling",           default=0.5,     type=int)
+    parser.add_argument("--unit_scaling",           default=1,     type=int)
     parser.add_argument("--unit_cap",               default=1024,   type=int)
     parser.add_argument("--mlp_before_gru",         default=2,      type=int)
     parser.add_argument("--activation",             default="elu")
 
     # Training set params
-    parser.add_argument("-b", "--batch_size",       default=1,      type=int,       help="Number of images in a batch. ")
+    parser.add_argument("-b", "--batch_size",       default=10,      type=int,       help="Number of images in a batch. ")
     parser.add_argument("--total_items",            required=True,  type=int,       help="Total images in an epoch.")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
     parser.add_argument("--optimizer",              default="Adamax",               help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
-    parser.add_argument("--initial_learning_rate",  default=1e-4,   type=float,     help="Initial learning rate.")
+    parser.add_argument("--initial_learning_rate",  default=1e-2,   type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
