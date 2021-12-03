@@ -121,8 +121,7 @@ class RIMUnetBlocCoord:
             with tf.GradientTape() as g:
                 g.watch(source)
                 log_likelihood = self.physical_model.log_likelihood(y_true=y_true, source=self.source_link(source), kappa=self.kappa_link(kappa))
-                cost = tf.reduce_mean(log_likelihood)
-            source_grad = g.gradient(cost, source)
+            source_grad = g.gradient(log_likelihood, source)
             source_grad = self.source_grad_update(source_grad, current_step)
         source, source_states = self.source_model(source, source_states, source_grad)
         return source, source_states, log_likelihood

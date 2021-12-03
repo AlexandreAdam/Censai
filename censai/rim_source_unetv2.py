@@ -100,7 +100,7 @@ class RIMSourceUnetv2:
                     y_pred = self.physical_model.forward(self.source_link(source), kappa, psf)
                     flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
                     log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None]**2, axis=(1, 2, 3))
-                    cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
+                    cost = log_likelihood + self.flux_lagrange_multiplier * flux_term
                 grad = g.gradient(cost, source)
                 grad = self.grad_update(grad, current_step)
             source, states = self.time_step(source, grad, states)
@@ -130,7 +130,7 @@ class RIMSourceUnetv2:
             y_pred = self.physical_model.forward(self.source_link(source), kappa, psf)
             flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
             log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
-            cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
+            cost = log_likelihood + self.flux_lagrange_multiplier * flux_term
             grad = tf.gradients(cost, source)
             grad = self.grad_update(grad, current_step)
             source, states = self.time_step(source, grad, states)
@@ -157,7 +157,7 @@ class RIMSourceUnetv2:
                 y_pred = self.physical_model.forward(self.source_link(source), kappa, psf)
                 flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
                 log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
-                cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
+                cost = log_likelihood + self.flux_lagrange_multiplier * flux_term
             grad = g.gradient(cost, source)
             grad = self.grad_update(grad, current_step)
             source, states = self.time_step(source, grad, states)
