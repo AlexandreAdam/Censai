@@ -244,10 +244,7 @@ class AnalyticalPhysicalModelv2:
     def lens_source_sersic_func_vec(self, x, psf_fwhm):
         # assume x has shape [batch_size, 13]
         r_ein, q, phi, x0, y0, gamma_ext, phi_ext, xs, ys, qs, phi_s, n, r_eff = [_x[:, None, None] for _x in tf.split(x, 13, axis=-1)]
-        if q > 0.95:
-            alpha1, alpha2 = tf.split(self.approximate_deflection_angles(r_ein, q, phi, x0, y0), 2, axis=-1)
-        else:
-            alpha1, alpha2 = tf.split(self.analytical_deflection_angles(r_ein, q, phi, x0, y0), 2, axis=-1)
+        alpha1, alpha2 = tf.split(self.analytical_deflection_angles(r_ein, q, phi, x0, y0), 2, axis=-1)
         alpha1_ext, alpha2_ext = self.external_shear_deflection(gamma_ext, phi_ext)
         # lens equation
         beta1 = self.theta1 - alpha1 - alpha1_ext

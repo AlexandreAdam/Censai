@@ -154,6 +154,7 @@ def main(args):
         save_checkpoint = False
     # =================================================================================================================
 
+    @tf.function
     def train_step(lens, params, noise_rms, psf_fwhm):
         with tf.GradientTape() as tape:
             tape.watch(rim.model.trainable_variables)
