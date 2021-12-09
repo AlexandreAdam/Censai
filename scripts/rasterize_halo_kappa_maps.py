@@ -6,6 +6,7 @@ from astropy import units as u
 from astropy.io import fits
 import os
 import h5py
+import scipy
 from argparse import ArgumentParser
 from datetime import datetime
 import tensorflow as tf
@@ -139,10 +140,12 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         dataset = tf.data.Dataset.from_generator(tensorflow_generator(coords[:, dims], mass, ell_hat),
                                                  output_signature=signature)
         dataset = dataset.batch(batch_size, drop_remainder=False)#.prefetch(tf.data.experimental.AUTOTUNE)
+        expit = tf.math.special.expint
     else:
         _np = np  # regular numpy
         context = nullcontext()  # no context needed
         dataset = numpy_dataset(coords[:, dims], mass, ell_hat, batch_size)
+        expit = scipy.special.expit
 
     print("Rasterizing...")
     with context:
@@ -152,14 +155,16 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         pixel_grid = _np.stack([x, y], axis=-1)
 
         Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32) # Convergence
-        # Alpha = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)  # Deflection angles
-        # Psi = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)  # Lensing potential
+        Alpha = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)  # Deflection angles
+        Psi = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)  # Lensing potential
         variance = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
         alpha_variance = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)
         for _coords, _mass, _ell_hat in dataset:
             xi = _coords - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
             r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
             Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)
+            Alpha += _np.sum(_mass[..., None] / _np.pi * (_np.exp(-0.5 * r_squared[..., None] / _ell_hat ** 2) - 1) * xi / r_squared[..., None], axis=0)
+            Psi += _np.sum(_mass / 4 / _np.pi * (_np.log(r_squared**2 / 4 / _ell_hat**4) - 2 * expit()), axis=0)
             # Poisson shot noise of convergence field
             variance += _np.sum((_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2))**2, axis=0)
             # Propagated uncertainty to deflection angles
@@ -170,7 +175,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
                 y=0.
             )
             alpha_variance += _np.sum(_alpha_variance, axis=0)
-    return Sigma, variance, alpha_variance
+    return Sigma, Alpha, Psi, variance, alpha_variance
 
 
 def load_halo(halo_id, particle_type, offsets, halo_offsets, snapshot_dir, snapshot_id):
