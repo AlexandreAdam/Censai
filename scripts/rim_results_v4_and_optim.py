@@ -89,7 +89,7 @@ def distributed_strategy(args):
     dataset_names = [args.train_dataset, args.val_dataset, args.test_dataset]
     dataset_shapes = [args.train_size, args.val_size, args.test_size]
     model_name = os.path.split(model)[-1]
-    with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", model_name + "_" + args.source_model + ".h5"), 'w') as hf:
+    with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", model_name + "_" + args.source_model + f"{THIS_WORKER:02d}.h5"), 'w') as hf:
         for i, dataset in enumerate([train_dataset, val_dataset, test_dataset]):
             checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint).expect_partial()  # reset model weights
             g = hf.create_group(f'{dataset_names[i]}')
@@ -245,8 +245,8 @@ def distributed_strategy(args):
 
         # Create SIE test
         g = hf.create_group(f'SIE_test')
-        data_len = args.sie_size
-        sie_dataset = test_dataset.take(data_len)
+        data_len = args.sie_size // N_WORKERS
+        sie_dataset = test_dataset.skip(data_len * (THIS_WORKER - 1)).take(data_len)
         g.create_dataset(name="lens", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
         g.create_dataset(name="psf",  shape=[data_len, physical_params['psf pixels'], physical_params['psf pixels'], 1], dtype=np.float32)
         g.create_dataset(name="psf_fwhm", shape=[data_len], dtype=np.float32)
