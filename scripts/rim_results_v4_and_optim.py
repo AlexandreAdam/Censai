@@ -155,14 +155,14 @@ def distributed_strategy(args):
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
 
                 for current_step in tqdm(range(STEPS)):
-                    with tf.GradientTape() as g:
+                    with tf.GradientTape() as tape:
                         g.watch(unet.trainable_variables)
-                        s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=g)
+                        s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape)
                         cost = tf.reduce_mean(chi_sq) # mean over time steps
                         cost += tf.reduce_sum(rim.unet.losses)
                     if 2 * chi_sq[-1, 0] < args.converged_chisq:
                         break
-                    grads = g.gradient(cost, unet.trainable_variables)
+                    grads = tape.gradient(cost, unet.trainable_variables)
                     optim.apply_gradients(zip(grads, unet.trainable_variables))
 
                     source_o = s[-1]
