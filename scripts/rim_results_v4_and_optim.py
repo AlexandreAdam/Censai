@@ -189,8 +189,8 @@ def distributed_strategy(args):
                 kappa_series = tf.transpose(kappa_series.stack(), perm=[1, 0, 2, 3, 4])
                 lens_pred_series = tf.transpose(lens_series.stack(), perm=[1, 0, 2, 3, 4])
                 chi_sq_series = tf.transpose(chi_squared_series.stack(), perm=[1, 0])
-                source_mse = tf.transpose(source_mse.stack(), perm=[1, 0])
-                kappa_mse = tf.transpose(kappa_mse.stack(), perm=[1, 0])
+                source_mse = source_mse.stack()[None, ...]
+                kappa_mse = kappa_mse.stack()[None, ...]
 
                 # Compute Power spectrum of converged predictions
                 _ps_lens = ps_lens.cross_correlation_coefficient(lens[..., 0], lens_pred[..., 0])
