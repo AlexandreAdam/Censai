@@ -211,17 +211,17 @@ def distributed_strategy(args):
                 g["kappa"][batch] = kappa.numpy().astype(np.float32)
                 g["lens_pred"][batch] = lens_pred.numpy().astype(np.float32)
                 g["lens_pred2"][batch] = lens_pred2.numpy().astype(np.float32)
-                g["lens_pred_reoptimized"] = lens_pred_series.numpy().astype(np.float32)
+                g["lens_pred_reoptimized"][batch] = lens_pred_series.numpy().astype(np.float32)
                 g["source_pred"][batch] = tf.transpose(source_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["source_pred2"][batch] = tf.transpose(source_pred2, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
-                g["source_pred_reoptimized"] = source_series.numpy().astype(np.float32)
+                g["source_pred_reoptimized"][batch] = source_series.numpy().astype(np.float32)
                 g["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
-                g["kappa_pred_reoptimized"] = kappa_series.numpy().astype(np.float32)
+                g["kappa_pred_reoptimized"][batch] = kappa_series.numpy().astype(np.float32)
                 g["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
                 g["chi_squared2"][batch] = 2*tf.transpose(chi_squared2).numpy().astype(np.float32)
-                g["chi_squared_reoptimized"] = 2*chi_sq_series.numpy().astype(np.float32)
-                g["source_optim_mse"] = source_mse.numpy().astype(np.float32)
-                g["kappa_optim_mse"] = kappa_mse.numpy().astype(np.float32)
+                g["chi_squared_reoptimized"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
+                g["source_optim_mse"][batch] = source_mse.numpy().astype(np.float32)
+                g["kappa_optim_mse"][batch] = kappa_mse.numpy().astype(np.float32)
                 g["lens_coherence_spectrum"][batch] = _ps_lens
                 g["lens_coherence_spectrum2"][batch] = _ps_lens2
                 g["source_coherence_spectrum"][batch] = _ps_source
