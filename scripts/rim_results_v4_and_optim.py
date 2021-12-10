@@ -156,7 +156,7 @@ def distributed_strategy(args):
 
                 for current_step in tqdm(range(STEPS)):
                     with tf.GradientTape() as tape:
-                        g.watch(unet.trainable_variables)
+                        tape.watch(unet.trainable_variables)
                         s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape)
                         cost = tf.reduce_mean(chi_sq) # mean over time steps
                         cost += tf.reduce_sum(rim.unet.losses)
