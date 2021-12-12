@@ -173,7 +173,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
             exp1_plus_log = _np.where(
                 r_squared == 0,
                 -euler_gamma,                                                    # r = 0
-                exp1(r_squared/2/_ell_hat**2) + _np.log(r_squared/2/ell_hat**2)  # r > 0
+                exp1(r_squared/2/_ell_hat**2) + _np.log(r_squared/2/_ell_hat**2)  # r > 0
             )
             Psi += _np.sum(_mass * _ell_hat**2 / 2 / _np.pi * exp1_plus_log, axis=0)
             # Shear
