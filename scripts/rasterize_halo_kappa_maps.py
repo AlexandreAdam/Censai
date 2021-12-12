@@ -177,7 +177,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
             )
             Psi += _np.sum(_mass * _ell_hat**2 / 2 / _np.pi * exp1_plus_log, axis=0)
             # Shear
-            gamma_fun = r_squared + 2 * (1 - gaussian_fun) * ell_hat**2
+            gamma_fun = r_squared + 2 * (1 - gaussian_fun) * _ell_hat**2
             Gamma1 += _np.sum(kappa_r * (xi[..., 0]**2 - xi[..., 1]**2) / r_squared**2 * gamma_fun, axis=0)
             Gamma2 += _np.sum(2 * kappa_r * xi[..., 0] * xi[..., 1] / r_squared**2 * gamma_fun, axis=0)
             # Poisson shot noise of convergence field
