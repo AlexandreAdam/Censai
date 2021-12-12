@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-20
+#SBATCH --array=1-100
 #SBATCH --tasks=1
 #SBATCH --cpus-per-task=3 # maximum cpu per task is 3.5 per gpus
 #SBATCH --gres=gpu:1
@@ -20,7 +20,7 @@ python $CENSAI_PATH/scripts/rim_results_v4_and_optim.py\
   --test_size=3000\
   --sie_size=0\
   --buffer_size=1000\
-  --batch_size=1\
   --lens_coherence_bins=40\
   --source_coherence_bins=40\
-  --kappa_coherence_bins=40
+  --kappa_coherence_bins=40\
+  --seed=42
