@@ -89,7 +89,48 @@ def distributed_strategy(args):
     dataset_names = [args.train_dataset, args.val_dataset, args.test_dataset]
     dataset_shapes = [args.train_size, args.val_size, args.test_size]
     model_name = os.path.split(model)[-1]
-    with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", model_name + "_" + args.source_model + f"{THIS_WORKER:02d}.h5"), 'w') as hf:
+    #
+    # from censai.utils import nulltape
+    # def call_with_mask(self, lensed_image, noise_rms, psf, mask, outer_tape=nulltape):
+    #     """
+    #     Used in training. Return linked kappa and source maps.
+    #     """
+    #     batch_size = lensed_image.shape[0]
+    #     source, kappa, source_grad, kappa_grad, states = self.initial_states(batch_size)  # initiate all tensors to 0
+    #     source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad,
+    #                                            states)  # Use lens to make an initial guess with Unet
+    #     source_series = tf.TensorArray(DTYPE, size=self.steps)
+    #     kappa_series = tf.TensorArray(DTYPE, size=self.steps)
+    #     chi_squared_series = tf.TensorArray(DTYPE, size=self.steps)
+    #     # record initial guess
+    #     source_series = source_series.write(index=0, value=source)
+    #     kappa_series = kappa_series.write(index=0, value=kappa)
+    #     # Main optimization loop
+    #     for current_step in tf.range(self.steps - 1):
+    #         with outer_tape.stop_recording():
+    #             with tf.GradientTape() as g:
+    #                 g.watch(source)
+    #                 g.watch(kappa)
+    #                 y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
+    #                 flux_term = tf.square(
+    #                     tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
+    #                 log_likelihood = 0.5 * tf.reduce_sum(
+    #                     tf.square(y_pred - mask * lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
+    #                 cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
+    #             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
+    #             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
+    #         source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
+    #         source_series = source_series.write(index=current_step + 1, value=source)
+    #         kappa_series = kappa_series.write(index=current_step + 1, value=kappa)
+    #         chi_squared_series = chi_squared_series.write(index=current_step,
+    #                                                       value=log_likelihood / self.pixels ** 2)  # renormalize chi squared here
+    #     # last step score
+    #     log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source),
+    #                                                         kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
+    #     chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=log_likelihood)
+    #     return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
+
+    with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", model_name + "_" + args.source_model + f"_{THIS_WORKER:02d}.h5"), 'w') as hf:
         for i, dataset in enumerate([train_dataset, val_dataset, test_dataset]):
             checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint).expect_partial()  # reset model weights
             g = hf.create_group(f'{dataset_names[i]}')
@@ -153,10 +194,11 @@ def distributed_strategy(args):
                 chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
                 source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
-
+                # mask = tf.cast(lens > args.mask_sigma_threshold * noise_rms, DTYPE)
                 for current_step in tqdm(range(STEPS)):
                     with tf.GradientTape() as tape:
                         tape.watch(unet.trainable_variables)
+                        # s, k, chi_sq = call_with_mask(rim, lens, noise_rms, psf, mask, tape)
                         s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape)
                         cost = tf.reduce_mean(chi_sq) # mean over time steps
                         cost += tf.reduce_sum(rim.unet.losses)
@@ -359,6 +401,7 @@ if __name__ == '__main__':
     parser.add_argument("--lens_coherence_bins",    default=40,     type=int)
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
+    parser.add_argument("--batch_size",         default=1,          help="For SIE")
     parser.add_argument("--re_optimize_steps",  default=400,        type=int)
     parser.add_argument("--re_optimize_save",   default=40,         type=int)
     parser.add_argument("--converged_chisq",    default=1.005,      type=float, help="Value of the chisq that is considered converged.")
@@ -371,6 +414,7 @@ if __name__ == '__main__':
     parser.add_argument("--max_ellipticity",    default=0.6,        type=float, help="Maximum ellipticty of density profile.")
     parser.add_argument("--max_theta_e",        default=0.5,        type=float, help="Maximum allowed Einstein radius")
     parser.add_argument("--min_theta_e",        default=2.5,        type=float, help="Minimum allowed Einstein radius")
+    parser.add_argument("--mask_sigma_threshold",  default=3,          type=float, help="Mask any pixels below threshold * noise_rms for reoptimization")
     parser.add_argument("--seed",               required=True,      type=int,   help="Seed for shuffling to make sure all job agree on dataset order.")
 
     args = parser.parse_args()
