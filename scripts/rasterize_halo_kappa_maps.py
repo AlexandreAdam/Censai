@@ -6,13 +6,13 @@ from astropy import units as u
 from astropy.io import fits
 import os
 import h5py
-import scipy
 from argparse import ArgumentParser
 from datetime import datetime
 import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
 from censai.utils import nullcontext
 import time
+from scipy.special import exp1
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -140,12 +140,12 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         dataset = tf.data.Dataset.from_generator(tensorflow_generator(coords[:, dims], mass, ell_hat),
                                                  output_signature=signature)
         dataset = dataset.batch(batch_size, drop_remainder=False)#.prefetch(tf.data.experimental.AUTOTUNE)
-        expit = tf.math.special.expint
+        euler_gamma = tf.constant(np.euler_gamma, tf.float32)
     else:
         _np = np  # regular numpy
         context = nullcontext()  # no context needed
         dataset = numpy_dataset(coords[:, dims], mass, ell_hat, batch_size)
-        expit = scipy.special.expit
+        euler_gamma = np.euler_gamma
 
     print("Rasterizing...")
     with context:
@@ -156,26 +156,41 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
 
         Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32) # Convergence
         Alpha = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)  # Deflection angles
-        Psi = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)  # Lensing potential
-        variance = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32)
-        alpha_variance = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)
+        Psi = _np.zeros_like(Sigma, dtype=_np.float32)  # Lensing potential
+        Gamma1 = _np.zeros_like(Sigma, dtype=_np.float32)  # Shear component 1
+        Gamma2 = _np.zeros_like(Sigma, dtype=_np.float32)  # Shear component 2
+        variance = _np.zeros_like(Sigma, dtype=_np.float32)
+        alpha_variance = _np.zeros_like(Alpha, dtype=_np.float32)
         for _coords, _mass, _ell_hat in dataset:
             xi = _coords - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
             r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
-            Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)
-            Alpha += _np.sum(_mass[..., None] / _np.pi * (_np.exp(-0.5 * r_squared[..., None] / _ell_hat ** 2) - 1) * xi / r_squared[..., None], axis=0)
-            Psi += _np.sum(_mass / 4 / _np.pi * (_np.log(r_squared**2 / 4 / _ell_hat**4) - 2 * expit()), axis=0)
+            gaussian_fun = _np.exp(-0.5 * r_squared / _ell_hat ** 2)
+            kappa_r = _mass * gaussian_fun / (2 * _np.pi * _ell_hat ** 2)
+            Sigma += _np.sum(kappa_r, axis=0)
+            # Deflection angles
+            Alpha += _np.sum(_mass[..., None] / _np.pi * (gaussian_fun[..., None] - 1) * xi / r_squared[..., None], axis=0)
+            # Lensing potential
+            exp1_plus_log = _np.where(
+                r_squared == 0,
+                -euler_gamma,                                                    # r = 0
+                exp1(r_squared/2/_ell_hat**2) + _np.log(r_squared/2/ell_hat**2)  # r > 0
+            )
+            Psi += _np.sum(_mass * _ell_hat**2 / 2 / _np.pi * exp1_plus_log, axis=0)
+            # Shear
+            gamma_fun = r_squared + 2 * (1 - gaussian_fun) * ell_hat**2
+            Gamma1 += _np.sum(kappa_r * (xi[..., 0]**2 - xi[..., 1]**2) / r_squared**2 * gamma_fun, axis=0)
+            Gamma2 += _np.sum(2 * kappa_r * xi[..., 0] * xi[..., 1] / r_squared**2 * gamma_fun, axis=0)
             # Poisson shot noise of convergence field
-            variance += _np.sum((_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2))**2, axis=0)
+            variance += _np.sum((_mass * gaussian_fun / (2 * _np.pi * _ell_hat ** 2))**2, axis=0)
             # Propagated uncertainty to deflection angles
-            A = _np.exp(-0.5 * r_squared / _ell_hat ** 2)**2 - 2 * _np.exp(-0.5 * r_squared / _ell_hat ** 2)
-            _alpha_variance = tf.where(
-                condition=r_squared[..., None]**2 > 0,
-                x=(_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi**2,
-                y=0.
+            A = gaussian_fun**2 - 2 * gaussian_fun
+            _alpha_variance = _np.where(
+                r_squared[..., None]**2 > 0,
+                (_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi**2,
+                0.
             )
             alpha_variance += _np.sum(_alpha_variance, axis=0)
-    return Sigma, Alpha, Psi, variance, alpha_variance
+    return Sigma, Alpha, Psi, Gamma1, Gamma2, variance, alpha_variance
 
 
 def load_halo(halo_id, particle_type, offsets, halo_offsets, snapshot_dir, snapshot_id):
@@ -322,13 +337,15 @@ def distributed_strategy(args):
         ymin = cm_y - args.fov/2
         margin = 0.05 * args.fov   # allow for particle near the margin to be counted in
         select = (x < xmax + margin) & (x > xmin - margin) & (y < ymax + margin) & (y > ymin - margin)
-        kappa, variance, alpha_variance = gaussian_kernel_rasterize(
+        kappa, alpha, psi, gamma1, gamma2, kappa_variance, alpha_variance = gaussian_kernel_rasterize(
                                             coords[select], mass[select], center, args.fov, dims=dims, pixels=args.pixels,
                                             n_neighbors=args.n_neighbors, fw_param=args.fw_param, use_gpu=args.use_gpu,
                                             batch_size=args.batch_size
         )
         kappa /= sigma_crit
-        variance /= sigma_crit**2
+        psi /= sigma_crit
+        alpha /= sigma_crit
+        kappa_variance /= sigma_crit**2
         alpha_variance /= sigma_crit**2
 
         # create fits file and its header, than save result
@@ -367,9 +384,13 @@ def distributed_strategy(args):
         header["SIGCRIT"] = sigma_crit
         header["COSMO"] = "Planck18"
         hdu = fits.PrimaryHDU(kappa, header=header)
-        hdu2 = fits.ImageHDU(variance, name="Variance")
-        hdu3 = fits.ImageHDU(alpha_variance, name="Deflection Angles Variance")
-        hdul = fits.HDUList([hdu, hdu2, hdu3])
+        hdu1 = fits.ImageHDU(psi, name="Lensing potential")
+        hdu2 = fits.ImageHDU(alpha, name="Deflection Angles")
+        hdu3 = fits.ImageHDU(gamma1, name="Shear1")
+        hdu4 = fits.ImageHDU(gamma2, name="Shear2")
+        hdu5 = fits.ImageHDU(kappa_variance, name="Kappa Variance")
+        hdu6 = fits.ImageHDU(alpha_variance, name="Deflection Angles Variance")
+        hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6])
         hdul.writeto(os.path.join(args.output_dir,
                                   args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
 
