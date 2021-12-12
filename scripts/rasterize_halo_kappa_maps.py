@@ -6,13 +6,13 @@ from astropy import units as u
 from astropy.io import fits
 import os
 import h5py
-import scipy
 from argparse import ArgumentParser
 from datetime import datetime
 import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
 from censai.utils import nullcontext
 import time
+from scipy.special import exp1
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -140,12 +140,12 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         dataset = tf.data.Dataset.from_generator(tensorflow_generator(coords[:, dims], mass, ell_hat),
                                                  output_signature=signature)
         dataset = dataset.batch(batch_size, drop_remainder=False)#.prefetch(tf.data.experimental.AUTOTUNE)
-        expit = tf.math.special.expint
+        euler_gamma = tf.constant(np.euler_gamma, tf.float32)
     else:
         _np = np  # regular numpy
         context = nullcontext()  # no context needed
         dataset = numpy_dataset(coords[:, dims], mass, ell_hat, batch_size)
-        expit = scipy.special.expit
+        euler_gamma = np.euler_gamma
 
     print("Rasterizing...")
     with context:
@@ -163,8 +163,12 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
             xi = _coords - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
             r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
             Sigma += _np.sum(_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2), axis=0)
+            # Deflection angles
             Alpha += _np.sum(_mass[..., None] / _np.pi * (_np.exp(-0.5 * r_squared[..., None] / _ell_hat ** 2) - 1) * xi / r_squared[..., None], axis=0)
-            Psi += _np.sum(_mass / 4 / _np.pi * (_np.log(r_squared**2 / 4 / _ell_hat**4) - 2 * expit()), axis=0)
+            # Lensing potential
+            x = r_squared / 2 / _ell_hat**2
+            exp1_plus_log = tf.where(conditions=(x==0), x=-euler_gamma, y=exp1(x) + tf.math.log(x))
+            Psi += _np.sum(_mass / 2 / _np.pi * exp1_plus_log, axis=0)
             # Poisson shot noise of convergence field
             variance += _np.sum((_mass * _np.exp(-0.5 * r_squared / _ell_hat ** 2) / (2 * _np.pi * _ell_hat ** 2))**2, axis=0)
             # Propagated uncertainty to deflection angles
@@ -322,13 +326,15 @@ def distributed_strategy(args):
         ymin = cm_y - args.fov/2
         margin = 0.05 * args.fov   # allow for particle near the margin to be counted in
         select = (x < xmax + margin) & (x > xmin - margin) & (y < ymax + margin) & (y > ymin - margin)
-        kappa, variance, alpha_variance = gaussian_kernel_rasterize(
+        kappa, alpha, psi, kappa_variance, alpha_variance = gaussian_kernel_rasterize(
                                             coords[select], mass[select], center, args.fov, dims=dims, pixels=args.pixels,
                                             n_neighbors=args.n_neighbors, fw_param=args.fw_param, use_gpu=args.use_gpu,
                                             batch_size=args.batch_size
         )
         kappa /= sigma_crit
-        variance /= sigma_crit**2
+        psi /= sigma_crit
+        alpha /= sigma_crit
+        kappa_variance /= sigma_crit**2
         alpha_variance /= sigma_crit**2
 
         # create fits file and its header, than save result
@@ -367,9 +373,11 @@ def distributed_strategy(args):
         header["SIGCRIT"] = sigma_crit
         header["COSMO"] = "Planck18"
         hdu = fits.PrimaryHDU(kappa, header=header)
-        hdu2 = fits.ImageHDU(variance, name="Variance")
-        hdu3 = fits.ImageHDU(alpha_variance, name="Deflection Angles Variance")
-        hdul = fits.HDUList([hdu, hdu2, hdu3])
+        hdu1 = fits.ImageHDU(psi, name="Lensing potential")
+        hdu2 = fits.ImageHDU(alpha, name="Deflection Angles")
+        hdu3 = fits.ImageHDU(kappa_variance, name="Kappa Variance")
+        hdu4 = fits.ImageHDU(alpha_variance, name="Deflection Angles Variance")
+        hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4])
         hdul.writeto(os.path.join(args.output_dir,
                                   args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
 
