@@ -69,37 +69,41 @@ def exp1_plus_log(x):
 
 def exp1log_taylor(x):
     out = np.zeros_like(x)
-    out[x == 0] = -np.euler_gamma
-    z = x[(x != 0) & (x <= 2)]
-    # out[(x != 0) & (x <= 2)] = -np.euler_gamma + z - z ** 2 / 4 + z ** 3 / 18 - z ** 4 / 96 + z ** 5 / 600  # Taylor expansion
-    out[(x != 0) & (x <= 2)] = -0.57722 + 0.99999 * z - 0.24991 * z ** 2 + 0.05519 * z ** 3 -0.00976 *  z ** 4 + 0.00108 * z ** 5  # Allen and Hasting approximation
-    z = x[(x > 2) & (x <= 5)]
-    out[(x > 2) & (x <= 5)] = np.log(z) + np.exp(-z) / z * (0.26777 + 8.63476 * z + 18.05902 * z**2 + 8.57333 * z**3) /\
-                             (3.95850 + 21.09965 * z + 25.63296 * z**2 + 9.57332 * z**3)  # Allen and Hastings approximation
-    out[x > 5] = np.log(x[x > 5])
+    z = x[x <= 1]
+    # out[x <= 1] = -np.euler_gamma + z - z ** 2 / 4 + z ** 3 / 18 - z ** 4 / 96 + z ** 5 / 600 - z ** 6 / 4320 # Taylor expansion
+    out[x <= 1] = -0.57722 + 0.99999 * z - 0.24991 * z ** 2 + 0.05519 * z ** 3 - 0.00976 * z ** 4 + 0.00108 * z ** 5  # Allen and Hasting approximation
+    z = x[(x > 1) & (x <= 10)]
+    out[(x > 1) & (x <= 10)] = np.log(z) + np.exp(-z) / z * (0.26777 + 8.63476 * z + 18.05902 * z**2 + 8.57333 * z**3 + z**4) /\
+                             (3.95850 + 21.09965 * z + 25.63296 * z**2 + 9.57332 * z**3 + z**4)  # Allen and Hastings approximation
+    out[x > 10] = np.log(x[x > 10])
     return out
 
 def tf_exp1log_taylor(x):
+    """
+    This is an approximation to Exp1(x) + log(x), where E1(x) = -Ei(-x), the exponential integral.
+
+    For x < 10, we use the Allen and Hastings approximation to E1 (1955)
+    For x > 10, E1(x) is negligible and can safely be ignored
+    """
     out = tf.zeros_like(x)
-    # x = 0
-    indices = tf.where(x == 0)
-    out = tf.tensor_scatter_nd_update(out, indices, -tf.ones(indices.shape[0], dtype=tf.float32) * np.euler_gamma)
-    # Allen and Hastings approximation
-    # x < 1
-    indices = tf.where((x != 0) & (x <= 2))
+
+    indices = tf.where(x <= 1)
     z = tf.gather_nd(x, indices)
-    # out = tf.tensor_scatter_nd_update(out, indices, -np.euler_gamma + z - z ** 2 / 4 + z ** 3 / 18 - z ** 4 / 96 + z ** 5 / 600) # Taylor expansion
-    out = tf.tensor_scatter_nd_update(out, indices, -0.57722 + 0.99999 * z - 0.24991 * z ** 2 + 0.05519 * z ** 3 -0.00976 *  z ** 4 + 0.00108 * z ** 5)
-    # 1 < x < 4
-    indices = tf.where((x > 2) & (x <= 5))
+    update = -0.57722 + 0.99999 * z - 0.24991 * z ** 2 + 0.05519 * z ** 3 - 0.00976 * z ** 4 + 0.00108 * z ** 5
+    # update = -np.euler_gamma + z - z ** 2 / 4 + z ** 3 / 18 - z ** 4 / 96 + z ** 5 / 600 - z**6 / 4320  # Taylor expansion
+    out = tf.tensor_scatter_nd_update(out, indices, update)
+
+    indices = tf.where((x > 1) & (x <= 10))
     z = tf.gather_nd(x, indices)
-    out = tf.tensor_scatter_nd_update(out, indices, tf.math.log(z) + tf.exp(-z) / z \
-                                      * (0.26777 + 8.63476 * z + 18.05902 * z**2 + 8.57333 * z**3) \
-                                      /(3.95850 + 21.09965 * z + 25.63296 * z**2 + 9.57332 * z**3))
-    # x > 4 -> Ignore the Exponential Integral from here
-    indices = tf.where(x > 5)
+    update = tf.math.log(z) + tf.exp(-z) / z \
+             * (0.26777 + 8.63476 * z + 18.05902 * z ** 2 + 8.57333 * z ** 3 + z ** 4) \
+             / (3.95850 + 21.09965 * z + 25.63296 * z ** 2 + 9.57332 * z ** 3 + z ** 4)
+    out = tf.tensor_scatter_nd_update(out, indices, update)
+
+    indices = tf.where(x > 10)
     z = tf.gather_nd(x, indices)
-    out = tf.tensor_scatter_nd_update(out, indices, tf.math.log(z))
+    update = tf.math.log(z)
+    out = tf.tensor_scatter_nd_update(out, indices, update)
     return out
 
 # x = np.linspace(0, 5, 1000)
@@ -107,8 +111,8 @@ def tf_exp1log_taylor(x):
 # plt.plot(x, exp1log_taylor(x), color="b", label="log")
 # plt.show()
 
-x = np.linspace(0, 6, 1000).astype(np.float32)
-plt.plot(x, (exp1_plus_log(x) - exp1log_taylor(x))/(exp1_plus_log(x) + 1e-16) * 100, color="k")
-plt.plot(x, (exp1_plus_log(x) - tf_exp1log_taylor(x))/(exp1_plus_log(x) + 1e-16) * 100, color="r")
+x = np.linspace(0, 12, 1000).astype(np.float32)
+plt.plot(x, (exp1_plus_log(x) - exp1log_taylor(x)), color="k")
+plt.plot(x, (exp1_plus_log(x) - tf_exp1log_taylor(x)), color="r")
 
 plt.show()
