@@ -22,6 +22,41 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 # defaults to zero if not running under SLURM
 THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
 
+def exp1log_taylor(x):
+    out = np.zeros_like(x)
+    out[x == 0] = -np.euler_gamma
+    z = x[(x != 0) & (x <= 2)]
+    # out[(x != 0) & (x <= 2)] = -np.euler_gamma + z - z ** 2 / 4 + z ** 3 / 18 - z ** 4 / 96 + z ** 5 / 600  # Taylor expansion
+    out[(x != 0) & (x <= 2)] = -0.57722 + 0.99999 * z - 0.24991 * z ** 2 + 0.05519 * z ** 3 -0.00976 *  z ** 4 + 0.00108 * z ** 5  # Allen and Hasting approximation
+    z = x[(x > 2) & (x <= 5)]
+    out[(x > 2) & (x <= 5)] = np.log(z) + np.exp(-z) / z * (0.26777 + 8.63476 * z + 18.05902 * z**2 + 8.57333 * z**3) /\
+                             (3.95850 + 21.09965 * z + 25.63296 * z**2 + 9.57332 * z**3)  # Allen and Hastings approximation
+    out[x > 5] = np.log(x[x > 5])
+    return out
+
+def tf_exp1log_taylor(x):
+    out = tf.zeros_like(x)
+    # x = 0
+    indices = tf.where(x == 0)
+    out = tf.tensor_scatter_nd_update(out, indices, -tf.ones(indices.shape[0], dtype=tf.float32) * np.euler_gamma)
+    # Allen and Hastings approximation
+    # x < 1
+    indices = tf.where((x != 0) & (x <= 2))
+    z = tf.gather_nd(x, indices)
+    # out = tf.tensor_scatter_nd_update(out, indices, -np.euler_gamma + z - z ** 2 / 4 + z ** 3 / 18 - z ** 4 / 96 + z ** 5 / 600) # Taylor expansion
+    out = tf.tensor_scatter_nd_update(out, indices, -0.57722 + 0.99999 * z - 0.24991 * z ** 2 + 0.05519 * z ** 3 -0.00976 *  z ** 4 + 0.00108 * z ** 5)
+    # 1 < x < 4
+    indices = tf.where((x > 2) & (x <= 5))
+    z = tf.gather_nd(x, indices)
+    out = tf.tensor_scatter_nd_update(out, indices, tf.math.log(z) + tf.exp(-z) / z \
+                                      * (0.26777 + 8.63476 * z + 18.05902 * z**2 + 8.57333 * z**3) \
+                                      /(3.95850 + 21.09965 * z + 25.63296 * z**2 + 9.57332 * z**3))
+    # x > 4 -> Ignore the Exponential Integral from here
+    indices = tf.where(x > 5)
+    z = tf.gather_nd(x, indices)
+    out = tf.tensor_scatter_nd_update(out, indices, tf.math.log(z))
+    return out
+
 
 def numpy_dataset(coords, masses, ell_hat, batch_size):
     """
@@ -141,11 +176,13 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
                                                  output_signature=signature)
         dataset = dataset.batch(batch_size, drop_remainder=False)#.prefetch(tf.data.experimental.AUTOTUNE)
         euler_gamma = tf.constant(np.euler_gamma, tf.float32)
+        exp1_plus_log = tf_exp1log_taylor
     else:
         _np = np  # regular numpy
         context = nullcontext()  # no context needed
         dataset = numpy_dataset(coords[:, dims], mass, ell_hat, batch_size)
         euler_gamma = np.euler_gamma
+        exp1_plus_log = exp1log_taylor
 
     print("Rasterizing...")
     with context:
@@ -168,18 +205,27 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
             kappa_r = _mass * gaussian_fun / (2 * _np.pi * _ell_hat ** 2)
             Sigma += _np.sum(kappa_r, axis=0)
             # Deflection angles
-            Alpha += _np.sum(_mass[..., None] / _np.pi * (gaussian_fun[..., None] - 1) * xi / r_squared[..., None], axis=0)
-            # Lensing potential
-            exp1_plus_log = _np.where(
-                r_squared == 0,
-                -euler_gamma,                                                    # r = 0
-                exp1(r_squared/2/_ell_hat**2) + _np.log(r_squared/2/_ell_hat**2)  # r > 0
+            _alpha = _np.where(
+                r_squared[..., None] > 0,
+                _mass[..., None] / _np.pi * (gaussian_fun[..., None] - 1) * xi / r_squared[..., None],
+                0.
             )
-            Psi += _np.sum(_mass * _ell_hat**2 / 2 / _np.pi * exp1_plus_log, axis=0)
+            Alpha += _np.sum(_alpha, axis=0)
+            Psi += _np.sum(_mass * _ell_hat**2 / 2 / _np.pi * exp1_plus_log(r_squared / 2 / _ell_hat ** 2), axis=0)
             # Shear
             gamma_fun = r_squared + 2 * (1 - gaussian_fun) * _ell_hat**2
-            Gamma1 += _np.sum(kappa_r * (xi[..., 0]**2 - xi[..., 1]**2) / r_squared**2 * gamma_fun, axis=0)
-            Gamma2 += _np.sum(2 * kappa_r * xi[..., 0] * xi[..., 1] / r_squared**2 * gamma_fun, axis=0)
+            _gamma1 = _np.where(
+                r_squared > 0,
+                kappa_r * (xi[..., 0]**2 - xi[..., 1]**2) / r_squared**2 * gamma_fun,
+                0.
+            )
+            Gamma1 += _np.sum(_gamma1, axis=0)
+            _gamma2 = _np.where(
+                r_squared > 0,
+                2 * kappa_r * xi[..., 0] * xi[..., 1] / r_squared ** 2 * gamma_fun,
+                0.
+            )
+            Gamma2 += _np.sum(_gamma2, axis=0)
             # Poisson shot noise of convergence field
             variance += _np.sum((_mass * gaussian_fun / (2 * _np.pi * _ell_hat ** 2))**2, axis=0)
             # Propagated uncertainty to deflection angles
@@ -345,6 +391,8 @@ def distributed_strategy(args):
         kappa /= sigma_crit
         psi /= sigma_crit
         alpha /= sigma_crit
+        gamma1 /= sigma_crit
+        gamma2 /= sigma_crit
         kappa_variance /= sigma_crit**2
         alpha_variance /= sigma_crit**2
 
