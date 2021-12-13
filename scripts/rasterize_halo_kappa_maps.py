@@ -211,7 +211,7 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
                 0.
             )
             Alpha += _np.sum(_alpha, axis=0)
-            Psi += _np.sum(_mass * _ell_hat**2 / 2 / _np.pi * exp1_plus_log(r_squared / 2 / _ell_hat ** 2), axis=0)
+            Psi += _np.sum(_mass / 2 / _np.pi * exp1_plus_log(r_squared / 2 / _ell_hat ** 2), axis=0)
             # Shear
             gamma_fun = r_squared + 2 * (1 - gaussian_fun) * _ell_hat**2
             _gamma1 = _np.where(
@@ -388,13 +388,16 @@ def distributed_strategy(args):
                                             n_neighbors=args.n_neighbors, fw_param=args.fw_param, use_gpu=args.use_gpu,
                                             batch_size=args.batch_size
         )
-        kappa /= sigma_crit
-        psi /= sigma_crit
-        alpha /= sigma_crit
-        gamma1 /= sigma_crit
-        gamma2 /= sigma_crit
-        kappa_variance /= sigma_crit**2
-        alpha_variance /= sigma_crit**2
+        kappa /= sigma_crit  # adimensional
+        psi /= sigma_crit    # Mpc^2/h^2
+        psi *= (1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h)**2  # convert to arcsec^2
+        alpha /= sigma_crit  # Mpc/h
+        alpha *= 1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h  # convert to arcsec
+        gamma1 /= sigma_crit  # adimensional
+        gamma2 /= sigma_crit  # adimensional
+        kappa_variance /= sigma_crit**2  # adimensional
+        alpha_variance /= sigma_crit**2  # Mpc^2/h^2
+        alpha_variance *= (1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h)**2  # convert to arcsec^2
 
         # create fits file and its header, than save result
         date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
