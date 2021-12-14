@@ -4,6 +4,8 @@ from astropy import units as u
 from astropy.constants import G, c
 from astropy.cosmology import Planck18 as cosmo
 import tensorflow_probability as tfp
+from scipy.special import exp1
+from numpy import euler_gamma
 
 COSMO = cosmo
 DTYPE = tf.float32
@@ -18,6 +20,13 @@ LAMBDA = tf.constant(-0.5, DTYPE)  # Box-Cox transform
 
 SIGMOID_MIN = tf.constant(1e-3, DTYPE)
 SIGMOIN_MAX = tf.constant(1 - 1e-3, DTYPE)
+
+EULER_GAMMA = tf.constant(euler_gamma, DTYPE)
+
+
+def exp1_plus_log(x):
+    # Although both log and exp1 diverge at x=0, exp1(x) + log(x) is an entire function, real for x >= 0
+    return tf.where(condition=(x==0), x=-EULER_GAMMA, y=exp1(x) + tf.math.log(x))
 
 
 def theta_einstein(kappa, rescaling, physical_pixel_scale, sigma_crit, Dds, Ds, Dd):

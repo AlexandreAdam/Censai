@@ -15,14 +15,17 @@ python $CENSAI_PATH/scripts/experiments/rim_analytic_gridsearch.py\
   --steps 1 2 4 8 12\
   --adam 0 1\
   --layers 2 3 4\
-  --units 32 64 128\
+  --units 6 12 32 64 128\
+  --unit_scaling 1 2 4\
   --mlp_before_gru 1 2 3\
   --activation tanh elu leaky_relu\
-  --batch_size 1 16 32\
+  --batch_size 1 16 32 64 128\
   --total_items 1000\
   --epochs 500\
   --optimizer adamax\
-  --initial_learning_rate 1e-3 1e-4\
+  --initial_learning_rate 1e-2 1e-3 1e-4\
+  --decay_rate 1 0.9 0.8\
+  --decay_steps 10000\
   --max_time 9.5\
   --checkpoints=10\
   --max_to_keep=1\

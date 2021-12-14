@@ -154,6 +154,7 @@ def main(args):
         save_checkpoint = False
     # =================================================================================================================
 
+    # @tf.function
     def train_step(lens, params, noise_rms, psf_fwhm):
         with tf.GradientTape() as tape:
             tape.watch(rim.model.trainable_variables)
@@ -288,8 +289,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_source_shift",       default=0.3,    type=float)
     parser.add_argument("--noise_rms_min",          default=0.001,  type=float)
     parser.add_argument("--noise_rms_max",          default=0.05,   type=float)
-    parser.add_argument("--noise_rms_mean",         default=0.08,   type=float)
-    parser.add_argument("--noise_rms_std",          default=0.08,   type=float)
+    parser.add_argument("--noise_rms_mean",         default=0.008,   type=float)
+    parser.add_argument("--noise_rms_std",          default=0.008,   type=float)
     parser.add_argument("--psf_fwhm_min",           default=0.06,   type=float)
     parser.add_argument("--psf_fwhm_max",           default=0.5,    type=float)
     parser.add_argument("--psf_fwhm_mean",          default=0.1,    type=float)
@@ -297,33 +298,33 @@ if __name__ == "__main__":
 
     # Model hyperparameters
     parser.add_argument("--layers",                 default=2,     type=int)
-    parser.add_argument("--units",                  default=32,    type=int)
-    parser.add_argument("--unit_scaling",           default=4,     type=int)
+    parser.add_argument("--units",                  default=24,    type=int)
+    parser.add_argument("--unit_scaling",           default=1,     type=int)
     parser.add_argument("--unit_cap",               default=1024,   type=int)
     parser.add_argument("--mlp_before_gru",         default=2,      type=int)
     parser.add_argument("--activation",             default="tanh")
 
     # Training set params
-    parser.add_argument("-b", "--batch_size",       default=1,      type=int,       help="Number of images in a batch. ")
+    parser.add_argument("-b", "--batch_size",       default=10,      type=int,       help="Number of images in a batch. ")
     parser.add_argument("--total_items",            required=True,  type=int,       help="Total images in an epoch.")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
-    parser.add_argument("--optimizer",              default="Adamax",                 help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
-    parser.add_argument("--initial_learning_rate",  default=1e-4,   type=float,     help="Initial learning rate.")
+    parser.add_argument("--optimizer",              default="Adamax",               help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
+    parser.add_argument("--initial_learning_rate",  default=1e-2,   type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=1.,     type=float,     help="Exponential decay rate of learning rate (1=no decay).")
     parser.add_argument("--decay_steps",            default=1000,   type=int,       help="Decay steps of exponential decay of the learning rate.")
     parser.add_argument("--staircase",              action="store_true",            help="Learning rate schedule only change after decay steps if enabled.")
     parser.add_argument("--patience",               default=np.inf, type=int,       help="Number of step at which training is stopped if no improvement is recorder.")
     parser.add_argument("--tolerance",              default=0,      type=float,     help="Current score <= (1 - tolerance) * best score => reset patience, else reduce patience.")
     parser.add_argument("--max_time",               default=np.inf, type=float,     help="Time allowed for the training, in hours.")
-    parser.add_argument("--reset_optimizer_states", action="store_true",           help="When training from pre-trained weights, reset states of optimizer.")
+    parser.add_argument("--reset_optimizer_states", action="store_true",            help="When training from pre-trained weights, reset states of optimizer.")
     parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
 
     # logs
     parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
     parser.add_argument("--logname",                 default=None,                  help="Overwrite name of the log with this argument")
-    parser.add_argument("--logname_prefixe",         default="RIMM",                help="If name of the log is not provided, this prefix is prepended to the date")
+    parser.add_argument("--logname_prefixe",         default="RIM",                 help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")

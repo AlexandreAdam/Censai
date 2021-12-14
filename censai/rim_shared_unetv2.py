@@ -130,7 +130,7 @@ class RIMSharedUnetv2:
                     y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
                     flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
                     log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None]**2, axis=(1, 2, 3))
-                    cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
+                    cost = log_likelihood + self.flux_lagrange_multiplier * flux_term
                 source_grad, kappa_grad = g.gradient(cost, [source, kappa])
                 source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
@@ -162,7 +162,7 @@ class RIMSharedUnetv2:
             y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
             flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
             log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
-            cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
+            cost = log_likelihood + self.flux_lagrange_multiplier * flux_term
             source_grad, kappa_grad = tf.gradients(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states)
@@ -192,7 +192,7 @@ class RIMSharedUnetv2:
                 y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
                 flux_term = tf.square(tf.reduce_sum(y_pred, axis=(1, 2, 3)) - tf.reduce_sum(lensed_image, axis=(1, 2, 3)))
                 log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - lensed_image) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
-                cost = tf.reduce_mean(log_likelihood + self.flux_lagrange_multiplier * flux_term)
+                cost = log_likelihood + self.flux_lagrange_multiplier * flux_term
             source_grad, kappa_grad = g.gradient(cost, [source, kappa])
             source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
             source, kappa, states = self.time_step(source, kappa, source_grad, kappa_grad, states, training=False)
