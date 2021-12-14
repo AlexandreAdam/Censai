@@ -244,10 +244,7 @@ class AnalyticalPhysicalModelv2:
     def lens_source_sersic_func_vec(self, x, psf_fwhm):
         # assume x has shape [batch_size, 13]
         r_ein, q, phi, x0, y0, gamma_ext, phi_ext, xs, ys, qs, phi_s, n, r_eff = [_x[:, None, None] for _x in tf.split(x, 13, axis=-1)]
-        if q > 0.95:
-            alpha1, alpha2 = tf.split(self.approximate_deflection_angles(r_ein, q, phi, x0, y0), 2, axis=-1)
-        else:
-            alpha1, alpha2 = tf.split(self.analytical_deflection_angles(r_ein, q, phi, x0, y0), 2, axis=-1)
+        alpha1, alpha2 = tf.split(self.analytical_deflection_angles(r_ein, q, phi, x0, y0), 2, axis=-1)
         alpha1_ext, alpha2_ext = self.external_shear_deflection(gamma_ext, phi_ext)
         # lens equation
         beta1 = self.theta1 - alpha1 - alpha1_ext
@@ -281,9 +278,10 @@ class AnalyticalPhysicalModelv2:
 
     def noisy_lens_sersic_func_vec(self, x, noise_rms, psf_fwhm):
         im = self.lens_source_sersic_func_vec(x, psf_fwhm)
-        peaks = tf.reduce_max(im, axis=(1, 2, 3), keepdims=True)
-        im += tf.random.normal(shape=im.shape, mean=0., stddev=noise_rms[:, None, None, None] * peaks)
-        return im
+        peaks = tf.reduce_max(im, axis=(1, 2, 3))
+        noise_rms = noise_rms * peaks
+        im += tf.random.normal(shape=im.shape, mean=0., stddev=noise_rms)
+        return im, noise_rms
 
     def lens_gaussian_source_func_given_alpha(
             self,
@@ -351,8 +349,8 @@ class AnalyticalPhysicalModelv2:
         # rotate to major/minor axis coordinates
         theta1, theta2 = self.rotated_and_shifted_coords(x0, y0, phi)
         psi = tf.sqrt(q ** 2 * (s ** 2 + theta1 ** 2) + theta2 ** 2)
-        alpha1 = b * q / tf.sqrt(1. - q ** 2) * tf.math.atan(np.sqrt(1. - q ** 2) * theta1 / (psi + s))
-        alpha2 = b * q / tf.sqrt(1. - q ** 2) * tf.math.atanh(np.sqrt(1. - q ** 2) * theta2 / (psi + s * q ** 2))
+        alpha1 = b * q / tf.sqrt(1. - q ** 2) * tf.math.atan(tf.sqrt(1. - q ** 2) * theta1 / (psi + s))
+        alpha2 = b * q / tf.sqrt(1. - q ** 2) * tf.math.atanh(tf.sqrt(1. - q ** 2) * theta2 / (psi + s * q ** 2))
         # # rotate back
         alpha1, alpha2 = self._rotate(alpha1, alpha2, -phi)
         return tf.concat([alpha1, alpha2], axis=-1)
@@ -444,7 +442,7 @@ class AnalyticalPhysicalModelv2:
         e1s, e2s = self._qphi_to_ellipticity(qs, phi_s)
         e1s = (e1s / self.max_ellipticity + 1)/2
         e2s = e2s / self.max_ellipticity
-        n = (n - self.n_min) / (self.n_max - self.n_max)
+        n = (n - self.n_min) / (self.n_max - self.n_min)
         r_eff = (r_eff - self.r_eff_min) / (self.r_eff_max - self.r_eff_min)
         x = logit(tf.concat([r_ein, e1, e2, x0, y0, gamma1, gamma2, xs, ys, e1s, e2s, n, r_eff], axis=-1))
         return x
@@ -467,7 +465,7 @@ class AnalyticalPhysicalModelv2:
         return convolved_images
 
     def psf_models(self, psf_fwhm: float):
-        psf_sigma =psf_fwhm/ (2 * np.sqrt(2. * np.log(2.)))
+        psf_sigma =psf_fwhm/ (2 * tf.sqrt(2. * tf.math.log(2.)))
         psf = tf.math.exp(-0.5 * self.r_squared / psf_sigma**2)
         psf /= tf.reduce_sum(psf, axis=(1, 2, 3), keepdims=True)
         return psf
@@ -504,7 +502,7 @@ class AnalyticalPhysicalModelv2:
         noise_rms = self.noise_rms_pdf.sample(sample_shape=(batch_size))
         psf_fwhm = self.psf_fwhm_pdf.sample(sample_shape=(batch_size))
 
-        lens = self.noisy_lens_sersic_func_vec(x, noise_rms, psf_fwhm)
+        lens, noise_rms = self.noisy_lens_sersic_func_vec(x, noise_rms, psf_fwhm)
         return lens, x, noise_rms, psf_fwhm
 
 
@@ -537,6 +535,7 @@ if __name__ == '__main__':
     for i in range(10):
         lens, x, noise_rms, psf_fwhm = phys.draw_sersic_batch(1)
         print(x)
+        print(phys.sersic_physical_to_logits(x))
         print(lens.numpy().max())
         plt.imshow(lens[0, ..., 0], cmap="hot")
         plt.colorbar()

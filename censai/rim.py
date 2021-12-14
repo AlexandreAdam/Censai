@@ -80,8 +80,7 @@ class RIM:
                 with tf.GradientTape() as g:
                     g.watch(source)
                     log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=kappa)
-                    cost = tf.reduce_mean(log_likelihood)
-            grad = g.gradient(cost, source)
+            grad = g.gradient(log_likelihood, source)
             grad = self.grad_update(grad, current_step)
             source, states = self.time_step(source, grad, states)
             source_series = source_series.write(index=current_step, value=source)
@@ -103,8 +102,7 @@ class RIM:
                 with tf.GradientTape() as g:
                     g.watch(source)
                     log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=kappa)
-                    cost = tf.reduce_mean(log_likelihood)
-            grad = g.gradient(cost, source)
+            grad = g.gradient(log_likelihood, source)
             grad = self.grad_update(grad, current_step)
             source, states = self.time_step(source, grad, states)
             source_series = source_series.write(index=current_step, value=self.source_link(source))
