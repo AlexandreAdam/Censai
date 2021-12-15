@@ -219,6 +219,11 @@ def main(args):
             ws = tf.keras.layers.Lambda(lambda s: tf.sqrt(s) / tf.reduce_sum(tf.sqrt(s), axis=(1, 2, 3), keepdims=True))
         else:
             raise ValueError("kappa_residual_weights must be in ['uniform', 'linear', 'quadratic', 'sqrt']")
+
+        if args.freeze_layers is not None:
+            for i in args.freeze_layers:
+                unet.layers[i].trainable = False
+
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         if args.logname is not None:
@@ -573,6 +578,7 @@ if __name__ == "__main__":
     parser.add_argument("--reset_optimizer_states",  action="store_true",           help="When training from pre-trained weights, reset states of optimizer.")
     parser.add_argument("--kappa_residual_weights",         default="uniform",              help="Options are ['uniform', 'linear', 'quadratic', 'sqrt']")
     parser.add_argument("--source_residual_weights",        default="uniform",              help="Options are ['uniform', 'linear', 'quadratic']")
+    parser.add_argument("--freeze_layers",          default=None,   nargs="+",      help="List of layers to freeze, helpful for checkpoint training.")
     # parser.add_argument("--add_chisq",              action="store_true",            help="Add log likelihood to loss")
     # parser.add_argument("--chisq_decay_steps",      default=50000,  type=int,       help="Number of steps for coefficient to increase")
     # parser.add_argument("--chisq_value",            default=1e-4,   type=float,     help="Initial value of coefficient multiplying log likelihood loss")
