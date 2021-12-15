@@ -508,36 +508,42 @@ class AnalyticalPhysicalModelv2:
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    phys = AnalyticalPhysicalModelv2(
-        pixels=128,
-        image_fov=7.68,
-        src_fov=3.0,
-        psf_cutout_size=16,
-        r_ein_min=0.5,
-        r_ein_max=2.,
-        n_min=1.,
-        n_max=3.,
-        r_eff_min=0.2,
-        r_eff_max=1.,
-        max_gamma=0.1,
-        max_ellipticity=0.4,
-        max_lens_shift=0.3,
-        max_source_shift=0.3,
-        noise_rms_min=0.001,
-        noise_rms_max=0.05,
-        noise_rms_mean=0.008,
-        noise_rms_std=0.008,
-        psf_fwhm_min=0.06,
-        psf_fwhm_max=0.5,
-        psf_fwhm_mean=0.1,
-        psf_fwhm_std=0.1
-    )
-    for i in range(10):
-        lens, x, noise_rms, psf_fwhm = phys.draw_sersic_batch(1)
-        print(x)
-        print(phys.sersic_physical_to_logits(x))
-        print(lens.numpy().max())
-        plt.imshow(lens[0, ..., 0], cmap="hot")
-        plt.colorbar()
-        plt.show()
+    phys = AnalyticalPhysicalModelv2(pixels=128)
+    psi = phys.potential(1, 0.9, 0.3, 0., 0.)
+    kappa = phys.kappa_field(3, 0.9, 0.3, 0., 0.)
+    plt.imshow(psi[0, ..., 0])
+    plt.colorbar()
+    plt.show()
+    # phys = AnalyticalPhysicalModelv2(
+    #     pixels=128,
+    #     image_fov=7.68,
+    #     src_fov=3.0,
+    #     psf_cutout_size=16,
+    #     r_ein_min=0.5,
+    #     r_ein_max=2.,
+    #     n_min=1.,
+    #     n_max=3.,
+    #     r_eff_min=0.2,
+    #     r_eff_max=1.,
+    #     max_gamma=0.1,
+    #     max_ellipticity=0.4,
+    #     max_lens_shift=0.3,
+    #     max_source_shift=0.3,
+    #     noise_rms_min=0.001,
+    #     noise_rms_max=0.05,
+    #     noise_rms_mean=0.008,
+    #     noise_rms_std=0.008,
+    #     psf_fwhm_min=0.06,
+    #     psf_fwhm_max=0.5,
+    #     psf_fwhm_mean=0.1,
+    #     psf_fwhm_std=0.1
+    # )
+    # for i in range(10):
+    #     lens, x, noise_rms, psf_fwhm = phys.draw_sersic_batch(1)
+    #     print(x)
+    #     print(phys.sersic_physical_to_logits(x))
+    #     print(lens.numpy().max())
+    #     plt.imshow(lens[0, ..., 0], cmap="hot")
+    #     plt.colorbar()
+    #     plt.show()
 
