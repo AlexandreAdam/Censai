@@ -51,6 +51,8 @@ def distributed_strategy(args):
                 continue
             if tf.reduce_sum(tf.cast(example["source"] > args.source_signal_threshold, tf.float32)) < args.min_source_signal_pixels:
                 continue
+            if tf.reduce_max(example["kappa"]) < 1.:  # this filters out some of the bad VAE samples.
+                continue
             kept += 1
             features = {
                 "kappa": _bytes_feature(example["kappa"].numpy().tobytes()),
