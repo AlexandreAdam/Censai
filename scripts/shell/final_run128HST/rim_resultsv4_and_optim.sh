@@ -17,7 +17,7 @@ python $CENSAI_PATH/scripts/rim_results_v4_and_optim.py\
   --test_dataset=lenses128hst_TNG_rau_200k_control_denoised_testset_validated\
   --train_size=0\
   --val_size=0\
-  --test_size=3000\
+  --test_size=5000\
   --sie_size=0\
   --buffer_size=1000\
   --lens_coherence_bins=40\
