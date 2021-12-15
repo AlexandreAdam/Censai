@@ -146,7 +146,7 @@ def distributed_strategy(args):
             g.create_dataset(name="lens_pred2", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
             g.create_dataset(name="lens_pred_reoptimized", shape=[data_len, args.re_optimize_save+1, phys.pixels, phys.pixels, 1], dtype=np.float32)
             g.create_dataset(name="source_pred", shape=[data_len, rim.steps, phys.src_pixels, phys.src_pixels, 1], dtype=np.float32)
-            g.create_dataset(name="source_pred2", shape=[data_len,  rim.steps,  phys.src_pixels, phys.src_pixels, 1], dtype=np.float32)
+            g.create_dataset(name="source_pred2", shape=[data_len,  rim_source.steps,  phys.src_pixels, phys.src_pixels, 1], dtype=np.float32)
             g.create_dataset(name="source_pred_reoptimized", shape=[data_len, args.re_optimize_save+1, phys.src_pixels, phys.src_pixels, 1])
             g.create_dataset(name="kappa_pred", shape=[data_len, rim.steps, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
             g.create_dataset(name="kappa_pred_reoptimized", shape=[data_len, args.re_optimize_save+1, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
