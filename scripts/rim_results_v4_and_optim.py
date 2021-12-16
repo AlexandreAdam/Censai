@@ -134,8 +134,7 @@ def distributed_strategy(args):
         for i, dataset in enumerate([train_dataset, val_dataset, test_dataset]):
             checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint).expect_partial()  # reset model weights
             g = hf.create_group(f'{dataset_names[i]}')
-            data_len = dataset_shapes[i]
-            job_size = dataset_shapes[i] // N_WORKERS
+            data_len = dataset_shapes[i] // N_WORKERS
             g.create_dataset(name="lens", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
             g.create_dataset(name="psf",  shape=[data_len, physical_params['psf pixels'], physical_params['psf pixels'], 1], dtype=np.float32)
             g.create_dataset(name="psf_fwhm", shape=[data_len], dtype=np.float32)
@@ -169,7 +168,7 @@ def distributed_strategy(args):
             g.create_dataset(name="kappa_fov", shape=[1], dtype=np.float32)
             g.create_dataset(name="source_fov", shape=[1], dtype=np.float32)
             g.create_dataset(name="lens_fov", shape=[1], dtype=np.float32)
-            dataset = dataset.skip(job_size * (THIS_WORKER - 1)).take(job_size)
+            dataset = dataset.skip(data_len * (THIS_WORKER - 1)).take(data_len)
             for batch, (lens, source, kappa, noise_rms, psf, fwhm) in enumerate(dataset.batch(1).prefetch(tf.data.experimental.AUTOTUNE)):
                 # Compute predictions for kappa and source
                 source_pred, kappa_pred, chi_squared = rim.predict(lens, noise_rms, psf)
@@ -202,8 +201,8 @@ def distributed_strategy(args):
                         s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape)
                         cost = tf.reduce_mean(chi_sq) # mean over time steps
                         cost += tf.reduce_sum(rim.unet.losses)
-                    if 2 * chi_sq[-1, 0] < args.converged_chisq:
-                        break
+                    # if 2 * chi_sq[-1, 0] < args.converged_chisq and current_step > 1:  # do at least one step
+                    #     break
                     grads = tape.gradient(cost, unet.trainable_variables)
                     optim.apply_gradients(zip(grads, unet.trainable_variables))
 
