@@ -11,7 +11,7 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
-  --output_dir=$HOME/scratch/Censai/data/lenses128hst_TNG_rau_200k_control_denoised_testset/\
+  --output_dir=$HOME/scratch/Censai/data/lenses128hst_TNG_rau_200k_control_denoised_testset2/\
   --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_rau_testset/\
   --cosmos_datasets $CENSAI_PATH/data/cosmos_23.5_finalrun128_test_denoised\
   --compression_type=GZIP\
@@ -22,10 +22,10 @@ python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
   --batch_size=20\
   --tukey_alpha=0.\
   --block_length=1\
-  --noise_rms_min=0.001\
+  --noise_rms_min=0.01\
   --noise_rms_max=0.1\
-  --noise_rms_mean=0.01\
-  --noise_rms_std=0.03\
+  --noise_rms_mean=0.02\
+  --noise_rms_std=0.05\
   --psf_cutout_size=20\
   --psf_fwhm_min=0.06\
   --psf_fwhm_max=0.3\
