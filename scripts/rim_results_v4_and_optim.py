@@ -189,7 +189,7 @@ def distributed_strategy(args):
                 chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
                 source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
-                best = chi_sq[-1, 0]
+                best = chi_squared[-1, 0]
                 source_best = source_pred[-1]
                 kappa_best = kappa_pred[-1]
                 for current_step in tqdm(range(STEPS)):
