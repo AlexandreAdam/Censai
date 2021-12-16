@@ -219,11 +219,11 @@ def main(args):
             ws = tf.keras.layers.Lambda(lambda s: tf.sqrt(s) / tf.reduce_sum(tf.sqrt(s), axis=(1, 2, 3), keepdims=True))
         else:
             raise ValueError("kappa_residual_weights must be in ['uniform', 'linear', 'quadratic', 'sqrt']")
-
-        if args.freeze_layers is not None:
-            for i in args.freeze_layers:
-                unet.layers[i].trainable = False
-
+        #
+        # if args.freeze_layers is not None:
+        #     for i in args.freeze_layers:
+        #         unet.layers[i].trainable = False
+        #
     # ==== Take care of where to write logs and stuff =================================================================
     if args.model_id.lower() != "none":
         if args.logname is not None:
