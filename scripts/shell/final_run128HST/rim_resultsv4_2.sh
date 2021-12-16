@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/rim_results_v4.py\
   --source_model=RIMSource128hstv3_control_009_A1_L3_FLM0.0_211108220845\
   --val_dataset=lenses128hst_TNG_rau_200k_control_denoised_validated_val\
   --train_dataset=lenses128hst_TNG_rau_200k_control_denoised_validated_train\
-  --test_dataset=lenses128hst_TNG_rau_200k_control_denoised_testset_validated\
+  --test_dataset=lenses128hst_TNG_rau_200k_control_denoised_testset2_validated\
   --sie_size=300\
   --train_size=300\
   --val_size=300\
