@@ -204,6 +204,8 @@ def distributed_strategy(args):
 
                     log_likelihood = chi_sq[-1]
                     chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+                    source_o = s[-1]
+                    kappa_o = k[-1]
                     source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2))
                     kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - rim.kappa_inverse_link(kappa)) ** 2))
                     if abs(2 * chi_sq[-1, 0] - 1) < 1e-4:
