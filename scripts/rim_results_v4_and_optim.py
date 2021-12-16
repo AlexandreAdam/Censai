@@ -178,7 +178,6 @@ def distributed_strategy(args):
                 lens_pred2 = phys.forward(source_pred2[-1], kappa_pred[-1], psf)
                 # Re-optimize weights of the model
                 STEPS = args.re_optimize_steps
-                # SAVE = STEPS // args.re_optimize_save
                 learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
                     initial_learning_rate=args.learning_rate,
                     decay_rate=args.decay_rate,
@@ -187,13 +186,12 @@ def distributed_strategy(args):
                 )
                 optim = tf.keras.optimizers.Adam(learning_rate=learning_rate_schedule)
 
-                # source_series = tf.TensorArray(DTYPE, size=STEPS // SAVE+1)
-                # kappa_series = tf.TensorArray(DTYPE, size=STEPS // SAVE+1)
-                # lens_series = tf.TensorArray(DTYPE, size=STEPS // SAVE+1)
                 chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
                 source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
-                # mask = tf.cast(lens > args.mask_sigma_threshold * noise_rms, DTYPE)
+                best = chi_sq[-1, 0]
+                source_best = source_pred[-1]
+                kappa_best = kappa_pred[-1]
                 for current_step in tqdm(range(STEPS)):
                     with tf.GradientTape() as tape:
                         tape.watch(unet.trainable_variables)
@@ -208,30 +206,20 @@ def distributed_strategy(args):
                     kappa_o = k[-1]
                     source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2))
                     kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - rim.kappa_inverse_link(kappa)) ** 2))
-                    if abs(2 * chi_sq[-1, 0] - 1) < 1e-4:
+                    if 2 * chi_sq[-1, 0] < args.converged_chisq:
+                        source_best = rim.source_link(s[-1])
+                        kappa_best = rim.kappa_link(k[-1])
                         break
+                    if chi_sq[-1, 0] < best:
+                        source_best = rim.source_link(s[-1])
+                        kappa_best = rim.kappa_link(k[-1])
+                        best = chi_sq[-1, 0]
                     grads = tape.gradient(cost, unet.trainable_variables)
                     optim.apply_gradients(zip(grads, unet.trainable_variables))
 
-                    # if (current_step + 1) % SAVE == 0:
-                    #     source_o = s[-1]
-                    #     kappa_o = k[-1]
-                    #     y_pred = phys.forward(rim.source_link(source_o), rim.kappa_link(kappa_o), psf)
-                    #     source_series = source_series.write(index=current_step // SAVE, value=rim.source_link(source_o))
-                    #     kappa_series = kappa_series.write(index=current_step // SAVE, value=rim.kappa_link(kappa_o))
-                    #     lens_series = lens_series.write(index=current_step // SAVE, value=y_pred)
-
-                # last step results
-                source_o = rim.source_link(s[-1])
-                kappa_o = rim.kappa_link(k[-1])
+                source_o = source_best
+                kappa_o = kappa_best
                 y_pred = phys.forward(source_o, kappa_o, psf)
-                # source_series = source_series.write(index=args.re_optimize_save, value=source_o)
-                # kappa_series = kappa_series.write(index=args.re_optimize_save, value=kappa_o)
-                # lens_series = lens_series.write(index=args.re_optimize_save, value=y_pred)
-
-                # source_series = tf.transpose(source_series.stack(), perm=[1, 0, 2, 3, 4])
-                # kappa_series = tf.transpose(kappa_series.stack(), perm=[1, 0, 2, 3, 4])
-                # lens_pred_series = tf.transpose(lens_series.stack(), perm=[1, 0, 2, 3, 4])
                 chi_sq_series = tf.transpose(chi_squared_series.stack(), perm=[1, 0])
                 source_mse = source_mse.stack()[None, ...]
                 kappa_mse = kappa_mse.stack()[None, ...]
@@ -239,14 +227,11 @@ def distributed_strategy(args):
                 # Compute Power spectrum of converged predictions
                 _ps_lens = ps_lens.cross_correlation_coefficient(lens[..., 0], lens_pred[..., 0])
                 _ps_lens2 = ps_lens.cross_correlation_coefficient(lens[..., 0], lens_pred2[..., 0])
-                # _ps_lens3 = ps_lens.cross_correlation_coefficient(lens[..., 0], lens_pred_series[:, -1, ..., 0])
                 _ps_lens3 = ps_lens.cross_correlation_coefficient(lens[..., 0], y_pred[..., 0])
                 _ps_kappa = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_pred[-1])[..., 0])
-                # _ps_kappa2 = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_series[:, -1, ..., 0]))
                 _ps_kappa2 = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_o[..., 0]))
                 _ps_source = ps_source.cross_correlation_coefficient(source[..., 0], source_pred[-1][..., 0])
                 _ps_source2 = ps_source.cross_correlation_coefficient(source[..., 0], source_pred2[-1][..., 0])
-                # _ps_source3 = ps_source.cross_correlation_coefficient(source[..., 0], source_series[:, -1, ..., 0])
                 _ps_source3 = ps_source.cross_correlation_coefficient(source[..., 0], source_o[..., 0])
 
                 # save results
@@ -258,14 +243,11 @@ def distributed_strategy(args):
                 g["kappa"][batch] = kappa.numpy().astype(np.float32)
                 g["lens_pred"][batch] = lens_pred.numpy().astype(np.float32)
                 g["lens_pred2"][batch] = lens_pred2.numpy().astype(np.float32)
-                # g["lens_pred_reoptimized"][batch] = lens_pred_series.numpy().astype(np.float32)
                 g["lens_pred_reoptimized"][batch] = y_pred.numpy().astype(np.float32)
                 g["source_pred"][batch] = tf.transpose(source_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["source_pred2"][batch] = tf.transpose(source_pred2, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
-                # g["source_pred_reoptimized"][batch] = source_series.numpy().astype(np.float32)
                 g["source_pred_reoptimized"][batch] = source_o.numpy().astype(np.float32)
                 g["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
-                # g["kappa_pred_reoptimized"][batch] = kappa_series.numpy().astype(np.float32)
                 g["kappa_pred_reoptimized"][batch] = kappa_o.numpy().astype(np.float32)
                 g["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
                 g["chi_squared2"][batch] = 2*tf.transpose(chi_squared2).numpy().astype(np.float32)
@@ -412,8 +394,8 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size",         default=1,          help="For SIE")
     parser.add_argument("--re_optimize_steps",  default=1000,       type=int)
     # parser.add_argument("--re_optimize_save",   default=4,          type=int)
-    # parser.add_argument("--converged_chisq",    default=1.005,      type=float, help="Value of the chisq that is considered converged.")
-    parser.add_argument("--convergence_criteria", default=1e-4,     type=float, help="How close should the prediction be to 1?")
+    parser.add_argument("--converged_chisq",    default=1.0,      type=float, help="Value of the chisq that is considered converged.")
+    # parser.add_argument("--convergence_criteria", default=1e-4,     type=float, help="How close should the prediction be to 1?")
     parser.add_argument("--l2_amp",             default=1e-2,       type=float)
     parser.add_argument("--learning_rate",      default=1e-6,       type=float)
     parser.add_argument("--decay_rate",         default=0.7,        type=float)
