@@ -150,9 +150,12 @@ def distributed_strategy(args):
             g.create_dataset(name="kappa_pred_reoptimized", shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
             g.create_dataset(name="chi_squared", shape=[data_len, rim.steps], dtype=np.float32)
             g.create_dataset(name="chi_squared2", shape=[data_len, rim_source.steps], dtype=np.float32)
-            g.create_dataset(name="chi_squared_reoptimized", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
-            g.create_dataset(name="source_optim_mse", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
-            g.create_dataset(name="kappa_optim_mse", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
+            g.create_dataset(name="chi_squared_reoptimized", shape=[data_len], dtype=np.float32)
+            g.create_dataset(name="chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
+            g.create_dataset(name="source_optim_mse", shape=[data_len], dtype=np.float32)
+            g.create_dataset(name="kappa_optim_mse_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
+            g.create_dataset(name="source_optim_mse", shape=[data_len], dtype=np.float32)
+            g.create_dataset(name="kappa_optim_mse_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
             g.create_dataset(name="lens_coherence_spectrum", shape=[data_len, args.lens_coherence_bins], dtype=np.float32)
             g.create_dataset(name="source_coherence_spectrum",  shape=[data_len, args.source_coherence_bins], dtype=np.float32)
             g.create_dataset(name="lens_coherence_spectrum2", shape=[data_len, args.lens_coherence_bins], dtype=np.float32)
@@ -214,12 +217,16 @@ def distributed_strategy(args):
                         source_best = rim.source_link(s[-1])
                         kappa_best = rim.kappa_link(k[-1])
                         best = chi_sq[-1, 0]
+                        source_mse_best = tf.reduce_mean((source_best - rim.source_inverse_link(source)) ** 2)
+                        kappa_mse_best = tf.reduce_mean((kappa_best - rim.kappa_inverse_link(kappa)) ** 2)
                     grads = tape.gradient(cost, unet.trainable_variables)
                     optim.apply_gradients(zip(grads, unet.trainable_variables))
 
                 source_o = source_best
                 kappa_o = kappa_best
                 y_pred = phys.forward(source_o, kappa_o, psf)
+                source_o = s[-1]
+                kappa_o = k[-1]
                 chi_sq_series = tf.transpose(chi_squared_series.stack(), perm=[1, 0])
                 source_mse = source_mse.stack()[None, ...]
                 kappa_mse = kappa_mse.stack()[None, ...]
@@ -251,9 +258,12 @@ def distributed_strategy(args):
                 g["kappa_pred_reoptimized"][batch] = kappa_o.numpy().astype(np.float32)
                 g["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
                 g["chi_squared2"][batch] = 2*tf.transpose(chi_squared2).numpy().astype(np.float32)
-                g["chi_squared_reoptimized"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
-                g["source_optim_mse"][batch] = source_mse.numpy().astype(np.float32)
-                g["kappa_optim_mse"][batch] = kappa_mse.numpy().astype(np.float32)
+                g["chi_squared_reoptimized"][batch] = 2*best.numpy().astype(np.float32)
+                g["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
+                g["source_optim_mse"][batch] = source_mse_best.numpy().astype(np.float32)
+                g["source_optim_mse_series"][batch] = source_mse.numpy().astype(np.float32)
+                g["kappa_optim_mse"][batch] = kappa_mse_best.numpy().astype(np.float32)
+                g["kappa_optim_mse_series"][batch] = kappa_mse.numpy().astype(np.float32)
                 g["lens_coherence_spectrum"][batch] = _ps_lens
                 g["lens_coherence_spectrum2"][batch] = _ps_lens2
                 g["source_coherence_spectrum"][batch] = _ps_source
