@@ -212,6 +212,7 @@ def distributed_strategy(args):
                     if 2 * chi_sq[-1, 0] < args.converged_chisq:
                         source_best = rim.source_link(source_o)
                         kappa_best = rim.kappa_link(kappa_o)
+                        best = chi_sq[-1, 0]
                         break
                     if chi_sq[-1, 0] < best:
                         source_best = rim.source_link(source_o)
