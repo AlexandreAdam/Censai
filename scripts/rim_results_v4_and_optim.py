@@ -210,12 +210,12 @@ def distributed_strategy(args):
                     source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2))
                     kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - rim.kappa_inverse_link(kappa)) ** 2))
                     if 2 * chi_sq[-1, 0] < args.converged_chisq:
-                        source_best = rim.source_link(s[-1])
-                        kappa_best = rim.kappa_link(k[-1])
+                        source_best = rim.source_link(source_o)
+                        kappa_best = rim.kappa_link(kappa_o)
                         break
                     if chi_sq[-1, 0] < best:
-                        source_best = rim.source_link(s[-1])
-                        kappa_best = rim.kappa_link(k[-1])
+                        source_best = rim.source_link(source_o)
+                        kappa_best = rim.kappa_link(kappa_o)
                         best = chi_sq[-1, 0]
                         source_mse_best = tf.reduce_mean((source_best - rim.source_inverse_link(source)) ** 2)
                         kappa_mse_best = tf.reduce_mean((kappa_best - rim.kappa_inverse_link(kappa)) ** 2)
@@ -225,8 +225,6 @@ def distributed_strategy(args):
                 source_o = source_best
                 kappa_o = kappa_best
                 y_pred = phys.forward(source_o, kappa_o, psf)
-                source_o = s[-1]
-                kappa_o = k[-1]
                 chi_sq_series = tf.transpose(chi_squared_series.stack(), perm=[1, 0])
                 source_mse = source_mse.stack()[None, ...]
                 kappa_mse = kappa_mse.stack()[None, ...]
