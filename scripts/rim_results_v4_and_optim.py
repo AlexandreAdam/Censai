@@ -154,7 +154,7 @@ def distributed_strategy(args):
             g.create_dataset(name="chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
             g.create_dataset(name="source_optim_mse", shape=[data_len], dtype=np.float32)
             g.create_dataset(name="kappa_optim_mse_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
-            g.create_dataset(name="source_optim_mse", shape=[data_len], dtype=np.float32)
+            g.create_dataset(name="kappa_optim_mse", shape=[data_len], dtype=np.float32)
             g.create_dataset(name="kappa_optim_mse_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
             g.create_dataset(name="lens_coherence_spectrum", shape=[data_len, args.lens_coherence_bins], dtype=np.float32)
             g.create_dataset(name="source_coherence_spectrum",  shape=[data_len, args.source_coherence_bins], dtype=np.float32)
