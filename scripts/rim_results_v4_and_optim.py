@@ -187,14 +187,21 @@ def distributed_strategy(args):
                     decay_steps=args.decay_steps,
                     staircase=args.staircase
                 )
-                optim = tf.keras.optimizers.Adam(learning_rate=learning_rate_schedule)
+                optim = tf.keras.optimizers.RMSprop(learning_rate=learning_rate_schedule)
 
                 chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
                 source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
                 best = chi_squared[-1, 0]
+                # best = abs(2*chi_squared[-1, 0] - 1)
+                # best_chisq = 2*chi_squared[-1, 0]
                 source_best = source_pred[-1]
                 kappa_best = kappa_pred[-1]
+                # source_mean = source_pred[-1]
+                # kappa_mean = rim.kappa_link(kappa_pred[-1])
+                # source_std = tf.zeros_like(source_mean)
+                # kappa_std = tf.zeros_like(kappa_mean)
+                # counter = 0
                 for current_step in tqdm(range(STEPS)):
                     with tf.GradientTape() as tape:
                         tape.watch(unet.trainable_variables)
@@ -220,6 +227,31 @@ def distributed_strategy(args):
                         best = chi_sq[-1, 0]
                         source_mse_best = tf.reduce_mean((source_best - rim.source_inverse_link(source)) ** 2)
                         kappa_mse_best = tf.reduce_mean((kappa_best - rim.kappa_inverse_link(kappa)) ** 2)
+                    # if counter > 0:
+                    #     # Welford's online algorithm
+                    #     # source
+                    #     delta = source_o - source_mean
+                    #     source_mean = (counter * source_mean + (counter + 1) * source_o)/(counter + 1)
+                    #     delta2 = source_o - source_mean
+                    #     source_std += delta * delta2
+                    #     # kappa
+                    #     delta = rim.kappa_link(kappa_o) - kappa_mean
+                    #     kappa_mean = (counter * kappa_mean + (counter + 1) * rim.kappa_link(kappa_o)) / (counter + 1)
+                    #     delta2 = rim.kappa_link(kappa_o) - kappa_mean
+                    #     kappa_std += delta * delta2
+                    # if best_chisq < args.converged_chisq:
+                    #     counter += 1
+                    #     if counter == args.window:
+                    #         break
+                    # if 2*chi_sq[-1, 0] < best_chisq:
+                    #     best_chisq = 2*chi_sq[-1, 0]
+                    # if abs(2*chi_sq[-1, 0] - 1) < best:
+                    #     source_best = rim.source_link(source_o)
+                    #     kappa_best = rim.kappa_link(kappa_o)
+                    #     best = abs(2 * chi_squared[-1, 0] - 1)
+                    #     source_mse_best = tf.reduce_mean((source_best - rim.source_inverse_link(source)) ** 2)
+                    #     kappa_mse_best = tf.reduce_mean((kappa_best - rim.kappa_inverse_link(kappa)) ** 2)
+
                     grads = tape.gradient(cost, unet.trainable_variables)
                     optim.apply_gradients(zip(grads, unet.trainable_variables))
 
@@ -229,6 +261,8 @@ def distributed_strategy(args):
                 chi_sq_series = tf.transpose(chi_squared_series.stack(), perm=[1, 0])
                 source_mse = source_mse.stack()[None, ...]
                 kappa_mse = kappa_mse.stack()[None, ...]
+                # kappa_std /= float(args.window)
+                # source_std /= float(args.window)
 
                 # Compute Power spectrum of converged predictions
                 _ps_lens = ps_lens.cross_correlation_coefficient(lens[..., 0], lens_pred[..., 0])
@@ -406,6 +440,7 @@ if __name__ == '__main__':
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
     parser.add_argument("--batch_size",         default=1,          help="For SIE")
     parser.add_argument("--re_optimize_steps",  default=1000,       type=int)
+    parser.add_argument("--window",             default=200,        type=int)
     # parser.add_argument("--re_optimize_save",   default=4,          type=int)
     parser.add_argument("--converged_chisq",    default=1.0,      type=float, help="Value of the chisq that is considered converged.")
     # parser.add_argument("--convergence_criteria", default=1e-4,     type=float, help="How close should the prediction be to 1?")
