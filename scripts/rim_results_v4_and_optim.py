@@ -159,7 +159,7 @@ def distributed_strategy(args):
             g.create_dataset(name="lens_coherence_spectrum", shape=[data_len, args.lens_coherence_bins], dtype=np.float32)
             g.create_dataset(name="source_coherence_spectrum",  shape=[data_len, args.source_coherence_bins], dtype=np.float32)
             g.create_dataset(name="lens_coherence_spectrum2", shape=[data_len, args.lens_coherence_bins], dtype=np.float32)
-            g.create_dataset(name="lens_coherence_spectrum_repotimized", shape=[data_len, args.lens_coherence_bins], dtype=np.float32)
+            g.create_dataset(name="lens_coherence_spectrum_reoptimized", shape=[data_len, args.lens_coherence_bins], dtype=np.float32)
             g.create_dataset(name="source_coherence_spectrum2",  shape=[data_len, args.source_coherence_bins], dtype=np.float32)
             g.create_dataset(name="source_coherence_spectrum_reoptimized",  shape=[data_len, args.source_coherence_bins], dtype=np.float32)
             g.create_dataset(name="kappa_coherence_spectrum", shape=[data_len, args.kappa_coherence_bins], dtype=np.float32)
@@ -265,11 +265,14 @@ def distributed_strategy(args):
                 g["kappa_optim_mse_series"][batch] = kappa_mse.numpy().astype(np.float32)
                 g["lens_coherence_spectrum"][batch] = _ps_lens
                 g["lens_coherence_spectrum2"][batch] = _ps_lens2
+                g["lens_coherence_spectrum_reoptimized"][batch] = _ps_lens3
                 g["source_coherence_spectrum"][batch] = _ps_source
                 g["source_coherence_spectrum2"][batch] = _ps_source2
+                g["source_coherence_spectrum_reoptimized"][batch] = _ps_source3
                 g["lens_coherence_spectrum"][batch] = _ps_lens
                 g["lens_coherence_spectrum"][batch] = _ps_lens
                 g["kappa_coherence_spectrum"][batch] = _ps_kappa
+                g["kappa_coherence_spectrum_reoptimized"][batch] = _ps_kappa2
 
                 if batch == 0:
                     _, f = np.histogram(np.fft.fftfreq(phys.pixels)[:phys.pixels//2], bins=ps_lens.bins)
