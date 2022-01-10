@@ -133,6 +133,7 @@ def distributed_strategy(args):
                 source_var = tf.zeros_like(source_mean)
                 kappa_var = tf.zeros_like(kappa_mean)
 
+                grad_var = [tf.zeros_like(theta) for theta in unet.trainable_variables]
                 for current_step in tqdm(range(STEPS)):
                     with tf.GradientTape() as tape:
                         tape.watch(unet.trainable_variables)
@@ -163,8 +164,10 @@ def distributed_strategy(args):
                     # SLGD update
                     step_size = learning_rate_schedule(current_step)
                     gradients = tape.gradient(cost, unet.trainable_variables)
-                    noise = [tf.random.normal(shape=theta.shape, stddev=step_size**(1/2)) for theta in unet.trainable_variables]
-                    unet.set_weights([theta - step_size/2. * grad - eta for (theta, grad, eta) in zip(unet.trainable_variables, gradients, noise)])
+                    grad_var = [args.rmsprop_alpha * var + (1 - args.rmsprop_alpha) * grad**2 for (grad, var) in zip(gradients, grad_var)]
+                    noise = [tf.random.normal(shape=theta.shape, stddev=tf.sqrt(step_size * var)) for (theta, var) in zip(unet.trainable_variables, grad_var)]
+                    unet.set_weights([theta - step_size/2./(args.rmsprop_epsilon + tf.sqrt(var)) * grad - eta
+                                      for (theta, grad, eta, var) in zip(unet.trainable_variables, gradients, noise, grad_var)])
 
                 y_pred = phys.forward(rim.source_link(source_mean), rim.kappa_link(kappa_mean), psf)
                 chisq_ro = tf.reduce_mean((y_pred - lens)**2 / noise_rms[:, None, None, None] ** 2)
@@ -246,11 +249,12 @@ if __name__ == '__main__':
     parser.add_argument("--lens_coherence_bins",    default=40,     type=int)
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
-    parser.add_argument("--batch_size",         default=1,          help="For SIE")
     parser.add_argument("--re_optimize_steps",  default=1000,       type=int)
     parser.add_argument("--burn_in",            default=2000,       type=int)
     parser.add_argument("--sampling_steps",     default=2000,       type=int)
     parser.add_argument("--l2_amp",             default=6e-5,       type=float)
+    parser.add_argument("--rmsprop_alpha",      default=0.99,       type=float, help="Control the size of the exponential moving window of the preconditioner. Default from Li et al 2015.")
+    parser.add_argument("--rmsprop_epsilon",    default=1e-5,       type=float, help="Control the extremes of the curvatures in the preconditioner. Default from Li et al 2015.")
     parser.add_argument("--learning_rate",      default=1e-6,       type=float)
     parser.add_argument("--decay_rate",         default=1,          type=float)
     parser.add_argument("--decay_steps",        default=500,        type=float)
