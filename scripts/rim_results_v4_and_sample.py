@@ -129,7 +129,7 @@ def distributed_strategy(args):
                 source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
                 source_mean = source_pred[-1]
-                kappa_mean = rim.kappa_link(kappa_pred[-1])
+                kappa_mean = kappa_pred[-1]
                 source_var = tf.zeros_like(source_mean)
                 kappa_var = tf.zeros_like(kappa_mean)
 
