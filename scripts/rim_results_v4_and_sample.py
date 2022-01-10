@@ -6,7 +6,7 @@ import numpy as np
 import os, glob, json
 import h5py
 from tqdm import tqdm
-from censai.definitions import log_10, DTYPE
+from censai.definitions import LOG10, DTYPE
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM
@@ -84,14 +84,17 @@ def distributed_strategy(args):
             g.create_dataset(name="kappa", shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
             g.create_dataset(name="lens_pred", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
             g.create_dataset(name="lens_pred_reoptimized", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
+            g.create_dataset(name="lens_pred_reoptimized_mean", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
+            g.create_dataset(name="lens_pred_reoptimized_var",  shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
             g.create_dataset(name="source_pred", shape=[data_len, rim.steps, phys.src_pixels, phys.src_pixels, 1], dtype=np.float32)
             g.create_dataset(name="source_pred_reoptimized_mean", shape=[data_len, phys.src_pixels, phys.src_pixels, 1])
             g.create_dataset(name="source_pred_reoptimized_var", shape=[data_len, phys.src_pixels, phys.src_pixels, 1])
             g.create_dataset(name="kappa_pred", shape=[data_len, rim.steps, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
             g.create_dataset(name="kappa_pred_reoptimized_mean", shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
-            g.create_dataset(name="kappa_pred_reoptimized_mar", shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
+            g.create_dataset(name="kappa_pred_reoptimized_var", shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
             g.create_dataset(name="chi_squared", shape=[data_len, rim.steps], dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized", shape=[data_len], dtype=np.float32)
+            g.create_dataset(name="chi_squared_reoptimized_mean", shape=[data_len], dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
             g.create_dataset(name="source_optim_mse", shape=[data_len], dtype=np.float32)
             g.create_dataset(name="source_optim_mse_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
@@ -124,15 +127,18 @@ def distributed_strategy(args):
                     decay_steps=args.decay_steps,
                     staircase=args.staircase
                 )
-
+                # Goodness of fit and oracle statistics
                 chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
                 source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
+                y_mean = lens_pred
+                y_var = tf.zeros_like(y_mean)
+                # prediction and uncertainty collected in model space
                 source_mean = source_pred[-1]
-                kappa_mean = kappa_pred[-1]
+                kappa_mean = rim.kappa_inverse_link(kappa_pred)[-1]
                 source_var = tf.zeros_like(source_mean)
                 kappa_var = tf.zeros_like(kappa_mean)
-
+                # Preconditioner
                 grad_var = [tf.zeros_like(theta) for theta in unet.trainable_variables]
                 for current_step in tqdm(range(STEPS)):
                     with tf.GradientTape() as tape:
@@ -145,6 +151,7 @@ def distributed_strategy(args):
                     chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
                     source_o = s[-1]
                     kappa_o = k[-1]
+                    y_o = phys.forward(rim.source_link(source_o), rim.kappa_link(kappa_o), psf)
                     source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2))
                     kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - rim.kappa_inverse_link(kappa)) ** 2))
                     # Welford's online algorithm for moving variance
@@ -160,8 +167,13 @@ def distributed_strategy(args):
                         kappa_mean = (step * kappa_mean + kappa_o) / (step + 1)
                         delta2 = kappa_o - kappa_mean
                         kappa_var += delta * delta2
+                        # observation
+                        delta = y_o - y_mean
+                        y_mean = (step * y_mean + y_o) / (step + 1)
+                        delta2 = y_o - y_mean
+                        y_var += delta * delta2
 
-                    # SLGD update
+                    # Stochastic Gradient Langevin Dynamics (SGLD) update
                     step_size = learning_rate_schedule(current_step)
                     gradients = tape.gradient(cost, unet.trainable_variables)
                     grad_var = [args.rmsprop_alpha * var + (1 - args.rmsprop_alpha) * grad**2 for (grad, var) in zip(gradients, grad_var)]
@@ -171,21 +183,27 @@ def distributed_strategy(args):
 
                 y_pred = phys.forward(rim.source_link(source_mean), rim.kappa_link(kappa_mean), psf)
                 chisq_ro = tf.reduce_mean((y_pred - lens)**2 / noise_rms[:, None, None, None] ** 2)
-                source_mse_ro = tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2)
-                kappa_mse_ro = tf.reduce_mean((kappa_o - rim.kappa_inverse_link(kappa)) ** 2)
+                chi_sq_mean = tf.reduce_mean((y_mean - lens)**2 / noise_rms[:, None, None, None] ** 2)
+                source_mse_ro = tf.reduce_mean((source_mean - rim.source_inverse_link(source)) ** 2)
+                kappa_mse_ro = tf.reduce_mean((kappa_mean - rim.kappa_inverse_link(kappa)) ** 2)
                 chi_sq_series = tf.transpose(chi_squared_series.stack(), perm=[1, 0])
                 source_mse = source_mse.stack()[None, ...]
                 kappa_mse = kappa_mse.stack()[None, ...]
                 kappa_var /= float(args.sampling_steps)
                 source_var /= float(args.sampling_steps)
+                y_var /= float(args.sampling_steps)
 
                 # Compute Power spectrum of converged predictions
                 _ps_lens = ps_lens.cross_correlation_coefficient(lens[..., 0], lens_pred[..., 0])
                 _ps_lens3 = ps_lens.cross_correlation_coefficient(lens[..., 0], y_pred[..., 0])
-                _ps_kappa = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_pred[-1])[..., 0])
-                _ps_kappa2 = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_mean[..., 0]))
+                _ps_kappa = ps_kappa.cross_correlation_coefficient(rim.kappa_inverse_link(kappa)[..., 0], rim.kappa_inverse_link(kappa_pred[-1])[..., 0])
+                _ps_kappa2 = ps_kappa.cross_correlation_coefficient(rim.kappa_inverse_link(kappa)[..., 0], kappa_mean[..., 0])
                 _ps_source = ps_source.cross_correlation_coefficient(source[..., 0], source_pred[-1][..., 0])
                 _ps_source3 = ps_source.cross_correlation_coefficient(source[..., 0], source_mean[..., 0])
+
+                # Move mean and variance back to physical space. Assumes link function 10^x for kappa and identity for source.
+                kappa_mean = 10**kappa_mean
+                kappa_var = kappa_mean**2 * LOG10**2 * kappa_var
 
                 # save results
                 g["lens"][batch] = lens.numpy().astype(np.float32)
@@ -196,14 +214,17 @@ def distributed_strategy(args):
                 g["kappa"][batch] = kappa.numpy().astype(np.float32)
                 g["lens_pred"][batch] = lens_pred.numpy().astype(np.float32)
                 g["lens_pred_reoptimized"][batch] = y_pred.numpy().astype(np.float32)
+                g["lens_pred_reoptimized_mean"][batch] = y_mean.numpy().astype(np.float32)
+                g["lens_pred_reoptimized_var"][batch] = y_var.numpy().astype(np.float32)
                 g["source_pred"][batch] = tf.transpose(source_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["source_pred_reoptimized_mean"][batch] = source_mean.numpy().astype(np.float32)
                 g["source_pred_reoptimized_var"][batch] = source_var.numpy().astype(np.float32)
                 g["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["kappa_pred_reoptimized_mean"][batch] = kappa_mean.numpy().astype(np.float32)
-                g["kappa_pred_reoptimized_var"][batch] = kappa_mean.numpy().astype(np.float32)
+                g["kappa_pred_reoptimized_var"][batch] = kappa_var.numpy().astype(np.float32)
                 g["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
                 g["chi_squared_reoptimized"][batch] = chisq_ro.numpy().astype(np.float32)
+                g["chi_squared_reoptimized_mean"][batch] = chi_sq_mean.numpy().astype(np.float32)
                 g["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
                 g["source_optim_mse"][batch] = source_mse_ro.numpy().astype(np.float32)
                 g["source_optim_mse_series"][batch] = source_mse.numpy().astype(np.float32)
