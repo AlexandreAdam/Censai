@@ -18,7 +18,6 @@ python $CENSAI_PATH/scripts/rim_results_v4_and_sample.py\
   --train_size=0\
   --val_size=0\
   --test_size=100\
-  --sie_size=0\
   --buffer_size=1000\
   --lens_coherence_bins=40\
   --source_coherence_bins=40\
