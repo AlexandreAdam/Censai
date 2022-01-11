@@ -73,7 +73,7 @@ def distributed_strategy(args):
     model_name = os.path.split(model)[-1]
     STEPS = args.burn_in + args.sampling_steps
 
-    with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + model_name + "_" + args.source_model + f"_{THIS_WORKER:02d}.h5"), 'w') as hf:
+    with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + model_name + f"_{THIS_WORKER:02d}.h5"), 'w') as hf:
         for i, dataset in enumerate([train_dataset, val_dataset, test_dataset]):
             g = hf.create_group(f'{dataset_names[i]}')
             data_len = dataset_shapes[i] // N_WORKERS
