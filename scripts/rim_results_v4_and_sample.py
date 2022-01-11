@@ -177,8 +177,8 @@ def distributed_strategy(args):
                     step_size = learning_rate_schedule(current_step)
                     gradients = tape.gradient(cost, unet.trainable_variables)
                     grad_var = [args.rmsprop_alpha * var + (1 - args.rmsprop_alpha) * grad**2 for (grad, var) in zip(gradients, grad_var)]
-                    noise = [tf.random.normal(shape=theta.shape, stddev=tf.sqrt(step_size * var)) for (theta, var) in zip(unet.trainable_variables, grad_var)]
-                    unet.set_weights([theta - step_size/2./(args.rmsprop_epsilon + tf.sqrt(var)) * grad - eta
+                    noise = [tf.random.normal(shape=theta.shape, stddev=tf.sqrt(step_size / (args.rmsprop_epsilon + tf.sqrt(var)))) for (theta, var) in zip(unet.trainable_variables, grad_var)]
+                    unet.set_weights([theta - step_size/2./(args.rmsprop_epsilon + tf.sqrt(var)) * grad + eta
                                       for (theta, grad, eta, var) in zip(unet.trainable_variables, gradients, noise, grad_var)])
 
                 y_pred = phys.forward(rim.source_link(source_mean), rim.kappa_link(kappa_mean), psf)
