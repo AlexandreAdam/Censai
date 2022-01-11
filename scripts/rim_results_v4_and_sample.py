@@ -71,6 +71,7 @@ def distributed_strategy(args):
     dataset_names = [args.train_dataset, args.val_dataset, args.test_dataset]
     dataset_shapes = [args.train_size, args.val_size, args.test_size]
     model_name = os.path.split(model)[-1]
+    STEPS = args.burn_in + args.sampling_steps
 
     with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + model_name + "_" + args.source_model + f"_{THIS_WORKER:02d}.h5"), 'w') as hf:
         for i, dataset in enumerate([train_dataset, val_dataset, test_dataset]):
@@ -95,11 +96,11 @@ def distributed_strategy(args):
             g.create_dataset(name="chi_squared", shape=[data_len, rim.steps], dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized", shape=[data_len], dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized_mean", shape=[data_len], dtype=np.float32)
-            g.create_dataset(name="chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
+            g.create_dataset(name="chi_squared_reoptimized_series", shape=[data_len, STEPS], dtype=np.float32)
             g.create_dataset(name="source_optim_mse", shape=[data_len], dtype=np.float32)
-            g.create_dataset(name="source_optim_mse_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
+            g.create_dataset(name="source_optim_mse_series", shape=[data_len, STEPS], dtype=np.float32)
             g.create_dataset(name="kappa_optim_mse", shape=[data_len], dtype=np.float32)
-            g.create_dataset(name="kappa_optim_mse_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
+            g.create_dataset(name="kappa_optim_mse_series", shape=[data_len, STEPS], dtype=np.float32)
             g.create_dataset(name="lens_coherence_spectrum", shape=[data_len, args.lens_coherence_bins], dtype=np.float32)
             g.create_dataset(name="source_coherence_spectrum",  shape=[data_len, args.source_coherence_bins], dtype=np.float32)
             g.create_dataset(name="lens_coherence_spectrum_reoptimized", shape=[data_len, args.lens_coherence_bins], dtype=np.float32)
@@ -120,7 +121,6 @@ def distributed_strategy(args):
                 lens_pred = phys.forward(source_pred[-1], kappa_pred[-1], psf)
 
                 # Re-optimize weights of the model
-                STEPS = args.burn_in + args.sampling_steps
                 learning_rate_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
                     initial_learning_rate=args.learning_rate,
                     decay_rate=args.decay_rate,
@@ -258,7 +258,6 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--experiment_name",    default="reoptim")
     parser.add_argument("--model",              required=True,      help="Model to get predictions from")
-    parser.add_argument("--source_model",       required=True,      help="Give the path to a source RIM to converge even further the source")
     parser.add_argument("--compression_type",   default="GZIP")
     parser.add_argument("--val_dataset",        required=True,      help="Name of the dataset, not full path")
     parser.add_argument("--test_dataset",       required=True)
@@ -270,7 +269,6 @@ if __name__ == '__main__':
     parser.add_argument("--lens_coherence_bins",    default=40,     type=int)
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
-    parser.add_argument("--re_optimize_steps",  default=1000,       type=int)
     parser.add_argument("--burn_in",            default=2000,       type=int)
     parser.add_argument("--sampling_steps",     default=2000,       type=int)
     parser.add_argument("--l2_amp",             default=6e-5,       type=float)
