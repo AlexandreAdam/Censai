@@ -1,6 +1,7 @@
 import tensorflow as tf
 from censai.models import VAE
 from censai.data.lenses_tng_v3 import decode_train, decode_physical_model_info
+from censai.data.cosmos import decode_image
 from censai import PhysicalModelv2
 import h5py
 import os, glob, json
@@ -16,6 +17,12 @@ def main(args):
         break
     dataset = dataset.map(decode_train)
 
+    files = glob.glob(os.path.join(args.source_dataset, "*.tfrecords"))
+    files = tf.data.Dataset.from_tensor_slices(files)
+    source_dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type),
+                               block_length=1, num_parallel_calls=tf.data.AUTOTUNE)
+    source_dataset = source_dataset.map(decode_image).shuffle(10000).batch(args.sample_size)
+
     with open(os.path.join(args.kappa_vae, "model_hparams.json"), "r") as f:
         kappa_vae_hparams = json.load(f)
     kappa_vae = VAE(**kappa_vae_hparams)
@@ -23,12 +30,13 @@ def main(args):
     checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.kappa_vae, 1)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
-    with open(os.path.join(args.source_vae, "model_hparams.json"), "r") as f:
-        source_vae_hparams = json.load(f)
-    source_vae = VAE(**source_vae_hparams)
-    ckpt2 = tf.train.Checkpoint(step=tf.Variable(1), net=source_vae)
-    checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, args.source_vae, 1)
-    checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
+    # For some reason model was not saved on Narval, waiting on Beluga to open up again or retrain a COSMOS VAE.
+    # with open(os.path.join(args.source_vae, "model_hparams.json"), "r") as f:
+    #     source_vae_hparams = json.load(f)
+    # source_vae = VAE(**source_vae_hparams)
+    # ckpt2 = tf.train.Checkpoint(step=tf.Variable(1), net=source_vae)
+    # checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, args.source_vae, 1)
+    # checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
 
     phys = PhysicalModelv2(
         pixels=physical_params["pixels"].numpy(),
@@ -42,7 +50,9 @@ def main(args):
 
     # simulate observations
     kappa = kappa_vae.sample(args.sample_size)
-    source = source_vae.sample(args.sample_size)
+    # source = source_vae.sample(args.sample_size)
+    for source in source_dataset:
+        break
     fwhm = tf.random.normal(shape=[args.sample_size], mean=1.5*phys.image_fov/phys.pixels, stddev=0.5*phys.image_fov/phys.pixels)
     noise_rms = tf.random.normal(shape=[args.sample_size], mean=args.noise_mean, stddev=args.noise_std)
     psf = phys.psf_models(fwhm, cutout_size=20)
@@ -87,7 +97,8 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--dataset",            required=True)
     parser.add_argument("--kappa_vae",          required=True)
-    parser.add_argument("--source_vae",         required=True)
+    # parser.add_argument("--source_vae",         required=True)
+    parser.add_argument("--source_dataset",     required=True)
     parser.add_argument("--output_name",        required=True)
     parser.add_argument("--compression_type",   default="GZIP")
     parser.add_argument("-k",                   default=50,     type=int)
