@@ -56,14 +56,14 @@ def distributed_strategy(args):
         rim_params = json.load(f)
     rim = RIMSharedUnetv3(phys, unet, **rim_params)
 
-    with open(os.path.join(args.kappa_vae, "model_hparams.json"), "r") as f:
+    with open(os.path.join(os.getenv('CENSAI_PATH'), "models", args.kappa_vae, "model_hparams.json"), "r") as f:
         kappa_vae_hparams = json.load(f)
     kappa_vae = VAE(**kappa_vae_hparams)
     ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=kappa_vae)
     checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.kappa_vae, 1)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
-    with open(os.path.join(args.source_vae, "model_hparams.json"), "r") as f:
+    with open(os.path.join(os.getenv('CENSAI_PATH'), "models", args.source_vae, "model_hparams.json"), "r") as f:
         source_vae_hparams = json.load(f)
     source_vae = VAE(**source_vae_hparams)
     ckpt2 = tf.train.Checkpoint(step=tf.Variable(1), net=source_vae)
