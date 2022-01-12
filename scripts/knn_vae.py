@@ -5,6 +5,7 @@ from censai.data.cosmos import decode_image
 from censai import PhysicalModelv2
 import h5py
 import os, glob, json
+from tqdm import tqdm
 import numpy as np
 
 
@@ -60,7 +61,7 @@ def main(args):
 
     with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.output_name + ".h5"), 'w') as hf:
         # rank these observations against the dataset with L2 norm
-        for i in range(args.sample_size):
+        for i in tqdm(range(args.sample_size)):
             distances = []
             for y_d, _, _, _, _ in dataset:
                 distances.append(tf.sqrt(tf.reduce_sum((y_d - y_vae[i][None, ...])**2)).numpy().astype(np.float32))
