@@ -171,8 +171,8 @@ def distributed_strategy(args):
                         cost = tf.reduce_mean(chi_sq)
                         # log prior
                         s_s, s_k, s_chi_sq = rim.call(sampled_lens, noise_rms, psf, outer_tape=tape)
-                        kappa_mse = tf.reduce_sum(wk(10**sampled_kappa) * (s_k - sampled_kappa) ** 2, axis=(2, 3, 4))
-                        cost += tf.reduce_mean(kappa_mse)
+                        _kappa_mse = tf.reduce_sum(wk(10**sampled_kappa) * (s_k - sampled_kappa) ** 2, axis=(2, 3, 4))
+                        cost += tf.reduce_mean(_kappa_mse)
                         cost += tf.reduce_mean((s_s - sampled_source)**2)
                         cost += tf.reduce_sum(rim.unet.losses)  # weight decay
 
