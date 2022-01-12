@@ -166,27 +166,29 @@ def distributed_strategy(args):
                     sampled_lens = phys.noisy_forward(sampled_source, 10**sampled_kappa, noise_rms, psf)
                     with tf.GradientTape() as tape:
                         tape.watch(unet.trainable_variables)
-                        s, k, chi_sq = rim.call(sampled_lens, noise_rms, psf, outer_tape=tape)
-                        cost = tf.reduce_mean(chi_sq)  # We add the chi squared to loss so the loss is a posterior
-                        kappa_mse = tf.reduce_sum(wk(10**sampled_kappa) * (k - sampled_kappa) ** 2, axis=(2, 3, 4))  # weighted mean over pixels
-                        cost += tf.reduce_mean(kappa_mse)  # mean over time step and batch
-                        cost += tf.reduce_mean((s - sampled_source)**2)
+                        # log likelihood
+                        s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape)
+                        cost = tf.reduce_mean(chi_sq)
+                        # log prior
+                        s_s, s_k, s_chi_sq = rim.call(sampled_lens, noise_rms, psf, outer_tape=tape)
+                        kappa_mse = tf.reduce_sum(wk(10**sampled_kappa) * (s_k - sampled_kappa) ** 2, axis=(2, 3, 4))
+                        cost += tf.reduce_mean(kappa_mse)
+                        cost += tf.reduce_mean((s_s - sampled_source)**2)
                         cost += tf.reduce_sum(rim.unet.losses)  # weight decay
 
                     grads = tape.gradient(cost, unet.trainable_variables)
                     optim.apply_gradients(zip(grads, unet.trainable_variables))
 
                     # Record performance on sampled dataset
-                    sampled_chi_squared_series = sampled_chi_squared_series.write(index=current_step, value=tf.reduce_mean(chi_sq[-1]))
-                    sampled_source_mse = sampled_source_mse.write(index=current_step, value=tf.reduce_mean((s[-1] - sampled_source) ** 2))
-                    sampled_kappa_mse = sampled_kappa_mse.write(index=current_step, value=tf.reduce_mean((k[-1] - log_10(sampled_kappa)) ** 2))
-                    # Get model prediction on data
-                    s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape)
+                    sampled_chi_squared_series = sampled_chi_squared_series.write(index=current_step, value=tf.reduce_mean(s_chi_sq[-1]))
+                    sampled_source_mse = sampled_source_mse.write(index=current_step, value=tf.reduce_mean((s_s[-1] - sampled_source) ** 2))
+                    sampled_kappa_mse = sampled_kappa_mse.write(index=current_step, value=tf.reduce_mean((s_k[-1] - log_10(sampled_kappa)) ** 2))
+                    # Record model prediction on data
                     log_likelihood = chi_sq[-1]
                     chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
                     source_o = s[-1]
                     kappa_o = k[-1]
-                    # oracle metrics, removed when using real data
+                    # oracle metrics, remove when using real data
                     source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - source) ** 2))
                     kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - log_10(kappa)) ** 2))
                     # Early stopping could be replaced altogether by window averaging... (could we use SLGD here? In the mean time use approximate sampling from RMSprop)
