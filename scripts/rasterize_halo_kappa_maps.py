@@ -12,7 +12,6 @@ import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
 from censai.utils import nullcontext
 import time
-from scipy.special import exp1
 
 # total number of slurm workers detected
 # defaults to 1 if not running under SLURM

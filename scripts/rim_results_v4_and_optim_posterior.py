@@ -56,18 +56,20 @@ def distributed_strategy(args):
         rim_params = json.load(f)
     rim = RIMSharedUnetv3(phys, unet, **rim_params)
 
-    with open(os.path.join(os.getenv('CENSAI_PATH'), "models", args.kappa_vae, "model_hparams.json"), "r") as f:
+    kvae_path = os.path.join(os.getenv('CENSAI_PATH'), "models", args.kappa_vae)
+    with open(os.path.join(kvae_path, "model_hparams.json"), "r") as f:
         kappa_vae_hparams = json.load(f)
     kappa_vae = VAE(**kappa_vae_hparams)
     ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=kappa_vae)
-    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.kappa_vae, 1)
+    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, kvae_path, 1)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
-    with open(os.path.join(os.getenv('CENSAI_PATH'), "models", args.source_vae, "model_hparams.json"), "r") as f:
+    svae_path = os.path.join(os.getenv('CENSAI_PATH'), "models", args.source_vae)
+    with open(os.path.join(svae_path, "model_hparams.json"), "r") as f:
         source_vae_hparams = json.load(f)
     source_vae = VAE(**source_vae_hparams)
     ckpt2 = tf.train.Checkpoint(step=tf.Variable(1), net=source_vae)
-    checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, args.source_vae, 1)
+    checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, svae_path, 1)
     checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
 
     dataset_names = [args.test_dataset]
@@ -141,16 +143,16 @@ def distributed_strategy(args):
                 z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
 
                 # L1 distance with ground truth in latent space -- this is changed by an user defined value when using real data
-                # z_source_std = tf.abs(z_source - z_source_gt)
-                # z_kappa_std = tf.abs(z_kappa - z_kappa_gt)
-                z_source_std = args.source_vae_ball_size
-                z_kappa_std = args.kappa_vae_ball_size
+                z_source_std = tf.abs(z_source - z_source_gt)
+                z_kappa_std = tf.abs(z_kappa - z_kappa_gt)
+                # z_source_std = args.source_vae_ball_size
+                # z_kappa_std = args.kappa_vae_ball_size
 
                 # Sample latent code, then decode and forward
                 z_s = tf.random.normal(shape=[1, source_vae.latent_size], mean=z_source, stddev=z_source_std)
                 z_k = tf.random.normal(shape=[1, kappa_vae.latent_size], mean=z_kappa, stddev=z_kappa_std)
-                sampled_source = source_vae.decode(z_s)
-                sampled_source /= tf.reduce_max(tf.nn.relu(sampled_source), keepdims=True)  # make sampled source normalized and positive
+                sampled_source = tf.nn.relu(source_vae.decode(z_s))
+                sampled_source /= tf.reduce_max(sampled_source, keepdims=True)  # make sampled source normalized and positive
                 sampled_kappa = kappa_vae.decode(z_k)  # output in log_10 space
                 sampled_lens = phys.noisy_forward(sampled_source, 10**sampled_kappa, noise_rms, psf)  # for posterity and fishing experiments
 
