@@ -88,14 +88,14 @@ def distributed_strategy(args):
             g.create_dataset(name="lens_pred",                              shape=[data_len, phys.pixels, phys.pixels, 1],                                      dtype=np.float32)
             g.create_dataset(name="lens_pred_reoptimized",                  shape=[data_len, phys.pixels, phys.pixels, 1],                                      dtype=np.float32)
             g.create_dataset(name="source_prior",                           shape=[data_len, phys.src_pixels, phys.src_pixels, 1],                   dtype=np.float32)
-            g.create_dataset(name="source_pred",                            shape=[data_len, phys.src_pixels, phys.src_pixels, 1],                   dtype=np.float32)
+            g.create_dataset(name="source_pred",                            shape=[data_len, rim.steps, phys.src_pixels, phys.src_pixels, 1],                   dtype=np.float32)
             g.create_dataset(name="source_pred_reoptimized",                shape=[data_len, phys.src_pixels, phys.src_pixels, 1],                              dtype=np.float32)
-            g.create_dataset(name="kappa_prior",                            shape=[data_len, rim.steps, phys.kappa_pixels, phys.kappa_pixels, 1],               dtype=np.float32)
+            g.create_dataset(name="kappa_prior",                            shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1],               dtype=np.float32)
             g.create_dataset(name="kappa_pred",                             shape=[data_len, rim.steps, phys.kappa_pixels, phys.kappa_pixels, 1],               dtype=np.float32)
             g.create_dataset(name="kappa_pred_reoptimized",                 shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1],                          dtype=np.float32)
             g.create_dataset(name="chi_squared",                            shape=[data_len, rim.steps],                                                        dtype=np.float32)
-            g.create_dataset(name="chi_squared_reoptimized",                shape=[data_len],                                                                   dtype=np.float32)
-            g.create_dataset(name="chi_squared_reoptimized_series",         shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
+            g.create_dataset(name="chi_squared_reoptimized",                shape=[data_len, rim.steps],                                                                   dtype=np.float32)
+            g.create_dataset(name="chi_squared_reoptimized_series",         shape=[data_len, rim.steps, args.re_optimize_steps],                                           dtype=np.float32)
             # g.create_dataset(name="sampled_chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
             g.create_dataset(name="source_optim_mse",                       shape=[data_len],                                                                   dtype=np.float32)
             g.create_dataset(name="source_optim_mse_series",                shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
@@ -171,7 +171,7 @@ def distributed_strategy(args):
                 sampled_source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 sampled_kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
 
-                best = chi_squared[-1, 0]
+                best = chi_squared
                 source_best = source_pred[-1]
                 kappa_best = kappa_pred[-1]
                 for current_step in tqdm(range(STEPS)):
@@ -194,8 +194,7 @@ def distributed_strategy(args):
                     sampled_source_mse = sampled_source_mse.write(index=current_step, value=tf.reduce_mean((s[-1] - sampled_source) ** 2))
                     sampled_kappa_mse = sampled_kappa_mse.write(index=current_step, value=tf.reduce_mean((k[-1] - sampled_kappa) ** 2))
                     # Record model prediction on data
-                    log_likelihood = chi_sq[-1]
-                    chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood)
+                    chi_squared_series = chi_squared_series.write(index=current_step, value=tf.squeeze(chi_sq))
                     source_o = s[-1]
                     kappa_o = k[-1]
                     # oracle metrics, remove when using real data
@@ -207,10 +206,10 @@ def distributed_strategy(args):
                     #     kappa_best = 10**kappa_o
                     #     best = chi_sq[-1, 0]
                     #     break
-                    if chi_sq[-1, 0] < best:
+                    if chi_sq[-1, 0] < best[-1, 0]:
                         source_best = source_o
                         kappa_best = 10**kappa_o
-                        best = chi_sq[-1, 0]
+                        best = chi_sq
                         source_mse_best = tf.reduce_mean((source_best - source) ** 2)
                         kappa_mse_best = tf.reduce_mean((kappa_best - log_10(kappa)) ** 2)
 
@@ -218,11 +217,11 @@ def distributed_strategy(args):
                 kappa_o = kappa_best
                 y_pred = phys.forward(source_o, kappa_o, psf)
                 chi_sq_series = tf.transpose(chi_squared_series.stack())
-                source_mse = source_mse.stack()[None, ...]
-                kappa_mse = kappa_mse.stack()[None, ...]
+                source_mse = source_mse.stack()
+                kappa_mse = kappa_mse.stack()
                 # sampled_chi_squared_series = sampled_chi_squared_series.stack()[None, ...]
-                sampled_source_mse = sampled_source_mse.stack()[None, ...]
-                sampled_kappa_mse = sampled_kappa_mse.stack()[None, ...]
+                sampled_source_mse = sampled_source_mse.stack()
+                sampled_kappa_mse = sampled_kappa_mse.stack()
 
                 # Latent code of optimized model predictions
                 z_source_opt, _ = source_vae.encoder(source_o)
@@ -252,8 +251,8 @@ def distributed_strategy(args):
                 g["kappa_prior"][batch] = sampled_kappa.numpy().astype(np.float32)
                 g["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["kappa_pred_reoptimized"][batch] = kappa_o.numpy().astype(np.float32)
-                g["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
-                g["chi_squared_reoptimized"][batch] = 2*best.numpy().astype(np.float32)
+                g["chi_squared"][batch] = 2*tf.squeeze(chi_squared).numpy().astype(np.float32)
+                g["chi_squared_reoptimized"][batch] = 2*tf.squeeze(best).numpy().astype(np.float32)
                 g["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
                 # g["sampled_chi_squared_reoptimized_series"][batch] = 2*sampled_chi_squared_series.numpy().astype(np.float32)
                 g["source_optim_mse"][batch] = source_mse_best.numpy().astype(np.float32)
