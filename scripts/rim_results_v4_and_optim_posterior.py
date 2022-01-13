@@ -87,8 +87,8 @@ def distributed_strategy(args):
             g.create_dataset(name="lens_prior",                             shape=[data_len, phys.pixels, phys.pixels, 1],                                      dtype=np.float32)
             g.create_dataset(name="lens_pred",                              shape=[data_len, phys.pixels, phys.pixels, 1],                                      dtype=np.float32)
             g.create_dataset(name="lens_pred_reoptimized",                  shape=[data_len, phys.pixels, phys.pixels, 1],                                      dtype=np.float32)
-            g.create_dataset(name="source_prior",                           shape=[data_len, rim.steps, phys.src_pixels, phys.src_pixels, 1],                   dtype=np.float32)
-            g.create_dataset(name="source_pred",                            shape=[data_len, rim.steps, phys.src_pixels, phys.src_pixels, 1],                   dtype=np.float32)
+            g.create_dataset(name="source_prior",                           shape=[data_len, phys.src_pixels, phys.src_pixels, 1],                   dtype=np.float32)
+            g.create_dataset(name="source_pred",                            shape=[data_len, phys.src_pixels, phys.src_pixels, 1],                   dtype=np.float32)
             g.create_dataset(name="source_pred_reoptimized",                shape=[data_len, phys.src_pixels, phys.src_pixels, 1],                              dtype=np.float32)
             g.create_dataset(name="kappa_prior",                            shape=[data_len, rim.steps, phys.kappa_pixels, phys.kappa_pixels, 1],               dtype=np.float32)
             g.create_dataset(name="kappa_pred",                             shape=[data_len, rim.steps, phys.kappa_pixels, phys.kappa_pixels, 1],               dtype=np.float32)
@@ -103,8 +103,10 @@ def distributed_strategy(args):
             g.create_dataset(name="kappa_optim_mse",                        shape=[data_len],                                                                   dtype=np.float32)
             g.create_dataset(name="kappa_optim_mse_series",                 shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
             g.create_dataset(name="sampled_kappa_optim_mse_series",         shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
-            g.create_dataset(name="kappa_ball_size_series",                 shape=[data_len, args.re_optimize_steps, kappa_vae.latent_size],                    dtype=np.float32)
-            g.create_dataset(name="source_ball_size_series",                shape=[data_len, args.re_optimize_steps, source_vae.latent_size],                   dtype=np.float32)
+            g.create_dataset(name="latent_kappa_gt_distance_init",          shape=[data_len, kappa_vae.latent_size],                                            dtype=np.float32)
+            g.create_dataset(name="latent_source_gt_distance_init",         shape=[data_len, source_vae.latent_size],                                           dtype=np.float32)
+            g.create_dataset(name="latent_kappa_gt_distance_end",           shape=[data_len, kappa_vae.latent_size],                                            dtype=np.float32)
+            g.create_dataset(name="latent_source_gt_distance_end",          shape=[data_len, source_vae.latent_size],                                           dtype=np.float32)
             g.create_dataset(name="lens_coherence_spectrum",                shape=[data_len, args.lens_coherence_bins],                                         dtype=np.float32)
             g.create_dataset(name="source_coherence_spectrum",              shape=[data_len, args.source_coherence_bins],                                       dtype=np.float32)
             g.create_dataset(name="lens_coherence_spectrum2",               shape=[data_len, args.lens_coherence_bins],                                         dtype=np.float32)
@@ -133,8 +135,6 @@ def distributed_strategy(args):
                 # Ground truth latent code for oracle metrics
                 z_source_gt, _ = source_vae.encoder(source)
                 z_kappa_gt, _ = kappa_vae.encoder(log_10(kappa))
-                source_ball_size = source_ball_size.write(index=current_step, value=tf.squeeze(tf.abs(z_source - z_source_gt)))
-                kappa_ball_size = kappa_ball_size.write(index=current_step, value=tf.squeeze(tf.abs(z_kappa - z_kappa_gt)))
 
                 # Latent code of model predictions
                 z_source, _ = source_vae.encoder(source_o)
@@ -170,8 +170,7 @@ def distributed_strategy(args):
                 # sampled_chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
                 sampled_source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 sampled_kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
-                source_ball_size = tf.TensorArray(DTYPE, size=STEPS)
-                kappa_ball_size = tf.TensorArray(DTYPE, size=STEPS)
+
                 best = chi_squared[-1, 0]
                 source_best = source_pred[-1]
                 kappa_best = kappa_pred[-1]
@@ -224,8 +223,10 @@ def distributed_strategy(args):
                 # sampled_chi_squared_series = sampled_chi_squared_series.stack()[None, ...]
                 sampled_source_mse = sampled_source_mse.stack()[None, ...]
                 sampled_kappa_mse = sampled_kappa_mse.stack()[None, ...]
-                source_ball_size = source_ball_size.stack()[None, ...]
-                kappa_ball_size = kappa_ball_size.stack()[None, ...]
+
+                # Latent code of optimized model predictions
+                z_source_opt, _ = source_vae.encoder(source_o)
+                z_kappa_opt, _ = kappa_vae.encoder(log_10(kappa_o))
 
                 # Compute Power spectrum of converged predictions
                 _ps_lens = ps_lens.cross_correlation_coefficient(lens[..., 0], lens_pred[..., 0])
@@ -242,10 +243,13 @@ def distributed_strategy(args):
                 g["noise_rms"][batch] = noise_rms.numpy().astype(np.float32)
                 g["source"][batch] = source.numpy().astype(np.float32)
                 g["kappa"][batch] = kappa.numpy().astype(np.float32)
+                g["lens_prior"][batch] = sampled_lens.numpy().astype(np.float32)
                 g["lens_pred"][batch] = lens_pred.numpy().astype(np.float32)
                 g["lens_pred_reoptimized"][batch] = y_pred.numpy().astype(np.float32)
+                g["source_prior"][batch] = sampled_source.numpy().astype(np.float32)
                 g["source_pred"][batch] = tf.transpose(source_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["source_pred_reoptimized"][batch] = source_o.numpy().astype(np.float32)
+                g["kappa_prior"][batch] = sampled_kappa.numpy().astype(np.float32)
                 g["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["kappa_pred_reoptimized"][batch] = kappa_o.numpy().astype(np.float32)
                 g["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
@@ -258,8 +262,10 @@ def distributed_strategy(args):
                 g["kappa_optim_mse"][batch] = kappa_mse_best.numpy().astype(np.float32)
                 g["kappa_optim_mse_series"][batch] = kappa_mse.numpy().astype(np.float32)
                 g["sampled_kappa_optim_mse_series"][batch] = sampled_kappa_mse.numpy().astype(np.float32)
-                g["kappa_ball_size_series"][batch] = kappa_ball_size.numpy().astype(np.float32)
-                g["source_ball_size_series"][batch] = source_ball_size.numpy().astype(np.float32)
+                g["latent_source_gt_distance_init"][batch] = tf.abs(z_source - z_source_gt).numpy().squeeze().astype(np.float32)
+                g["latent_kappa_gt_distance_init"][batch] = tf.abs(z_kappa - z_source_gt).numpy().squeeze().astype(np.float32)
+                g["latent_source_gt_distance_end"][batch] = tf.abs(z_source_opt - z_source_gt).numpy().squeeze().astype(np.float32)
+                g["latent_kappa_gt_distance_end"][batch] = tf.abs(z_kappa_opt - z_source_gt).numpy().squeeze().astype(np.float32)
                 g["lens_coherence_spectrum"][batch] = _ps_lens
                 g["lens_coherence_spectrum_reoptimized"][batch] = _ps_lens3
                 g["source_coherence_spectrum"][batch] = _ps_source
