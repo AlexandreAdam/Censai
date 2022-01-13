@@ -262,9 +262,9 @@ def distributed_strategy(args):
                 g["kappa_optim_mse_series"][batch] = kappa_mse.numpy().astype(np.float32)
                 g["sampled_kappa_optim_mse_series"][batch] = sampled_kappa_mse.numpy().astype(np.float32)
                 g["latent_source_gt_distance_init"][batch] = tf.abs(z_source - z_source_gt).numpy().squeeze().astype(np.float32)
-                g["latent_kappa_gt_distance_init"][batch] = tf.abs(z_kappa - z_source_gt).numpy().squeeze().astype(np.float32)
+                g["latent_kappa_gt_distance_init"][batch] = tf.abs(z_kappa - z_kappa_gt).numpy().squeeze().astype(np.float32)
                 g["latent_source_gt_distance_end"][batch] = tf.abs(z_source_opt - z_source_gt).numpy().squeeze().astype(np.float32)
-                g["latent_kappa_gt_distance_end"][batch] = tf.abs(z_kappa_opt - z_source_gt).numpy().squeeze().astype(np.float32)
+                g["latent_kappa_gt_distance_end"][batch] = tf.abs(z_kappa_opt - z_kappa_gt).numpy().squeeze().astype(np.float32)
                 g["lens_coherence_spectrum"][batch] = _ps_lens
                 g["lens_coherence_spectrum_reoptimized"][batch] = _ps_lens3
                 g["source_coherence_spectrum"][batch] = _ps_source
