@@ -210,7 +210,7 @@ def distributed_strategy(args):
                 chi_sq_series = tf.transpose(chi_squared_series.stack())
                 source_mse = source_mse.stack()[None, ...]
                 kappa_mse = kappa_mse.stack()[None, ...]
-                sampled_chi_sq_series = sampled_chi_squared_series.stack()[None, ...]
+                sampled_chi_squared_series = sampled_chi_squared_series.stack()[None, ...]
                 sampled_source_mse = sampled_source_mse.stack()[None, ...]
                 sampled_kappa_mse = sampled_kappa_mse.stack()[None, ...]
                 source_ball_size = source_ball_size.stack()[None, ...]
@@ -240,7 +240,7 @@ def distributed_strategy(args):
                 g["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
                 g["chi_squared_reoptimized"][batch] = 2*best.numpy().astype(np.float32)
                 g["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
-                g["sampled_chi_sqquared_reoptimized_series"][batch] = 2*sampled_chi_sq_series.numpy().astype(np.float32)
+                g["sampled_chi_squared_reoptimized_series"][batch] = 2*sampled_chi_squared_series.numpy().astype(np.float32)
                 g["source_optim_mse"][batch] = source_mse_best.numpy().astype(np.float32)
                 g["source_optim_mse_series"][batch] = source_mse.numpy().astype(np.float32)
                 g["sampled_source_optim_mse_series"][batch] = sampled_source_mse.numpy().astype(np.float32)
