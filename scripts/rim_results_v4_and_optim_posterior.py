@@ -48,6 +48,7 @@ def distributed_strategy(args):
     with open(os.path.join(model, "unet_hparams.json")) as f:
         unet_params = json.load(f)
     unet_params["kernel_l2_amp"] = args.l2_amp
+    unet_params["source_link"] = "relu"
     unet = SharedUnetModelv4(**unet_params)
     ckpt = tf.train.Checkpoint(net=unet)
     checkpoint_manager = tf.train.CheckpointManager(ckpt, model, 1)
@@ -143,10 +144,10 @@ def distributed_strategy(args):
                 z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
 
                 # L1 distance with ground truth in latent space -- this is changed by an user defined value when using real data
-                z_source_std = tf.abs(z_source - z_source_gt)
-                z_kappa_std = tf.abs(z_kappa - z_kappa_gt)
-                # z_source_std = args.source_vae_ball_size
-                # z_kappa_std = args.kappa_vae_ball_size
+                # z_source_std = tf.abs(z_source - z_source_gt)
+                # z_kappa_std = tf.abs(z_kappa - z_kappa_gt)
+                z_source_std = args.source_vae_ball_size
+                z_kappa_std = args.kappa_vae_ball_size
 
                 # Sample latent code, then decode and forward
                 z_s = tf.random.normal(shape=[1, source_vae.latent_size], mean=z_source, stddev=z_source_std)
@@ -209,7 +210,7 @@ def distributed_strategy(args):
                     #     best = chi_sq[-1, 0]
                     #     break
                     if chi_sq[-1, 0] < best[-1, 0]:
-                        source_best = source_o
+                        source_best = tf.nn.relu(source_o)
                         kappa_best = 10**kappa_o
                         best = chi_sq
                         source_mse_best = tf.reduce_mean((source_best - source) ** 2)
@@ -226,7 +227,7 @@ def distributed_strategy(args):
                 sampled_kappa_mse = sampled_kappa_mse.stack()
 
                 # Latent code of optimized model predictions
-                z_source_opt, _ = source_vae.encoder(source_o)
+                z_source_opt, _ = source_vae.encoder(tf.nn.relu(source_o))
                 z_kappa_opt, _ = kappa_vae.encoder(log_10(kappa_o))
 
                 # Compute Power spectrum of converged predictions
@@ -250,7 +251,7 @@ def distributed_strategy(args):
                 g["source_prior"][batch] = sampled_source.numpy().astype(np.float32)
                 g["source_pred"][batch] = tf.transpose(source_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["source_pred_reoptimized"][batch] = source_o.numpy().astype(np.float32)
-                g["kappa_prior"][batch] = sampled_kappa.numpy().astype(np.float32)
+                g["kappa_prior"][batch] = 10**sampled_kappa.numpy().astype(np.float32)
                 g["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["kappa_pred_reoptimized"][batch] = kappa_o.numpy().astype(np.float32)
                 g["chi_squared"][batch] = 2*tf.squeeze(chi_squared).numpy().astype(np.float32)
