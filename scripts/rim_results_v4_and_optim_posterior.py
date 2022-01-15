@@ -198,7 +198,7 @@ def distributed_strategy(args):
                     sampled_source_mse = sampled_source_mse.write(index=current_step, value=tf.reduce_mean((s[-1] - sampled_source) ** 2))
                     sampled_kappa_mse = sampled_kappa_mse.write(index=current_step, value=tf.reduce_mean((k[-1] - sampled_kappa) ** 2))
                     # Record model prediction on data
-                    s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape)
+                    s, k, chi_sq = rim.call(lens, noise_rms, psf)
                     chi_squared_series = chi_squared_series.write(index=current_step, value=tf.squeeze(chi_sq))
                     source_o = s[-1]
                     kappa_o = k[-1]
