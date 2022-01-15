@@ -99,7 +99,7 @@ def distributed_strategy(args):
             g.create_dataset(name="chi_squared",                            shape=[data_len, rim.steps],                                                        dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized",                shape=[data_len, rim.steps],                                                                   dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized_series",         shape=[data_len, rim.steps, args.re_optimize_steps],                                           dtype=np.float32)
-            # g.create_dataset(name="sampled_chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
+            g.create_dataset(name="sampled_chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
             g.create_dataset(name="source_optim_mse",                       shape=[data_len],                                                                   dtype=np.float32)
             g.create_dataset(name="source_optim_mse_series",                shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
             g.create_dataset(name="sampled_source_optim_mse_series",        shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
@@ -150,10 +150,10 @@ def distributed_strategy(args):
                 z_kappa_std = args.kappa_vae_ball_size
 
                 # Sample latent code, then decode and forward
-                z_s = tf.random.normal(shape=[1, source_vae.latent_size], mean=z_source, stddev=z_source_std)
-                z_k = tf.random.normal(shape=[1, kappa_vae.latent_size], mean=z_kappa, stddev=z_kappa_std)
+                z_s = tf.random.normal(shape=[args.sample_size, source_vae.latent_size], mean=z_source, stddev=z_source_std)
+                z_k = tf.random.normal(shape=[args.sample_size, kappa_vae.latent_size],  mean=z_kappa,  stddev=z_kappa_std)
                 sampled_source = tf.nn.relu(source_vae.decode(z_s))
-                sampled_source /= tf.reduce_max(sampled_source, keepdims=True)  # make sampled source normalized and positive
+                sampled_source /= tf.reduce_max(sampled_source, axis=(1, 2, 3), keepdims=True)  # make sampled source normalized and positive
                 sampled_kappa = kappa_vae.decode(z_k)  # output in log_10 space
                 sampled_lens = phys.noisy_forward(sampled_source, 10**sampled_kappa, noise_rms, psf)  # for posterity and fishing experiments
 
@@ -181,11 +181,12 @@ def distributed_strategy(args):
                     with tf.GradientTape() as tape:
                         tape.watch(unet.trainable_variables)
                         # log likelihood
-                        s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape)
-                        cost = tf.reduce_mean(chi_sq)
+                        # s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape) # was using this in experiment 1 and 2 + only single sample for mse
+                        # cost = tf.reduce_mean(chi_sq)
                         # log prior
+                        s, k, chi_sq = rim.call(sampled_lens, noise_rms, psf, outer_tape=tape)
                         _kappa_mse = tf.reduce_sum(wk(10**sampled_kappa) * (k - sampled_kappa) ** 2, axis=(2, 3, 4))
-                        cost += tf.reduce_mean(_kappa_mse)
+                        cost = tf.reduce_mean(_kappa_mse)
                         cost += tf.reduce_mean((s - sampled_source)**2)
                         cost += tf.reduce_sum(rim.unet.losses)  # weight decay
 
@@ -193,10 +194,11 @@ def distributed_strategy(args):
                     optim.apply_gradients(zip(grads, unet.trainable_variables))
 
                     # Record performance on sampled dataset
-                    # sampled_chi_squared_series = sampled_chi_squared_series.write(index=current_step, value=tf.reduce_mean(s_chi_sq[-1]))
+                    sampled_chi_squared_series = sampled_chi_squared_series.write(index=current_step, value=tf.squeeze(tf.reduce_mean(chi_sq[-1])))
                     sampled_source_mse = sampled_source_mse.write(index=current_step, value=tf.reduce_mean((s[-1] - sampled_source) ** 2))
                     sampled_kappa_mse = sampled_kappa_mse.write(index=current_step, value=tf.reduce_mean((k[-1] - sampled_kappa) ** 2))
                     # Record model prediction on data
+                    s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape)
                     chi_squared_series = chi_squared_series.write(index=current_step, value=tf.squeeze(chi_sq))
                     source_o = s[-1]
                     kappa_o = k[-1]
@@ -222,7 +224,7 @@ def distributed_strategy(args):
                 chi_sq_series = tf.transpose(chi_squared_series.stack())
                 source_mse = source_mse.stack()
                 kappa_mse = kappa_mse.stack()
-                # sampled_chi_squared_series = sampled_chi_squared_series.stack()[None, ...]
+                sampled_chi_squared_series = sampled_chi_squared_series.stack()
                 sampled_source_mse = sampled_source_mse.stack()
                 sampled_kappa_mse = sampled_kappa_mse.stack()
 
@@ -245,19 +247,19 @@ def distributed_strategy(args):
                 g["noise_rms"][batch] = noise_rms.numpy().astype(np.float32)
                 g["source"][batch] = source.numpy().astype(np.float32)
                 g["kappa"][batch] = kappa.numpy().astype(np.float32)
-                g["lens_prior"][batch] = sampled_lens.numpy().astype(np.float32)
+                g["lens_prior"][batch] = sampled_lens[0].numpy().astype(np.float32)
                 g["lens_pred"][batch] = lens_pred.numpy().astype(np.float32)
                 g["lens_pred_reoptimized"][batch] = y_pred.numpy().astype(np.float32)
-                g["source_prior"][batch] = sampled_source.numpy().astype(np.float32)
+                g["source_prior"][batch] = sampled_source[0].numpy().astype(np.float32)
                 g["source_pred"][batch] = tf.transpose(source_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["source_pred_reoptimized"][batch] = source_o.numpy().astype(np.float32)
-                g["kappa_prior"][batch] = 10**sampled_kappa.numpy().astype(np.float32)
+                g["kappa_prior"][batch] = 10**sampled_kappa[0].numpy().astype(np.float32)
                 g["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["kappa_pred_reoptimized"][batch] = kappa_o.numpy().astype(np.float32)
                 g["chi_squared"][batch] = 2*tf.squeeze(chi_squared).numpy().astype(np.float32)
                 g["chi_squared_reoptimized"][batch] = 2*tf.squeeze(best).numpy().astype(np.float32)
                 g["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
-                # g["sampled_chi_squared_reoptimized_series"][batch] = 2*sampled_chi_squared_series.numpy().astype(np.float32)
+                g["sampled_chi_squared_reoptimized_series"][batch] = 2*sampled_chi_squared_series.numpy().astype(np.float32)
                 g["source_optim_mse"][batch] = source_mse_best.numpy().astype(np.float32)
                 g["source_optim_mse_series"][batch] = source_mse.numpy().astype(np.float32)
                 g["sampled_source_optim_mse_series"][batch] = sampled_source_mse.numpy().astype(np.float32)
@@ -302,13 +304,14 @@ if __name__ == '__main__':
     parser.add_argument("--test_dataset",       required=True)
     parser.add_argument("--test_size",          default=5000,       type=int)
     parser.add_argument("--buffer_size",        default=10000,      type=int)
+    parser.add_argument("--sample_size",        default=10,         type=int)
     parser.add_argument("--lens_coherence_bins",    default=40,     type=int)
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
     parser.add_argument("--re_optimize_steps",  default=2000,       type=int)
     parser.add_argument("--converged_chisq",    default=1.0,        type=float, help="Value of the chisq that is considered converged.")
-    parser.add_argument("--source_vae_ball_size",   default=0.1,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
-    parser.add_argument("--kappa_vae_ball_size",    default=0.1,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
+    parser.add_argument("--source_vae_ball_size",   default=0.5,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
+    parser.add_argument("--kappa_vae_ball_size",    default=0.5,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
     parser.add_argument("--l2_amp",             default=1e-6,       type=float)
     parser.add_argument("--learning_rate",      default=1e-6,       type=float)
     parser.add_argument("--decay_rate",         default=1,          type=float)
