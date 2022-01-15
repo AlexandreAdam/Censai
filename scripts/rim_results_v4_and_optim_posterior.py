@@ -184,7 +184,7 @@ def distributed_strategy(args):
                         # s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape) # was using this in experiment 1 and 2 + only single sample for mse
                         # cost = tf.reduce_mean(chi_sq)
                         # log prior
-                        s, k, chi_sq = rim.call(sampled_lens, noise_rms, psf, outer_tape=tape)
+                        s, k, chi_sq = rim.call(sampled_lens, noise_rms, tf.tile(psf, [args.sample_size, 1, 1, 1]), outer_tape=tape)
                         _kappa_mse = tf.reduce_sum(wk(10**sampled_kappa) * (k - sampled_kappa) ** 2, axis=(2, 3, 4))
                         cost = tf.reduce_mean(_kappa_mse)
                         cost += tf.reduce_mean((s - sampled_source)**2)
