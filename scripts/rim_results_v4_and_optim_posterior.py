@@ -170,7 +170,7 @@ def distributed_strategy(args):
                 chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
                 source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
-                # sampled_chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
+                sampled_chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
                 sampled_source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 sampled_kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
 
