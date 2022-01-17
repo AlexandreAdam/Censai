@@ -93,6 +93,7 @@ def distributed_strategy(args):
             g.create_dataset(name="lens_pred_reoptimized",                  shape=[data_len, phys.pixels, phys.pixels, 1],                                      dtype=np.float32)
             g.create_dataset(name="lens_pred_reoptimized_mean",             shape=[data_len, phys.pixels, phys.pixels, 1],                                      dtype=np.float32)
             g.create_dataset(name="lens_pred_reoptimized_var",              shape=[data_len, phys.pixels, phys.pixels, 1],                                      dtype=np.float32)
+            g.create_dataset(name="lens_pred_reoptimized_mean_pred",        shape=[data_len, phys.pixels, phys.pixels, 1],                                      dtype=np.float32)
             g.create_dataset(name="source_prior",                           shape=[data_len, phys.src_pixels, phys.src_pixels, 1],                              dtype=np.float32)
             g.create_dataset(name="source_pred",                            shape=[data_len, rim.steps, phys.src_pixels, phys.src_pixels, 1],                   dtype=np.float32)
             g.create_dataset(name="source_pred_reoptimized",                shape=[data_len, phys.src_pixels, phys.src_pixels, 1],                              dtype=np.float32)
@@ -106,6 +107,7 @@ def distributed_strategy(args):
             g.create_dataset(name="chi_squared",                            shape=[data_len, rim.steps],                                                        dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized",                shape=[data_len, rim.steps],                                                        dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized_series",         shape=[data_len, rim.steps, args.re_optimize_steps],                                dtype=np.float32)
+            g.create_dataset(name="chi_squared_reoptimized_mean_pred_series", shape=[data_len, rim.steps, args.re_optimize_steps],                                dtype=np.float32)
             g.create_dataset(name="sampled_chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
             g.create_dataset(name="source_optim_mse",                       shape=[data_len],                                                                   dtype=np.float32)
             g.create_dataset(name="source_optim_mse_series",                shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
@@ -141,28 +143,9 @@ def distributed_strategy(args):
                 source_o = source_pred[-1]
                 kappa_o = kappa_pred[-1]
 
-                # ===================== VAE SAMPLING for PRIOR ==============================
                 # Ground truth latent code for oracle metrics
                 z_source_gt, _ = source_vae.encoder(source)
                 z_kappa_gt, _ = kappa_vae.encoder(log_10(kappa))
-
-                # Latent code of model predictions
-                z_source, _ = source_vae.encoder(source_o)
-                z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
-
-                # L1 distance with ground truth in latent space -- this is changed by an user defined value when using real data
-                # z_source_std = tf.abs(z_source - z_source_gt)
-                # z_kappa_std = tf.abs(z_kappa - z_kappa_gt)
-                z_source_std = args.source_vae_ball_size
-                z_kappa_std = args.kappa_vae_ball_size
-
-                # Sample latent code, then decode and forward
-                z_s = tf.random.normal(shape=[args.sample_size, source_vae.latent_size], mean=z_source, stddev=z_source_std)
-                z_k = tf.random.normal(shape=[args.sample_size, kappa_vae.latent_size],  mean=z_kappa,  stddev=z_kappa_std)
-                sampled_source = tf.nn.relu(source_vae.decode(z_s))
-                sampled_source /= tf.reduce_max(sampled_source, axis=(1, 2, 3), keepdims=True)  # make sampled source normalized and positive
-                sampled_kappa = kappa_vae.decode(z_k)  # output in log_10 space
-                sampled_lens = phys.noisy_forward(sampled_source, 10**sampled_kappa, noise_rms, tf.tile(psf, [args.sample_size, 1, 1, 1]))  # for posterity and fishing experiments
 
                 # Re-optimize weights of the model
                 STEPS = args.re_optimize_steps
@@ -175,6 +158,7 @@ def distributed_strategy(args):
                 optim = tf.keras.optimizers.RMSprop(learning_rate=learning_rate_schedule)
 
                 chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
+                chi_squared_series_mean_pred = tf.TensorArray(DTYPE, size=STEPS)
                 source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
                 sampled_chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
@@ -194,40 +178,51 @@ def distributed_strategy(args):
                 source_mse_best = tf.reduce_mean((source_best - source) ** 2)
                 kappa_mse_best = tf.reduce_mean((kappa_best - log_10(kappa)) ** 2)
                 for current_step in tqdm(range(STEPS)):
+                    if current_step % args.resample_every == 0:
+                        # ===================== VAE SAMPLING for PRIOR ==============================
+                        # Latent code of model predictions
+                        z_source, _ = source_vae.encoder(source_o)
+                        z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
+
+                        # L1 distance with ground truth in latent space -- this is changed by an user defined value when using real data
+                        # z_source_std = tf.abs(z_source - z_source_gt)
+                        # z_kappa_std = tf.abs(z_kappa - z_kappa_gt)
+                        z_source_std = args.source_vae_ball_size
+                        z_kappa_std = args.kappa_vae_ball_size
+
+                        # Sample latent code, then decode and forward
+                        z_s = tf.random.normal(shape=[args.sample_size, source_vae.latent_size], mean=z_source, stddev=z_source_std)
+                        z_k = tf.random.normal(shape=[args.sample_size, kappa_vae.latent_size], mean=z_kappa, stddev=z_kappa_std)
+                        sampled_source = tf.nn.relu(source_vae.decode(z_s))
+                        sampled_source /= tf.reduce_max(sampled_source, axis=(1, 2, 3), keepdims=True)
+                        sampled_kappa = kappa_vae.decode(z_k)  # output in log_10 space
+                        sampled_lens = phys.noisy_forward(sampled_source, 10 ** sampled_kappa, noise_rms, tf.tile(psf, [args.sample_size, 1, 1, 1]))
+
+                    # ===================== Optimization ==============================
                     with tf.GradientTape() as tape:
                         tape.watch(unet.trainable_variables)
-                        # log likelihood
-                        noise = tf.random.normal(shape=lens.shape, stddev=noise_rms)
-                        s, k, chi_sq = rim.call(lens - noise, noise_rms, psf, outer_tape=tape) # experiment 4, try to add noise to input to remove noise leakage?
-                        # s, k, chi_sq = rim.call(lens, noise_rms, psf, outer_tape=tape) # was using this in experiment 1 and 2 + only single sample for mse
-                        cost = tf.reduce_mean(chi_sq)
-                        # log prior
-                        s_s, s_k, s_chi_sq = rim.call(sampled_lens, noise_rms, tf.tile(psf, [args.sample_size, 1, 1, 1]), outer_tape=tape)
-                        _kappa_mse = tf.reduce_sum(wk(10**sampled_kappa) * (s_k - sampled_kappa) ** 2, axis=(2, 3, 4))
-                        cost += tf.reduce_mean(_kappa_mse)
-                        cost += tf.reduce_mean((s_s - sampled_source)**2)
+                        s, k, chi_sq = rim.call(sampled_lens, noise_rms, tf.tile(psf, [args.sample_size, 1, 1, 1]), outer_tape=tape)
+                        _kappa_mse = tf.reduce_sum(wk(10**sampled_kappa) * (k - sampled_kappa) ** 2, axis=(2, 3, 4))
+                        cost = tf.reduce_mean(_kappa_mse)
+                        cost += tf.reduce_mean((s - sampled_source)**2)
                         cost += tf.reduce_sum(rim.unet.losses)  # weight decay
 
                     grads = tape.gradient(cost, unet.trainable_variables)
                     optim.apply_gradients(zip(grads, unet.trainable_variables))
 
                     # Record performance on sampled dataset
-                    sampled_chi_squared_series = sampled_chi_squared_series.write(index=current_step, value=tf.squeeze(tf.reduce_mean(s_chi_sq[-1])))
-                    sampled_source_mse = sampled_source_mse.write(index=current_step, value=tf.reduce_mean((s_s[-1] - sampled_source) ** 2))
-                    sampled_kappa_mse = sampled_kappa_mse.write(index=current_step, value=tf.reduce_mean((s_k[-1] - sampled_kappa) ** 2))
+                    sampled_chi_squared_series = sampled_chi_squared_series.write(index=current_step, value=tf.squeeze(tf.reduce_mean(chi_sq[-1])))
+                    sampled_source_mse = sampled_source_mse.write(index=current_step, value=tf.reduce_mean((s[-1] - sampled_source) ** 2))
+                    sampled_kappa_mse = sampled_kappa_mse.write(index=current_step, value=tf.reduce_mean((k[-1] - sampled_kappa) ** 2))
                     # Record model prediction on data
+                    s, k, chi_sq = rim.call(lens, noise_rms, psf)
                     chi_squared_series = chi_squared_series.write(index=current_step, value=tf.squeeze(chi_sq))
                     source_o = s[-1]
                     kappa_o = k[-1]
                     # oracle metrics, remove when using real data
                     source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - source) ** 2))
                     kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - log_10(kappa)) ** 2))
-                    # Early stopping could be replaced altogether by window averaging... (could we use SLGD here? In the mean time use approximate sampling from RMSprop)
-                    # if 2 * chi_sq[-1, 0] < args.converged_chisq:
-                    #     source_best = source_o
-                    #     kappa_best = 10**kappa_o
-                    #     best = chi_sq[-1, 0]
-                    #     break
+
                     if chi_sq[-1, 0] < best[-1, 0]:
                         source_best = tf.nn.relu(source_o)
                         kappa_best = 10**kappa_o
@@ -255,14 +250,21 @@ def distributed_strategy(args):
                         delta2 = y_o - y_mean
                         y_var += delta * delta2
 
+                    y_mean_pred = phys.forward(tf.nn.relu(source_mean), 10**kappa_mean, psf)
+                    chisq = tf.reduce_mean((y_mean_pred - lens)**2/noise_rms[:, None, None, None]**2)
+                    chi_squared_series_mean_pred = chi_squared_series_mean_pred.write(step=current_step, value=chisq)
+
                 source_o = source_best
                 kappa_o = kappa_best
                 y_pred = phys.forward(source_o, kappa_o, psf)
+
+                y_mean_pred = phys.forward(tf.nn.relu(source_mean), 10 ** kappa_mean, psf)
 
                 chi_sq_series = tf.transpose(chi_squared_series.stack())
                 source_mse = source_mse.stack()
                 kappa_mse = kappa_mse.stack()
                 sampled_chi_squared_series = sampled_chi_squared_series.stack()
+                chi_squared_series_mean_pred = chi_squared_series_mean_pred.stack()
                 sampled_source_mse = sampled_source_mse.stack()
                 sampled_kappa_mse = sampled_kappa_mse.stack()
                 kappa_var /= float(STEPS - args.burn_in)
@@ -276,7 +278,7 @@ def distributed_strategy(args):
                 # Compute Power spectrum of converged predictions
                 _ps_lens = ps_lens.cross_correlation_coefficient(lens[..., 0], lens_pred[..., 0])
                 _ps_lens2 = ps_lens.cross_correlation_coefficient(lens[..., 0], y_pred[..., 0])
-                _ps_lens3 = ps_lens.cross_correlation_coefficient(lens[..., 0], y_mean[..., 0])
+                _ps_lens3 = ps_lens.cross_correlation_coefficient(lens[..., 0], y_mean_pred[..., 0])
                 _ps_kappa = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_pred[-1])[..., 0])
                 _ps_kappa2 = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_o[..., 0]))
                 _ps_kappa3 = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], kappa_mean[..., 0])
@@ -300,6 +302,7 @@ def distributed_strategy(args):
                 g["lens_pred_reoptimized"][batch] = y_pred.numpy().astype(np.float32)
                 g["lens_pred_reoptimized_mean"][batch] = y_mean.numpy().astype(np.float32)
                 g["lens_pred_reoptimized_var"][batch] = y_var.numpy().astype(np.float32)
+                g["lens_pred_reoptimized_mean_pred"][batch] = y_mean_pred.numpy().astype(np.float32)
                 g["source_prior"][batch] = sampled_source[0].numpy().astype(np.float32)
                 g["source_pred"][batch] = tf.transpose(source_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["source_pred_reoptimized"][batch] = source_o.numpy().astype(np.float32)
@@ -314,6 +317,7 @@ def distributed_strategy(args):
                 g["chi_squared_reoptimized"][batch] = 2*tf.squeeze(best).numpy().astype(np.float32)
                 g["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
                 g["sampled_chi_squared_reoptimized_series"][batch] = 2*sampled_chi_squared_series.numpy().astype(np.float32)
+                g["chi_squared_reoptimized_mean_pred_series"][batch] = chi_squared_series_mean_pred.numpy().astype(np.float32)
                 g["source_optim_mse"][batch] = source_mse_best.numpy().astype(np.float32)
                 g["source_optim_mse_series"][batch] = source_mse.numpy().astype(np.float32)
                 g["sampled_source_optim_mse_series"][batch] = sampled_source_mse.numpy().astype(np.float32)
@@ -364,8 +368,8 @@ if __name__ == '__main__':
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
     parser.add_argument("--re_optimize_steps",  default=2000,       type=int)
-    parser.add_argument("--burn-in",            default=100,        type=int)
-    parser.add_argument("--converged_chisq",    default=1.0,        type=float, help="Value of the chisq that is considered converged.")
+    parser.add_argument("--burn-in",            default=200,        type=int)
+    parser.add_argument("--resample_every",     default=50,         type=int,   help="Resample from the VAE every x steps")
     parser.add_argument("--source_vae_ball_size",   default=0.5,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
     parser.add_argument("--kappa_vae_ball_size",    default=0.5,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
     parser.add_argument("--l2_amp",             default=1e-6,       type=float)
