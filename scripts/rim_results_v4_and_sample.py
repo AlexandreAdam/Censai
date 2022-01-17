@@ -1,5 +1,6 @@
-from censai import RIMSharedUnetv3, PhysicalModelv2, PowerSpectrum, RIMSourceUnetv2, AnalyticalPhysicalModel
-from censai.models import SharedUnetModelv4, UnetModelv2
+from censai import RIMSharedUnetv3, PhysicalModelv2, PowerSpectrum
+import tensorflow_probability as tfp
+from censai.models import SharedUnetModelv4
 from censai.data.lenses_tng_v3 import decode_results, decode_physical_model_info
 import tensorflow as tf
 import numpy as np
@@ -15,6 +16,8 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 # this worker's array index. Assumes slurm array job is zero-indexed
 # defaults to zero if not running under SLURM
 THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
+
+SLGD = tfp.optimizer.StochasticGradientLangevinDynamics
 
 
 def distributed_strategy(args):
@@ -177,9 +180,13 @@ def distributed_strategy(args):
                     step_size = learning_rate_schedule(current_step)
                     gradients = tape.gradient(cost, unet.trainable_variables)
                     grad_var = [args.rmsprop_alpha * var + (1 - args.rmsprop_alpha) * grad**2 for (grad, var) in zip(gradients, grad_var)]
-                    noise = [tf.random.normal(shape=theta.shape, stddev=tf.sqrt(step_size / (args.rmsprop_epsilon + tf.sqrt(var)))) for (theta, var) in zip(unet.trainable_variables, grad_var)]
-                    unet.set_weights([theta - step_size/2./(args.rmsprop_epsilon + tf.sqrt(var)) * grad + eta
-                                      for (theta, grad, eta, var) in zip(unet.trainable_variables, gradients, noise, grad_var)])
+                    if current_step >= args.slgd_burn_in:
+                        noise = [tf.random.normal(shape=theta.shape, stddev=tf.sqrt(step_size / (args.rmsprop_epsilon + tf.sqrt(var)))) for (theta, var) in zip(unet.trainable_variables, grad_var)]
+                        unet.set_weights([theta - step_size/2./(args.rmsprop_epsilon + tf.sqrt(var)) * grad + eta
+                                          for (theta, grad, eta, var) in zip(unet.trainable_variables, gradients, noise, grad_var)])
+                    else:
+                        unet.set_weights([theta - step_size/2./(args.rmsprop_epsilon + tf.sqrt(var)) * grad
+                                          for (theta, grad, var) in zip(unet.trainable_variables, gradients, grad_var)])
 
                 y_pred = phys.forward(rim.source_link(source_mean), rim.kappa_link(kappa_mean), psf)
                 chisq_ro = tf.reduce_mean((y_pred - lens)**2 / noise_rms[:, None, None, None] ** 2)
@@ -270,6 +277,7 @@ if __name__ == '__main__':
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
     parser.add_argument("--burn_in",            default=2000,       type=int)
+    parser.add_argument("--slgd_burn_in",       default=2000,       type=int, help="Burn in before injecting noise to the gradient to collect preconditionner statistics")
     parser.add_argument("--sampling_steps",     default=2000,       type=int)
     parser.add_argument("--l2_amp",             default=6e-5,       type=float)
     parser.add_argument("--rmsprop_alpha",      default=0.99,       type=float, help="Control the size of the exponential moving window of the preconditioner. Default from Li et al 2015.")
