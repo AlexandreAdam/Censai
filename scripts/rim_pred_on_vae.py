@@ -14,18 +14,18 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 def main(args):
-    with open(os.path.join(args.kappa_vae, "model_hparams.json"), "r") as f:
+    with open(os.path.join(args.kappa_model, "model_hparams.json"), "r") as f:
         kappa_vae_hparams = json.load(f)
     kappa_vae = VAE(**kappa_vae_hparams)
     ckpt1 = tf.train.Checkpoint(step=tf.Variable(1), net=kappa_vae)
-    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.kappa_vae, 1)
+    checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.kappa_model, 1)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
-    with open(os.path.join(args.source_vae, "model_hparams.json"), "r") as f:
+    with open(os.path.join(args.source_model, "model_hparams.json"), "r") as f:
         source_vae_hparams = json.load(f)
     source_vae = VAE(**source_vae_hparams)
     ckpt2 = tf.train.Checkpoint(step=tf.Variable(1), net=source_vae)
-    checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, args.source_vae, 1)
+    checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, args.source_model, 1)
     checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
 
     phys = PhysicalModelv2(pixels=128, method="fft")
