@@ -367,7 +367,7 @@ if __name__ == '__main__':
     parser.add_argument("--lens_coherence_bins",    default=40,     type=int)
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
-    parser.add_argument("--re_optimize_steps",  default=2000,       type=int)
+    parser.add_argument("--re_optimize_steps",  default=3000,       type=int)
     parser.add_argument("--burn-in",            default=200,        type=int)
     parser.add_argument("--resample_every",     default=50,         type=int,   help="Resample from the VAE every x steps")
     parser.add_argument("--source_vae_ball_size",   default=0.5,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
