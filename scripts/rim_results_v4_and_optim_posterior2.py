@@ -252,7 +252,7 @@ def distributed_strategy(args):
 
                     y_mean_pred = phys.forward(tf.nn.relu(source_mean), 10**kappa_mean, psf)
                     chisq = tf.reduce_mean((y_mean_pred - lens)**2/noise_rms[:, None, None, None]**2)
-                    chi_squared_series_mean_pred = chi_squared_series_mean_pred.write(step=current_step, value=chisq)
+                    chi_squared_series_mean_pred = chi_squared_series_mean_pred.write(index=current_step, value=chisq)
 
                 source_o = source_best
                 kappa_o = kappa_best
