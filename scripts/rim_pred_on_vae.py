@@ -55,9 +55,10 @@ def main(args):
         hf.create_dataset("source_mse", shape=[args.total])
 
         for batch in range(args.total//args.batch_size):
-            z = tf.random.normal(shape=[args.batch_size])
+            z = tf.random.normal(shape=[args.batch_size, source_vae.latent_size])
             source = tf.nn.relu(source_vae.decode(z))
             source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)
+            z = tf.random.normal(shape=[args.batch_size, kappa_vae.latent_size])
             kappa = 10**kappa_vae.decode(z)
             noise_rms = truncnorm.rvs(1e-3, 0.1, loc=0.02, scale=0.02, size=args.batch_size)
             psf_fwhm = truncnorm.rvs(phys.image_fov/128, 4*phys.image_fov/128, loc=1.5*phys.image_fov/128, scale=0.5*phys.image_fov/128, size=args.batch_size)
