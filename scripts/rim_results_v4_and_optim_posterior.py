@@ -191,6 +191,8 @@ def distributed_strategy(args):
                 best = chi_squared
                 source_best = source_pred[-1]
                 kappa_best = kappa_pred[-1]
+                source_mse_best = tf.reduce_mean((source_best - source) ** 2)
+                kappa_mse_best = tf.reduce_mean((kappa_best - log_10(kappa)) ** 2)
                 for current_step in tqdm(range(STEPS)):
                     with tf.GradientTape() as tape:
                         tape.watch(unet.trainable_variables)
