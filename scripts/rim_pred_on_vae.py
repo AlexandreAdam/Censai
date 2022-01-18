@@ -13,6 +13,7 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 # defaults to zero if not running under SLURM
 THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
+
 def main(args):
     with open(os.path.join(args.kappa_model, "model_hparams.json"), "r") as f:
         kappa_vae_hparams = json.load(f)
