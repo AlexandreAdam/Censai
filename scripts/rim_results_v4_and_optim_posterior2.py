@@ -107,7 +107,7 @@ def distributed_strategy(args):
             g.create_dataset(name="chi_squared",                            shape=[data_len, rim.steps],                                                        dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized",                shape=[data_len, rim.steps],                                                        dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized_series",         shape=[data_len, rim.steps, args.re_optimize_steps],                                dtype=np.float32)
-            g.create_dataset(name="chi_squared_reoptimized_mean_pred_series", shape=[data_len, rim.steps, args.re_optimize_steps],                                dtype=np.float32)
+            g.create_dataset(name="chi_squared_reoptimized_mean_pred_series", shape=[data_len, rim.steps, args.re_optimize_steps - args.burn_in],                                dtype=np.float32)
             g.create_dataset(name="sampled_chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
             g.create_dataset(name="source_optim_mse",                       shape=[data_len],                                                                   dtype=np.float32)
             g.create_dataset(name="source_optim_mse_series",                shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
@@ -178,28 +178,29 @@ def distributed_strategy(args):
                 kappa_best = kappa_pred[-1]
                 source_mse_best = tf.reduce_mean((source_best - source) ** 2)
                 kappa_mse_best = tf.reduce_mean((kappa_best - log_10(kappa)) ** 2)
+
+                # ===================== VAE SAMPLING for PRIOR ==============================
+                # Latent code of model predictions
+                z_source, _ = source_vae.encoder(source_o)
+                z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
+
+                # L1 distance with ground truth in latent space -- this is changed by an user defined value when using real data
+                # z_source_std = tf.abs(z_source - z_source_gt)
+                # z_kappa_std = tf.abs(z_kappa - z_kappa_gt)
+                z_source_std = args.source_vae_ball_size
+                z_kappa_std = args.kappa_vae_ball_size
+
+                # Sample latent code, then decode and forward
+                z_s = tf.random.normal(shape=[args.sample_size, source_vae.latent_size], mean=z_source, stddev=z_source_std)
+                z_k = tf.random.normal(shape=[args.sample_size, kappa_vae.latent_size], mean=z_kappa, stddev=z_kappa_std)
+                sampled_source = tf.nn.relu(source_vae.decode(z_s))
+                sampled_source /= tf.reduce_max(sampled_source, axis=(1, 2, 3), keepdims=True)
+                sampled_kappa = kappa_vae.decode(z_k)  # output in log_10 space
+                sampled_lens = phys.noisy_forward(sampled_source, 10 ** sampled_kappa, noise_rms,
+                                                  tf.tile(psf, [args.sample_size, 1, 1, 1]))
+
+                # ===================== Optimization ==============================
                 for current_step in tqdm(range(STEPS)):
-                    if current_step % args.resample_every == 0:
-                        # ===================== VAE SAMPLING for PRIOR ==============================
-                        # Latent code of model predictions
-                        z_source, _ = source_vae.encoder(source_o)
-                        z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
-
-                        # L1 distance with ground truth in latent space -- this is changed by an user defined value when using real data
-                        # z_source_std = tf.abs(z_source - z_source_gt)
-                        # z_kappa_std = tf.abs(z_kappa - z_kappa_gt)
-                        z_source_std = args.source_vae_ball_size
-                        z_kappa_std = args.kappa_vae_ball_size
-
-                        # Sample latent code, then decode and forward
-                        z_s = tf.random.normal(shape=[args.sample_size, source_vae.latent_size], mean=z_source, stddev=z_source_std)
-                        z_k = tf.random.normal(shape=[args.sample_size, kappa_vae.latent_size], mean=z_kappa, stddev=z_kappa_std)
-                        sampled_source = tf.nn.relu(source_vae.decode(z_s))
-                        sampled_source /= tf.reduce_max(sampled_source, axis=(1, 2, 3), keepdims=True)
-                        sampled_kappa = kappa_vae.decode(z_k)  # output in log_10 space
-                        sampled_lens = phys.noisy_forward(sampled_source, 10 ** sampled_kappa, noise_rms, tf.tile(psf, [args.sample_size, 1, 1, 1]))
-
-                    # ===================== Optimization ==============================
                     with tf.GradientTape() as tape:
                         tape.watch(unet.trainable_variables)
                         s, k, chi_sq = rim.call(sampled_lens, noise_rms, tf.tile(psf, [args.sample_size, 1, 1, 1]), outer_tape=tape)
@@ -251,9 +252,9 @@ def distributed_strategy(args):
                         delta2 = y_o - y_mean
                         y_var += delta * delta2
 
-                    y_mean_pred = phys.forward(tf.nn.relu(source_mean), 10**kappa_mean, psf)
-                    chisq = tf.reduce_mean((y_mean_pred - lens)**2/noise_rms[:, None, None, None]**2)
-                    chi_squared_series_mean_pred = chi_squared_series_mean_pred.write(index=current_step, value=chisq)
+                        y_mean_pred = phys.forward(tf.nn.relu(source_mean), 10**kappa_mean, psf)
+                        chisq = tf.reduce_mean((y_mean_pred - lens)**2/noise_rms[:, None, None, None]**2)
+                        chi_squared_series_mean_pred = chi_squared_series_mean_pred.write(index=current_step, value=chisq)
 
                 source_o = source_best
                 kappa_o = kappa_best
@@ -362,17 +363,16 @@ if __name__ == '__main__':
     parser.add_argument("--kappa_vae",          required=True)
     parser.add_argument("--compression_type",   default="GZIP")
     parser.add_argument("--test_dataset",       required=True)
-    parser.add_argument("--test_size",          default=5000,       type=int)
+    parser.add_argument("--test_size",          default=3000,       type=int)
     parser.add_argument("--buffer_size",        default=10000,      type=int)
     parser.add_argument("--sample_size",        default=10,         type=int)
     parser.add_argument("--lens_coherence_bins",    default=40,     type=int)
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
-    parser.add_argument("--re_optimize_steps",  default=3000,       type=int)
-    parser.add_argument("--burn-in",            default=200,        type=int)
-    parser.add_argument("--resample_every",     default=50,         type=int,   help="Resample from the VAE every x steps")
-    parser.add_argument("--source_vae_ball_size",   default=0.5,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
-    parser.add_argument("--kappa_vae_ball_size",    default=0.5,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
+    parser.add_argument("--re_optimize_steps",  default=2000,       type=int)
+    parser.add_argument("--burn-in",            default=1500,       type=int)
+    parser.add_argument("--source_vae_ball_size",   default=0.4,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
+    parser.add_argument("--kappa_vae_ball_size",    default=0.4,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
     parser.add_argument("--l2_amp",             default=1e-6,       type=float)
     parser.add_argument("--learning_rate",      default=1e-6,       type=float)
     parser.add_argument("--decay_rate",         default=1,          type=float)
