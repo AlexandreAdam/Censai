@@ -107,7 +107,7 @@ def distributed_strategy(args):
             g.create_dataset(name="chi_squared",                            shape=[data_len, rim.steps],                                                        dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized",                shape=[data_len, rim.steps],                                                        dtype=np.float32)
             g.create_dataset(name="chi_squared_reoptimized_series",         shape=[data_len, rim.steps, args.re_optimize_steps],                                dtype=np.float32)
-            g.create_dataset(name="chi_squared_reoptimized_mean_pred_series", shape=[data_len, rim.steps, args.re_optimize_steps - args.burn_in],                                dtype=np.float32)
+            g.create_dataset(name="chi_squared_reoptimized_mean_pred_series", shape=[data_len, args.re_optimize_steps - args.burn_in],                                dtype=np.float32)
             g.create_dataset(name="sampled_chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
             g.create_dataset(name="source_optim_mse",                       shape=[data_len],                                                                   dtype=np.float32)
             g.create_dataset(name="source_optim_mse_series",                shape=[data_len, args.re_optimize_steps],                                           dtype=np.float32)
@@ -159,7 +159,7 @@ def distributed_strategy(args):
                 optim = tf.keras.optimizers.RMSprop(learning_rate=learning_rate_schedule)
 
                 chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
-                chi_squared_series_mean_pred = tf.TensorArray(DTYPE, size=STEPS)
+                chi_squared_series_mean_pred = tf.TensorArray(DTYPE, size=STEPS - args.burn_in)
                 source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
                 sampled_chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
@@ -196,8 +196,7 @@ def distributed_strategy(args):
                 sampled_source = tf.nn.relu(source_vae.decode(z_s))
                 sampled_source /= tf.reduce_max(sampled_source, axis=(1, 2, 3), keepdims=True)
                 sampled_kappa = kappa_vae.decode(z_k)  # output in log_10 space
-                sampled_lens = phys.noisy_forward(sampled_source, 10 ** sampled_kappa, noise_rms,
-                                                  tf.tile(psf, [args.sample_size, 1, 1, 1]))
+                sampled_lens = phys.noisy_forward(sampled_source, 10 ** sampled_kappa, noise_rms, tf.tile(psf, [args.sample_size, 1, 1, 1]))
 
                 # ===================== Optimization ==============================
                 for current_step in tqdm(range(STEPS)):
@@ -254,7 +253,7 @@ def distributed_strategy(args):
 
                         y_mean_pred = phys.forward(tf.nn.relu(source_mean), 10**kappa_mean, psf)
                         chisq = tf.reduce_mean((y_mean_pred - lens)**2/noise_rms[:, None, None, None]**2)
-                        chi_squared_series_mean_pred = chi_squared_series_mean_pred.write(index=current_step, value=chisq)
+                        chi_squared_series_mean_pred = chi_squared_series_mean_pred.write(index=current_step - args.burn_in, value=chisq)
 
                 source_o = source_best
                 kappa_o = kappa_best
