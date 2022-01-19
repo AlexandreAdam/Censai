@@ -196,8 +196,7 @@ def distributed_strategy(args):
                 sampled_source = tf.nn.relu(source_vae.decode(z_s))
                 sampled_source /= tf.reduce_max(sampled_source, axis=(1, 2, 3), keepdims=True)
                 sampled_kappa = kappa_vae.decode(z_k)  # output in log_10 space
-                sampled_lens = phys.noisy_forward(sampled_source, 10 ** sampled_kappa, noise_rms,
-                                                  tf.tile(psf, [args.sample_size, 1, 1, 1]))
+                sampled_lens = phys.noisy_forward(sampled_source, 10 ** sampled_kappa, noise_rms, tf.tile(psf, [args.sample_size, 1, 1, 1]))
 
                 # ===================== Optimization ==============================
                 for current_step in tqdm(range(STEPS)):
