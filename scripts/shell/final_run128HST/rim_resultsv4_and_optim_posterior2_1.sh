@@ -21,4 +21,5 @@ python $CENSAI_PATH/scripts/rim_results_v4_and_optim_posterior2.py\
   --source_coherence_bins=40\
   --kappa_coherence_bins=40\
   --seed=42\
+  --re_optimize_steps=2000\
   --learning_rate=1e-6
