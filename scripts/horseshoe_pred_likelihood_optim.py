@@ -144,7 +144,6 @@ if __name__ == '__main__':
     parser.add_argument("--reoptimize_steps",   default=3000,       type=int)
     parser.add_argument("--learning_rate",      default=1e-6,       type=float)
     parser.add_argument("--l2_amp",             default=1e-6,       type=float)
-    parser.add_argument("--learning_rate",      default=1e-6,       type=float)
     parser.add_argument("--decay_rate",         default=1,          type=float)
     parser.add_argument("--decay_steps",        default=50,         type=float)
     parser.add_argument("--staircase",          action="store_true")
