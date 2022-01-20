@@ -1,0 +1,17 @@
+# Component/    parameter   constraint	Comment
+# operation	(see below)   range
+
+        1_2     x       offset   # Hard constrain relative position of object 1 and 2. They share the same center
+        1_2     y       offset
+        #1_2     q        offset
+	3       x	-1.5  1.5	# Soft constraint, range of possible values relative to starting value
+	3      y	-1.5  1.5
+
+
+# Note on parameter column:
+#   The parameter name options are x, y, mag, re (or rs -- it doesn't matter),
+#   n, alpha, beta, gamma, pa, q, c, f1a (Fourier amplitude), f1p (Fourier
+#   phase angle), f2a, f2p, r5 (coordinate rotation), etc., .  Or 
+#   alternatively, one can specify the parameter number instead (for the
+#   classical parameters only) corresponding to the same numbers in the 
+#   galfit input file.

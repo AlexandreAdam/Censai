@@ -22,7 +22,7 @@ class RIMSharedUnetv3:
             flux_lagrange_multiplier: float=0.
     ):
         self.physical_model = physical_model
-        self.pixels = physical_model.pixels
+        self.pixels = physical_model.kappa_pixels
         self.unet = unet
         self.steps = steps
         self.adam = adam
