@@ -14,3 +14,6 @@ logs
 slides*
 *.h5
 core*
+
+galfit.*
+!galfit.feedme
