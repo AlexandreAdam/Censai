@@ -192,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument("--decay_rate",         default=1,          type=float)
     parser.add_argument("--decay_steps",        default=50,         type=float)
     parser.add_argument("--staircase",          action="store_true")
-    parser.add_argument("--burn_in",            default=2500)
+    parser.add_argument("--burn_in",            default=2500,       type=int)
 
     args = parser.parse_args()
     main(args)
