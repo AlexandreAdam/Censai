@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 
 
-def predict(self, observation, noise_rms, psf, rim_input, mask):#, lens_light):
+def predict(self, observation, noise_rms, psf, rim_input):#, mask):#, lens_light):
     """
     Used in inference. Return physical kappa and source maps.
     """
@@ -30,7 +30,7 @@ def predict(self, observation, noise_rms, psf, rim_input, mask):#, lens_light):
             g.watch(source)
             g.watch(kappa)
             y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
-            log_likelihood = 0.5 * tf.reduce_sum(mask * tf.square(y_pred - observation) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
+            log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - observation) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
             cost = log_likelihood
         source_grad, kappa_grad = g.gradient(cost, [source, kappa])
         source_grad, kappa_grad = self.grad_update(source_grad, kappa_grad, current_step)
@@ -42,7 +42,7 @@ def predict(self, observation, noise_rms, psf, rim_input, mask):#, lens_light):
     # last step score
     y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
     obs_series = obs_series.write(index=self.steps-1, value=y_pred)
-    log_likelihood = 0.5 * tf.reduce_sum(mask * tf.square(y_pred - observation) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
+    log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - observation) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
     chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood/self.pixels**2)
     return source_series.stack(), kappa_series.stack(), chi_squared_series.stack(), obs_series.stack()
 
@@ -102,7 +102,7 @@ def main(args):
     for current_step in tqdm(range(STEPS)):
         with tf.GradientTape() as tape:
             tape.watch(unet.trainable_variables)
-            source_o, kappa_o, chi_sq, y_pred_o = predict(rim, observation, noise_rms, psf, rim_input, mask)
+            source_o, kappa_o, chi_sq, y_pred_o = predict(rim, observation, noise_rms, psf, rim_input)
             cost = tf.reduce_mean(chi_sq)  # mean over time steps
             cost += tf.reduce_sum(rim.unet.losses)
 
