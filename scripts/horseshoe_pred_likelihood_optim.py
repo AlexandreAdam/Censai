@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 
 
-def predict(self, observation, noise_rms, psf, rim_input):#, mask):#, lens_light):
+def predict(self:RIMSharedUnetv3, observation, noise_rms, psf, rim_input):#, mask):#, lens_light):
     """
     Used in inference. Return physical kappa and source maps.
     """
@@ -25,7 +25,7 @@ def predict(self, observation, noise_rms, psf, rim_input):#, mask):#, lens_light
     source_series = source_series.write(index=0, value=self.source_link(source))
     kappa_series = kappa_series.write(index=0, value=self.kappa_link(kappa))
     # Main optimization loop
-    for current_step in tqdm(range(self.steps-1)):
+    for current_step in range(self.steps-1):
         with tf.GradientTape() as g:
             g.watch(source)
             g.watch(kappa)
@@ -38,12 +38,12 @@ def predict(self, observation, noise_rms, psf, rim_input):#, mask):#, lens_light
         source_series = source_series.write(index=current_step+1, value=self.source_link(source))
         kappa_series = kappa_series.write(index=current_step+1, value=self.kappa_link(kappa))
         obs_series = obs_series.write(index=current_step, value=y_pred)
-        chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood/self.pixels**2)
+        chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood/self.physical_model.pixels**2)
     # last step score
     y_pred = self.physical_model.forward(self.source_link(source), self.kappa_link(kappa), psf)
     obs_series = obs_series.write(index=self.steps-1, value=y_pred)
     log_likelihood = 0.5 * tf.reduce_sum(tf.square(y_pred - observation) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
-    chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood/self.pixels**2)
+    chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood/self.physical_model.pixels**2)
     return source_series.stack(), kappa_series.stack(), chi_squared_series.stack(), obs_series.stack()
 
 
@@ -99,6 +99,15 @@ def main(args):
     kappa_best = kappa
     obs_best = y_pred
 
+    y_mean = tf.zeros_like(y_pred[-1])
+    y_var = tf.zeros_like(y_mean)
+    # prediction and uncertainty collected in model space
+    source_mean = tf.zeros_like(source[-1])
+    kappa_mean = tf.zeros_like(kappa[-1])
+    source_var = tf.zeros_like(source_mean)
+    kappa_var = tf.zeros_like(kappa_mean)
+    chi_squared_series_mean_pred = tf.TensorArray(DTYPE, size=STEPS - args.burn_in)
+
     for current_step in tqdm(range(STEPS)):
         with tf.GradientTape() as tape:
             tape.watch(unet.trainable_variables)
@@ -111,18 +120,45 @@ def main(args):
         grads = tape.gradient(cost, unet.trainable_variables)
         optim.apply_gradients(zip(grads, unet.trainable_variables))
 
-        if 2 * chi_sq[-1, 0] < 1.:
-            source_best = source_o
-            kappa_best = kappa_o
-            best = chi_sq[:, 0]
-            obs_best = y_pred_o
-            break
+        # if 2 * chi_sq[-1, 0] < 1.:
+        #     source_best = source_o
+        #     kappa_best = kappa_o
+        #     best = chi_sq[:, 0]
+        #     obs_best = y_pred_o
+        #     break
         if chi_sq[-1, 0] < best[-1]:
             source_best = source_o
             kappa_best = kappa_o
             obs_best = y_pred_o
             best = chi_sq[:, 0]
 
+        # Welford's online algorithm for moving variance
+        if current_step >= args.burn_in:
+            step = current_step - args.burn_in
+            # source
+            delta = source_o[-1] - source_mean
+            source_mean = (step * source_mean + source_o[-1]) / (step + 1)
+            delta2 = source_o[-1] - source_mean
+            source_var += delta * delta2
+            # kappa
+            delta = kappa_o[-1] - kappa_mean
+            kappa_mean = (step * kappa_mean + kappa_o) / (step + 1)
+            delta2 = kappa_o[-1] - kappa_mean
+            kappa_var += delta * delta2
+            # observation
+            y_o = phys.forward(source_o[-1], kappa_o[-1], psf)
+            delta = y_o - y_mean
+            y_mean = (step * y_mean + y_o) / (step + 1)
+            delta2 = y_o - y_mean
+            y_var += delta * delta2
+            chisq_mean = tf.reduce_mean((y_mean - observation) ** 2 / noise_rms[:, None, None, None] ** 2)
+            chi_squared_series_mean_pred = chi_squared_series_mean_pred.write(index=current_step - args.burn_in, value=chisq_mean)
+
+    source_var /= STEPS - args.burn_in
+    kappa_var /= STEPS - args.burn_in
+    y_var /= STEPS - args.burn_in
+    y_mean_pred = phys.forward(source_mean, kappa_mean, psf)
+    chisq_mean_pred = tf.reduce_mean((y_mean_pred - observation) ** 2 / noise_rms[:, None, None, None] ** 2)
     with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + args.model + ".h5"), 'w') as hf:
         hf["source_rim"] = source.numpy().squeeze().astype(np.float32)
         hf["kappa_rim"] = kappa.numpy().squeeze().astype(np.float32)
@@ -133,6 +169,15 @@ def main(args):
         hf["reconstruction_rim_sgd"] = obs_best.numpy().squeeze().astype(np.float32)
         hf["chisq_rim_sgd"] = best
         hf["chi_squared_series"] = chi_squared_series.stack().numpy().squeeze().astype(np.float32)
+        hf["source_mean"] = source_mean.numpy().squeeze().astype(np.float32)
+        hf["source_var"] = source_var.numpy().squeeze().astype(np.float32)
+        hf["kappa_mean"] = kappa_mean.numpy().squeeze().astype(np.float32)
+        hf["kappa_vae"] = kappa_var.numpy().squeeze().astype(np.float32)
+        hf["y_mean"] = y_mean.numpy().squeeze().astype(np.float32)
+        hf["y_mean_pred"] = y_mean_pred.numpy().squeeze().astype(np.float32)
+        hf["chi_squared_y_mean_pred"] = chisq_mean_pred
+        hf["y_var"] = y_var.numpy().squeeze().astype(np.float32)
+        hf["chi_squared_mean_series"] = chi_squared_series_mean_pred.stack().numpy().squeeze().astype(np.float32)
 
 
 if __name__ == '__main__':
@@ -147,6 +192,7 @@ if __name__ == '__main__':
     parser.add_argument("--decay_rate",         default=1,          type=float)
     parser.add_argument("--decay_steps",        default=50,         type=float)
     parser.add_argument("--staircase",          action="store_true")
+    parser.add_argument("--burn_in",            default=2500)
 
     args = parser.parse_args()
     main(args)

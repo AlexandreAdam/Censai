@@ -166,11 +166,11 @@ def distributed_strategy(args):
                 sampled_source_mse = tf.TensorArray(DTYPE, size=STEPS)
                 sampled_kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
 
-                y_mean = lens_pred
+                y_mean = tf.zeros_like(lens_pred)
                 y_var = tf.zeros_like(y_mean)
                 # prediction and uncertainty collected in model space
-                source_mean = source_pred[-1]
-                kappa_mean = rim.kappa_inverse_link(kappa_pred)[-1]
+                source_mean = tf.zeros_like(source_pred[-1])
+                kappa_mean = tf.zeros_like(kappa_pred[-1])
                 source_var = tf.zeros_like(source_mean)
                 kappa_var = tf.zeros_like(kappa_mean)
                 best = chi_squared
