@@ -49,14 +49,14 @@ def predict(self, observation, noise_rms, psf, rim_input, mask):#, lens_light):
 
 def main(args):
     data = fits.open(args.rim_data)
-    observation = tf.constant(data["preprocessed_observation"], dtype=tf.float32)[None, ..., None]  # galfitted, noise padded, normalized
+    observation = tf.constant(data["preprocessed_observation"].data, dtype=tf.float32)[None, ..., None]  # galfitted, noise padded, normalized
     # lens_light = tf.constant(data["lens_light"], dtype=tf.float32)[None, ..., None]
     rim_input = tf.constant(data["rim_input"].data, dtype=tf.float32)[None, ..., None]
-    psf = tf.constant(data["psf"], dtype=tf.float32)[None, ..., None]
+    psf = tf.constant(data["psf"].data, dtype=tf.float32)[None, ..., None]
     noise_rms = tf.constant(data["PRIMARY"].header["noiserms"])[None]
     image_fov = data["PRIMARY"].header["fov"]
     src_fov = data["PRIMARY"].header["srcfov"]
-    mask = tf.constant(data["mask"], dtype=tf.float32)[None, ..., None]
+    mask = tf.constant(data["mask"].data, dtype=tf.float32)[None, ..., None]
     # sigma_image = tf.constant(data["sigma_image"], dtype=tf.float32)[None, ..., None]
 
     phys = PhysicalModelv2(  # use same parameter as was used during training, rescale kappa later
