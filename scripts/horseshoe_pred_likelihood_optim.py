@@ -142,7 +142,7 @@ def main(args):
             source_var += delta * delta2
             # kappa
             delta = kappa_o[-1] - kappa_mean
-            kappa_mean = (step * kappa_mean + kappa_o) / (step + 1)
+            kappa_mean = (step * kappa_mean + kappa_o[-1]) / (step + 1)
             delta2 = kappa_o[-1] - kappa_mean
             kappa_var += delta * delta2
             # observation
