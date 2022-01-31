@@ -393,57 +393,34 @@ class AnalyticalPhysicalModelv2:
 
     @staticmethod
     def _shear_polar_to_cartesian(r, phi):
-        x = r * tf.cos(2 * phi)
-        y = r * tf.sin(2 * phi)
+        x = r * tf.math.cos(2 * phi)
+        y = r * tf.math.sin(2 * phi)
         return x, y
 
     @staticmethod
     def _shear_cartesian_to_polar(x, y):
         r = tf.sqrt(x**2 + y**2)
-        phi = tf.atan2(y, x)/2
+        phi = tf.math.atan2(y, x)/2
         return r, phi
 
-    def sigmoid_to_sersic_physical(self, x):
+    def model_to_physical(self, x):
         # Method used to compute likelihood given model predictions
         r_ein, e1, e2, x0, y0, gamma1, gamma2, xs, ys, e1s, e2s, n, r_eff = tf.split(x, 13, axis=-1)
-        r_ein = r_ein * (self.r_ein_max - self.r_ein_min) + self.r_ein_min
-        e1 = self.max_ellipticity * (2 * e1 - 1)
-        e2 = self.max_ellipticity * e2  # only allow positive values for e2, removes the angular degeneracy => angles are set btw 0 and pi
         q, phi = self._ellipticity_to_qphi(e1, e2)
-        x0 = x0 * self.max_lens_shift - self.max_lens_shift
-        y0 = y0 * self.max_lens_shift - self.max_lens_shift
-        gamma1 = self.max_gamma * (2 * gamma1 - 1)
-        gamma2 = self.max_gamma * gamma2
+        q = q - tf.nn.relu(q - 0.95)
         gamma, gamma_phi = self._shear_cartesian_to_polar(gamma1, gamma2)
-        xs = xs * self.max_source_shift - self.max_source_shift
-        ys = ys * self.max_source_shift - self.max_source_shift
-        e1s = self.max_ellipticity * (2 * e1s - 1)
-        e2s = self.max_ellipticity * e2s
         qs, phi_s = self._ellipticity_to_qphi(e1s, e2s)
-        n = n * (self.n_max - self.n_max) + self.n_min
-        r_eff = r_eff * (self.r_eff_max - self.r_eff_min) + self.r_eff_min
+        n = tf.nn.relu(n) + 0.5 # prevents explosion at n = 0
+        r_eff = tf.nn.relu(r_eff) + self.src_fov / self.pixels
         z = tf.concat([r_ein, q, phi, x0, y0, gamma, gamma_phi, xs, ys, qs, phi_s, n, r_eff], axis=1)
         return z
 
-    def sersic_physical_to_logits(self, z):
+    def physical_to_model(self, z):
         # method used to compute model loss in logit space
         r_ein, q, phi, x0, y0, gamma, gamma_phi, xs, ys, qs, phi_s, n, r_eff = tf.split(z, 13, axis=-1)
-        r_ein = (r_ein - self.r_ein_min) / (self.r_ein_max - self.r_ein_min)
         e1, e2 = self._qphi_to_ellipticity(q, phi)
-        e1 = (e1 / self.max_ellipticity + 1)/2
-        e2 = e2 / self.max_ellipticity
-        x0 = (x0 + self.max_lens_shift) / self.max_lens_shift
-        y0 = (y0 + self.max_lens_shift) / self.max_lens_shift
         gamma1, gamma2 = self._shear_polar_to_cartesian(gamma, gamma_phi)
-        gamma1 = (gamma1 / self.max_gamma + 1) / 2
-        gamma2 = gamma2 / self.max_gamma
-        xs = (xs + self.max_source_shift)/self.max_source_shift
-        ys = (ys + self.max_source_shift)/self.max_source_shift
         e1s, e2s = self._qphi_to_ellipticity(qs, phi_s)
-        e1s = (e1s / self.max_ellipticity + 1)/2
-        e2s = e2s / self.max_ellipticity
-        n = (n - self.n_min) / (self.n_max - self.n_min)
-        r_eff = (r_eff - self.r_eff_min) / (self.r_eff_max - self.r_eff_min)
         x = logit(tf.concat([r_ein, e1, e2, x0, y0, gamma1, gamma2, xs, ys, e1s, e2s, n, r_eff], axis=-1))
         return x
 
