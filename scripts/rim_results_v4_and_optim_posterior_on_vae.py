@@ -139,7 +139,7 @@ def distributed_strategy(args):
             optim = tf.keras.optimizers.RMSprop(learning_rate=learning_rate_schedule)
 
             chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
-            chi_squared_series_mean_pred = tf.TensorArray(DTYPE, size=STEPS - args.burn_in)
+            chi_squared_series_mean_pred = tf.TensorArray(DTYPE, size=STEPS)
             source_mse = tf.TensorArray(DTYPE, size=STEPS)
             kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
             sampled_chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
@@ -196,7 +196,7 @@ def distributed_strategy(args):
                 source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - source) ** 2))
                 kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - log_10(kappa)) ** 2))
 
-                if chi_sq[-1, 0] < best[-1, 0]:
+                if abs(chi_sq[-1, 0] - 1) < abs(best[-1, 0] - 1):
                     source_best = tf.nn.relu(source_o)
                     kappa_best = 10**kappa_o
                     best = chi_sq
