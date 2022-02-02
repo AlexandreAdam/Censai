@@ -139,7 +139,6 @@ def distributed_strategy(args):
             optim = tf.keras.optimizers.RMSprop(learning_rate=learning_rate_schedule)
 
             chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
-            chi_squared_series_mean_pred = tf.TensorArray(DTYPE, size=STEPS)
             source_mse = tf.TensorArray(DTYPE, size=STEPS)
             kappa_mse = tf.TensorArray(DTYPE, size=STEPS)
             sampled_chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
@@ -211,7 +210,6 @@ def distributed_strategy(args):
             source_mse = source_mse.stack()
             kappa_mse = kappa_mse.stack()
             sampled_chi_squared_series = sampled_chi_squared_series.stack()
-            chi_squared_series_mean_pred = chi_squared_series_mean_pred.stack()
             sampled_source_mse = sampled_source_mse.stack()
             sampled_kappa_mse = sampled_kappa_mse.stack()
 
@@ -244,7 +242,6 @@ def distributed_strategy(args):
             hf["chi_squared_reoptimized"][i] = 2*tf.squeeze(best).numpy().astype(np.float32)
             hf["chi_squared_reoptimized_series"][i] = 2*chi_sq_series.numpy().astype(np.float32)
             hf["sampled_chi_squared_reoptimized_series"][i] = 2*sampled_chi_squared_series.numpy().astype(np.float32)
-            hf["chi_squared_reoptimized_mean_pred_series"][i] = chi_squared_series_mean_pred.numpy().astype(np.float32)
             hf["source_optim_mse"][i] = source_mse_best.numpy().astype(np.float32)
             hf["source_optim_mse_series"][i] = source_mse.numpy().astype(np.float32)
             hf["sampled_source_optim_mse_series"][i] = sampled_source_mse.numpy().astype(np.float32)
