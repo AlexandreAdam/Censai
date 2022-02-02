@@ -117,7 +117,7 @@ def exhaustive_grid_search(args):
         nicknames = []
         params = []
         i = 0
-        for p in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS:
+        for p in RIM_HPARAMS + MODEL_HPARAMS + EXTRA_PARAMS:
             if isinstance(args_dict[p], list):
                 if len(args_dict[p]) > 1:
                     args_dict[p] = lex[i]
@@ -136,7 +136,7 @@ def distributed_strategy(args):
     for gridsearch_id in range((THIS_WORKER - 1), len(gridsearch_args), N_WORKERS):
         run_args = gridsearch_args[gridsearch_id]
         history, best_score = main(run_args)
-        params_dict = {k: v for k, v in vars(run_args).items() if k in RIM_HPARAMS + UNET_MODEL_HPARAMS + EXTRA_PARAMS}
+        params_dict = {k: v for k, v in vars(run_args).items() if k in RIM_HPARAMS + MODEL_HPARAMS + EXTRA_PARAMS}
         params_dict.update({
             "experiment_id": run_args.logname,
             "train_cost": history["train_cost"][-1],
