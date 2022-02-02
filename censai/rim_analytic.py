@@ -29,11 +29,11 @@ class RIMAnalytic:
         else:
             self.grad_update = lambda x, t: x
 
-        self.link = tf.keras.layers.Lambda(lambda x: self.physical_model.sigmoid_to_sersic_physical(tf.nn.sigmoid(x))) # from model prediction (logits) to physical space
-        self.inverse_link = tf.keras.layers.Lambda(lambda x: self.physical_model.sersic_physical_to_logits(x)) # from physical space to logits space
+        self.link = tf.keras.layers.Lambda(lambda x: self.physical_model.model_to_physical(x))
+        self.inverse_link = tf.keras.layers.Lambda(lambda x: self.physical_model.physical_to_model(x))
 
     def initial_states(self, batch_size):
-        x = tf.zeros(shape=(batch_size, 13))
+        x = tf.zeros(shape=(batch_size, 13)) + 1e-2
         states = self.model.init_hidden_states(batch_size)
         self._grad_mean = tf.zeros_like(x, dtype=DTYPE)
         self._grad_var = tf.zeros_like(x, dtype=DTYPE)
@@ -49,7 +49,7 @@ class RIMAnalytic:
         return m_hat / (tf.sqrt(v_hat) + self.epsilon)
 
     def time_step(self, xt, grad, states):
-        xt_augmented = tf.concat([xt, grad], axis=-1)
+        xt_augmented = tf.constant([1., 1e-3, 1e-3, 0., 0., 1e-3, 1e-3, 0., 0., 1e-3, 1e-3, 1., 1.], DTYPE)[tf.newaxis, :]  # r_ein, e1, e2, x0, y0, gamma1, gamma2, xs, ys, e1s, e2s, n, r_eff
         dxt, states = self.model(xt=xt_augmented, states=states)
         xt = xt + dxt
         return xt, states
@@ -77,8 +77,7 @@ class RIMAnalytic:
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step - 1, value=2*log_likelihood/self.physical_model.pixels**2)
         # last step score
-        zt = tf.nn.sigmoid(xt)  # link function to physical space
-        zt = self.physical_model.sigmoid_to_sersic_physical(zt)
+        zt = self.link(xt)
         y_pred = self.physical_model.lens_source_sersic_func_vec(zt, psf_fwhm)
         log_likelihood = 0.5 * tf.reduce_sum(tf.square(lensed_image - y_pred) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
         chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=2*log_likelihood/self.physical_model.pixels**2)
@@ -94,19 +93,17 @@ class RIMAnalytic:
             with outer_tape.stop_recording():
                 with tf.GradientTape() as g:
                     g.watch(xt)
-                    zt = tf.nn.sigmoid(xt) # link function to physical space
-                    zt = self.physical_model.sigmoid_to_sersic_physical(zt)
+                    zt = self.link(xt)
                     y_pred = self.physical_model.lens_source_sersic_func_vec(zt, psf_fwhm)
                     log_likelihood = 0.5 * tf.reduce_sum(tf.square(lensed_image - y_pred) / noise_rms[:, None, None, None]**2, axis=(1, 2, 3))
             grad = g.gradient(log_likelihood, xt)
             grad = self.grad_update(grad, current_step)
             xt, states = self.time_step(xt, grad, states)
-            xt_series = xt_series.write(index=current_step, value=zt)
+            xt_series = xt_series.write(index=current_step, value=self.link(xt))
             if current_step > 0:
                 chi_squared_series = chi_squared_series.write(index=current_step - 1, value=2*log_likelihood/self.physical_model.pixels**2)
         # last step score
-        zt = tf.nn.sigmoid(xt)  # link function to physical space
-        zt = self.physical_model.sigmoid_to_sersic_physical(zt)
+        zt = self.link(xt)
         y_pred = self.physical_model.lens_source_sersic_func_vec(zt, psf_fwhm)
         log_likelihood = 0.5 * tf.reduce_sum(tf.square(lensed_image - y_pred) / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
         chi_squared_series = chi_squared_series.write(index=self.steps - 1, value=2*log_likelihood/self.physical_model.pixels**2)
@@ -118,6 +115,6 @@ if __name__ == '__main__':
     lens = phys.lens_source_sersic_func()
     model = ModelAnalytic()
     rim = RIMAnalytic(phys, model, steps=2)
-    xt, c = rim.call(lens, noise_rms=tf.constant([0.01], dtype=tf.float32), psf_fwhm=tf.constant([0.5], dtype=tf.float32))
+    xt, c = rim.call(lens, noise_rms=tf.constant([0.01], dtype=tf.float32), psf_fwhm=tf.constant([0.1], dtype=tf.float32))
     print(xt.numpy())
     print(c.numpy())
