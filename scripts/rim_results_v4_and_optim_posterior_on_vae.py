@@ -113,7 +113,7 @@ def distributed_strategy(args):
             kappa = 10**kappa_vae.sample(1)
             source = tf.nn.relu(source_vae.sample(1))
             source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)
-            noise_rms = 10**tf.random.uniform(shape=[1], minval=-3, maxval=-1)
+            noise_rms = 10**tf.random.uniform(shape=[1], minval=-2.5, maxval=-1)
             fwhm = tf.random.uniform(shape=[1], minval=0.06, maxval=0.3)
             psf = phys.psf_models(fwhm, cutout_size=psf_pixels)
             observation = phys.noisy_forward(source, kappa, noise_rms, psf)
