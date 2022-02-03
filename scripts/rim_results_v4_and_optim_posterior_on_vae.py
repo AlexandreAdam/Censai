@@ -113,7 +113,7 @@ def distributed_strategy(args):
             kappa = 10**kappa_vae.sample(1)
             source = tf.nn.relu(source_vae.sample(1))
             source /= tf.reduce_max(source, axis=(1, 2, 3), keepdims=True)
-            noise_rms = 10**tf.random.uniform(shape=[1], minval=-3, maxval=-1)
+            noise_rms = 10**tf.random.uniform(shape=[1], minval=-2.5, maxval=-1)
             fwhm = tf.random.uniform(shape=[1], minval=0.06, maxval=0.3)
             psf = phys.psf_models(fwhm, cutout_size=psf_pixels)
             observation = phys.noisy_forward(source, kappa, noise_rms, psf)
@@ -123,6 +123,10 @@ def distributed_strategy(args):
             observation_pred = phys.forward(source_pred[-1], kappa_pred[-1], psf)
             source_o = source_pred[-1]
             kappa_o = kappa_pred[-1]
+
+            # Latent code of model predictions
+            z_source, _ = source_vae.encoder(source_o)
+            z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
 
             # Ground truth latent code for oracle metrics
             z_source_gt, _ = source_vae.encoder(source)
@@ -154,9 +158,6 @@ def distributed_strategy(args):
             # ===================== Optimization ==============================
             for current_step in tqdm(range(STEPS)):
                 # ===================== VAE SAMPLING ==============================
-                # Latent code of model predictions
-                z_source, _ = source_vae.encoder(source_o)
-                z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
 
                 # L1 distance with ground truth in latent space -- this is changed by an user defined value when using real data
                 # z_source_std = tf.abs(z_source - z_source_gt)
@@ -195,7 +196,7 @@ def distributed_strategy(args):
                 source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - source) ** 2))
                 kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - log_10(kappa)) ** 2))
 
-                if abs(chi_sq[-1, 0] - 1) < abs(best[-1, 0] - 1):
+                if abs(2*chi_sq[-1, 0] - 1) < abs(2*best[-1, 0] - 1):
                     source_best = tf.nn.relu(source_o)
                     kappa_best = 10**kappa_o
                     best = chi_sq
