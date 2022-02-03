@@ -124,6 +124,10 @@ def distributed_strategy(args):
             source_o = source_pred[-1]
             kappa_o = kappa_pred[-1]
 
+            # Latent code of model predictions
+            z_source, _ = source_vae.encoder(source_o)
+            z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
+
             # Ground truth latent code for oracle metrics
             z_source_gt, _ = source_vae.encoder(source)
             z_kappa_gt, _ = kappa_vae.encoder(log_10(kappa))
@@ -154,9 +158,6 @@ def distributed_strategy(args):
             # ===================== Optimization ==============================
             for current_step in tqdm(range(STEPS)):
                 # ===================== VAE SAMPLING ==============================
-                # Latent code of model predictions
-                z_source, _ = source_vae.encoder(source_o)
-                z_kappa, _ = kappa_vae.encoder(log_10(kappa_o))
 
                 # L1 distance with ground truth in latent space -- this is changed by an user defined value when using real data
                 # z_source_std = tf.abs(z_source - z_source_gt)
@@ -195,7 +196,7 @@ def distributed_strategy(args):
                 source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - source) ** 2))
                 kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - log_10(kappa)) ** 2))
 
-                if abs(chi_sq[-1, 0] - 1) < abs(best[-1, 0] - 1):
+                if abs(2*chi_sq[-1, 0] - 1) < abs(2*best[-1, 0] - 1):
                     source_best = tf.nn.relu(source_o)
                     kappa_best = 10**kappa_o
                     best = chi_sq
