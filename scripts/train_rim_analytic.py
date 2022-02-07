@@ -273,7 +273,7 @@ if __name__ == "__main__":
     parser.add_argument("--adam",                   action="store_true",            help="ADAM update for the log-likelihood gradient.")
 
     # Physical parameters
-    parser.add_argument("--pixels",                 default=64,    type=int)
+    parser.add_argument("--pixels",                 default=128,    type=int)
     parser.add_argument("--image_fov",              default=7.68,   type=float)
     parser.add_argument("--src_fov",                default=3.,     type=float)
     parser.add_argument("--psf_cutout_size",        default=16,     type=int)
@@ -288,9 +288,9 @@ if __name__ == "__main__":
     parser.add_argument("--max_lens_shift",         default=0.3,    type=float)
     parser.add_argument("--max_source_shift",       default=0.3,    type=float)
     parser.add_argument("--noise_rms_min",          default=0.001,  type=float)
-    parser.add_argument("--noise_rms_max",          default=0.05,   type=float)
-    parser.add_argument("--noise_rms_mean",         default=0.008,   type=float)
-    parser.add_argument("--noise_rms_std",          default=0.008,   type=float)
+    parser.add_argument("--noise_rms_max",          default=0.1,   type=float)
+    parser.add_argument("--noise_rms_mean",         default=0.01,   type=float)
+    parser.add_argument("--noise_rms_std",          default=0.05,   type=float)
     parser.add_argument("--psf_fwhm_min",           default=0.06,   type=float)
     parser.add_argument("--psf_fwhm_max",           default=0.5,    type=float)
     parser.add_argument("--psf_fwhm_mean",          default=0.1,    type=float)
@@ -298,15 +298,15 @@ if __name__ == "__main__":
 
     # Model hyperparameters
     parser.add_argument("--layers",                 default=2,     type=int)
-    parser.add_argument("--units",                  default=24,    type=int)
+    parser.add_argument("--units",                  default=32,    type=int)
     parser.add_argument("--unit_scaling",           default=1,     type=int)
     parser.add_argument("--unit_cap",               default=1024,   type=int)
     parser.add_argument("--mlp_before_gru",         default=2,      type=int)
     parser.add_argument("--activation",             default="tanh")
 
     # Training set params
-    parser.add_argument("--batch_size",       default=10,      type=int,       help="Number of images in a batch. ")
-    parser.add_argument("--total_items",            required=True,  type=int,       help="Total images in an epoch.")
+    parser.add_argument("--batch_size",             default=10,      type=int,       help="Number of images in a batch. ")
+    parser.add_argument("--total_items",            default=1000,   type=int,       help="Total images in an epoch.")
 
     # Optimization params
     parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
@@ -322,12 +322,12 @@ if __name__ == "__main__":
     parser.add_argument("--time_weights",           default="uniform",              help="uniform: w_t=1 for all t, linear: w_t~t, quadratic: w_t~t^2")
 
     # logs
-    parser.add_argument("--logdir",                  default="None",                help="Path of logs directory. Default if None, no logs recorded.")
+    parser.add_argument("--logdir",                  default=os.path.join(os.getenv("CENSAI_PATH"), "logsA"), help="Path of logs directory. Default if None, no logs recorded.")
     parser.add_argument("--logname",                 default=None,                  help="Overwrite name of the log with this argument")
     parser.add_argument("--logname_prefixe",         default="RIMA",                help="If name of the log is not provided, this prefix is prepended to the date")
-    parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
+    parser.add_argument("--model_dir",               default=os.path.join(os.getenv("CENSAI_PATH"), "models"), help="Path to the directory where to save models checkpoints.")
     parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
-    parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
+    parser.add_argument("--max_to_keep",             default=1,     type=int,       help="Max model checkpoint to keep.")
 
     # Reproducibility params
     parser.add_argument("--seed",                   default=None,   type=int,       help="Random seed for numpy and tensorflow.")

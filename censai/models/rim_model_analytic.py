@@ -43,7 +43,7 @@ class ModelAnalytic(tf.keras.Model):
                 for j in range(mlp_before_gru)]
             )
         self._reconstruction_layers = self._reconstruction_layers[::-1]
-        self._down_grus = self._down_grus[::-1]
+        self._up_grus = self._up_grus[::-1]
 
         self.output_layer = tf.keras.layers.Dense(units=13, activation="linear")
 
