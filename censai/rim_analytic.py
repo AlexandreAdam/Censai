@@ -33,7 +33,7 @@ class RIMAnalytic:
         self.inverse_link = tf.keras.layers.Lambda(lambda x: self.physical_model.physical_to_model(x))
 
     def initial_states(self, batch_size):
-        x = tf.zeros(shape=(batch_size, 13)) + 1e-2
+        x = tf.tile(tf.constant([1., 1e-3, 1e-3, 0., 0., 1e-3, 1e-3, 0., 0., 1e-3, 1e-3, 1., 1.], DTYPE)[tf.newaxis, :], [batch_size, 1])  # r_ein, e1, e2, x0, y0, gamma1, gamma2, xs, ys, e1s, e2s, n, r_eff
         states = self.model.init_hidden_states(batch_size)
         self._grad_mean = tf.zeros_like(x, dtype=DTYPE)
         self._grad_var = tf.zeros_like(x, dtype=DTYPE)
@@ -49,7 +49,7 @@ class RIMAnalytic:
         return m_hat / (tf.sqrt(v_hat) + self.epsilon)
 
     def time_step(self, xt, grad, states):
-        xt_augmented = tf.constant([1., 1e-3, 1e-3, 0., 0., 1e-3, 1e-3, 0., 0., 1e-3, 1e-3, 1., 1.], DTYPE)[tf.newaxis, :]  # r_ein, e1, e2, x0, y0, gamma1, gamma2, xs, ys, e1s, e2s, n, r_eff
+        xt_augmented = tf.concat([xt, grad], axis=1)
         dxt, states = self.model(xt=xt_augmented, states=states)
         xt = xt + dxt
         return xt, states
