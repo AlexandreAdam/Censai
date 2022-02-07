@@ -56,12 +56,12 @@ class ModelAnalytic(tf.keras.Model):
         for i, layers in enumerate(self._feature_layers):
             for layer in layers:
                 dxt = layer(dxt)
-            dxt, ht = self._up_grus[i](dxt, states[i])
+            dxt, ht = self._down_grus[i](dxt, states[i])
             new_states.append(ht)
         for i, layers in enumerate(self._reconstruction_layers):
             for layer in layers:
                 dxt = layer(dxt)
-            dxt, ht = self._down_grus[i](dxt, states[i+self.n_layers])
+            dxt, ht = self._up_grus[i](dxt, states[i+self.n_layers])
             new_states.append(ht)
         dxt = self.output_layer(dxt)
         return dxt, new_states
