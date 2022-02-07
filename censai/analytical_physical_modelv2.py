@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
 import tensorflow_probability as tfp
-from censai.definitions import logit
 
 
 class AnalyticalPhysicalModelv2:
@@ -421,7 +420,7 @@ class AnalyticalPhysicalModelv2:
         e1, e2 = self._qphi_to_ellipticity(q, phi)
         gamma1, gamma2 = self._shear_polar_to_cartesian(gamma, gamma_phi)
         e1s, e2s = self._qphi_to_ellipticity(qs, phi_s)
-        x = logit(tf.concat([r_ein, e1, e2, x0, y0, gamma1, gamma2, xs, ys, e1s, e2s, n, r_eff], axis=-1))
+        x = tf.concat([r_ein, e1, e2, x0, y0, gamma1, gamma2, xs, ys, e1s, e2s, n, r_eff], axis=-1)
         return x
 
     def psf_models_vec(self, psf_fwhm: tf.Tensor):
