@@ -32,7 +32,7 @@ def distributed_strategy(args):
 
     model = os.path.join(os.getenv('CENSAI_PATH'), "models", args.model)
 
-    ps_observation = PowerSpectrum(bins=args.lens_coherence_bins, pixels=physical_params["pixels"].numpy())
+    ps_observation = PowerSpectrum(bins=args.observation_coherence_bins, pixels=physical_params["pixels"].numpy())
     ps_source = PowerSpectrum(bins=args.source_coherence_bins,  pixels=physical_params["src pixels"].numpy())
     ps_kappa = PowerSpectrum(bins=args.kappa_coherence_bins,  pixels=physical_params["kappa pixels"].numpy())
 
