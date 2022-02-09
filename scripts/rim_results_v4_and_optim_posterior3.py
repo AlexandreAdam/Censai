@@ -1,6 +1,5 @@
 from censai import RIMSharedUnetv3, PhysicalModelv2, PowerSpectrum
 from censai.models import SharedUnetModelv4, VAE
-from censai.definitions import LOG10
 import tensorflow as tf
 import numpy as np
 import os, json
@@ -22,7 +21,6 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 def distributed_strategy(args):
     tf.random.set_seed(args.seed)
     np.random.seed(args.seed)
-
     files = glob.glob(os.path.join(os.getenv('CENSAI_PATH'), "data", args.dataset, "*.tfrecords"))
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(
@@ -283,11 +281,13 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--experiment_name",    default="reoptim")
     parser.add_argument("--dataset",            required=True)
+    parser.add_argument("--compression_type",   default="GZIP")
     parser.add_argument("--model",              required=True,      help="Model to get predictions from")
     parser.add_argument("--source_vae",         required=True)
     parser.add_argument("--kappa_vae",          required=True)
     parser.add_argument("--size",               default=1000, type=int)
     parser.add_argument("--sample_size",        default=2,  type=int)
+    parser.add_argument("--buffer_size",        default=1000, type=int)
 
     parser.add_argument("--observation_coherence_bins",    default=40,     type=int)
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
@@ -300,6 +300,7 @@ if __name__ == '__main__':
     parser.add_argument("--decay_rate",         default=1,          type=float)
     parser.add_argument("--decay_steps",        default=50,         type=float)
     parser.add_argument("--staircase",          action="store_true")
+    parser.add_argument("--seed",               default=None, type=int)
 
     args = parser.parse_args()
     distributed_strategy(args)
