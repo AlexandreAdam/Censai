@@ -14,7 +14,7 @@ python $CENSAI_PATH/scripts/rim_results_v4_and_optim_posterior_on_vae.py\
   --model=RIMSU128hstv4_augmented_003_K3_L5_BCL2_211124140837_continue_lr6e-05_211129202839\
   --source_vae=VAE1_COSMOSFR_001_F16_NLleaky_relu_LS32_betaE0.1_betaDS100000_220112114306\
   --kappa_vae=VAE1_128hstfr_002_LS16_dr0.7_betaE0.2_betaDS5000_211115153537\
-  --size=1000\
+  --size=2000\
   --sample_size=2\
   --re_optimize_steps=1000\
   --observation_coherence_bins=40\
