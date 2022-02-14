@@ -17,7 +17,8 @@ class Encoder(tf.keras.Model):
             latent_size=16,
             batch_norm=False,
             activation="relu",
-            dropout_rate=None
+            dropout_rate=None,
+            strides=2
     ):
         super(Encoder, self).__init__()
         common_params = {"padding": "same",
@@ -27,7 +28,11 @@ class Encoder(tf.keras.Model):
         self._num_layers = layers
         self.activation = get_activation(activation)
         self.conv_layers = []
-        self.bottleneck_layer = tf.keras.layers.Dense(
+        self.mean_layer = tf.keras.layers.Dense(
+            units=latent_size,
+            kernel_regularizer=tf.keras.regularizers.l2(l2=kernel_reg_amp)
+        )
+        self.logvar_layer = tf.keras.layers.Dense(
             units=latent_size,
             kernel_regularizer=tf.keras.regularizers.l2(l2=kernel_reg_amp)
         )
@@ -41,6 +46,7 @@ class Encoder(tf.keras.Model):
                     activation=activation,
                     batch_norm=batch_norm,
                     dropout_rate=dropout_rate,
+                    strides=strides,
                     **common_params
                 )
             )
@@ -55,21 +61,24 @@ class Encoder(tf.keras.Model):
     def __call__(self, x):
         return self.call(x)
 
-    def call(self, x, training=True):
-        x = self.input_layer(x, training=training)
+    def call(self, x):
+        x = self.input_layer(x)
         for i, layer in enumerate(self.conv_layers):
-            _, x = layer(x, training=training)
+            _, x = layer(x)
         x = self.flatten(x)
-        x = self.bottleneck_layer(x, training=training)
-        return x
+        mean = self.mean_layer(x)
+        logvar = self.logvar_layer(x)
+        return mean, logvar
 
-    def call_with_skip_connections(self, x):
-        skips = []
+    def call_training(self, x):
+        """
+        Return pre mlp code for L2 bottleneck loss
+        """
         x = self.input_layer(x)
         for i, layer in enumerate(self.conv_layers):
             skip, x = layer(x)
-            skips.append(skip)
         x = self.flatten(x)
-        skips.append(tf.identity(x))
-        x = self.bottleneck_layer(x)
-        return x, skips[::-1]
+        pre_mlp_code = tf.identity(x)
+        mean = self.mean_layer(x)
+        logvar = self.logvar_layer(x)
+        return mean, logvar, pre_mlp_code

@@ -1,14 +1,15 @@
 import tensorflow as tf
 import os, glob
 import numpy as np
-from astropy.constants import M_sun
 from censai import PhysicalModel
-from censai.data.cosmos import preprocess, decode
-from censai.data import AugmentedTNGKappaGenerator
+from censai.data.cosmos import preprocess_image as preprocess_cosmos, decode_image as decode_cosmos, decode_shape as decode_cosmos_info
 from censai.data.lenses_tng import encode_examples
+from censai.data.kappa_tng import decode_train as decode_kappa, decode_all as decode_kappa_info
 from scipy.signal.windows import tukey
+from censai.definitions import DTYPE
 from datetime import datetime
 import json
+from scipy.stats import truncnorm
 
 
 # total number of slurm workers detected
@@ -21,80 +22,77 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 
 def distributed_strategy(args):
-    kappa_files = glob.glob(os.path.join(args.kappa_dir, "*.fits"))
-    if os.path.exists(os.path.join(args.kappa_dir, "good_kappa.txt")):  # filter out bad data (see validate_kappa_maps script)
-        good_kappa = np.loadtxt(os.path.join(args.kappa_dir, "good_kappa.txt"))
-        kappa_ids = [int(os.path.split(kap)[-1].split("_")[1]) for kap in kappa_files]
-        keep_kappa = [kap_id in good_kappa for kap_id in kappa_ids]
-        kappa_files = [kap_file for i, kap_file in enumerate(kappa_files) if keep_kappa[i]]
+    kappa_datasets = []
+    for path in args.kappa_datasets:
+        files = glob.glob(os.path.join(path, "*.tfrecords"))
+        files = tf.data.Dataset.from_tensor_slices(files).shuffle(len(files), reshuffle_each_iteration=True)
+        dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type), block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
+        kappa_datasets.append(dataset.shuffle(args.buffer_size, reshuffle_each_iteration=True))
+    kappa_dataset = tf.data.experimental.sample_from_datasets(kappa_datasets, weights=args.kappa_datasets_weights)
+    # Read off global parameters from first example in dataset
+    for example in kappa_dataset.map(decode_kappa_info):
+        kappa_fov = example["kappa fov"].numpy()
+        kappa_pixels = example["kappa pixels"].numpy()
+        break
+    kappa_dataset = kappa_dataset.map(decode_kappa).batch(args.batch_size)
 
-    kappa_gen = AugmentedTNGKappaGenerator(
-        kappa_fits_files=kappa_files,
-        z_lens=args.z_lens,
-        z_source=args.z_source,
-        crop=args.crop,
-        max_shift=args.max_shift,
-        rotate_by=args.rotate_by,
-        min_theta_e=args.min_theta_e,
-        max_theta_e=args.max_theta_e,
-        rescaling_size=args.rescaling_size,
-        rescaling_theta_bins=args.bins
-    )
-    cosmos_files = glob.glob(os.path.join(args.cosmos_dir, "*.tfrecords"))
-    cosmos = tf.data.TFRecordDataset(cosmos_files)
-    n_galaxies = 0
-    for _ in cosmos:  # count the number of samples in the dataset
-        n_galaxies += 1
-    cosmos = cosmos.map(decode).map(preprocess)
-    if args.shuffle_cosmos:
-        cosmos = cosmos.shuffle(buffer_size=args.buffer_size)
-    cosmos = cosmos.batch(args.batch)
+    cosmos_datasets = []
+    for path in args.cosmos_datasets:
+        files = glob.glob(os.path.join(path, "*.tfrecords"))
+        files = tf.data.Dataset.from_tensor_slices(files).shuffle(len(files), reshuffle_each_iteration=True)
+        dataset = files.interleave(lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type), block_length=args.block_length, num_parallel_calls=tf.data.AUTOTUNE)
+        cosmos_datasets.append(dataset.shuffle(args.buffer_size, reshuffle_each_iteration=True))
+    cosmos_dataset = tf.data.experimental.sample_from_datasets(cosmos_datasets, weights=args.cosmos_datasets_weights)
+    # Read off global parameters from first example in dataset
+    for src_pixels in cosmos_dataset.map(decode_cosmos_info):
+        src_pixels = src_pixels.numpy()
+        break
+    cosmos_dataset = cosmos_dataset.map(decode_cosmos).map(preprocess_cosmos).batch(args.batch_size)
 
-    window = tukey(args.src_pixels, alpha=args.tukey_alpha)
-    window = np.outer(window, window)
+    window = tukey(src_pixels, alpha=args.tukey_alpha)
+    window = np.outer(window, window)[np.newaxis, ..., np.newaxis]
+    window = tf.constant(window, dtype=DTYPE)
+
     phys = PhysicalModel(
-        psf_sigma=args.psf_sigma,
-        image_fov=kappa_gen.kappa_fov,
+        image_fov=kappa_fov,
         src_fov=args.source_fov,
         pixels=args.lens_pixels,
-        kappa_pixels=kappa_gen.crop_pixels,
-        src_pixels=args.src_pixels,
-        kappa_fov=kappa_gen.kappa_fov,
+        kappa_pixels=kappa_pixels,
+        src_pixels=src_pixels,
+        kappa_fov=kappa_fov,
         method="conv2d"
     )
+
+    noise_a = (args.noise_rms_min - args.noise_rms_mean) / args.noise_rms_std
+    noise_b = (args.noise_rms_max - args.noise_rms_mean) / args.noise_rms_std
+    psf_a = (args.psf_fwhm_min - args.psf_fwhm_mean) / args.psf_fwhm_std
+    psf_b = (args.psf_fwhm_max - args.psf_fwhm_mean) / args.psf_fwhm_std
 
     options = tf.io.TFRecordOptions(compression_type=args.compression_type)
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{THIS_WORKER}.tfrecords"), options) as writer:
         print(f"Started worker {THIS_WORKER} at {datetime.now().strftime('%y-%m-%d_%H-%M-%S')}")
-        for i in range((THIS_WORKER - 1) * args.batch, args.len_dataset, N_WORKERS * args.batch):
-            batch_index = np.random.randint(0, n_galaxies//args.batch)
-            for galaxies, psf, ps in cosmos.skip(batch_index):  # only way to take the first batch is to fake a for loop
+        for i in range((THIS_WORKER - 1) * args.batch_size, args.len_dataset, N_WORKERS * args.batch_size):
+            for galaxies in cosmos_dataset:  # select a random batch from our dataset that is reshuffled each iterations
                 break
-            galaxies = window[np.newaxis, ..., np.newaxis] * galaxies
-
-            batch_size = galaxies.shape[0]
-            kappa, einstein_radius, rescaling_factors, kappa_ids, einstein_radius_init = kappa_gen.draw_batch(
-                batch_size, rescale=True, shift=bool(args.max_shift), rotate=args.rotate, random_draw=True, return_einstein_radius_init=True)
-            lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=args.noise_rms)
-            lensed_images = tf.nn.relu(lensed_images)  # remove negative pixels
-
+            for kappa in kappa_dataset:
+                break
+            galaxies = window * galaxies
+            noise_rms = truncnorm.rvs(noise_a, noise_b, loc=args.noise_rms_mean, scale=args.noise_rms_std, size=args.batch_size)
+            fwhm = truncnorm.rvs(psf_a, psf_b, loc=args.psf_fwhm_mean, scale=args.psf_fwhm_std, size=args.batch_size)
+            psf = phys.psf_models(fwhm, cutout_size=args.psf_cutout_size)
+            lensed_images = phys.noisy_forward(galaxies, kappa, noise_rms=noise_rms, psf=psf)
             records = encode_examples(
                 kappa=kappa,
                 galaxies=galaxies,
                 lensed_images=lensed_images,
-                power_spectrum_cosmos=ps,
-                einstein_radius_init=einstein_radius_init,
-                einstein_radius=einstein_radius,
-                rescalings=rescaling_factors,
                 z_source=args.z_source,
                 z_lens=args.z_lens,
                 image_fov=phys.image_fov,
                 kappa_fov=phys.kappa_fov,
                 source_fov=args.source_fov,
-                sigma_crit=(kappa_gen.sigma_crit / (1e10 * M_sun)).decompose().value,  # 10^{10} M_sun / Mpc^2
-                noise_rms=args.noise_rms,
-                psf_sigma=args.psf_sigma,
-                kappa_ids=kappa_ids
+                noise_rms=noise_rms,
+                psf=psf,
+                fwhm=fwhm
             )
             for record in records:
                 writer.write(record)
@@ -104,60 +102,47 @@ def distributed_strategy(args):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument("--output_dir",     required=True,      type=str,   help="Path to output directory")
-    parser.add_argument("--len_dataset",    required=True,      type=int,   help="Size of the dataset")
-    parser.add_argument("--batch",          default=1,          type=int,   help="Number of examples worked out in a single pass by a worker")
-    parser.add_argument("--kappa_dir",      required=True,      type=str,   help="Path to directory of kappa fits files")
-    parser.add_argument("--cosmos_dir",     required=True,      type=str,
-                        help="Path to directory of galaxy brightness distribution tfrecords "
-                             "(output of cosmos_to_tfrecors.py)")
-    parser.add_argument("--compression_type", default=None, help="Default is no compression. Use 'GZIP' to compress data")
+    parser.add_argument("--output_dir",                 required=True,                  type=str,   help="Path to output directory")
+    parser.add_argument("--len_dataset",                required=True,                  type=int,   help="Size of the dataset")
+    parser.add_argument("--batch_size",                 default=1,                     type=int,    help="Number of examples worked out in a single pass by a worker")
+    parser.add_argument("--kappa_datasets",             required=True,      nargs="+",              help="Path to kappa tfrecords directories")
+    parser.add_argument("--kappa_datasets_weights",     default=None,       nargs="+", type=float,  help="How much to sample from a dataset vs another. Must sum to 1/")
+    parser.add_argument("--cosmos_datasets",            required=True,      nargs="+",              help="Path to galaxy tfrecords directories")
+    parser.add_argument("--cosmos_datasets_weights",    default=None,       nargs="+", type=float,  help="How much to sample from a dataset vs another. Must sum to 1")
+    parser.add_argument("--compression_type",           default="GZIP",                             help="Default is GZIP and should stay that way.")
+    parser.add_argument("--block_length",               default=1,           type=int,              help="Number of example to read concurrently from a file")
 
     # Physical model params
-    parser.add_argument("--lens_pixels",    default=512,        type=int,   help="Size of the lens postage stamp.")
-    parser.add_argument("--src_pixels",     default=128,        type=int,   help="Size of Cosmos postage stamps")
-    parser.add_argument("--source_fov",     default=3,          type=float,
-                        help="Field of view of the source plane in arc seconds")
-    parser.add_argument("--noise_rms",      default=0.3e-3,     type=float,
-                        help="White noise RMS added to lensed image")
-    parser.add_argument("--psf_sigma",      default=0.06,       type=float, help="Sigma of psf in arcseconds")
+    parser.add_argument("--lens_pixels",     default=512,       type=int,       help="Size of the lens postage stamp.")
+    parser.add_argument("--source_fov",      default=6,         type=float,     help="Field of view of the source plane in arc seconds")
+    parser.add_argument("--noise_rms_min",   default=0.005,     type=float,     help="Minimum white noise RMS added to lensed image")
+    parser.add_argument("--noise_rms_max",   default=0.1,       type=float,     help="Maximum white noise RMS added to lensed image")
+    parser.add_argument("--noise_rms_mean",  default=0.01,      type=float,     help="Maximum white noise RMS added to lensed image")
+    parser.add_argument("--noise_rms_std",   default=0.05,      type=float,     help="Maximum white noise RMS added to lensed image")
+    parser.add_argument("--psf_cutout_size", required=True,     type=int,       help="Size of the cutout for the PSF (arceconds)")
+    parser.add_argument("--psf_fwhm_min",    required=True,     type=float,     help="Minimum std of gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_max",    required=True,     type=float,     help="Minimum std of gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_mean",   required=True,     type=float,     help="Mean for the distribution of std of the gaussian psf (arceconds)")
+    parser.add_argument("--psf_fwhm_std",    required=True,     type=float,     help="Std for distribution of stf of the gaussian psf (arceconds)")
 
     # Data generation params
-    parser.add_argument("--crop",           default=0,          type=int,   help="Crop kappa map by 2*N pixels. After crop, the size of the kappa map should correspond to pixel argument "
-                                                                                 "(e.g. kappa of 612 pixels cropped by N=50 on each side -> 512 pixels)")
-    parser.add_argument("--max_shift",      default=1.,         type=float, help="Maximum allowed shift of kappa map center in arcseconds")
-    parser.add_argument("--rotate",         action="store_true",            help="Rotate the kappa map")
-    parser.add_argument("--rotate_by",      default="90",                   help="'90': will rotate by a multiple of 90 degrees. 'uniform' will rotate by any angle, "
-                                                                                 "with nearest neighbor interpolation and zero padding")
-    parser.add_argument("--shuffle_cosmos", action="store_true",            help="Shuffle indices of cosmos dataset")
-    parser.add_argument("--buffer_size",    default=1000,       type=int,   help="Should match example_per_shard when tfrecords were produced "
-                                                                                 "(only used if shuffle_cosmos is called)")
-    parser.add_argument("--tukey_alpha",    default=0.6,        type=float, help="Shape parameter of the Tukey window, representing the fraction of the "
+    parser.add_argument("--buffer_size",    default=10000,       type=int,    help="buffer of shuffle, should be similar to number of examples per shard (at least greater than the largest shard)")
+    parser.add_argument("--tukey_alpha",    default=0.,          type=float,  help="Shape parameter of the Tukey window, representing the fraction of the "
                                                                                  "window inside the cosine tapered region. "
                                                                                  "If 0, the Tukey window is equivalent to a rectangular window. "
                                                                                  "If 1, the Tukey window is equivalent to a Hann window. "
                                                                                  "This window is used on cosmos postage stamps.")
-    parser.add_argument("--bins",           default=10,         type=int,   help="Number of bins to estimate Einstein radius distribution of a kappa given "
-                                                                                 "a set of rescaling factors.")
-    parser.add_argument("--rescaling_size", default=100,        type=int,   help="Number of rescaling factors to try for a given kappa map")
-    parser.add_argument("--max_theta_e",    default=None,       type=float, help="Maximum allowed Einstein radius, default is 35 percent of image fov")
-    parser.add_argument("--min_theta_e",    default=None,       type=float, help="Minimum allowed Einstein radius, default is 5 percent of image fov")
 
     # Physics params
-    parser.add_argument("--z_source",       default=2.379,      type=float)
-    parser.add_argument("--z_lens",         default=0.4457,     type=float)
-
+    parser.add_argument("--z_source",           default=1.5, type=float)
+    parser.add_argument("--z_lens",             default=0.5, type=float)
     # Reproducibility params
-    parser.add_argument("--seed",           default=None,       type=int,   help="Random seed for numpy and tensorflow")
     parser.add_argument("--json_override",  default=None, nargs="+",        help="A json filepath that will override every command line parameters. "
                                                                                  "Useful for reproducibility")
 
     args = parser.parse_args()
     if not os.path.isdir(args.output_dir) and THIS_WORKER <= 1:
         os.mkdir(args.output_dir)
-    if args.seed is not None:
-        tf.random.set_seed(args.seed)
-        np.random.seed(args.seed)
     if args.json_override is not None:
         if isinstance(args.json_override, list):
             files = args.json_override

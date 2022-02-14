@@ -1,5 +1,5 @@
 import tensorflow as tf
-from censai.data.lenses_tng_v3 import decode_all, decode_physical_model_info
+from censai.data.lenses_tng import decode_all, decode_physical_model_info
 from censai.utils import _bytes_feature, _int64_feature, _float_feature
 import os, glob, time
 from datetime import datetime

@@ -1,4 +1,4 @@
-from censai.models import VAE, VAESecondStage
+from censai.models import VAE
 from censai.utils import _int64_feature, _bytes_feature
 import numpy as np
 import tensorflow as tf
@@ -16,14 +16,6 @@ def main(args):
     checkpoint_manager1 = tf.train.CheckpointManager(ckpt1, args.first_stage_model_id, 1)
     checkpoint_manager1.checkpoint.restore(checkpoint_manager1.latest_checkpoint).expect_partial()
 
-    if args.second_stage_model_id is not None:
-        with open(os.path.join(args.second_stage_model_id, "model_hparams.json"), "r") as f:
-            vae2_hparams = json.load(f)
-        vae2 = VAESecondStage(**vae2_hparams)
-        ckpt2 = tf.train.Checkpoint(net=vae2)
-        checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, args.first_stage_model_id, 1)
-        checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
-
     n_batch = args.total_items // args.batch_size
     batch_per_record = args.n_records // n_batch
     last_record_n_batch = batch_per_record + n_batch % args.n_records
@@ -31,10 +23,7 @@ def main(args):
     for record in range(args.n_records - 1):
         with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{record:02d}.tfrecords"), options) as writer:
             for batch in range(batch_per_record):
-                if args.second_stage_model_id is not None:
-                    z = vae2.sample(args.batch_size)
-                else:
-                    z = tf.random.normal(shape=[args.batch_size, vae.latent_size])
+                z = tf.random.normal(shape=[args.batch_size, vae.latent_size])
                 kappa_batch = vae.decode(z)
                 for kappa in kappa_batch:
                     features = {
@@ -47,10 +36,7 @@ def main(args):
 
     with tf.io.TFRecordWriter(os.path.join(args.output_dir, f"data_{args.n_record-1:02d}.tfrecords"), options) as writer:
         for batch in range(last_record_n_batch):
-            if args.second_stage_model_id is not None:
-                z = vae2.sample(args.batch_size)
-            else:
-                z = tf.random.normal(shape=[args.batch_size, vae.latent_size])
+            z = tf.random.normal(shape=[args.batch_size, vae.latent_size])
             kappa_batch = vae.decode(z)
             for kappa in kappa_batch:
                 features = {
@@ -67,7 +53,6 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--output_dir",                     required=True)
     parser.add_argument("--first_stage_model_id",           required=True,                          help="Path to first stage model checkpoint directory.")
-    parser.add_argument("--second_stage_model_id",          default=None,                           help="Path to second stage VAE. Optional.")
     parser.add_argument("--batch_size",                     default=20,         type=int,           help="Number of samples to generate at a given time.")
     parser.add_argument("--n_records",                      default=81,         type=int,           help="Number of individual record file to create.")
     parser.add_argument("--total_items",                    required=True,      type=int,           help="Total number of items to generate")

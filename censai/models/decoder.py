@@ -57,22 +57,22 @@ class Decoder(tf.keras.Model):
     def __call__(self, z):
         return self.call(z)
 
-    def call(self, z, training=True):
-        z = self.mlp_bottleneck(z, training=training)
+    def call(self, z):
+        z = self.mlp_bottleneck(z)
         batch_size = z.shape[0]
         x = tf.reshape(z, [batch_size, self._z_pix, self._z_pix, self._z_filters])
         for layer in self.conv_blocks:
-            x = layer(x, training=training)
-        x = self.output_layer(x, training=training)
+            x = layer(x)
+        x = self.output_layer(x)
         return x
 
-    def call_with_skip_connections(self, z, skips: list, skip_strength, l2):
+    def call_training(self, z, pre_mlp_code, l2):
         z = self.mlp_bottleneck(z)
         # add l2 cost for latent representation (we want identity map between this stage and pre-mlp stage of encoder)
-        bottleneck_l2_cost = l2 * tf.reduce_mean((z - skips[0])**2, axis=1)
+        bottleneck_l2_cost = l2 * tf.reduce_mean((z - pre_mlp_code)**2, axis=1)
         batch_size = z.shape[0]
         x = tf.reshape(z, [batch_size, self._z_pix, self._z_pix, self._z_filters])
         for i, layer in enumerate(self.conv_blocks):
-            x = layer.call_with_skip_connection(x, skip_strength * skips[i + 1])
+            x = layer.call(x)
         x = self.output_layer(x)
         return x, bottleneck_l2_cost
