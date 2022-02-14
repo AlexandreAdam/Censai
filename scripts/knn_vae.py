@@ -1,8 +1,8 @@
 import tensorflow as tf
 from censai.models import VAE
-from censai.data.lenses_tng_v3 import decode_train, decode_physical_model_info
+from censai.data.lenses_tng import decode_train, decode_physical_model_info
 from censai.data.cosmos import decode_image, preprocess_image
-from censai import PhysicalModelv2
+from censai import PhysicalModel
 import h5py
 import os, glob, json
 from tqdm import tqdm
@@ -38,7 +38,7 @@ def main(args):
     checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, args.source_vae, 1)
     checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
 
-    phys = PhysicalModelv2(
+    phys = PhysicalModel(
         pixels=physical_params["pixels"].numpy(),
         kappa_pixels=physical_params["kappa pixels"].numpy(),
         src_pixels=physical_params["src pixels"].numpy(),
@@ -98,7 +98,6 @@ if __name__ == '__main__':
     parser.add_argument("--dataset",            required=True)
     parser.add_argument("--kappa_vae",          required=True)
     parser.add_argument("--source_vae",         required=True)
-    # parser.add_argument("--source_dataset",     required=True)
     parser.add_argument("--output_name",        required=True)
     parser.add_argument("--compression_type",   default="GZIP")
     parser.add_argument("-k",                   default=50,     type=int)

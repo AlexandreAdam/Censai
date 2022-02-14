@@ -1,5 +1,6 @@
 import tensorflow as tf
-from censai import RayTracer, PhysicalModel
+from censai.models import RayTracer
+from censai import PhysicalModel
 from censai.utils import nullwriter, plot_to_image, raytracer_residual_plot as residual_plot
 import os, glob, json
 import numpy as np
@@ -8,13 +9,6 @@ from datetime import datetime
 import time
 gpus = tf.config.list_physical_devices('GPU')
 
-""" # NOTE ON THE USE OF MULTIPLE GPUS #
-Double the number of gpus will not speed up the code. In fact, doubling the number of gpus and mirroring 
-the ops accross replicas means the code is TWICE as slow.
-
-In fact, using multiple gpus means one should at least multiply the batch size by the number of gpus introduced, 
-and optimize hyperparameters accordingly (learning rate should be scaled similarly).
-"""
 if len(gpus) == 1:
     STRATEGY = tf.distribute.OneDeviceStrategy(device="/gpu:0")
 elif len(gpus) > 1:
@@ -361,7 +355,7 @@ if __name__ == "__main__":
     # Reproducibility params
     parser.add_argument("--seed",                           default=None,   type=int, help="Random seed for numpy and tensorflow")
     parser.add_argument("--json_override",                  default=None, nargs="+",  help="A json filepath that will override every command line parameters. Useful for reproducibility")
-    parser.add_argument("--v2",                     action="store_true",            help="Use v2 decoding of tfrecords")
+    parser.add_argument("--v2",                             action="store_true",      help="Use v2 decoding of tfrecords")
 
     args = parser.parse_args()
 

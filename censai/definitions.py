@@ -10,12 +10,12 @@ from numpy import euler_gamma
 COSMO = cosmo
 DTYPE = tf.float32
 LOG10 = tf.constant(np.log(10.), DTYPE)
-LOGFLOOR = tf.constant(1e-3, DTYPE) # for kappa
+LOGFLOOR = tf.constant(1e-6, DTYPE)
 # some estimate of kappa statistics (after rescaling for theta_e ~ Uniform(1, 7))
 KAPPA_LOG_MEAN = -0.52
 KAPPA_LOG_STD = 0.3
 KAPPA_LOG_MAX = 3
-KAPPA_LOG_MIN = tf.math.log(LOGFLOOR) / tf.math.log(10.)  # not actual min, which is 0
+KAPPA_LOG_MIN = tf.math.log(LOGFLOOR) / tf.math.log(10.)
 LAMBDA = tf.constant(-0.5, DTYPE)  # Box-Cox transform
 
 SIGMOID_MIN = tf.constant(1e-3, DTYPE)
