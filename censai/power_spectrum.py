@@ -3,7 +3,7 @@ import numpy as np
 from censai.definitions import DTYPE
 import matplotlib.pyplot as plt
 
-# Only support input of shape [batch, x, y] for now
+
 class PowerSpectrum:
     def __init__(self, bins, pixels):
         assert bins < pixels//2
