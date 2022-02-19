@@ -27,9 +27,9 @@ def distributed_strategy(args):
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(
         lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type).shuffle(len(files)), block_length=1, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.map(decode_results).shuffle(buffer_size=args.buffer_size)
     for physical_params in dataset.map(decode_physical_model_info):
         break
+    dataset = dataset.map(decode_results).shuffle(buffer_size=args.buffer_size)
 
     ps_observation = PowerSpectrum(bins=args.observation_coherence_bins, pixels=physical_params["pixels"].numpy())
     ps_source = PowerSpectrum(bins=args.source_coherence_bins,  pixels=physical_params["src pixels"].numpy())
