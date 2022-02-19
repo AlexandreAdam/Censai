@@ -125,7 +125,7 @@ def distributed_strategy(args):
                 rim=rim,
                 source_vae=source_vae,
                 kappa_vae=kappa_vae,
-                n_samples=args.n_samples,
+                n_samples=args.sample_size,
                 sigma_source=args.source_vae_ball_size,
                 sigma_kappa=args.kappa_vae_ball_sizeF
             )
@@ -256,7 +256,7 @@ if __name__ == '__main__':
     parser.add_argument("--early_stopping",     action="store_true")
     parser.add_argument("--seed",               default=42,         type=int)
     parser.add_argument("--l2_amp",             default=0,          type=float)
-    parser.add_argument("--lam_ewc",            default=0.01,       type=float)
+    parser.add_argument("--lam_ewc",            default=128**2,       type=float)
     parser.add_argument("--source_vae_ball_size",   default=0.5,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
     parser.add_argument("--kappa_vae_ball_size",    default=0.5,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
 
