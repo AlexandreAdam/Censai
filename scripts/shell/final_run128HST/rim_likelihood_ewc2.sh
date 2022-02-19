@@ -10,11 +10,11 @@
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
 python $CENSAI_PATH/scripts/rim_reoptimize_regularized_likelihood.py\
-  --experiment_name=optim_ewc\
+  --experiment_name=optim_ewc_medSNR\
   --model=RIMSU128hstv4_augmented_003_K3_L5_BCL2_211124140837_continue_lr6e-05_211129202839\
   --source_vae=VAE1_COSMOSFR_001_F16_NLleaky_relu_LS32_betaE0.1_betaDS100000_220112114306\
   --kappa_vae=VAE1_128hstfr_002_LS16_dr0.7_betaE0.2_betaDS5000_211115153537\
-  --dataset=lenses128hst_TNG_rau_200k_control_denoised_testset_validated\
+  --dataset=lenses128hst_TNG_rau_200k_control_denoised_testset2_validated\
   --size=1000\
   --sample_size=100\
   --buffer_size=1000\
