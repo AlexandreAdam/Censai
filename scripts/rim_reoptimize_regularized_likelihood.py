@@ -127,7 +127,7 @@ def distributed_strategy(args):
                 kappa_vae=kappa_vae,
                 n_samples=args.sample_size,
                 sigma_source=args.source_vae_ball_size,
-                sigma_kappa=args.kappa_vae_ball_sizeF
+                sigma_kappa=args.kappa_vae_ball_size
             )
             # Re-optimize weights of the model
             STEPS = args.re_optimize_steps
