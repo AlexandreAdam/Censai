@@ -215,8 +215,6 @@ def distributed_strategy(args):
             hf["observation_coherence_spectrum_reoptimized"][batch] = _ps_observation2
             hf["source_coherence_spectrum"][batch] = _ps_source
             hf["source_coherence_spectrum_reoptimized"][batch] = _ps_source2
-            hf["observation_coherence_spectrum"][batch] = _ps_observation
-            hf["observation_coherence_spectrum"][batch] = _ps_observation
             hf["kappa_coherence_spectrum"][batch] = _ps_kappa
             hf["kappa_coherence_spectrum_reoptimized"][batch] = _ps_kappa2
 
