@@ -20,3 +20,4 @@ from .rim_shared_attunetv3 import RIMSharedAttUnetv3
 from .rim_shared_unetv4 import RIMSharedUnetv4
 from .analytical_physical_modelv2 import AnalyticalPhysicalModelv2
 from .rim_analytic import RIMAnalytic
+from .ewc import EWC
