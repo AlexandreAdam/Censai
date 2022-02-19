@@ -126,8 +126,8 @@ def distributed_strategy(args):
                 source_vae=source_vae,
                 kappa_vae=kappa_vae,
                 n_samples=args.n_samples,
-                sigma_source=args.source_ball_size,
-                sigma_kappa=args.kappa_ball_size
+                sigma_source=args.source_vae_ball_size,
+                sigma_kappa=args.kappa_vae_ball_sizeF
             )
             # Re-optimize weights of the model
             STEPS = args.re_optimize_steps
@@ -238,6 +238,8 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--experiment_name",    default="finetune_likelihood_with_ewc")
     parser.add_argument("--model",              required=True,      help="Model to get predictions from")
+    parser.add_argument("--source_vae",         required=True)
+    parser.add_argument("--kappa_vae",          required=True)
     parser.add_argument("--compression_type",   default="GZIP")
     parser.add_argument("--dataset",            required=True)
     parser.add_argument("--size",               default=1000,       type=int)
