@@ -18,7 +18,7 @@ python $CENSAI_PATH/scripts/rim_reoptimize_regularized_likelihood.py\
   --size=1000\
   --sample_size=100\
   --buffer_size=1000\
-  --lens_coherence_bins=40\
+  --observation_coherence_bins=40\
   --source_coherence_bins=40\
   --kappa_coherence_bins=40\
   --seed=42\
