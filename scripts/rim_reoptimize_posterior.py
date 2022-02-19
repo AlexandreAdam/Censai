@@ -1,10 +1,10 @@
-from censai import RIMSharedUnetv3, PhysicalModelv2, PowerSpectrum
-from censai.models import SharedUnetModelv4, VAE
+from censai import RIM, PhysicalModel, PowerSpectrum
+from censai.models import Model, VAE
 import tensorflow as tf
 import numpy as np
 import os, json
 import h5py
-from censai.data.lenses_tng_v3 import decode_results, decode_physical_model_info
+from censai.data.lenses_tng import decode_results, decode_physical_model_info
 from tqdm import tqdm
 from censai.definitions import log_10, DTYPE
 import glob
@@ -36,7 +36,7 @@ def distributed_strategy(args):
     ps_source = PowerSpectrum(bins=args.source_coherence_bins,  pixels=physical_params["src pixels"].numpy())
     ps_kappa = PowerSpectrum(bins=args.kappa_coherence_bins,  pixels=physical_params["kappa pixels"].numpy())
 
-    phys = PhysicalModelv2(
+    phys = PhysicalModel(
         pixels=physical_params["pixels"].numpy(),
         kappa_pixels=physical_params["kappa pixels"].numpy(),
         src_pixels=physical_params["src pixels"].numpy(),
@@ -49,14 +49,14 @@ def distributed_strategy(args):
     with open(os.path.join(model, "unet_hparams.json")) as f:
         unet_params = json.load(f)
     unet_params["kernel_l2_amp"] = args.l2_amp
-    unet = SharedUnetModelv4(**unet_params)
+    unet = Model(**unet_params)
     ckpt = tf.train.Checkpoint(net=unet)
     checkpoint_manager = tf.train.CheckpointManager(ckpt, model, 1)
     checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint).expect_partial()
     with open(os.path.join(model, "rim_hparams.json")) as f:
         rim_params = json.load(f)
     rim_params["source_link"] = "relu"
-    rim = RIMSharedUnetv3(phys, unet, **rim_params)
+    rim = RIM(phys, unet, **rim_params)
 
     kvae_path = os.path.join(os.getenv('CENSAI_PATH'), "models", args.kappa_vae)
     with open(os.path.join(kvae_path, "model_hparams.json"), "r") as f:
