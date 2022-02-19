@@ -51,7 +51,7 @@ class EWC:
                 _kappa_mse = tf.reduce_sum(wk(10 ** sampled_kappa) * (k - sampled_kappa) ** 2, axis=(2, 3, 4))
                 cost = tf.reduce_mean(_kappa_mse)
                 cost += tf.reduce_mean((s - sampled_source) ** 2)
-                cost += tf.reduce_mean(chi_squared)  # Fisher has tremendous sensibility to this one
+                cost += tf.reduce_mean(chi_squared)  # Fisher has tremendous sensibility to this one + related to our likelihood task
             grad = tape.gradient(cost, rim.unet.trainable_variables)
             # Square the derivative relative to initial parameters and add to total
             self.fisher_diagonal = [F + g**2/n_samples for F, g in zip(self.fisher_diagonal, grad)]
