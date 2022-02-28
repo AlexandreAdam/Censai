@@ -1,6 +1,6 @@
 from censai import RIMSharedUnetv3 as RIM, PhysicalModelv2 as PhysicalModel, PowerSpectrum, EWC
 from censai.models import SharedUnetModelv4 as Model, VAE
-from censai.data.lenses_tng_v3 import decode_results, decode_physical_model_info
+# from censai.data.lenses_tng_v3 import decode_results, decode_physical_model_info
 import tensorflow as tf
 import numpy as np
 import os, glob, json
@@ -18,30 +18,29 @@ THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
 
 
 def distributed_strategy(args):
-    tf.random.set_seed(args.seed)
-    np.random.seed(args.seed)
 
     model = os.path.join(os.getenv('CENSAI_PATH'), "models", args.model)
+    path = os.getenv('CENSAI_PATH') + "/results/"
+    dataset = []
+    for file in sorted(glob.glob(path + args.h5_pattern)):
+        try:
+            dataset.append(h5py.File(file, "r"))
+        except:
+            continue
+    B = dataset[0]["source"].shape[0]
+    dataset_len = len(dataset) * B // N_WORKERS
 
-    files = glob.glob(os.path.join(os.getenv('CENSAI_PATH'), "data", args.dataset, "*.tfrecords"))
-    files = tf.data.Dataset.from_tensor_slices(files)
-    dataset = files.interleave(
-        lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type).shuffle(len(files)), block_length=1, num_parallel_calls=tf.data.AUTOTUNE)
-    for physical_params in dataset.map(decode_physical_model_info):
-        break
-    dataset = dataset.map(decode_results).shuffle(buffer_size=args.buffer_size)
-
-    ps_observation = PowerSpectrum(bins=args.observation_coherence_bins, pixels=physical_params["pixels"].numpy())
-    ps_source = PowerSpectrum(bins=args.source_coherence_bins,  pixels=physical_params["src pixels"].numpy())
-    ps_kappa = PowerSpectrum(bins=args.kappa_coherence_bins,  pixels=physical_params["kappa pixels"].numpy())
+    ps_observation = PowerSpectrum(bins=args.observation_coherence_bins, pixels=128)
+    ps_source = PowerSpectrum(bins=args.source_coherence_bins,  pixels=128)
+    ps_kappa = PowerSpectrum(bins=args.kappa_coherence_bins,  pixels=128)
 
     phys = PhysicalModel(
-        pixels=physical_params["pixels"].numpy(),
-        kappa_pixels=physical_params["kappa pixels"].numpy(),
-        src_pixels=physical_params["src pixels"].numpy(),
-        image_fov=physical_params["image fov"].numpy(),
-        kappa_fov=physical_params["kappa fov"].numpy(),
-        src_fov=physical_params["source fov"].numpy(),
+        pixels=128,
+        kappa_pixels=128,
+        src_pixels=128,
+        image_fov=7.69,
+        kappa_fov=7.69,
+        src_fov=3.,
         method="fft",
     )
 
@@ -73,10 +72,35 @@ def distributed_strategy(args):
     checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
     wk = lambda k: tf.sqrt(k) / tf.reduce_sum(tf.sqrt(k), axis=(1, 2, 3), keepdims=True)
 
+    # Freeze L5
+    # encoding layers
+    # rim.unet.layers[0].trainable = False # L1
+    # rim.unet.layers[1].trainable = False
+    # rim.unet.layers[2].trainable = False
+    # rim.unet.layers[3].trainable = False
+    rim.unet.layers[4].trainable = False # L5
+    # GRU
+    # rim.unet.layers[5].trainable = False
+    # rim.unet.layers[6].trainable = False
+    # rim.unet.layers[7].trainable = False
+    # rim.unet.layers[8].trainable = False
+    rim.unet.layers[9].trainable = False   # L5 GRU
+    rim.unet.layers[15].trainable = False  # bottleneck GRU
+    # input layer
+    # rim.unet.layers[-2].trainable = False
+    # output layer
+    # rim.unet.layers[-1].trainable = False
+    # decoding layers
+    # rim.unet.layers[10].trainable = False
+    # rim.unet.layers[11].trainable = False
+    # rim.unet.layers[12].trainable = False
+    # rim.unet.layers[13].trainable = False
+    rim.unet.layers[14].trainable = False
+
     with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + args.model + "_" + args.dataset + f"_{THIS_WORKER:02d}.h5"), 'w') as hf:
         data_len = args.size // N_WORKERS
         hf.create_dataset(name="observation", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
-        hf.create_dataset(name="psf",  shape=[data_len, physical_params['psf pixels'], physical_params['psf pixels'], 1], dtype=np.float32)
+        hf.create_dataset(name="psf",  shape=[data_len, 20, 20, 1], dtype=np.float32)
         hf.create_dataset(name="psf_fwhm", shape=[data_len], dtype=np.float32)
         hf.create_dataset(name="noise_rms", shape=[data_len], dtype=np.float32)
         hf.create_dataset(name="source", shape=[data_len, phys.src_pixels, phys.src_pixels, 1], dtype=np.float32)
@@ -108,8 +132,17 @@ def distributed_strategy(args):
         hf.create_dataset(name="kappa_fov", shape=[1], dtype=np.float32)
         hf.create_dataset(name="source_fov", shape=[1], dtype=np.float32)
         hf.create_dataset(name="observation_fov", shape=[1], dtype=np.float32)
-        dataset = dataset.skip(data_len * (THIS_WORKER - 1)).take(data_len)
-        for batch, (observation, source, kappa, noise_rms, psf, fwhm) in enumerate(dataset.batch(1).prefetch(tf.data.experimental.AUTOTUNE)):
+        batch_size = dataset_len / N_WORKERS
+        for batch in range((THIS_WORKER-1) * batch_size, THIS_WORKER * batch_size):
+            b = batch // B
+            k = batch % B
+            observation = hf[b]["observation"][k][None, ...]
+            source = hf[b]["source"][k][None, ...]
+            kappa = hf[b]["kappa"][k][None, ...]
+            noise_rms = np.array([hf[b]["noise_rms"][k]])
+            psf = hf[b]["psf"][k][None, ...]
+            fwhm = hf[b]["psf_fwhm"][k]
+
             checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint).expect_partial()  # reset model weights
             # Compute predictions for kappa and source
             source_pred, kappa_pred, chi_squared = rim.predict(observation, noise_rms, psf)
@@ -192,12 +225,12 @@ def distributed_strategy(args):
             _ps_source2 = ps_source.cross_correlation_coefficient(source[..., 0], source_o[..., 0])
 
             # save results
-            hf["observation"][batch] = observation.numpy().astype(np.float32)
-            hf["psf"][batch] = psf.numpy().astype(np.float32)
-            hf["psf_fwhm"][batch] = fwhm.numpy().astype(np.float32)
-            hf["noise_rms"][batch] = noise_rms.numpy().astype(np.float32)
-            hf["source"][batch] = source.numpy().astype(np.float32)
-            hf["kappa"][batch] = kappa.numpy().astype(np.float32)
+            hf["observation"][batch] = observation.astype(np.float32)
+            hf["psf"][batch] = psf.astype(np.float32)
+            hf["psf_fwhm"][batch] = fwhm
+            hf["noise_rms"][batch] = noise_rms.astype(np.float32)
+            hf["source"][batch] = source.astype(np.float32)
+            hf["kappa"][batch] = kappa.astype(np.float32)
             hf["observation_pred"][batch] = observation_pred.numpy().astype(np.float32)
             hf["observation_pred_reoptimized"][batch] = y_pred.numpy().astype(np.float32)
             hf["source_pred"][batch] = tf.transpose(source_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
@@ -239,8 +272,7 @@ if __name__ == '__main__':
     parser.add_argument("--model",              required=True,      help="Model to get predictions from")
     parser.add_argument("--source_vae",         required=True)
     parser.add_argument("--kappa_vae",          required=True)
-    parser.add_argument("--compression_type",   default="GZIP")
-    parser.add_argument("--dataset",            required=True)
+    parser.add_argument("--h5_pattern",         required=True)
     parser.add_argument("--size",               default=1000,       type=int)
     parser.add_argument("--sample_size",        default=200,        type=int, help="Number of VAE sampled required to compute the Fisher diagonal")
     parser.add_argument("--buffer_size",        default=10000,      type=int)
