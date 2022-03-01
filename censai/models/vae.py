@@ -21,7 +21,7 @@ class VAE(tf.keras.Model):
             batch_norm=False,
             latent_size=16,
             strides=2,
-            output_activation="softplus"
+            output_activation="identity"
     ):
         super(VAE, self).__init__(dtype=DTYPE)
         output_activation = get_activation(output_activation)

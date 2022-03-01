@@ -97,7 +97,7 @@ def distributed_strategy(args):
     # rim.unet.layers[13].trainable = False
     # rim.unet.layers[14].trainable = False # L1
 
-    with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + args.model + "_" + args.dataset + f"_{THIS_WORKER:02d}.h5"), 'w') as hf:
+    with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + args.model + "_" + args.dataset + f"_{THIS_WORKER:03d}.h5"), 'w') as hf:
         hf.create_dataset(name="observation", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
         hf.create_dataset(name="psf",  shape=[data_len, 20, 20, 1], dtype=np.float32)
         hf.create_dataset(name="psf_fwhm", shape=[data_len], dtype=np.float32)
