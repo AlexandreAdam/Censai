@@ -28,7 +28,7 @@ def distributed_strategy(args):
         except:
             continue
     B = dataset[0]["source"].shape[0]
-    dataset_len = len(dataset) * B // N_WORKERS
+    data_len = len(dataset) * B // N_WORKERS
 
     ps_observation = PowerSpectrum(bins=args.observation_coherence_bins, pixels=128)
     ps_source = PowerSpectrum(bins=args.source_coherence_bins,  pixels=128)
@@ -84,21 +84,20 @@ def distributed_strategy(args):
     # rim.unet.layers[6].trainable = False
     # rim.unet.layers[7].trainable = False
     # rim.unet.layers[8].trainable = False
-    rim.unet.layers[9].trainable = False   # L5 GRU
+    rim.unet.layers[9].trainable = False
     rim.unet.layers[15].trainable = False  # bottleneck GRU
-    # input layer
-    # rim.unet.layers[-2].trainable = False
     # output layer
+    # rim.unet.layers[-2].trainable = False
+    # input layer
     # rim.unet.layers[-1].trainable = False
     # decoding layers
-    # rim.unet.layers[10].trainable = False
+    rim.unet.layers[10].trainable = False # L5
     # rim.unet.layers[11].trainable = False
     # rim.unet.layers[12].trainable = False
     # rim.unet.layers[13].trainable = False
-    rim.unet.layers[14].trainable = False
+    # rim.unet.layers[14].trainable = False # L1
 
     with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + args.model + "_" + args.dataset + f"_{THIS_WORKER:02d}.h5"), 'w') as hf:
-        data_len = args.size // N_WORKERS
         hf.create_dataset(name="observation", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
         hf.create_dataset(name="psf",  shape=[data_len, 20, 20, 1], dtype=np.float32)
         hf.create_dataset(name="psf_fwhm", shape=[data_len], dtype=np.float32)
@@ -132,8 +131,7 @@ def distributed_strategy(args):
         hf.create_dataset(name="kappa_fov", shape=[1], dtype=np.float32)
         hf.create_dataset(name="source_fov", shape=[1], dtype=np.float32)
         hf.create_dataset(name="observation_fov", shape=[1], dtype=np.float32)
-        batch_size = dataset_len / N_WORKERS
-        for batch in range((THIS_WORKER-1) * batch_size, THIS_WORKER * batch_size):
+        for batch in range((THIS_WORKER-1) * data_len, THIS_WORKER * data_len):
             b = batch // B
             k = batch % B
             observation = hf[b]["observation"][k][None, ...]
@@ -273,7 +271,6 @@ if __name__ == '__main__':
     parser.add_argument("--source_vae",         required=True)
     parser.add_argument("--kappa_vae",          required=True)
     parser.add_argument("--h5_pattern",         required=True)
-    parser.add_argument("--size",               default=1000,       type=int)
     parser.add_argument("--sample_size",        default=200,        type=int, help="Number of VAE sampled required to compute the Fisher diagonal")
     parser.add_argument("--buffer_size",        default=10000,      type=int)
     parser.add_argument("--observation_coherence_bins",    default=40,     type=int)

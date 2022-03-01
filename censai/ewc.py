@@ -48,10 +48,12 @@ class EWC:
             with tf.GradientTape() as tape:
                 tape.watch(rim.unet.trainable_variables)
                 s, k, chi_squared = rim.call(sampled_observation, noise_rms, psf)
-                _kappa_mse = tf.reduce_sum(wk(10 ** sampled_kappa) * (k - sampled_kappa) ** 2, axis=(2, 3, 4))
-                cost = tf.reduce_mean(_kappa_mse)
-                cost += tf.reduce_mean((s - sampled_source) ** 2)
-                cost += tf.reduce_mean(chi_squared)  # Fisher has tremendous sensibility to this one + related to our likelihood task
+                # Remove the temperature from the loss when computing the Fisher: sum instead of mean, and weighted sum is renormalized by number of pixels
+                _kappa_mse = phys.kappa_pixels**2*tf.reduce_sum(wk(10 ** sampled_kappa) * (k - sampled_kappa) ** 2, axis=(2, 3, 4))
+                cost = tf.reduce_sum(_kappa_mse)
+                cost += tf.reduce_sum((s - sampled_source) ** 2)
+                # Fisher has tremendous sensibility to likelihood + related to our likelihood fine tuning, but it drowns information from the prior
+                # cost += tf.reduce_mean(chi_squared)
             grad = tape.gradient(cost, rim.unet.trainable_variables)
             # Square the derivative relative to initial parameters and add to total
             self.fisher_diagonal = [F + g**2/n_samples for F, g in zip(self.fisher_diagonal, grad)]
