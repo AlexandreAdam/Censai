@@ -134,12 +134,12 @@ def distributed_strategy(args):
         for batch in range((THIS_WORKER-1) * data_len, THIS_WORKER * data_len):
             b = batch // B
             k = batch % B
-            observation = hf[b]["observation"][k][None, ...]
-            source = hf[b]["source"][k][None, ...]
-            kappa = hf[b]["kappa"][k][None, ...]
-            noise_rms = np.array([hf[b]["noise_rms"][k]])
-            psf = hf[b]["psf"][k][None, ...]
-            fwhm = hf[b]["psf_fwhm"][k]
+            observation = dataset[b]["observation"][k][None, ...]
+            source = dataset[b]["source"][k][None, ...]
+            kappa = dataset[b]["kappa"][k][None, ...]
+            noise_rms = np.array([dataset[b]["noise_rms"][k]])
+            psf = dataset[b]["psf"][k][None, ...]
+            fwhm = dataset[b]["psf_fwhm"][k]
 
             checkpoint_manager.checkpoint.restore(checkpoint_manager.latest_checkpoint).expect_partial()  # reset model weights
             # Compute predictions for kappa and source
