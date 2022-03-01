@@ -271,6 +271,7 @@ if __name__ == '__main__':
     parser.add_argument("--source_vae",         required=True)
     parser.add_argument("--kappa_vae",          required=True)
     parser.add_argument("--h5_pattern",         required=True)
+    parser.add_argument("--dataset",            required=True)
     parser.add_argument("--sample_size",        default=200,        type=int, help="Number of VAE sampled required to compute the Fisher diagonal")
     parser.add_argument("--buffer_size",        default=10000,      type=int)
     parser.add_argument("--observation_coherence_bins",    default=40,     type=int)
