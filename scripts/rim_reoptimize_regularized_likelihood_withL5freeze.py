@@ -131,9 +131,9 @@ def distributed_strategy(args):
         hf.create_dataset(name="kappa_fov", shape=[1], dtype=np.float32)
         hf.create_dataset(name="source_fov", shape=[1], dtype=np.float32)
         hf.create_dataset(name="observation_fov", shape=[1], dtype=np.float32)
-        for batch in range((THIS_WORKER-1) * data_len, THIS_WORKER * data_len):
-            b = batch // B
-            k = batch % B
+        for batch, j in enumerate(range((THIS_WORKER-1) * data_len, THIS_WORKER * data_len)):
+            b = j // B
+            k = j % B
             observation = dataset[b]["observation"][k][None, ...]
             source = dataset[b]["source"][k][None, ...]
             kappa = dataset[b]["kappa"][k][None, ...]
