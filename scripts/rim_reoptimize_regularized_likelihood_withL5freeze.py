@@ -177,6 +177,8 @@ def distributed_strategy(args):
             best = chi_squared[-1, 0]
             source_best = source_pred[-1]
             kappa_best = kappa_pred[-1]
+            source_mse_best = tf.reduce_mean((source_best - rim.source_inverse_link(source)) ** 2)
+            kappa_mse_best = tf.reduce_sum(wk(kappa) * (kappa_best - rim.kappa_inverse_link(kappa)) ** 2)
 
             for current_step in tqdm(range(STEPS)):
                 with tf.GradientTape() as tape:
@@ -196,6 +198,8 @@ def distributed_strategy(args):
                     source_best = rim.source_link(source_o)
                     kappa_best = rim.kappa_link(kappa_o)
                     best = chi_sq[-1, 0]
+                    source_mse_best = tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2)
+                    kappa_mse_best = tf.reduce_sum(wk(kappa) * (kappa_o - rim.kappa_inverse_link(kappa)) ** 2)
                     break
                 if chi_sq[-1, 0] < best:
                     source_best = rim.source_link(source_o)
@@ -277,15 +281,15 @@ if __name__ == '__main__':
     parser.add_argument("--observation_coherence_bins",    default=40,     type=int)
     parser.add_argument("--source_coherence_bins",  default=40,     type=int)
     parser.add_argument("--kappa_coherence_bins",   default=40,     type=int)
-    parser.add_argument("--re_optimize_steps",  default=1000,       type=int)
+    parser.add_argument("--re_optimize_steps",  default=2000,       type=int)
     parser.add_argument("--learning_rate",      default=1e-6,       type=float)
     parser.add_argument("--decay_rate",         default=1,          type=float)
-    parser.add_argument("--decay_steps",        default=50,         type=float)
+    parser.add_argument("--decay_steps",        default=1000,         type=float)
     parser.add_argument("--staircase",          action="store_true")
     parser.add_argument("--early_stopping",     action="store_true")
     parser.add_argument("--seed",               default=42,         type=int)
     parser.add_argument("--l2_amp",             default=0,          type=float)
-    parser.add_argument("--lam_ewc",            default=128**2,       type=float)
+    parser.add_argument("--lam_ewc",            default=1,       type=float)
     parser.add_argument("--source_vae_ball_size",   default=0.5,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
     parser.add_argument("--kappa_vae_ball_size",    default=0.5,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
 
