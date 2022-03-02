@@ -169,7 +169,7 @@ def distributed_strategy(args):
                 decay_steps=args.decay_steps,
                 staircase=args.staircase
             )
-            optim = tf.keras.optimizers.RMSprop(learning_rate=learning_rate_schedule)
+            optim = tf.keras.optimizers.SGD(learning_rate=learning_rate_schedule)
 
             chi_squared_series = tf.TensorArray(DTYPE, size=STEPS)
             source_mse = tf.TensorArray(DTYPE, size=STEPS)
