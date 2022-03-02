@@ -59,5 +59,5 @@ class EWC:
             self.fisher_diagonal = [F + g**2/n_samples for F, g in zip(self.fisher_diagonal, grad)]
 
     def penalty(self, rim):
-        return tf.reduce_sum([tf.reduce_sum(F * (varphi - varphi_0)**2) for (F, varphi, varphi_0)
+        return 0.5*tf.reduce_sum([tf.reduce_sum(F * (varphi - varphi_0)**2) for (F, varphi, varphi_0)
                                in zip(self.fisher_diagonal, rim.unet.trainable_variables, self.initial_params)])
