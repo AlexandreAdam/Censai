@@ -5,7 +5,7 @@ Alexandre Adam,
 Laurence Perreault-Levasseur,
 Yashar Hezaveh
 
-> This is the main implementation of the code for the paper, 
+> This is the official implementation of the code for the paper, 
 > including the RIM, VAE, preprocessing of COSMOS and IllustrisTNG, 
 > simulation of gravitational lenses similar to high quality HST images 
 > and post-processing of the results.
