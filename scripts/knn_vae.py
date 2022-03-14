@@ -1,7 +1,11 @@
+"""
+From VAE generated maps (source and kappa), find the k closest examples in the dataset
+"""
+
 import tensorflow as tf
 from censai.models import VAE
 from censai.data.lenses_tng import decode_train, decode_physical_model_info
-from censai.data.cosmos import decode_image, preprocess_image
+from censai.data.cosmos import preprocess_image
 from censai import PhysicalModel
 import h5py
 import os, glob, json

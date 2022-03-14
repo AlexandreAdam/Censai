@@ -1,10 +1,8 @@
-tensorflow
+tensorflow==2.4.1
 tensorflow-addons
 tensorflow_probability
 numpy
-matplotlib
-jupyter
-#jupyterlab
+matplotlib>=3.4
 Pillow
 scipy
 astropy

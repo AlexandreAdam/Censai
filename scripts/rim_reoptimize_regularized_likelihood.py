@@ -161,7 +161,7 @@ def distributed_strategy(args):
                 kappa_o = k[-1]
                 source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2))
                 kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean(wk(kappa) * (kappa_o - rim.kappa_inverse_link(kappa)) ** 2))
-                if 2 * chi_sq[-1, 0] < 1.0 and args.early_stopping:
+                if chi_sq[-1, 0] < 1.0 and args.early_stopping:
                     source_best = rim.source_link(source_o)
                     kappa_best = rim.kappa_link(kappa_o)
                     best = chi_sq[-1, 0]
@@ -204,9 +204,9 @@ def distributed_strategy(args):
             hf["source_pred_reoptimized"][batch] = source_o.numpy().astype(np.float32)
             hf["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
             hf["kappa_pred_reoptimized"][batch] = kappa_o.numpy().astype(np.float32)
-            hf["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
-            hf["chi_squared_reoptimized"][batch] = 2*best.numpy().astype(np.float32)
-            hf["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
+            hf["chi_squared"][batch] = tf.transpose(chi_squared).numpy().astype(np.float32)
+            hf["chi_squared_reoptimized"][batch] = best.numpy().astype(np.float32)
+            hf["chi_squared_reoptimized_series"][batch] = chi_sq_series.numpy().astype(np.float32)
             hf["source_optim_mse"][batch] = source_mse_best.numpy().astype(np.float32)
             hf["source_optim_mse_series"][batch] = source_mse.numpy().astype(np.float32)
             hf["kappa_optim_mse"][batch] = kappa_mse_best.numpy().astype(np.float32)
@@ -255,7 +255,7 @@ if __name__ == '__main__':
     parser.add_argument("--early_stopping",     action="store_true")
     parser.add_argument("--seed",               default=42,         type=int)
     parser.add_argument("--l2_amp",             default=0,          type=float)
-    parser.add_argument("--lam_ewc",            default=1,          type=float)
+    parser.add_argument("--lam_ewc",            default=0.5,        type=float)
     parser.add_argument("--source_vae_ball_size",   default=0.5,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
     parser.add_argument("--kappa_vae_ball_size",    default=0.5,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
 
