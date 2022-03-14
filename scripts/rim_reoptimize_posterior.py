@@ -198,7 +198,7 @@ def distributed_strategy(args):
                 source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - source) ** 2))
                 kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - log_10(kappa)) ** 2))
 
-                if abs(2*chi_sq[-1, 0] - 1) < abs(2*best[-1, 0] - 1):
+                if abs(chi_sq[-1, 0] - 1) < abs(best[-1, 0] - 1):
                     source_best = tf.nn.relu(source_o)
                     kappa_best = 10**kappa_o
                     best = chi_sq
@@ -241,9 +241,9 @@ def distributed_strategy(args):
             hf["source_pred_reoptimized"][i] = source_o.numpy().astype(np.float32)
             hf["kappa_pred"][i] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
             hf["kappa_pred_reoptimized"][i] = kappa_o.numpy().astype(np.float32)
-            hf["chi_squared"][i] = 2*tf.squeeze(chi_squared).numpy().astype(np.float32)
-            hf["chi_squared_reoptimized"][i] = 2*tf.squeeze(best).numpy().astype(np.float32)
-            hf["chi_squared_reoptimized_series"][i] = 2*chi_sq_series.numpy().astype(np.float32)
+            hf["chi_squared"][i] = tf.squeeze(chi_squared).numpy().astype(np.float32)
+            hf["chi_squared_reoptimized"][i] = tf.squeeze(best).numpy().astype(np.float32)
+            hf["chi_squared_reoptimized_series"][i] = chi_sq_series.numpy().astype(np.float32)
             hf["sampled_chi_squared_reoptimized_series"][i] = 2*sampled_chi_squared_series.numpy().astype(np.float32)
             hf["source_optim_mse"][i] = source_mse_best.numpy().astype(np.float32)
             hf["source_optim_mse_series"][i] = source_mse.numpy().astype(np.float32)

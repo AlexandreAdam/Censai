@@ -276,7 +276,7 @@ def main(args):
                 source_series, kappa_series, chi_squared = rim.call_function(X, noise_rms, psf)
             else:
                 source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf, outer_tape=tape)
-            # mean over image residuals
+            # mean over image residuals (in model prediction space)
             source_cost1 = tf.reduce_sum(ws(source) * tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
             kappa_cost1 = tf.reduce_sum(wk(kappa) * tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
             # weighted mean over time steps
@@ -305,14 +305,15 @@ def main(args):
 
     def test_step(X, source, kappa, noise_rms, psf):
         source_series, kappa_series, chi_squared = rim.call(X, noise_rms, psf)
-        # mean over image residuals
-        source_cost1 = tf.reduce_mean(tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
-        kappa_cost1 = tf.reduce_mean(tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
+        # mean over image residuals (in model prediction space)
+        source_cost1 = tf.reduce_sum(ws(source) * tf.square(source_series - rim.source_inverse_link(source)), axis=(2, 3, 4))
+        kappa_cost1 = tf.reduce_sum(wk(kappa) * tf.square(kappa_series - rim.kappa_inverse_link(kappa)), axis=(2, 3, 4))
         # weighted mean over time steps
         source_cost = tf.reduce_sum(wt * source_cost1, axis=0)
         kappa_cost = tf.reduce_sum(wt * kappa_cost1, axis=0)
         # final cost is mean over global batch size
         cost = tf.reduce_sum(kappa_cost + source_cost) / args.batch_size
+        # Update metrics with "converged" score
         chi_squared = tf.reduce_sum(chi_squared[-1]) / args.batch_size
         source_cost = tf.reduce_sum(source_cost1[-1]) / args.batch_size
         kappa_cost = tf.reduce_sum(kappa_cost1[-1]) / args.batch_size
@@ -552,7 +553,7 @@ if __name__ == "__main__":
     parser.add_argument("--buffer_size",            default=1000,   type=int,       help="Buffer size for shuffling at each epoch.")
 
     # Optimization params
-    parser.add_argument("-e", "--epochs",           default=10,     type=int,       help="Number of epochs for training.")
+    parser.add_argument("-e", "--epochs",           default=100,     type=int,       help="Number of epochs for training.")
     parser.add_argument("--optimizer",              default="Adamax",               help="Class name of the optimizer (e.g. 'Adam' or 'Adamax')")
     parser.add_argument("--initial_learning_rate",  default=1e-4,   type=float,     help="Initial learning rate.")
     parser.add_argument("--decay_rate",             default=0.9,     type=float,    help="Exponential decay rate of learning rate (1=no decay).")
@@ -573,7 +574,7 @@ if __name__ == "__main__":
     parser.add_argument("--logname",                 default=None,                  help="Overwrite name of the log with this argument")
     parser.add_argument("--logname_prefixe",         default="RIMSUv3",             help="If name of the log is not provided, this prefix is prepended to the date")
     parser.add_argument("--model_dir",               default="None",                help="Path to the directory where to save models checkpoints.")
-    parser.add_argument("--checkpoints",             default=10,    type=int,       help="Save a checkpoint of the models each {%} iteration.")
+    parser.add_argument("--checkpoints",             default=5,     type=int,       help="Save a checkpoint of the models each x epochs.")
     parser.add_argument("--max_to_keep",             default=3,     type=int,       help="Max model checkpoint to keep.")
     parser.add_argument("--n_residuals",             default=1,     type=int,       help="Number of residual plots to save. Add overhead at the end of an epoch only.")
 

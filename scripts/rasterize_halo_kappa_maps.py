@@ -460,9 +460,9 @@ if __name__ == '__main__':
     parser.add_argument("--subhalo_id",         required=True, type=str,    help="npy file that contains array of int32 index of subhalos to rasterize")
     parser.add_argument("--projection",         required=True, type=str,    help="2 characters, a combination of x, y and z (e.g. 'xy')")
     parser.add_argument("--base_filenames",     default="kappa")
-    parser.add_argument("--pixels",             default=512,    type=int,   help="Number of pixels in the raster image")
-    parser.add_argument("--n_neighbors",        default=10,     type=int,   help="Number of neighbors used to compute kernel length")
-    parser.add_argument("--fw_param",           default=2,      type=float, help="Mean distance of neighbors is interpreted as "
+    parser.add_argument("--pixels",             default=128,    type=int,   help="Number of pixels in the raster image")
+    parser.add_argument("--n_neighbors",        default=64,     type=int,   help="Number of neighbors used to compute kernel length")
+    parser.add_argument("--fw_param",           default=3,      type=float, help="Mean distance of neighbors is interpreted as "
                                                                                  "FW at (1/fw_param) of the maximum of the gaussian")
     parser.add_argument("--fov",                default=1,      type=float, help="Field of view of a scene in comoving Mpc")
     parser.add_argument("--z_source",           default=1.5, type=float)

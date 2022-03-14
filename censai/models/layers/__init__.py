@@ -6,6 +6,5 @@ from .conv_block import ConvBlock
 from .conv_gru_plus import ConvGRUPlus
 from .conv_gru_component import ConvGRUBlock
 from .conv_gru_plus_component import ConvGRUPlusBlock
-from .blurpool import BlurPool2D
 from .conv_gru_plus_highway import ConvGRUPlusHighway
 from .conv_gru_plus_highway_component import ConvGRUPlusHighwayBlock

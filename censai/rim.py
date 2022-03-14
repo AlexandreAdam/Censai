@@ -151,10 +151,10 @@ class RIM:
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step+1, value=source)
             kappa_series = kappa_series.write(index=current_step+1, value=kappa)
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood/self.pixels**2)  # renormalize chi squared here
+            chi_squared_series = chi_squared_series.write(index=current_step, value=2*log_likelihood/self.pixels**2)  # renormalize chi squared here
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
-        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood/self.pixels**2)
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=2*log_likelihood/self.pixels**2)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     @tf.function
@@ -186,10 +186,10 @@ class RIM:
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states)
             source_series = source_series.write(index=current_step+1, value=source)
             kappa_series = kappa_series.write(index=current_step+1, value=kappa)
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood/self.pixels**2)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=2*log_likelihood/self.pixels**2)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
-        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood/self.pixels**2)
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=2*log_likelihood/self.pixels**2)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
 
     def predict(self, lensed_image, noise_rms, psf):
@@ -219,19 +219,8 @@ class RIM:
             source, kappa, states = self.time_step(lensed_image, source, kappa, source_grad, kappa_grad, states, training=False)
             source_series = source_series.write(index=current_step+1, value=self.source_link(source))
             kappa_series = kappa_series.write(index=current_step+1, value=self.kappa_link(kappa))
-            chi_squared_series = chi_squared_series.write(index=current_step, value=log_likelihood/self.pixels**2)
+            chi_squared_series = chi_squared_series.write(index=current_step, value=2*log_likelihood/self.pixels**2)
         # last step score
         log_likelihood = self.physical_model.log_likelihood(y_true=lensed_image, source=self.source_link(source), kappa=self.kappa_link(kappa), psf=psf, noise_rms=noise_rms)
-        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=log_likelihood/self.pixels**2)
+        chi_squared_series = chi_squared_series.write(index=self.steps-1, value=2*log_likelihood/self.pixels**2)
         return source_series.stack(), kappa_series.stack(), chi_squared_series.stack()
-
-    def cost_function(self, lensed_image, source, kappa, noise_rms, psf, outer_tape=nulltape, reduction=True):
-        source_series, kappa_series, chi_squared = self.call(lensed_image, psf=psf, noise_rms=noise_rms, outer_tape=outer_tape)
-        source_cost = tf.reduce_sum(tf.square(source_series - self.source_inverse_link(source)), axis=0) / self.steps
-        kappa_cost = tf.reduce_sum(tf.square(kappa_series - self.kappa_inverse_link(kappa)), axis=0) / self.steps
-        chi = tf.reduce_sum(chi_squared, axis=0) / self.steps
-        if reduction:
-            return tf.reduce_mean(source_cost) + tf.reduce_mean(kappa_cost), tf.reduce_mean(chi)
-        else:
-            return tf.reduce_mean(source_cost, axis=(1, 2, 3)) + tf.reduce_mean(kappa_cost, axis=(1, 2, 3)), chi
-

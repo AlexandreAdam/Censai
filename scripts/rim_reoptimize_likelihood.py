@@ -77,7 +77,7 @@ def distributed_strategy(args):
     dataset_names = [args.train_dataset, args.val_dataset, args.test_dataset]
     dataset_shapes = [args.train_size, args.val_size, args.test_size]
     model_name = os.path.split(model)[-1]
-    #
+
     # from censai.utils import nulltape
     # def call_with_mask(self, lensed_image, noise_rms, psf, mask, outer_tape=nulltape):
     #     """
@@ -198,7 +198,7 @@ def distributed_strategy(args):
                     kappa_o = k[-1]
                     source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2))
                     kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean((kappa_o - rim.kappa_inverse_link(kappa)) ** 2))
-                    if 2 * chi_sq[-1, 0] < args.converged_chisq:
+                    if chi_sq[-1, 0] < args.converged_chisq:
                         source_best = rim.source_link(source_o)
                         kappa_best = rim.kappa_link(kappa_o)
                         best = chi_sq[-1, 0]
@@ -267,9 +267,9 @@ def distributed_strategy(args):
                 g["source_pred_reoptimized"][batch] = source_o.numpy().astype(np.float32)
                 g["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
                 g["kappa_pred_reoptimized"][batch] = kappa_o.numpy().astype(np.float32)
-                g["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
-                g["chi_squared_reoptimized"][batch] = 2*best.numpy().astype(np.float32)
-                g["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
+                g["chi_squared"][batch] = tf.transpose(chi_squared).numpy().astype(np.float32)
+                g["chi_squared_reoptimized"][batch] = best.numpy().astype(np.float32)
+                g["chi_squared_reoptimized_series"][batch] = chi_sq_series.numpy().astype(np.float32)
                 g["source_optim_mse"][batch] = source_mse_best.numpy().astype(np.float32)
                 g["source_optim_mse_series"][batch] = source_mse.numpy().astype(np.float32)
                 g["kappa_optim_mse"][batch] = kappa_mse_best.numpy().astype(np.float32)

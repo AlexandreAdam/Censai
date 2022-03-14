@@ -48,13 +48,13 @@ class EWC:
             with tf.GradientTape() as tape:
                 tape.watch(rim.unet.trainable_variables)
                 s, k, chi_squared = rim.call(sampled_observation, noise_rms, psf)
-                _kappa_mse = tf.reduce_sum(wk(10 ** sampled_kappa) * (k - sampled_kappa) ** 2, axis=(2, 3, 4))
-                cost = tf.reduce_mean(_kappa_mse)
-                cost += tf.reduce_mean((s - sampled_source) ** 2)
+                _kappa_mse = phys.kappa_pixels**2 * tf.reduce_sum(wk(10 ** sampled_kappa) * (k - sampled_kappa) ** 2, axis=(2, 3, 4))
+                cost = tf.reduce_sum(_kappa_mse)
+                cost += tf.reduce_sum((s - sampled_source) ** 2)
             grad = tape.gradient(cost, rim.unet.trainable_variables)
             # Square the derivative relative to initial parameters and add to total
             self.fisher_diagonal = [F + g**2/n_samples for F, g in zip(self.fisher_diagonal, grad)]
 
     def penalty(self, rim):
-        return tf.reduce_sum([tf.reduce_sum(F * (varphi - varphi_0)**2) for (F, varphi, varphi_0)
+        return 0.5 * tf.reduce_sum([tf.reduce_sum(F * (varphi - varphi_0)**2) for (F, varphi, varphi_0)
                                in zip(self.fisher_diagonal, rim.unet.trainable_variables, self.initial_params)])
