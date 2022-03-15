@@ -195,52 +195,52 @@ def gaussian_kernel_rasterize(coords, mass, center, fov, dims=[0, 1], pixels=512
         pixel_grid = _np.stack([x, y], axis=-1)
 
         Sigma = _np.zeros(shape=pixel_grid.shape[:2], dtype=_np.float32) # Convergence
-        Alpha = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)  # Deflection angles
-        Psi = _np.zeros_like(Sigma, dtype=_np.float32)  # Lensing potential
-        Gamma1 = _np.zeros_like(Sigma, dtype=_np.float32)  # Shear component 1
-        Gamma2 = _np.zeros_like(Sigma, dtype=_np.float32)  # Shear component 2
-        variance = _np.zeros_like(Sigma, dtype=_np.float32)
-        alpha_variance = _np.zeros_like(Alpha, dtype=_np.float32)
+        # Alpha = _np.zeros(shape=pixel_grid.shape, dtype=_np.float32)  # Deflection angles
+        # Psi = _np.zeros_like(Sigma, dtype=_np.float32)  # Lensing potential
+        # Gamma1 = _np.zeros_like(Sigma, dtype=_np.float32)  # Shear component 1
+        # Gamma2 = _np.zeros_like(Sigma, dtype=_np.float32)  # Shear component 2
+        # variance = _np.zeros_like(Sigma, dtype=_np.float32)
+        # alpha_variance = _np.zeros_like(Alpha, dtype=_np.float32)
         for _coords, _mass, _ell_hat in dataset:
             xi = _coords - pixel_grid[_np.newaxis, ...]  # shape = [batch, pixels, pixels, xy]
             r_squared = xi[..., 0] ** 2 + xi[..., 1] ** 2  # shape = [batch, pixels, pixels]
             gaussian_fun = _np.exp(-0.5 * r_squared / _ell_hat ** 2)
             kappa_r = _mass * gaussian_fun / (2 * _np.pi * _ell_hat ** 2)
             Sigma += _np.sum(kappa_r, axis=0)
-            # Deflection angles
-            _alpha = _np.where(
-                r_squared[..., None] > 0,
-                _mass[..., None] / _np.pi * (gaussian_fun[..., None] - 1) * xi / r_squared[..., None],
-                0.
-            )
-            Alpha += _np.sum(_alpha, axis=0)
-            # Lensing Potential
-            Psi += _np.sum(_mass / 2 / _np.pi * exp1_plus_log(r_squared / 2 / _ell_hat ** 2), axis=0)
-            # Shear
-            gamma_fun = r_squared + 2 * (1 - gaussian_fun) * _ell_hat**2
-            _gamma1 = _np.where(
-                r_squared > 0,
-                kappa_r * (xi[..., 0]**2 - xi[..., 1]**2) / r_squared**2 * gamma_fun,
-                0.
-            )
-            Gamma1 += _np.sum(_gamma1, axis=0)
-            _gamma2 = _np.where(
-                r_squared > 0,
-                2 * kappa_r * xi[..., 0] * xi[..., 1] / r_squared ** 2 * gamma_fun,
-                0.
-            )
-            Gamma2 += _np.sum(_gamma2, axis=0)
-            # Poisson shot noise of convergence field
-            variance += _np.sum((_mass * gaussian_fun / (2 * _np.pi * _ell_hat ** 2))**2, axis=0)
-            # Propagated uncertainty to deflection angles
-            A = gaussian_fun**2 - 2 * gaussian_fun
-            _alpha_variance = _np.where(
-                r_squared[..., None]**2 > 0,
-                (_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi**2,
-                0.
-            )
-            alpha_variance += _np.sum(_alpha_variance, axis=0)
-    return Sigma, Alpha, Psi, Gamma1, Gamma2, variance, alpha_variance
+            ## Deflection angles
+            # _alpha = _np.where(
+            #     r_squared[..., None] > 0,
+            #     _mass[..., None] / _np.pi * (gaussian_fun[..., None] - 1) * xi / r_squared[..., None],
+            #     0.
+            # )
+            # Alpha += _np.sum(_alpha, axis=0)
+            ## Lensing Potential
+            # Psi += _np.sum(_mass / 2 / _np.pi * exp1_plus_log(r_squared / 2 / _ell_hat ** 2), axis=0)
+            ## Shear
+            # gamma_fun = r_squared + 2 * (1 - gaussian_fun) * _ell_hat**2
+            # _gamma1 = _np.where(
+            #     r_squared > 0,
+            #     kappa_r * (xi[..., 0]**2 - xi[..., 1]**2) / r_squared**2 * gamma_fun,
+            #     0.
+            # )
+            # Gamma1 += _np.sum(_gamma1, axis=0)
+            # _gamma2 = _np.where(
+            #     r_squared > 0,
+            #     2 * kappa_r * xi[..., 0] * xi[..., 1] / r_squared ** 2 * gamma_fun,
+            #     0.
+            # )
+            # Gamma2 += _np.sum(_gamma2, axis=0)
+            ## Poisson shot noise of convergence field
+            # variance += _np.sum((_mass * gaussian_fun / (2 * _np.pi * _ell_hat ** 2))**2, axis=0)
+            ## Propagated uncertainty to deflection angles
+            # A = gaussian_fun**2 - 2 * gaussian_fun
+            # _alpha_variance = _np.where(
+            #     r_squared[..., None]**2 > 0,
+            #     (_mass[..., None] / _np.pi)**2 / r_squared[..., None]**2 * (A[..., None] + 1) * xi**2,
+            #     0.
+            # )
+            # alpha_variance += _np.sum(_alpha_variance, axis=0)
+    return Sigma#, Alpha, Psi, Gamma1, Gamma2, variance, alpha_variance
 
 
 def load_halo(halo_id, particle_type, offsets, halo_offsets, snapshot_dir, snapshot_id):
@@ -387,21 +387,29 @@ def distributed_strategy(args):
         ymin = cm_y - args.fov/2
         margin = 0.05 * args.fov   # allow for particle near the margin to be counted in
         select = (x < xmax + margin) & (x > xmin - margin) & (y < ymax + margin) & (y > ymin - margin)
-        kappa, alpha, psi, gamma1, gamma2, kappa_variance, alpha_variance = gaussian_kernel_rasterize(
-                                            coords[select], mass[select], center, args.fov, dims=dims, pixels=args.pixels,
-                                            n_neighbors=args.n_neighbors, fw_param=args.fw_param, use_gpu=args.use_gpu,
-                                            batch_size=args.batch_size
+        # kappa, alpha, psi, gamma1, gamma2, kappa_variance, alpha_variance = gaussian_kernel_rasterize(
+        kappa = gaussian_kernel_rasterize(
+            coords[select],
+            mass[select],
+            center,
+            args.fov,
+            dims=dims,
+            pixels=args.pixels,
+            n_neighbors=args.n_neighbors,
+            fw_param=args.fw_param,
+            use_gpu=args.use_gpu,
+            batch_size=args.batch_size
         )
         kappa /= sigma_crit  # adimensional
-        psi /= sigma_crit    # Mpc^2/h^2
-        psi *= (1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h)**2  # convert to arcsec^2
-        alpha /= sigma_crit  # Mpc/h
-        alpha *= 1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h  # convert to arcsec
-        gamma1 /= sigma_crit  # adimensional
-        gamma2 /= sigma_crit  # adimensional
-        kappa_variance /= sigma_crit**2  # adimensional
-        alpha_variance /= sigma_crit**2  # Mpc^2/h^2
-        alpha_variance *= (1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h)**2  # convert to arcsec^2
+        # psi /= sigma_crit    # Mpc^2/h^2
+        # psi *= (1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h)**2  # convert to arcsec^2
+        # alpha /= sigma_crit  # Mpc/h
+        # alpha *= 1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h  # convert to arcsec
+        # gamma1 /= sigma_crit  # adimensional
+        # gamma2 /= sigma_crit  # adimensional
+        # kappa_variance /= sigma_crit**2  # adimensional
+        # alpha_variance /= sigma_crit**2  # Mpc^2/h^2
+        # alpha_variance *= (1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h)**2  # convert to arcsec^2
 
         # create fits file and its header, than save result
         date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
@@ -439,15 +447,15 @@ def distributed_strategy(args):
         header["SIGCRIT"] = sigma_crit
         header["COSMO"] = "Planck18"
         hdu = fits.PrimaryHDU(kappa, header=header)
-        hdu1 = fits.ImageHDU(psi, name="Lensing potential")
-        hdu2 = fits.ImageHDU(alpha, name="Deflection Angles")
-        hdu3 = fits.ImageHDU(gamma1, name="Shear1")
-        hdu4 = fits.ImageHDU(gamma2, name="Shear2")
-        hdu5 = fits.ImageHDU(kappa_variance, name="Kappa Variance")
-        hdu6 = fits.ImageHDU(alpha_variance, name="Deflection Angles Variance")
-        hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6])
-        hdul.writeto(os.path.join(args.output_dir,
-                                  args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
+        # hdu1 = fits.ImageHDU(psi, name="Lensing potential")
+        # hdu2 = fits.ImageHDU(alpha, name="Deflection Angles")
+        # hdu3 = fits.ImageHDU(gamma1, name="Shear1")
+        # hdu4 = fits.ImageHDU(gamma2, name="Shear2")
+        # hdu5 = fits.ImageHDU(kappa_variance, name="Kappa Variance")
+        # hdu6 = fits.ImageHDU(alpha_variance, name="Deflection Angles Variance")
+        # hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6])
+        hdul = fits.HDUList([hdu])
+        hdul.writeto(os.path.join(args.output_dir, args.base_filenames + f"_{subhalo_id:06d}_{args.projection}.fits"))
 
 
 if __name__ == '__main__':
@@ -464,11 +472,11 @@ if __name__ == '__main__':
     parser.add_argument("--n_neighbors",        default=64,     type=int,   help="Number of neighbors used to compute kernel length")
     parser.add_argument("--fw_param",           default=3,      type=float, help="Mean distance of neighbors is interpreted as "
                                                                                  "FW at (1/fw_param) of the maximum of the gaussian")
-    parser.add_argument("--fov",                default=1,      type=float, help="Field of view of a scene in comoving Mpc")
+    parser.add_argument("--fov",                default=0.1,    type=float, help="Field of view of a scene in comoving Mpc")
     parser.add_argument("--z_source",           default=1.5, type=float)
     parser.add_argument("--z_lens",             default=0.5, type=float)
     parser.add_argument("--use_gpu",            action="store_true",        help="Will rasterize with tensorflow.experimental.numpy")
-    parser.add_argument("--batch_size",         default=1, type=int,        help="Number of particles to rasterize at the same time")
+    parser.add_argument("--batch_size",         default=10, type=int,       help="Number of particles to rasterize at the same time")
     parser.add_argument("--smoke_test",         action="store_true")
     parser.add_argument("--smoke_test_id",      default=100, type=int,       help="Subhalo to do smoke test on")
     args = parser.parse_args()
