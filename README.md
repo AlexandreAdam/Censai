@@ -10,7 +10,7 @@ Yashar Hezaveh
 > simulation of gravitational lenses similar to high quality HST images 
 > and post-processing of the results.
 
-<img src="https://raw.githubusercontent.com/AlexandreAdam/Censai/barebone/.github/images/large_result_grid.png" alt="" style="height: 1000px; width:1000px;"/>
+<img src="https://raw.githubusercontent.com/AlexandreAdam/Censai/barebone/.github/images/random_samples.png" alt="" style="height: 1000px; width:1000px;"/>
 
 ## Abstract
 > Modeling strong gravitational lenses in order to quantify the distortions of the background sources
@@ -29,11 +29,11 @@ Yashar Hezaveh
 
 
 ## Software implementation
-The source code for the neural networks, physical models and data preprocessing 
-can be found in the directory `censai`.
-The calculations and figure generation are all run inside
+The source code for the neural networks, physical models and data preprocessing can be found in the directory `censai`.
+The folder `scripts` contains the scripts used to run the various tasks needed to train and 
+fine-tune the RIM.
+Various visualizations and results can be found in the directory `notebooks` which contains 
 [Jupyter notebooks](http://jupyter.org/).
-
 
 ## Getting the code
 
@@ -72,7 +72,7 @@ or, if you're on Windows:
 
 This will enable the environment for your current terminal session.
 
-Another way of exploring the code results is to execute the Jupyter notebooks
+Another way of exploring the code is to execute the Jupyter notebooks
 individually.
 To do this, you must first start the notebook server by going into the
 repository top level and running:
