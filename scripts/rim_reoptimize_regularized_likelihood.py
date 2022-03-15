@@ -75,18 +75,18 @@ def distributed_strategy(args):
 
     with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + args.model + "_" + args.dataset + f"_{THIS_WORKER:02d}.h5"), 'w') as hf:
         data_len = args.size // N_WORKERS
-        hf.create_dataset(name="observation", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="psf",  shape=[data_len, physical_params['psf pixels'], physical_params['psf pixels'], 1], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="psf_fwhm", shape=[data_len], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="noise_rms", shape=[data_len], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="source", shape=[data_len, phys.src_pixels, phys.src_pixels, 1], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="kappa", shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="observation_pred", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="observation_pred_reoptimized", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="source_pred", shape=[data_len, rim.steps, phys.src_pixels, phys.src_pixels, 1], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="source_pred_reoptimized", shape=[data_len, phys.src_pixels, phys.src_pixels, 1], compression="gzip")
-        hf.create_dataset(name="kappa_pred", shape=[data_len, rim.steps, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32, compression="gzip")
-        hf.create_dataset(name="kappa_pred_reoptimized", shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32, compression="gzip")
+        hf.create_dataset(name="observation", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
+        hf.create_dataset(name="psf",  shape=[data_len, physical_params['psf pixels'], physical_params['psf pixels'], 1], dtype=np.float32)
+        hf.create_dataset(name="psf_fwhm", shape=[data_len], dtype=np.float32)
+        hf.create_dataset(name="noise_rms", shape=[data_len], dtype=np.float32)
+        hf.create_dataset(name="source", shape=[data_len, phys.src_pixels, phys.src_pixels, 1], dtype=np.float32)
+        hf.create_dataset(name="kappa", shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
+        hf.create_dataset(name="observation_pred", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
+        hf.create_dataset(name="observation_pred_reoptimized", shape=[data_len, phys.pixels, phys.pixels, 1], dtype=np.float32)
+        hf.create_dataset(name="source_pred", shape=[data_len, rim.steps, phys.src_pixels, phys.src_pixels, 1], dtype=np.float32)
+        hf.create_dataset(name="source_pred_reoptimized", shape=[data_len, phys.src_pixels, phys.src_pixels, 1])
+        hf.create_dataset(name="kappa_pred", shape=[data_len, rim.steps, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
+        hf.create_dataset(name="kappa_pred_reoptimized", shape=[data_len, phys.kappa_pixels, phys.kappa_pixels, 1], dtype=np.float32)
         hf.create_dataset(name="chi_squared", shape=[data_len, rim.steps], dtype=np.float32)
         hf.create_dataset(name="chi_squared_reoptimized", shape=[data_len], dtype=np.float32)
         hf.create_dataset(name="chi_squared_reoptimized_series", shape=[data_len, args.re_optimize_steps], dtype=np.float32)
@@ -160,7 +160,7 @@ def distributed_strategy(args):
                 source_o = s[-1]
                 kappa_o = k[-1]
                 source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2))
-                kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_mean(wk(kappa) * (kappa_o - rim.kappa_inverse_link(kappa)) ** 2))
+                kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_sum(wk(kappa) * (kappa_o - rim.kappa_inverse_link(kappa)) ** 2))
                 if chi_sq[-1, 0] < 1.0 and args.early_stopping:
                     source_best = rim.source_link(source_o)
                     kappa_best = rim.kappa_link(kappa_o)
@@ -171,7 +171,7 @@ def distributed_strategy(args):
                     kappa_best = rim.kappa_link(kappa_o)
                     best = chi_sq[-1, 0]
                     source_mse_best = tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2)
-                    kappa_mse_best = tf.reduce_mean(wk(kappa) * (kappa_o - rim.kappa_inverse_link(kappa)) ** 2)
+                    kappa_mse_best = tf.reduce_sum(wk(kappa) * (kappa_o - rim.kappa_inverse_link(kappa)) ** 2)
 
                 grads = tape.gradient(cost, unet.trainable_variables)
                 optim.apply_gradients(zip(grads, unet.trainable_variables))
@@ -215,7 +215,6 @@ def distributed_strategy(args):
             hf["observation_coherence_spectrum_reoptimized"][batch] = _ps_observation2
             hf["source_coherence_spectrum"][batch] = _ps_source
             hf["source_coherence_spectrum_reoptimized"][batch] = _ps_source2
-            hf["observation_coherence_spectrum"][batch] = _ps_observation
             hf["observation_coherence_spectrum"][batch] = _ps_observation
             hf["kappa_coherence_spectrum"][batch] = _ps_kappa
             hf["kappa_coherence_spectrum_reoptimized"][batch] = _ps_kappa2
