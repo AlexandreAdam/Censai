@@ -411,7 +411,7 @@ def distributed_strategy(args):
         # alpha_variance /= sigma_crit**2  # Mpc^2/h^2
         # alpha_variance *= (1. / cosmo.angular_diameter_distance(args.z_lens).value * 3600 / np.pi * 180 * cosmo.h)**2  # convert to arcsec^2
 
-        # create fits file and its header, than save result
+        # create fits file and its header, then save result
         date = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
         print(f"Finished subhalo {subhalo_id} at {date}")
 
