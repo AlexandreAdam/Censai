@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import tensorflow_addons as tfa
 from censai.definitions import DTYPE
-from .utils import nulltape
 
 
 class PhysicalModel:
@@ -11,33 +10,28 @@ class PhysicalModel:
     """
     def __init__(
             self,
-            pixels,            # 512
-            psf_sigma=0.06,    # gaussian PSF
-            src_pixels=None,   # 128 for cosmos
+            pixels,
+            src_pixels=None,
             kappa_pixels=None,
             image_fov=7.68,
             src_fov=3.0,
             kappa_fov=7.68,
             method="conv2d",
-            noise_rms=1,
             raytracer=None
     ):
         if src_pixels is None:
-            src_pixels = pixels  # assume src has the same shape
+            src_pixels = pixels
         if kappa_pixels is None:
             kappa_pixels = pixels
         self.image_fov = image_fov
-        self.psf_sigma = psf_sigma
         self.src_fov = src_fov
         self.pixels = pixels
         self.src_pixels = src_pixels
         self.kappa_pixels = kappa_pixels
         self.kappa_fov = kappa_fov
         self.method = method
-        self.noise_rms = noise_rms
         self.raytracer = raytracer
         self.set_deflection_angle_vars()
-        self.PSF = self.psf_model()
         if kappa_pixels != pixels:
             self.kappa_to_image_grid = self._kappa_to_image_grid
         else:
@@ -100,42 +94,23 @@ class PhysicalModel:
             raise ValueError(f"{self.method} is not in [conv2d, unet, fft]")
         return alpha_x, alpha_y
 
-    # def log_likelihood(self, source, kappa, y_true, outer_tape=nulltape):
-    #     y_pred = self.forward(source, kappa)
-    #     with outer_tape.stop_recording():
-    #         lam = self.lagrange_multiplier(y_true, y_pred)
-    #     return 0.5 * tf.reduce_mean((lam * y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
-    #
-    def log_likelihoodv2(self, source, kappa, y_true, outer_tape=nulltape):
-        y_pred = self.forward(source, kappa)
-        with outer_tape.stop_recording():
-            lam = self.lagrange_multiplier(y_true, y_pred)
-        return 0.5 * tf.reduce_mean((lam * y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
-
-    def log_likelihood(self, source, kappa, y_true, outer_tape=nulltape):
-        y_pred = self.forward(source, kappa)
-        # with outer_tape.stop_recording():
-        #     lam = self.lagrange_multiplier(y_true, y_pred)
-        return 0.5 * tf.reduce_mean((y_pred - y_true) ** 2 / self.noise_rms ** 2, axis=(1, 2, 3))
+    def log_likelihood(self, source, kappa, y_true, noise_rms, psf):
+        y_pred = self.forward(source, kappa, psf)
+        return 0.5 * tf.reduce_sum((y_pred - y_true) ** 2 / noise_rms[:, None, None, None] ** 2, axis=(1, 2, 3))
 
     @staticmethod
     def lagrange_multiplier(y_true, y_pred):
         return tf.reduce_sum(y_true * y_pred, axis=(1, 2, 3), keepdims=True) / tf.reduce_sum(y_pred**2, axis=(1, 2, 3), keepdims=True)
 
-    @staticmethod
-    def masked_lagrange_multiplier(y_true, y_pred):
-        mask = tf.cast(y_true > 0.1, DTYPE)
-        return tf.reduce_sum(mask * y_true * y_pred, axis=(1, 2, 3), keepdims=True) / tf.reduce_sum(mask * y_pred**2, axis=(1, 2, 3), keepdims=True)
-
-    def forward(self, source, kappa):
+    def forward(self, source, kappa, psf):
         im = self.lens_source(source, kappa)
-        im = self.convolve_with_psf(im)
+        im = self.convolve_with_psf(im, psf)
         return im
 
-    def noisy_forward(self, source, kappa, noise_rms):
+    def noisy_forward(self, source, kappa, noise_rms, psf):
         im = self.lens_source(source, kappa)
-        noise = tf.random.normal(im.shape, mean=0, stddev=noise_rms)
-        out = self.convolve_with_psf(im)  # convolve before adding noise, otherwise it correlates the noise
+        noise = tf.random.normal(im.shape, mean=0, stddev=np.atleast_1d(noise_rms)[:, None, None, None])
+        out = self.convolve_with_psf(im, psf)  # convolve before adding noise, otherwise it correlates the noise
         out = out + noise
         return out
 
@@ -148,7 +123,7 @@ class PhysicalModel:
         im = tfa.image.resampler(source, warp)  # bilinear interpolation of source on warp grid
         return im
 
-    def lens_source_func(self, kappa, xs=0., ys=0., es=0., w=0.1):
+    def lens_source_func(self, kappa, xs=0., ys=0., es=0., w=0.1, psf_sigma=None):
         alpha_x, alpha_y = self.deflection_angle(kappa)
         # lens equation
         beta1 = self.ximage - alpha_x
@@ -156,10 +131,12 @@ class PhysicalModel:
         # sample intensity directly from the functional form
         rho_sq = (beta1 - xs) ** 2 / (1 - es) + (beta2 - ys) ** 2 * (1 - es)
         lens = tf.math.exp(-0.5 * rho_sq / w ** 2)  # / 2 / np.pi / w**2
-        lens = self.convolve_with_psf(lens)
+        psf_sigma = psf_sigma if psf_sigma is not None else self.image_fov / self.pixels
+        psf = self.psf_models(psf_sigma)
+        lens = self.convolve_with_psf(lens, psf)
         return lens
 
-    def lens_source_func_given_alpha(self, alpha, xs=0., ys=0., es=0., w=0.1):
+    def lens_source_func_given_alpha(self, alpha, xs=0., ys=0., es=0., w=0.1, psf_sigma=None):
         alpha1, alpha2 = tf.split(alpha, 2, axis=-1)
         # lens equation
         beta1 = self.ximage - alpha1
@@ -167,7 +144,9 @@ class PhysicalModel:
         # sample intensity directly from the functional form
         rho_sq = (beta1 - xs) ** 2 / (1 - es) + (beta2 - ys) ** 2 * (1 - es)
         lens = tf.math.exp(-0.5 * rho_sq / w ** 2)  # / 2 / np.pi / w**2
-        lens = self.convolve_with_psf(lens)
+        psf_sigma = psf_sigma if psf_sigma is not None else self.image_fov / self.pixels
+        psf = self.psf_models(psf_sigma)
+        lens = self.convolve_with_psf(lens, psf)
         return lens
 
     def lens_source_and_compute_jacobian(self, source, kappa):
@@ -282,20 +261,43 @@ class PhysicalModel:
         out[denominator != 0] = num[denominator != 0] / denominator[denominator != 0]
         return out
 
-    def psf_model(self):
-        pixel_scale = self.image_fov / self.pixels
-        cutout_size = int(10 * self.psf_sigma / pixel_scale)
+    def psf_models(self, psf_fwhm, cutout_size=16):
+        psf_sigma = np.atleast_1d(psf_fwhm)[:, None, None, None] / (2 * np.sqrt(2 * np.log(2)))
         r_squared = self.ximage**2 + self.yimage**2
-        psf = tf.math.exp(-0.5 * r_squared / self.psf_sigma**2)
+        psf = tf.math.exp(-0.5 * r_squared / psf_sigma**2)
         psf = tf.image.crop_to_bounding_box(psf,
                                             offset_height=self.pixels//2 - cutout_size//2,
                                             offset_width=self.pixels//2 - cutout_size//2,
                                             target_width=cutout_size,
                                             target_height=cutout_size)
-        psf /= tf.reduce_sum(psf)
-        psf = tf.reshape(psf, shape=[cutout_size, cutout_size, 1, 1])
+        psf /= tf.reduce_sum(psf, axis=(1, 2, 3), keepdims=True)
         return psf
 
-    def convolve_with_psf(self, images):
-        convolved_images = tf.nn.conv2d(images, self.PSF, [1, 1, 1, 1], padding="SAME")
+    def convolve_with_psf(self, images, psf):
+        """
+        Assume psf are images of shape [batch_size, pixels, pixels, channels]
+        """
+        images = tf.transpose(images, perm=[3, 1, 2, 0])  # put batch size in place of channel dimension
+        psf = tf.transpose(psf, perm=[1, 2, 0, 3])  # put different psf on "in channels" dimension
+        convolved_images = tf.nn.depthwise_conv2d(images, psf, strides=[1, 1, 1, 1], padding="SAME", data_format="NHWC")
+        convolved_images = tf.transpose(convolved_images, perm=[3, 1, 2, 0]) # put channels back to batch dimension
         return convolved_images
+
+
+if __name__ == '__main__':
+    phys = PhysicalModel(64)
+    from censai import AnalyticalPhysicalModel
+    kappa = AnalyticalPhysicalModel(64).kappa_field(r_ein=np.array([1., 2.])[:, None, None, None])
+    psf = phys.psf_models(np.array([0.4, 0.12]))
+    import matplotlib.pyplot as plt
+    x = tf.random.normal(shape=(2, 64, 64, 1))
+    y = phys.noisy_forward(x, kappa, np.array([0.01, 0.04]), psf)
+    # out = phys.convolve_with_psf(x, psf)
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    ax1.imshow(y[0, ..., 0])
+    ax1.set_title("0.4")
+    ax2.imshow(y[1, ..., 0])
+    ax2.set_title("0.12")
+    # print(out.shape)
+    plt.show()
+    print(psf.numpy().sum(axis=(1, 2, 3)))
