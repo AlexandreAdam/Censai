@@ -3,7 +3,7 @@ import numpy as np
 from censai.definitions import DTYPE
 import matplotlib.pyplot as plt
 
-# Only support input of shape [batch, x, y] for now
+
 class PowerSpectrum:
     def __init__(self, bins, pixels):
         assert bins < pixels//2
@@ -25,8 +25,8 @@ class PowerSpectrum:
         return masks
 
     def power_spectrum(self, x):
-        flux = tf.reduce_sum(x, axis=(1, 2), keepdims=True)
-        x_hat = tf.signal.fftshift(tf.signal.fft2d(tf.cast(x/flux, tf.complex64)))
+        norm = tf.sqrt(tf.reduce_sum(tf.abs(x)**2, axis=(1, 2), keepdims=True))
+        x_hat = tf.signal.fftshift(tf.signal.fft2d(tf.cast(x/norm, tf.complex64)))
         ps = tf.TensorArray(DTYPE, size=self.bins)
         for i in range(self.bins):
             value = tf.reduce_sum(tf.abs(x_hat)**2 * self.masks[i][None, ...], axis=(1, 2)) / tf.reduce_sum(self.masks[i])
@@ -35,8 +35,8 @@ class PowerSpectrum:
         return ps
 
     def cross_power_spectrum(self, x, y):
-        x_hat = tf.signal.fftshift(tf.signal.fft2d(tf.cast(x/tf.reduce_sum(x, axis=(1, 2), keepdims=True), tf.complex64)))
-        y_hat = tf.signal.fftshift(tf.signal.fft2d(tf.cast(y/tf.reduce_sum(y, axis=(1, 2), keepdims=True), tf.complex64)))
+        x_hat = tf.signal.fftshift(tf.signal.fft2d(tf.cast(x/tf.sqrt(tf.reduce_sum(tf.abs(x)**2, axis=(1, 2), keepdims=True)), tf.complex64)))
+        y_hat = tf.signal.fftshift(tf.signal.fft2d(tf.cast(y/tf.sqrt(tf.reduce_sum(tf.abs(y)**2, axis=(1, 2), keepdims=True)), tf.complex64)))
         ps = tf.TensorArray(DTYPE, size=self.bins)
         for i in range(self.bins):
             value = tf.reduce_sum(tf.abs(tf.math.conj(x_hat) * y_hat) * self.masks[i][None, ...], axis=(1, 2)) / tf.reduce_sum(self.masks[i])
@@ -127,7 +127,6 @@ class PowerSpectrum:
         r = self.cross_correlation_coefficient(x, y)[0]
         _, f = np.histogram(np.arange(self.pixels//2)/fov, bins=self.bins)
         f = (f[:-1] + f[1:])/2
-        sampling_rate = fov / self.pixels
         fig = plt.figure(figsize=(5, 5))
         ax = fig.add_axes([0.1, 0.1, 0.85, 0.85])
         ax.plot(f, r, "-", color=color, label=label)

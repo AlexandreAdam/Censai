@@ -1,6 +1,6 @@
 import tensorflow as tf
 from .decoder import Decoder
-from .vaeencoder import VAEEncoder
+from .encoder import Encoder
 from censai.definitions import DTYPE
 from .utils import get_activation
 
@@ -21,12 +21,12 @@ class VAE(tf.keras.Model):
             batch_norm=False,
             latent_size=16,
             strides=2,
-            output_activation="softplus"
+            output_activation="identity"
     ):
         super(VAE, self).__init__(dtype=DTYPE)
         output_activation = get_activation(output_activation)
         self.latent_size = latent_size
-        self.encoder = VAEEncoder(
+        self.encoder = Encoder(
             layers=layers,
             conv_layers=conv_layers,
             filter_scaling=filter_scaling,
@@ -92,13 +92,13 @@ class VAE(tf.keras.Model):
         latent_cost = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
         return img_cost + latent_cost
 
-    def cost_function_training(self, x, skip_strength, l2_bottleneck):
+    def cost_training(self, x, l2_bottleneck):
         batch_size = x.shape[0]
-        mean, logvar, skip_connections = self.encoder.call_with_skip_connections(x)
+        mean, logvar, pre_mlp_code = self.encoder.call_training(x)
         logvar = 0.5 * logvar
         epsilon = tf.random.normal([batch_size, self.latent_size], dtype=DTYPE)
         z = mean + tf.multiply(epsilon, tf.exp(logvar))
-        y, bottleneck_l2_loss = self.decoder.call_with_skip_connections(z, skip_connections, skip_strength, l2_bottleneck)
+        y, bottleneck_l2_loss = self.decoder.call_training(z, pre_mlp_code, l2_bottleneck)
         reconstruction_loss = tf.reduce_sum((y - x)**2, axis=(1, 2, 3))
         kl_loss = -0.5 * tf.reduce_sum(1.0 + 2.0 * logvar - tf.square(mean) - tf.exp(2.0 * logvar), axis=1)
         return reconstruction_loss, kl_loss, bottleneck_l2_loss

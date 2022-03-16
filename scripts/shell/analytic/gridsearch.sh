@@ -19,7 +19,7 @@ python $CENSAI_PATH/scripts/experiments/rim_analytic_gridsearch.py\
   --unit_scaling 1 2 4\
   --mlp_before_gru 1 2 3\
   --activation tanh elu leaky_relu\
-  --batch_size 1 16 32 64 128\
+  --batch_size 32 64 128\
   --total_items 1000\
   --epochs 500\
   --optimizer adamax\

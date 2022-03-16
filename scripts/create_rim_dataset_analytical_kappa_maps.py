@@ -1,10 +1,10 @@
 import tensorflow as tf
 import os, glob
 import numpy as np
-from censai import PhysicalModelv2
+from censai import PhysicalModel
 from censai.data.cosmos import decode_image, preprocess_image
 from censai.data import NISGenerator
-from censai.data.lenses_tng_v3 import encode_examples
+from censai.data.lenses_tng import encode_examples
 from scipy.signal.windows import tukey
 from scipy.stats import truncnorm
 from datetime import datetime
@@ -41,7 +41,7 @@ def distributed_strategy(args):
 
     window = tukey(args.src_pixels, alpha=args.tukey_alpha)
     window = np.outer(window, window)
-    phys = PhysicalModelv2(
+    phys = PhysicalModel(
         image_fov=args.image_fov,
         kappa_fov=args.kappa_fov,
         src_fov=args.source_fov,

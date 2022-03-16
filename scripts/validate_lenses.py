@@ -1,5 +1,5 @@
 import tensorflow as tf
-from censai.data.lenses_tng_v2 import decode_all, decode_physical_model_info
+from censai.data.lenses_tng import decode_all, decode_physical_model_info
 from censai.utils import _bytes_feature, _int64_feature, _float_feature
 import os, glob, time
 from datetime import datetime
@@ -51,6 +51,8 @@ def distributed_strategy(args):
                 continue
             if tf.reduce_sum(tf.cast(example["source"] > args.source_signal_threshold, tf.float32)) < args.min_source_signal_pixels:
                 continue
+            if tf.reduce_max(example["kappa"]) < 1.:  # this filters out some of the bad VAE samples.
+                continue
             kept += 1
             features = {
                 "kappa": _bytes_feature(example["kappa"].numpy().tobytes()),
@@ -65,7 +67,9 @@ def distributed_strategy(args):
                 "kappa pixels": _int64_feature(example["kappa"].shape[0]),
                 "pixels": _int64_feature(example["lens"].shape[0]),
                 "noise rms": _float_feature(example["noise rms"].numpy()),
-                "psf sigma": _float_feature(example["psf sigma"].numpy()),
+                "psf": _bytes_feature(example["psf"].numpy().tobytes()),
+                "psf pixels": _int64_feature(example["psf"].shape[0]),
+                "fwhm": _float_feature(example["fwhm"].numpy())
             }
             serialized_output = tf.train.Example(features=tf.train.Features(feature=features))
             record = serialized_output.SerializeToString()
