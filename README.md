@@ -10,7 +10,7 @@ Yashar Hezaveh
 > simulation of gravitational lenses similar to high quality HST images 
 > and post-processing of the results.
 
-<img src="https://raw.githubusercontent.com/AlexandreAdam/Censai/barebone/.github/images/random_samples.png" alt="" style="height: 1000px; width:1000px;"/>
+<img src="https://raw.githubusercontent.com/AlexandreAdam/Censai/barebone/.github/images/random_sample.png" alt="" style="height: 1000px; width:1000px;"/>
 
 ## Abstract
 > Modeling strong gravitational lenses in order to quantify the distortions of the background sources

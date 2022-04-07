@@ -4,3 +4,4 @@ from .power_spectrum import PowerSpectrum
 from .rim import RIM
 from .analytical_physical_modelv2 import AnalyticalPhysicalModelv2
 from .ewc import EWC
+from .rim_analytic import RIMAnalytic

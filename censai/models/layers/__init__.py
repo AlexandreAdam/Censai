@@ -8,3 +8,4 @@ from .conv_gru_component import ConvGRUBlock
 from .conv_gru_plus_component import ConvGRUPlusBlock
 from .conv_gru_plus_highway import ConvGRUPlusHighway
 from .conv_gru_plus_highway_component import ConvGRUPlusHighwayBlock
+from .gru import GRU
