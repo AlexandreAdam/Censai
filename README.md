@@ -1,31 +1,31 @@
-# Data-driven reconstruction of Gravitational Lenses using Recurrent Inference Machine II
+# Free-Form Reconstruction of Gravitational Lenses using Recurrent Inference Machine 
 
 by
 Alexandre Adam,
 Laurence Perreault-Levasseur,
 Yashar Hezaveh
 
-> This is the official implementation of the code for the paper, 
-> including the RIM, VAE, preprocessing of COSMOS and IllustrisTNG, 
-> simulation of gravitational lenses similar to high quality HST images 
-> and post-processing of the results.
+This is the official implementation of the code for the paper, 
+including the RIM, VAE, preprocessing of COSMOS and IllustrisTNG, 
+simulation of gravitational lenses similar to high quality HST images 
+and post-processing of the results.
 
-<img src="https://raw.githubusercontent.com/AlexandreAdam/Censai/barebone/.github/images/random_samples.png" alt="" style="height: 1000px; width:1000px;"/>
+<img src="https://raw.githubusercontent.com/AlexandreAdam/Censai/dev/.github/images/random_sample.jpg" alt="" style="height: 1000px; width:1000px;"/>
 
 ## Abstract
-> Modeling strong gravitational lenses in order to quantify the distortions of the background sources
-> and reconstruct the mass density in the foreground lens has traditionally been a major computational
-> challenge. As the quality of gravitational lens images increases, the task of fully exploiting the infor-
-> mation they contain becomes computationally and algorithmically more difficult. In this work, we use
-> a neural network based on the Recurrent Inference Machine (RIM) to simultaneously reconstruct an
-> undistorted image of the background source and the lens mass density distribution as pixelated maps.
-> The method we present iteratively reconstructs the model parameters (the source and density map
-> pixels) by learning the process of optimization of their likelihood given the data using the physical
-> model (a ray tracing simulation), regularized by a prior implicitly learnt by the neural network through
-> its training data. When compared to more traditional parametric models, the method we propose is
-> significantly more expressive and can reconstruct complex mass distribution, which we demonstrate
-> by using realistic lensing galaxies taken from the hydrodynamical IllustrisTNG simulation .
-> Fill out the sections below with the information for your paper.
+Modeling strong gravitational lenses in order to quantify the distortions of the background sources
+and reconstruct the mass density in the foreground lens has traditionally been a major computational
+challenge. As the quality of gravitational lens images increases, the task of fully exploiting the infor-
+mation they contain becomes computationally and algorithmically more difficult. In this work, we use
+a neural network based on the Recurrent Inference Machine (RIM) to simultaneously reconstruct an
+undistorted image of the background source and the lens mass density distribution as pixelated maps.
+The method we present iteratively reconstructs the model parameters (the source and density map
+pixels) by learning the process of optimization of their likelihood given the data using the physical
+model (a ray tracing simulation), regularized by a prior implicitly learnt by the neural network through
+its training data. When compared to more traditional parametric models, the method we propose is
+significantly more expressive and can reconstruct complex mass distribution, which we demonstrate
+by using realistic lensing galaxies taken from the hydrodynamical IllustrisTNG simulation .
+Fill out the sections below with the information for your paper.
 
 
 ## Software implementation
