@@ -149,60 +149,46 @@ class PhysicalModel:
         lens = self.convolve_with_psf(lens, psf)
         return lens
 
-    def lens_source_and_compute_jacobian(self, source, kappa):
+    def jacobian(self, kappa):
         """
-        Note: this method will return a different picture than forward if image_fov != kappa_fov
-        Args:
-            source: A source brightness distributions
-            kappa: A kappa maps
-
-        Returns: lens image, jacobian matrix
+        We compute the jacobian in 3 steps:
+            1) Solve the Poisson equation in Fourier space to find the potential
+            2) Find the second derivatives of this potential (also in Fourier space)
+            3) Take the inverse Fourier transform to find the Jacobian matrix
         """
-        assert source.shape[0] == 1, "For now, this only works for a single example"
-        # we have to compute everything here from scratch to get gradient paths
-        x = tf.linspace(-1, 1, 2 * self.pixels + 1) * self.kappa_fov
-        theta_x, theta_y = tf.meshgrid(x, x)
-        theta_x = tf.cast(theta_x, DTYPE)
-        theta_y = tf.cast(theta_y, DTYPE)
-        theta_x = theta_x[..., tf.newaxis, tf.newaxis] # [..., in_channels, out_channels]
-        theta_y = theta_y[..., tf.newaxis, tf.newaxis]
-        kappa = self.kappa_to_image_grid(kappa)  # resampling to shape of image
-        with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
-            tape.watch(theta_x)
-            tape.watch(theta_y)
-            rho = theta_x**2 + theta_y**2
-            kernel_x = - tf.math.divide_no_nan(theta_x, rho)
-            kernel_y = - tf.math.divide_no_nan(theta_y, rho)
-            # compute deflection angles
-            alpha_x = tf.nn.conv2d(kappa, kernel_x, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
-            alpha_y = tf.nn.conv2d(kappa, kernel_y, [1, 1, 1, 1], "SAME") * (self.dx_kap**2/np.pi)
-            # pad deflection angles with zeros outside of the scene (these are cropped out latter)
-            alpha_x = tf.pad(alpha_x, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
-            alpha_y = tf.pad(alpha_y, [[0, 0]] + [[self.pixels//2, self.pixels//2 + 1]]*2 + [[0, 0]])
-            # lens equation (reshape thetas to broadcast properly onto alpha)
-            x_src = tf.reshape(theta_x, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_x
-            y_src = tf.reshape(theta_y, [1, 2 * self.pixels + 1, 2 * self.pixels + 1, 1]) - alpha_y
-        # Crop gradients
-        j11 = tape.gradient(x_src, theta_x)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
-        j12 = tape.gradient(x_src, theta_y)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
-        j21 = tape.gradient(y_src, theta_x)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
-        j22 = tape.gradient(y_src, theta_y)[self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, ...]
-        # reshape gradients to [batch, pixels, pixels, channels] shape
-        j11 = tf.reshape(j11, [1, self.pixels, self.pixels, 1])
-        j12 = tf.reshape(j12, [1, self.pixels, self.pixels, 1])
-        j21 = tf.reshape(j21, [1, self.pixels, self.pixels, 1])
-        j22 = tf.reshape(j22, [1, self.pixels, self.pixels, 1])
-        # put in a shape for which tf.linalg.det is easy to use (shape = [..., 2, 2])
-        j1 = tf.concat([j11, j12], axis=3)
-        j2 = tf.concat([j21, j22], axis=3)
-        jacobian = tf.stack([j1, j2], axis=-1)
-        # lens the source brightness distribution
-        x_src = x_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        y_src = y_src[..., self.pixels//2: 3*self.pixels//2, self.pixels//2: 3*self.pixels//2, :]
-        x_src_pix, y_src_pix = self.src_coord_to_pix(x_src, y_src)
-        warp = tf.concat([x_src_pix, y_src_pix], axis=-1)
-        im = tfa.image.resampler(source, warp)
-        return im, jacobian
+        kappa = self.kappa_to_image_grid(kappa)
+        batch_size = kappa.shape[0]
+        pixels = self.pixels
+        k = np.fft.fftfreq(n=2*pixels, d=pixels/self.image_fov)
+        kx, ky = tf.cast(tf.meshgrid(k, k), tf.complex64)
+        jacobians = []
+        for i in tf.range(batch_size):
+            kap = tf.image.pad_to_bounding_box(kappa[i, ...], offset_height=0, offset_width=0, target_width=2 * pixels, target_height=2 * pixels)
+            kap = tf.signal.fft2d(tf.cast(kap[..., 0], tf.complex64)) / (2 / np.pi)**2
+            phi = - tf.math.divide_no_nan(kap, kx**2 + ky**2)  # lensing potential
+            phi_xx = tf.abs(tf.signal.ifft2d(- kx**2 * phi))[..., None]
+            phi_yy = tf.abs(tf.signal.ifft2d(- ky**2 * phi))[..., None]
+            phi_xy = tf.abs(tf.signal.ifft2d(- kx * ky * phi))[..., None]
+            phi_xx = tf.image.crop_to_bounding_box(phi_xx,
+                                                   offset_height=0,
+                                                   offset_width=0,
+                                                   target_width=self.pixels,
+                                                   target_height=self.pixels)
+            phi_xy = tf.image.crop_to_bounding_box(phi_xy,
+                                                   offset_height=0,
+                                                   offset_width=0,
+                                                   target_width=self.pixels,
+                                                   target_height=self.pixels)
+            phi_yy = tf.image.crop_to_bounding_box(phi_yy,
+                                                   offset_height=0,
+                                                   offset_width=0,
+                                                   target_width=self.pixels,
+                                                   target_height=self.pixels)
+            j1 = tf.concat([1 - phi_xx, -phi_xy], axis=-1)
+            j2 = tf.concat([-phi_xy, 1 - phi_yy], axis=-1)
+            jacobian = tf.stack([j1, j2], axis=-1)
+            jacobians.append(jacobian)
+        return tf.stack(jacobians, axis=0)
 
     def src_coord_to_pix(self, x, y):
         dx = self.src_fov / (self.src_pixels - 1)
@@ -285,19 +271,26 @@ class PhysicalModel:
 
 
 if __name__ == '__main__':
-    phys = PhysicalModel(64)
+    phys = PhysicalModel(128)
     from censai import AnalyticalPhysicalModel
-    kappa = AnalyticalPhysicalModel(64).kappa_field(r_ein=np.array([1., 2.])[:, None, None, None])
-    psf = phys.psf_models(np.array([0.4, 0.12]))
+    # kappa = AnalyticalPhysicalModel(64).kappa_field(r_ein=np.array([1., 2.])[:, None, None, None])
+    # psf = phys.psf_models(np.array([0.4, 0.12]))
     import matplotlib.pyplot as plt
-    x = tf.random.normal(shape=(2, 64, 64, 1))
-    y = phys.noisy_forward(x, kappa, np.array([0.01, 0.04]), psf)
-    # out = phys.convolve_with_psf(x, psf)
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    ax1.imshow(y[0, ..., 0])
-    ax1.set_title("0.4")
-    ax2.imshow(y[1, ..., 0])
-    ax2.set_title("0.12")
-    # print(out.shape)
+    # x = tf.random.normal(shape=(2, 64, 64, 1))
+    # y = phys.noisy_forward(x, kappa, np.array([0.01, 0.04]), psf)
+    # # out = phys.convolve_with_psf(x, psf)
+    # fig, (ax1, ax2) = plt.subplots(1, 2)
+    # ax1.imshow(y[0, ..., 0])
+    # ax1.set_title("0.4")
+    # ax2.imshow(y[1, ..., 0])
+    # ax2.set_title("0.12")
+    # # print(out.shape)
+    # plt.show()
+    # print(psf.numpy().sum(axis=(1, 2, 3)))
+    kappa = AnalyticalPhysicalModel(128).kappa_field(r_ein=1.5, e=0.4)
+    jacobian = phys.jacobian(kappa)
+    jac_det = tf.linalg.det(jacobian)
+    plt.imshow(jac_det[0], cmap="seismic", extent=[-7.69/2, 7.69/2]*2)
+    plt.colorbar()
+    contour = plt.contour(jac_det[0], levels=[0], cmap="gray", extent=[-7.69/2, 7.69/2]*2)
     plt.show()
-    print(psf.numpy().sum(axis=(1, 2, 3)))
