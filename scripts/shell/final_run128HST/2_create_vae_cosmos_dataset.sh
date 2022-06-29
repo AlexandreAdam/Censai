@@ -9,7 +9,7 @@
 #SBATCH --job-name=Create-VAE-Kappa-Dataset-900k
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/make_cosmos_vae_dataset.py\
+python $CENSAI_PATH/scripts/generate_cosmos_distributed.py\
   --cosmos_first_stage_vae=$CENSAI_PATH/models/VAE1_COSMOSFR_003_F32_NLleaky_relu_LS32_betaE0.1_betaDS100000_211018104400\
   --output_dir=$HOME/scratch/Censai/data/cosmosFR_VAE1_COSMOSFR_003_F32_NLleaky_relu_LS32_betaE0.1_betaDS100000_211018104400\
   --len_dataset=500000\

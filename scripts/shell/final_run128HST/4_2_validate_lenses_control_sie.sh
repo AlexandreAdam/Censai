@@ -10,7 +10,7 @@
 # 00k-512_k128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/validate_lensesv3.py\
+python $CENSAI_PATH/scripts/validate_lenses.py\
   --dataset=$CENSAI_PATH/data/lenses128hst_SIE_200k_control\
   --min_magnification=4\
   --signal_threshold=0.2\

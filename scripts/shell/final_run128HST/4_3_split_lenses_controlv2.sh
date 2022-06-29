@@ -9,7 +9,7 @@
 # 00k-512_k128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/split_lensesv3.py\
+python $CENSAI_PATH/scripts/split_lenses.py\
   --dataset=$CENSAI_PATH/data/lenses128hst_TNG_rau_200k_control_validated\
   --train_split=0.9\
   --examples_per_shard=10000\

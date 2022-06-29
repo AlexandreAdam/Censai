@@ -9,7 +9,7 @@
 #SBATCH --job-name=Optim_RIM_over_posterior
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/rim_results_v4_and_optim_posterior_on_vae.py\
+python $CENSAI_PATH/scripts/rim_reoptimize_conditional_prior_vae_true_prior.py\
   --experiment_name=optim_vae_posterior\
   --model=RIMSU128hstv4_augmented_003_K3_L5_BCL2_211124140837_continue_lr6e-05_211129202839\
   --source_vae=VAE1_COSMOSFR_001_F16_NLleaky_relu_LS32_betaE0.1_betaDS100000_220112114306\

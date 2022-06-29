@@ -10,7 +10,7 @@
 # 00k-512_k128
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/create_rim_dataset_v2.py\
+python $CENSAI_PATH/scripts/create_rim_dataset.py\
   --output_dir=$HOME/scratch/Censai/data/lenses128hst_TNG_VAE_2M/\
   --kappa_datasets $CENSAI_PATH/data/hkappa128hst_TNG100_rau_trainset/\
  $CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_002_LS16_dr0.7_betaE0.2_betaDS5000_211115153537/\

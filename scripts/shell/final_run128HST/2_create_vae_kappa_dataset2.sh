@@ -9,7 +9,7 @@
 #SBATCH --job-name=Create-Kappa-Dataset-900k
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/make_kappa_vae_dataset.py\
+python $CENSAI_PATH/scripts/generate_halos_distributed.py\
   --kappa_first_stage_vae=$CENSAI_PATH/models/VAE1_128hstfr_000_BN0_LS84_betaE0.3_betaDS10000_211016160534\
   --output_dir=$CENSAI_PATH/data/kappa128hst_VAE1_128hstfr_000_BN0_LS84_betaE0.3_betaDS10000_211016160534/\
   --len_dataset=500000\

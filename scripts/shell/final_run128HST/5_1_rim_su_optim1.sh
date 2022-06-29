@@ -8,8 +8,7 @@
 #SBATCH --job-name=Train_RIM010_FR128hst
 #SBATCH --output=%x-%j.out
 source $HOME/environments/censai3.8/bin/activate
-python $CENSAI_PATH/scripts/train_rim_shared_unet.py\
-  --model_id=RIMSU128hst_control_010_TS10_F16_211020033949\
+python $CENSAI_PATH/scripts/train_rim.py\
   --datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_200k_control_validated_train\
   --val_datasets $CENSAI_PATH/data/lenses128hst_TNG_VAE_200k_control_validated_val\
   --compression_type=GZIP\
@@ -24,8 +23,8 @@ python $CENSAI_PATH/scripts/train_rim_shared_unet.py\
   --clipping\
   --patience=80\
   --tolerance=0.01\
-  --batch_size 10\
-  --train_split=0.90\
+  --batch_size 1\
+  --train_split=0.9\
   --total_items 10000\
   --block_length=1\
   --buffer_size=10000\
@@ -36,7 +35,4 @@ python $CENSAI_PATH/scripts/train_rim_shared_unet.py\
   --max_to_keep=4\
   --n_residuals=2\
   --seed 42\
-  --track_train\
-  --json_override $CENSAI_PATH/models/RIMSU128hst_control_010_TS10_F16_211020033949/rim_hparams.json\
-  $CENSAI_PATH/models/RIMSU128hst_control_010_TS10_F16_211020033949/unet_hparams.json\
-  --v2
+  --track_train
