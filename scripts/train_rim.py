@@ -70,7 +70,7 @@ def main(args):
         """    
         In this conditional, we assume total items might be a subset of the dataset size.
         Thus we want to reshuffle at each epoch to get a different realisation of the dataset. 
-        In case total_items == true dataset size, this means we only change ordering of items each epochs.
+        In case total_items is the true dataset size, this means we only change ordering of items each epochs.
         
         Also, validation is not a split of the training data, but a saved dataset on disk. 
         """
