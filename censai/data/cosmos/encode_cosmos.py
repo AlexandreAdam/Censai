@@ -105,8 +105,7 @@ def encode_examples(hparams, task_id=0, sample="25.2", cosmos_dir=None, exclusio
 
         # Apply random rotation if requested
         if hasattr(hparams, "rotation") and hparams.rotation:
-            rotation_angle = galsim.Angle(-np.random.rand() * 2 * np.pi,
-                                          galsim.radians)
+            rotation_angle = galsim.Angle(-np.random.rand() * 2 * np.pi, galsim.radians)
             gal = gal.rotate(rotation_angle)
             psf = psf.rotate(rotation_angle)
 

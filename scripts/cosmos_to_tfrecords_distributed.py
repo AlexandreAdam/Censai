@@ -105,7 +105,7 @@ def distributed_strategy(args):
             # Adding the parameters provided
             if attributes is not None:
                 for k in attributes:
-                    features['attrs_' + k] = _float_feature(attributes[k])
+                    features[k] = _float_feature(attributes[k])
 
             record = tf.train.Example(features=tf.train.Features(feature=features)).SerializeToString()
             writer.write(record)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     if args.store_attributes:
-        vars(args)["attributes"] = ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'zphot']
+        vars(args)["attributes"] = ['mag_auto', 'flux_radius', 'sersic_n', 'sersic_q', 'zphot', 'flux']
     if THIS_WORKER > 1:
         time.sleep(3)
     if not os.path.isdir(args.output_dir):
