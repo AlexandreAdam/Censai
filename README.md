@@ -2,7 +2,7 @@
 
 [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/Naereen/StrapDown.js/blob/master/LICENSE)
 
-<img src="https://raw.githubusercontent.com/AlexandreAdam/Censai/dev/.github/images/random_sample.jpg" alt="" style="height: 1000px; width:1000px;"/>
+<img src="https://raw.githubusercontent.com/AlexandreAdam/Censai/master/.github/images/random_sample.jpg" alt="" style="height: 1000px; width:1000px;"/>
 
 ## Abstract
 Modeling strong gravitational lenses in order to quantify the distortions of the background sources
