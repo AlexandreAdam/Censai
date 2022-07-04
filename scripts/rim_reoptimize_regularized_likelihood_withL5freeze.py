@@ -221,8 +221,8 @@ def distributed_strategy(args):
             # Compute Power spectrum of converged predictions
             _ps_observation = ps_observation.cross_correlation_coefficient(observation[..., 0], observation_pred[..., 0])
             _ps_observation2 = ps_observation.cross_correlation_coefficient(observation[..., 0], y_pred[..., 0])
-            _ps_kappa = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_pred[-1])[..., 0])
-            _ps_kappa2 = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_o[..., 0]))
+            _ps_kappa = ps_kappa.cross_correlation_coefficient(kappa[..., 0], kappa_pred[-1][..., 0])
+            _ps_kappa2 = ps_kappa.cross_correlation_coefficient(kappa[..., 0], kappa_o[..., 0])
             _ps_source = ps_source.cross_correlation_coefficient(source[..., 0], source_pred[-1][..., 0])
             _ps_source2 = ps_source.cross_correlation_coefficient(source[..., 0], source_o[..., 0])
 

@@ -71,26 +71,26 @@ def distributed_strategy(args):
     checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
     wk = lambda k: tf.sqrt(k) / tf.reduce_sum(tf.sqrt(k), axis=(1, 2, 3), keepdims=True)
 
-    # Freeze L5
-    # encoding layers
+    ## Freeze L5
+    ## encoding layers
     # rim.unet.layers[0].trainable = False # L1
     # rim.unet.layers[1].trainable = False
     # rim.unet.layers[2].trainable = False
     # rim.unet.layers[3].trainable = False
-    # rim.unet.layers[4].trainable = False # L5
-    # GRU
+    rim.unet.layers[4].trainable = False # L5
+    ## GRU
     # rim.unet.layers[5].trainable = False
     # rim.unet.layers[6].trainable = False
     # rim.unet.layers[7].trainable = False
     # rim.unet.layers[8].trainable = False
     # rim.unet.layers[9].trainable = False
-    # rim.unet.layers[15].trainable = False  # bottleneck GRU
-    # output layer
+    rim.unet.layers[15].trainable = False  # bottleneck GRU
+    ## output layer
     # rim.unet.layers[-2].trainable = False
-    # input layer
+    ## input layer
     # rim.unet.layers[-1].trainable = False
-    # decoding layers
-    # rim.unet.layers[10].trainable = False # L5
+    ## decoding layers
+    rim.unet.layers[10].trainable = False # L5
     # rim.unet.layers[11].trainable = False
     # rim.unet.layers[12].trainable = False
     # rim.unet.layers[13].trainable = False
@@ -220,8 +220,8 @@ def distributed_strategy(args):
             # Compute Power spectrum of converged predictions
             _ps_observation = ps_observation.cross_correlation_coefficient(observation[..., 0], observation_pred[..., 0])
             _ps_observation2 = ps_observation.cross_correlation_coefficient(observation[..., 0], y_pred[..., 0])
-            _ps_kappa = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_pred[-1])[..., 0])
-            _ps_kappa2 = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_o[..., 0]))
+            _ps_kappa = ps_kappa.cross_correlation_coefficient(kappa[..., 0], kappa_pred[-1][..., 0])
+            _ps_kappa2 = ps_kappa.cross_correlation_coefficient(kappa[..., 0], kappa_o[..., 0])
             _ps_source = ps_source.cross_correlation_coefficient(source[..., 0], source_pred[-1][..., 0])
             _ps_source2 = ps_source.cross_correlation_coefficient(source[..., 0], source_o[..., 0])
 

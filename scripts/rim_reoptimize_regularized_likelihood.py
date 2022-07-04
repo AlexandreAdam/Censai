@@ -1,12 +1,6 @@
-<<<<<<< HEAD
-from censai import RIMSharedUnetv3 as RIM, PhysicalModelv2 as PhysicalModel, PowerSpectrum, EWC
-from censai.models import SharedUnetModelv4 as Model, VAE
-from censai.data.lenses_tng_v3 import decode_results, decode_physical_model_info
-=======
 from censai import RIM, PhysicalModel, PowerSpectrum, EWC
 from censai.models import Model, VAE
 from censai.data.lenses_tng import decode_results, decode_physical_model_info
->>>>>>> barebone
 import tensorflow as tf
 import numpy as np
 import os, glob, json
@@ -20,7 +14,7 @@ N_WORKERS = int(os.getenv('SLURM_ARRAY_TASK_COUNT', 1))
 
 # this worker's array index. Assumes slurm array job is zero-indexed
 # defaults to zero if not running under SLURM
-THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 0)) ## it starts from 1!!
+THIS_WORKER = int(os.getenv('SLURM_ARRAY_TASK_ID', 1)) 
 
 
 def distributed_strategy(args):
@@ -33,15 +27,9 @@ def distributed_strategy(args):
     files = tf.data.Dataset.from_tensor_slices(files)
     dataset = files.interleave(
         lambda x: tf.data.TFRecordDataset(x, compression_type=args.compression_type).shuffle(len(files)), block_length=1, num_parallel_calls=tf.data.AUTOTUNE)
-<<<<<<< HEAD
-    for physical_params in dataset.map(decode_physical_model_info):
-        break
-    dataset = dataset.map(decode_results).shuffle(buffer_size=args.buffer_size)
-=======
     dataset = dataset.map(decode_results).shuffle(buffer_size=args.buffer_size)
     for physical_params in dataset.map(decode_physical_model_info):
         break
->>>>>>> barebone
 
     ps_observation = PowerSpectrum(bins=args.observation_coherence_bins, pixels=physical_params["pixels"].numpy())
     ps_source = PowerSpectrum(bins=args.source_coherence_bins,  pixels=physical_params["src pixels"].numpy())
@@ -83,11 +71,7 @@ def distributed_strategy(args):
     ckpt2 = tf.train.Checkpoint(step=tf.Variable(1), net=source_vae)
     checkpoint_manager2 = tf.train.CheckpointManager(ckpt2, svae_path, 1)
     checkpoint_manager2.checkpoint.restore(checkpoint_manager2.latest_checkpoint).expect_partial()
-<<<<<<< HEAD
-    wk = lambda k: tf.sqrt(k) / tf.reduce_sum(tf.sqrt(k), axis=(1, 2, 3), keepdims=True)
-=======
     wk = tf.keras.layers.Lambda(lambda k: tf.sqrt(k) / tf.reduce_sum(tf.sqrt(k), axis=(1, 2, 3), keepdims=True))
->>>>>>> barebone
 
     with h5py.File(os.path.join(os.getenv("CENSAI_PATH"), "results", args.experiment_name + "_" + args.model + "_" + args.dataset + f"_{THIS_WORKER:02d}.h5"), 'w') as hf:
         data_len = args.size // N_WORKERS
@@ -142,15 +126,9 @@ def distributed_strategy(args):
                 rim=rim,
                 source_vae=source_vae,
                 kappa_vae=kappa_vae,
-<<<<<<< HEAD
                 n_samples=args.sample_size,
                 sigma_source=args.source_vae_ball_size,
                 sigma_kappa=args.kappa_vae_ball_size
-=======
-                n_samples=args.n_samples,
-                sigma_source=args.source_ball_size,
-                sigma_kappa=args.kappa_ball_size
->>>>>>> barebone
             )
             # Re-optimize weights of the model
             STEPS = args.re_optimize_steps
@@ -183,11 +161,7 @@ def distributed_strategy(args):
                 kappa_o = k[-1]
                 source_mse = source_mse.write(index=current_step, value=tf.reduce_mean((source_o - rim.source_inverse_link(source)) ** 2))
                 kappa_mse = kappa_mse.write(index=current_step, value=tf.reduce_sum(wk(kappa) * (kappa_o - rim.kappa_inverse_link(kappa)) ** 2))
-<<<<<<< HEAD
                 if 2 * chi_sq[-1, 0] < 1.0 and args.early_stopping:
-=======
-                if chi_sq[-1, 0] < 1.0 and args.early_stopping:
->>>>>>> barebone
                     source_best = rim.source_link(source_o)
                     kappa_best = rim.kappa_link(kappa_o)
                     best = chi_sq[-1, 0]
@@ -212,8 +186,8 @@ def distributed_strategy(args):
             # Compute Power spectrum of converged predictions
             _ps_observation = ps_observation.cross_correlation_coefficient(observation[..., 0], observation_pred[..., 0])
             _ps_observation2 = ps_observation.cross_correlation_coefficient(observation[..., 0], y_pred[..., 0])
-            _ps_kappa = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_pred[-1])[..., 0])
-            _ps_kappa2 = ps_kappa.cross_correlation_coefficient(log_10(kappa)[..., 0], log_10(kappa_o[..., 0]))
+            _ps_kappa = ps_kappa.cross_correlation_coefficient(kappa[..., 0], kappa_pred[-1][..., 0])
+            _ps_kappa2 = ps_kappa.cross_correlation_coefficient(kappa[..., 0], kappa_o[..., 0])
             _ps_source = ps_source.cross_correlation_coefficient(source[..., 0], source_pred[-1][..., 0])
             _ps_source2 = ps_source.cross_correlation_coefficient(source[..., 0], source_o[..., 0])
 
@@ -230,15 +204,9 @@ def distributed_strategy(args):
             hf["source_pred_reoptimized"][batch] = source_o.numpy().astype(np.float32)
             hf["kappa_pred"][batch] = tf.transpose(kappa_pred, perm=(1, 0, 2, 3, 4)).numpy().astype(np.float32)
             hf["kappa_pred_reoptimized"][batch] = kappa_o.numpy().astype(np.float32)
-<<<<<<< HEAD
             hf["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
             hf["chi_squared_reoptimized"][batch] = 2*best.numpy().astype(np.float32)
             hf["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
-=======
-            hf["chi_squared"][batch] = tf.transpose(chi_squared).numpy().astype(np.float32)
-            hf["chi_squared_reoptimized"][batch] = best.numpy().astype(np.float32)
-            hf["chi_squared_reoptimized_series"][batch] = chi_sq_series.numpy().astype(np.float32)
->>>>>>> barebone
             hf["source_optim_mse"][batch] = source_mse_best.numpy().astype(np.float32)
             hf["source_optim_mse_series"][batch] = source_mse.numpy().astype(np.float32)
             hf["kappa_optim_mse"][batch] = kappa_mse_best.numpy().astype(np.float32)
@@ -247,10 +215,6 @@ def distributed_strategy(args):
             hf["observation_coherence_spectrum_reoptimized"][batch] = _ps_observation2
             hf["source_coherence_spectrum"][batch] = _ps_source
             hf["source_coherence_spectrum_reoptimized"][batch] = _ps_source2
-<<<<<<< HEAD
-=======
-            hf["observation_coherence_spectrum"][batch] = _ps_observation
->>>>>>> barebone
             hf["kappa_coherence_spectrum"][batch] = _ps_kappa
             hf["kappa_coherence_spectrum_reoptimized"][batch] = _ps_kappa2
 
@@ -273,11 +237,8 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--experiment_name",    default="finetune_likelihood_with_ewc")
     parser.add_argument("--model",              required=True,      help="Model to get predictions from")
-<<<<<<< HEAD
     parser.add_argument("--source_vae",         required=True)
     parser.add_argument("--kappa_vae",          required=True)
-=======
->>>>>>> barebone
     parser.add_argument("--compression_type",   default="GZIP")
     parser.add_argument("--dataset",            required=True)
     parser.add_argument("--size",               default=1000,       type=int)
@@ -294,13 +255,9 @@ if __name__ == '__main__':
     parser.add_argument("--early_stopping",     action="store_true")
     parser.add_argument("--seed",               default=42,         type=int)
     parser.add_argument("--l2_amp",             default=0,          type=float)
-<<<<<<< HEAD
-    parser.add_argument("--lam_ewc",            default=128**2,       type=float)
-=======
-    parser.add_argument("--lam_ewc",            default=0.5,        type=float)
->>>>>>> barebone
-    parser.add_argument("--source_vae_ball_size",   default=0.5,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
-    parser.add_argument("--kappa_vae_ball_size",    default=0.5,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
+    parser.add_argument("--lam_ewc",            default=2e5,       type=float)
+    parser.add_argument("--source_vae_ball_size",   default=0.3,    type=float, help="Standard deviation of the source VAE latent space sampling around RIM prediction")
+    parser.add_argument("--kappa_vae_ball_size",    default=0.3,    type=float, help="Standard deviation of the kappa VAE latent space sampling around RIM prediction")
 
     args = parser.parse_args()
     distributed_strategy(args)

@@ -203,8 +203,8 @@ def distributed_strategy(args):
                 # Compute Power spectrum of converged predictions
                 _ps_lens = ps_lens.cross_correlation_coefficient(lens[..., 0], lens_pred[..., 0])
                 _ps_lens3 = ps_lens.cross_correlation_coefficient(lens[..., 0], y_pred[..., 0])
-                _ps_kappa = ps_kappa.cross_correlation_coefficient(rim.kappa_inverse_link(kappa)[..., 0], rim.kappa_inverse_link(kappa_pred[-1])[..., 0])
-                _ps_kappa2 = ps_kappa.cross_correlation_coefficient(rim.kappa_inverse_link(kappa)[..., 0], kappa_mean[..., 0])
+                _ps_kappa = ps_kappa.cross_correlation_coefficient(kappa[..., 0], kappa_pred[-1][..., 0])
+                _ps_kappa2 = ps_kappa.cross_correlation_coefficient(kappa[..., 0], rim.kappa_link(kappa_mean)[..., 0])
                 _ps_source = ps_source.cross_correlation_coefficient(source[..., 0], source_pred[-1][..., 0])
                 _ps_source3 = ps_source.cross_correlation_coefficient(source[..., 0], source_mean[..., 0])
 
@@ -230,8 +230,8 @@ def distributed_strategy(args):
                 g["kappa_pred_reoptimized_mean"][batch] = kappa_mean.numpy().astype(np.float32)
                 g["kappa_pred_reoptimized_var"][batch] = kappa_var.numpy().astype(np.float32)
                 g["chi_squared"][batch] = 2*tf.transpose(chi_squared).numpy().astype(np.float32)
-                g["chi_squared_reoptimized"][batch] = chisq_ro.numpy().astype(np.float32)
-                g["chi_squared_reoptimized_mean"][batch] = chi_sq_mean.numpy().astype(np.float32)
+                g["chi_squared_reoptimized"][batch] = 2*chisq_ro.numpy().astype(np.float32)
+                g["chi_squared_reoptimized_mean"][batch] = 2*chi_sq_mean.numpy().astype(np.float32)
                 g["chi_squared_reoptimized_series"][batch] = 2*chi_sq_series.numpy().astype(np.float32)
                 g["source_optim_mse"][batch] = source_mse_ro.numpy().astype(np.float32)
                 g["source_optim_mse_series"][batch] = source_mse.numpy().astype(np.float32)
