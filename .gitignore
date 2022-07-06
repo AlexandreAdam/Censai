@@ -17,3 +17,4 @@ core*
 
 galfit.*
 !galfit.feedme
+*.png
