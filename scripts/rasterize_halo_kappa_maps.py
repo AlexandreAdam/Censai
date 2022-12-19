@@ -95,7 +95,7 @@ def tensorflow_generator(coords, masses, ell_hat):
     Used in rasterize function when use_gpu=True
     Args:
         coords: Projected coordinate (2d) of particles
-        masses: Masse of the particles
+        masses: Masse of the particles'
         ell_hat: Shape of the kernel
 
     Return: The callable generator to be fed to tensorflow dataset
